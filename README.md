@@ -247,10 +247,3 @@ npm run lint
 
 Private repository. All rights reserved.
 
----
-
-## 👤 Author
-
-**Kris Gopal** — Mechanical Engineer, Sharjah UAE
-
-[GitHub](https://github.com/krisgopal128)
