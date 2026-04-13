@@ -14,9 +14,8 @@ const RoomPage = lazy(() => import('./pages/RoomPage'));
 const PreJoinPage = lazy(() => import('./pages/PreJoinPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
-// Disabled for now
-// const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
-// const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const SchedulePage = lazy(() => import('./pages/SchedulePage'));
 const HistoryPage = lazy(() => import('./pages/HistoryPage'));
 const MeetingDetailPage = lazy(() => import('./pages/MeetingDetailPage'));
@@ -72,15 +71,14 @@ const routes: RouteObject[] = [
     path: '/register',
     element: withSuspense(RegisterPage),
   },
-  // Disabled for now
-  // {
-  //   path: '/forgot-password',
-  //   element: withSuspense(ForgotPasswordPage),
-  // },
-  // {
-  //   path: '/reset-password/:token',
-  //   element: withSuspense(ResetPasswordPage),
-  // },
+  {
+    path: '/forgot-password',
+    element: withSuspense(ForgotPasswordPage),
+  },
+  {
+    path: '/reset-password/:token',
+    element: withSuspense(ResetPasswordPage),
+  },
   {
     path: '/404',
     element: withSuspense(NotFoundPage),

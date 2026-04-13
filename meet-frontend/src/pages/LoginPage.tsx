@@ -151,12 +151,12 @@ export default function LoginPage() {
           <div className="form-group">
             <div className="flex items-center justify-between mb-1.5">
               <label htmlFor="password" className="mb-0">Password</label>
-              <span
-                className="text-xs text-surface-400 cursor-not-allowed"
-                title="Coming soon"
+              <Link
+                to="/forgot-password"
+                className="text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300"
               >
                 Forgot password?
-              </span>
+              </Link>
             </div>
             <div className="relative">
               <Lock 

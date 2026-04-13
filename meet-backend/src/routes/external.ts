@@ -478,7 +478,7 @@ router.get('/rooms/:name/links', async (req: Request, res: Response) => {
     
     const response: JoinLinksResponse = {
       room: name,
-      teacher_url: `${FRONTEND_URL}/join/${name}?t=${teacherJwt}`,
+      teacher_url: `${FRONTEND_URL}/join/${name}?t=${teacherJwt}&role=moderator`,
       student_url: `${FRONTEND_URL}/join/${name}`,
       expires_at: expiresAt.toISOString(),
     };

@@ -72,10 +72,22 @@ temp/
 # SEED DATA WITH CREDENTIALS
 # ============================================
 meet-backend/scripts/seed-admin.sql
+meet-backend/scripts/seed-admin.ts
 meet-backend/scripts/seed-mock-data.sql
+
+# ============================================
+# TEST SCRIPTS WITH API KEYS
+# ============================================
+meet-backend/test-api.sh
+meet-backend/test-external.sh
 
 # ============================================
 # SCORECARD IMAGES (tool output)
 # ============================================
 scorecard.png
 **/scorecard.png
+
+# ============================================
+# DEPLOYMENT CONFIG (server-specific)
+# ============================================
+Caddyfile.new
