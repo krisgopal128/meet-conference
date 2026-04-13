@@ -1,0 +1,35 @@
+# LiveKit Server Configuration Template
+# Compatible with LiveKit 1.10.0
+# 
+# ⚠️  IMPORTANT: Copy this to livekit.yaml and fill in your own values!
+#   cp livekit.yaml.example livekit.yaml
+#   livekit.yaml is gitignored to protect your API keys.
+
+port: 7880
+prometheus_port: 6798
+
+# API Keys - Generate your own!
+# Use: livekit-server generate-keys
+keys:
+  YOUR_API_KEY: YOUR_API_SECRET
+
+# Room settings
+room:
+  auto_create: true
+  empty_timeout: 300
+  departure_timeout: 60
+  max_participants: 100
+
+# Logging
+logging:
+  level: info
+  json: false
+
+# Redis for room management
+redis:
+  address: 127.0.0.1:6379
+
+# RTC settings
+rtc:
+  use_external_ip: true
+  # node_ip: YOUR_SERVER_IP

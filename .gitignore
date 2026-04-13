@@ -1,29 +1,81 @@
 # Meet Conference - Root Gitignore
 
-# Environment files
+# ============================================
+# SECRETS & ENVIRONMENT FILES
+# ============================================
 .env
 .env.local
 .env.*.local
+*.env
 
-# Logs
+# ============================================
+# DATABASE FILES
+# ============================================
+*.db
+*.sqlite
+*.sqlite3
+
+# ============================================
+# LIVEKIT CONFIG (contains API keys)
+# ============================================
+livekit/livekit.yaml
+
+# ============================================
+# TOOL ARTIFACTS
+# ============================================
+.code-review-graph/
+**/.code-review-graph/
+**/.desloppify/
+.code-review-graphignore
+**/.code-review-graphignore
+
+# ============================================
+# BUILD & DEPENDENCIES
+# ============================================
+node_modules/
+dist/
+build/
+coverage/
+
+# ============================================
+# LOGS
+# ============================================
 logs/
 *.log
 
-# IDE
+# ============================================
+# IDE & OS
+# ============================================
 .idea/
 .vscode/
 *.swp
 *.swo
-
-# OS
 .DS_Store
 Thumbs.db
 
-# Temporary files
+# ============================================
+# TEMPORARY FILES
+# ============================================
 *.tmp
 *.temp
 tmp/
 temp/
-
-# PID files
 *.pid
+
+# ============================================
+# BACKUPS
+# ============================================
+*.tar.gz
+.backup/
+
+# ============================================
+# SEED DATA WITH CREDENTIALS
+# ============================================
+meet-backend/scripts/seed-admin.sql
+meet-backend/scripts/seed-mock-data.sql
+
+# ============================================
+# SCORECARD IMAGES (tool output)
+# ============================================
+scorecard.png
+**/scorecard.png
