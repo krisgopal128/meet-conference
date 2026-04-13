@@ -1,0 +1,680 @@
+/* Import fonts - Uncodixfy compliant: DM Sans instead of Inter */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Professional font stack - No Inter (banned by Uncodixfy) */
+:root {
+  font-family: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Light mode base (default) */
+body {
+  @apply bg-surface-50 text-surface-800;
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+/* Dark mode */
+.dark body {
+  @apply bg-surface-900 text-surface-100;
+}
+
+/* Skip link for accessibility */
+.skip-link {
+  @apply sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 
+         focus:z-[9999] focus:px-4 focus:py-2 focus:bg-brand-500 focus:text-white 
+         focus:rounded-lg focus:shadow-lg focus:outline-none;
+}
+
+/* Base input styling */
+@layer base {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="datetime-local"],
+  input[type="url"],
+  textarea,
+  select {
+    @apply w-full py-2.5 px-3 text-sm border border-surface-300 rounded-lg 
+           bg-white text-surface-800
+           focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500
+           placeholder:text-surface-400
+           transition-colors duration-150;
+  }
+  
+  .dark input[type="text"],
+  .dark input[type="email"],
+  .dark input[type="password"],
+  .dark input[type="number"],
+  .dark input[type="datetime-local"],
+  .dark input[type="url"],
+  .dark textarea,
+  .dark select {
+    @apply bg-surface-800 border-surface-600 text-surface-100
+           placeholder:text-surface-500;
+  }
+
+  label {
+    @apply block text-sm font-medium text-surface-700 mb-1.5;
+  }
+  
+  .dark label {
+    @apply text-surface-300;
+  }
+
+  /* Heading styles with display font */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+
+  h1 {
+    @apply text-3xl font-bold tracking-tight;
+  }
+
+  h2 {
+    @apply text-2xl font-semibold tracking-tight;
+  }
+
+  h3 {
+    @apply text-xl font-semibold;
+  }
+
+  h4 {
+    @apply text-lg font-medium;
+  }
+}
+
+/* Input with left icon - higher specificity to override base styles */
+input.pl-10,
+input.pl-11,
+input[type="email"].pl-10,
+input[type="password"].pl-10,
+input[type="text"].pl-10 {
+  padding-left: 2.5rem !important;
+}
+
+input.pr-10,
+input.pr-11,
+input[type="email"].pr-10,
+input[type="password"].pr-10,
+input[type="text"].pr-10 {
+  padding-right: 2.5rem !important;
+}
+
+/* Button components - Uncodixfy: No transform animations */
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium 
+           rounded-lg transition-colors duration-150 
+           focus:outline-none focus:ring-2 focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed
+           min-h-[44px] whitespace-nowrap shrink-0;
+  }
+  
+  .btn-primary {
+    @apply btn bg-brand-500 text-white hover:bg-brand-600 
+           focus:ring-brand-500 shadow-sm;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-surface-100 text-surface-700 border border-surface-300 
+           hover:bg-surface-200 focus:ring-surface-400;
+  }
+  
+  .dark .btn-secondary {
+    @apply bg-surface-800 text-surface-200 border-surface-600 hover:bg-surface-700;
+  }
+  
+  .btn-ghost {
+    @apply btn text-surface-600 hover:bg-surface-100 focus:ring-surface-400;
+  }
+  
+  .dark .btn-ghost {
+    @apply text-surface-300 hover:bg-surface-800;
+  }
+  
+  .btn-danger {
+    @apply btn bg-danger-500 text-white hover:bg-danger-600 
+           focus:ring-danger-500;
+  }
+  
+  .btn-success {
+    @apply btn bg-success-500 text-white hover:bg-success-600 
+           focus:ring-success-500;
+  }
+
+  .btn-sm {
+    @apply px-3 py-2 text-xs min-h-[36px] whitespace-nowrap;
+  }
+  
+  .btn-lg {
+    @apply px-6 py-3 text-base min-h-[52px];
+  }
+
+  /* Icon-only button */
+  .btn-icon {
+    @apply p-2.5 min-w-[44px] min-h-[44px];
+  }
+
+  .btn-icon-sm {
+    @apply p-2 min-w-[36px] min-h-[36px];
+  }
+
+  /* Button with tooltip for disabled state explanation */
+  .btn-disabled-reason {
+    @apply relative group;
+  }
+  
+  .btn-disabled-reason::after {
+    content: attr(data-reason);
+    @apply absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 
+           text-xs bg-surface-800 text-white rounded whitespace-nowrap
+           opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none;
+  }
+}
+
+/* Card components - Border only (no shadow per UI guidelines) */
+@layer components {
+  .card {
+    @apply bg-white border border-surface-200 rounded-xl;
+  }
+  
+  .dark .card {
+    @apply bg-surface-800 border-surface-700;
+  }
+  
+  .card-hover {
+    @apply card transition-colors duration-200 hover:border-surface-300 hover:bg-surface-50;
+  }
+  
+  .dark .card-hover {
+    @apply hover:border-surface-600 hover:bg-surface-800;
+  }
+
+  .card-interactive {
+    @apply card cursor-pointer transition-colors duration-200 
+           hover:border-brand-300 hover:bg-brand-50/30;
+  }
+
+  .dark .card-interactive {
+    @apply hover:border-brand-700 hover:bg-brand-900/10;
+  }
+  
+  .card-header {
+    @apply px-5 py-4 border-b border-surface-200;
+  }
+  
+  .dark .card-header {
+    @apply border-surface-700;
+  }
+  
+  .card-body {
+    @apply p-5;
+  }
+  
+  .card-footer {
+    @apply px-5 py-4 border-t border-surface-200 bg-surface-50 rounded-b-xl;
+  }
+  
+  .dark .card-footer {
+    @apply border-surface-700 bg-surface-800/50;
+  }
+}
+
+/* Table components with sticky header */
+@layer components {
+  .table-container {
+    @apply overflow-x-auto rounded-xl border border-surface-200;
+  }
+  
+  .dark .table-container {
+    @apply border-surface-700;
+  }
+  
+  .data-table {
+    @apply w-full text-sm;
+  }
+  
+  .data-table thead {
+    @apply bg-surface-50 border-b border-surface-200 sticky top-0 z-10;
+  }
+  
+  .dark .data-table thead {
+    @apply bg-surface-800 border-surface-700;
+  }
+  
+  .data-table th {
+    @apply px-4 py-3 text-left text-xs font-semibold text-surface-600 uppercase tracking-wider
+           select-none cursor-pointer hover:text-surface-800 transition-colors;
+  }
+
+  .data-table th.sortable {
+    @apply hover:bg-surface-100;
+  }
+
+  .dark .data-table th {
+    @apply text-surface-400;
+  }
+
+  .dark .data-table th.sortable {
+    @apply hover:bg-surface-700 hover:text-surface-200;
+  }
+  
+  .data-table tbody tr {
+    @apply border-b border-surface-100 hover:bg-surface-50 transition-colors;
+  }
+  
+  .dark .data-table tbody tr {
+    @apply border-surface-700 hover:bg-surface-800/50;
+  }
+  
+  .data-table td {
+    @apply px-4 py-3 text-surface-700;
+  }
+  
+  .dark .data-table td {
+    @apply text-surface-300;
+  }
+
+  /* Sort indicator */
+  .sort-icon {
+    @apply inline-block ml-1 opacity-50;
+  }
+
+  .sort-icon.asc,
+  .sort-icon.desc {
+    @apply opacity-100 text-brand-500;
+  }
+}
+
+/* Badge components - Uncodixfy: 6-8px radius, no pill shape */
+@layer components {
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md;
+  }
+  
+  .badge-default {
+    @apply badge bg-surface-100 text-surface-600;
+  }
+  
+  .dark .badge-default {
+    @apply bg-surface-700 text-surface-300;
+  }
+  
+  .badge-primary {
+    @apply badge bg-brand-100 text-brand-700;
+  }
+  
+  .dark .badge-primary {
+    @apply bg-brand-900/30 text-brand-300;
+  }
+  
+  .badge-success {
+    @apply badge bg-success-100 text-success-700;
+  }
+  
+  .dark .badge-success {
+    @apply bg-success-700/20 text-success-500;
+  }
+  
+  .badge-warning {
+    @apply badge bg-warning-100 text-warning-700;
+  }
+  
+  .dark .badge-warning {
+    @apply bg-warning-700/20 text-warning-500;
+  }
+  
+  .badge-danger {
+    @apply badge bg-danger-100 text-danger-700;
+  }
+  
+  .dark .badge-danger {
+    @apply bg-danger-700/20 text-danger-500;
+  }
+}
+
+/* Sidebar navigation */
+@layer components {
+  .sidebar {
+    @apply w-60 bg-white border-r border-surface-200 flex flex-col;
+  }
+  
+  .dark .sidebar {
+    @apply bg-surface-800 border-surface-700;
+  }
+  
+  .sidebar-nav-item {
+    @apply flex items-center gap-3 px-4 py-2.5 text-sm text-surface-600 
+           hover:bg-surface-50 hover:text-surface-800 rounded-lg mx-2
+           transition-colors duration-150 min-h-[44px];
+  }
+  
+  .dark .sidebar-nav-item {
+    @apply text-surface-400 hover:bg-surface-700 hover:text-surface-200;
+  }
+  
+  .sidebar-nav-item.active {
+    @apply bg-brand-50 text-brand-600 font-medium;
+  }
+  
+  .dark .sidebar-nav-item.active {
+    @apply bg-brand-900/20 text-brand-400;
+  }
+}
+
+/* Modal - Uncodixfy: No slide animation, simple fadeIn only */
+@layer components {
+  .modal-overlay {
+    @apply fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50 
+           animate-fade-in backdrop-blur-sm;
+  }
+  
+  .modal-content {
+    @apply bg-white rounded-xl shadow-modal w-full max-w-md animate-fade-in
+           focus:outline-none;
+  }
+  
+  .dark .modal-content {
+    @apply bg-surface-800;
+  }
+
+  .modal-lg {
+    @apply max-w-lg;
+  }
+
+  .modal-xl {
+    @apply max-w-xl;
+  }
+  
+  .modal-header {
+    @apply px-6 py-4 border-b border-surface-200 flex items-center justify-between;
+  }
+  
+  .dark .modal-header {
+    @apply border-surface-700;
+  }
+
+  .modal-close {
+    @apply p-1.5 rounded-lg text-surface-400 hover:text-surface-600 
+           hover:bg-surface-100 transition-colors min-h-[36px] min-w-[36px]
+           flex items-center justify-center;
+  }
+
+  .dark .modal-close {
+    @apply hover:text-surface-300 hover:bg-surface-700;
+  }
+  
+  .modal-body {
+    @apply p-6;
+  }
+  
+  .modal-footer {
+    @apply px-6 py-4 border-t border-surface-200 flex justify-end gap-3;
+  }
+  
+  .dark .modal-footer {
+    @apply border-surface-700;
+  }
+}
+
+/* Skeleton loading */
+@layer components {
+  .skeleton {
+    @apply bg-gradient-to-r from-surface-200 via-surface-100 to-surface-200 
+           bg-[length:200%_100%] animate-skeleton rounded;
+  }
+
+  .dark .skeleton {
+    @apply from-surface-700 via-surface-600 to-surface-700;
+  }
+
+  .skeleton-text {
+    @apply skeleton h-4 rounded;
+  }
+
+  .skeleton-title {
+    @apply skeleton h-6 rounded w-3/4;
+  }
+
+  .skeleton-avatar {
+    @apply skeleton rounded-full;
+  }
+
+  .skeleton-card {
+    @apply skeleton h-32 rounded-xl;
+  }
+
+  .skeleton-button {
+    @apply skeleton h-10 rounded-lg w-24;
+  }
+}
+
+/* Form validation */
+@layer components {
+  .form-group {
+    @apply space-y-1.5;
+  }
+
+  .form-error {
+    @apply text-xs text-danger-500 mt-1 flex items-center gap-1;
+  }
+
+  .dark .form-error {
+    @apply text-danger-400;
+  }
+
+  .form-success {
+    @apply text-xs text-success-600 mt-1 flex items-center gap-1;
+  }
+
+  .dark .form-success {
+    @apply text-success-500;
+  }
+
+  .form-hint {
+    @apply text-xs text-surface-500 mt-1;
+  }
+
+  .dark .form-hint {
+    @apply text-surface-400;
+  }
+
+  input.input-error,
+  select.input-error,
+  textarea.input-error {
+    @apply border-danger-300 focus:border-danger-500 focus:ring-danger-500/20;
+  }
+
+  input.input-success,
+  select.input-success,
+  textarea.input-success {
+    @apply border-success-300 focus:border-success-500 focus:ring-success-500/20;
+  }
+}
+
+/* Dropdown menu - Uncodixfy: No slide animation, simple fadeIn only */
+@layer components {
+  .dropdown-menu {
+    @apply absolute bg-white rounded-lg shadow-dropdown border border-surface-200 
+           py-1 min-w-[180px] z-50 animate-fade-in;
+  }
+
+  .dark .dropdown-menu {
+    @apply bg-surface-800 border-surface-700;
+  }
+
+  .dropdown-item {
+    @apply flex items-center gap-3 w-full px-4 py-2.5 text-sm text-surface-700 
+           hover:bg-surface-50 transition-colors cursor-pointer
+           focus:bg-surface-50 focus:outline-none;
+  }
+
+  .dark .dropdown-item {
+    @apply text-surface-300 hover:bg-surface-700 focus:bg-surface-700;
+  }
+
+  .dropdown-item-danger {
+    @apply dropdown-item text-danger-600 hover:bg-danger-50 focus:bg-danger-50;
+  }
+
+  .dark .dropdown-item-danger {
+    @apply text-danger-400 hover:bg-danger-700/20 focus:bg-danger-700/20;
+  }
+
+  .dropdown-divider {
+    @apply border-t border-surface-200 my-1;
+  }
+
+  .dark .dropdown-divider {
+    @apply border-surface-700;
+  }
+}
+
+/* LiveKit component overrides */
+.lk-prejoin {
+  @apply card p-6;
+}
+
+.lk-prejoin input {
+  @apply border-surface-300;
+}
+
+.lk-video-conference {
+  @apply bg-surface-900;
+}
+
+.lk-participant-tile {
+  @apply rounded-lg overflow-hidden;
+}
+
+.lk-focus-layout-wrapper {
+  @apply bg-surface-900;
+}
+
+/* Video center-crop - ensure video elements crop from center */
+/* LiveKit VideoTrack component wraps video in div, so we target video directly */
+.video-fit-cover video,
+.video-fit-cover > video {
+  object-fit: cover;
+  object-position: center;
+}
+
+.video-fit-contain video,
+.video-fit-contain > video {
+  object-fit: contain;
+  object-position: center;
+}
+
+/* Also apply to any video elements inside LiveKit components */
+.lk-participant-tile video,
+[data-lk-video] {
+  object-position: center;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-surface-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-surface-300 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-surface-400;
+}
+
+.dark ::-webkit-scrollbar-track {
+  @apply bg-surface-800;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  @apply bg-surface-600;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  @apply bg-surface-500;
+}
+
+/* Focus visible for keyboard users */
+:focus-visible {
+  @apply outline-2 outline-offset-2 outline-brand-500;
+}
+
+/* Remove focus ring for mouse users */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Mobile safe area padding for iOS notch/home indicator */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Fade-in animation for lazy-loaded content */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+/* Toast animations for react-hot-toast */
+@keyframes toastEnter {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toastLeave {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+.animate-enter {
+  animation: toastEnter 0.3s ease-out forwards;
+}
+
+.animate-leave {
+  animation: toastLeave 0.3s ease-in forwards;
+}

@@ -1,0 +1,496 @@
+{
+  // Example configuration reference for the meeting-room feature set.
+  // This file is documentation/config-template only. It is not auto-loaded yet.
+  // It now includes the current video/audio quality planning defaults and
+  // commented alternatives so the tunable surface is documented in one place.
+
+  "app": {
+    // Main API and LiveKit connection endpoints are still read from .env files.
+    "apiBaseUrl": "/api",
+    "livekitUrl": "ws://localhost:7880",
+
+    // Other possible values:
+    // "apiBaseUrl": "https://api.example.com"
+    // "livekitUrl": "wss://livekit.example.com"
+  },
+
+  "room": {
+    "defaultLayout": "speaker",
+    "qualityMode": "highQuality",  // Changed from 'auto' to use high quality by default
+    "adaptiveStream": true,
+    "dynacast": true,
+    "simulcast": true,
+    "pauseOffscreenVideo": true,
+    "joinLeaveSoundsEnabled": true,
+    "mirrorLocalVideo": true,
+    "showChatTimestamps": false,
+    "lobbyPollIntervalMs": 10000,  // Poll lobby every 10 seconds (was 5s)
+
+    // Other possible values:
+    // "defaultLayout": "grid"
+    // "defaultLayout": "screenshare"
+    // "qualityMode": "dataSaver"
+    // "qualityMode": "auto"
+    // "qualityMode": "audioOnly"
+    // "adaptiveStream": false
+    // "dynacast": false
+    // "simulcast": false
+    // "pauseOffscreenVideo": false
+    // "joinLeaveSoundsEnabled": false
+    // "mirrorLocalVideo": false
+    // "showChatTimestamps": true
+    // "lobbyPollIntervalMs": 3000
+  },
+
+  "features": {
+    "fullscreenTileView": true,
+    "mirrorLocalVideoToggle": true,
+    "copyRoomLink": true,
+    "joinLeaveSoundToggle": true,
+    "participantSearch": true,
+    "inlineLobbyBanner": true,
+    "typingIndicator": true,
+    "privateMessagesToModerators": true,
+    "chatTimestampsToggle": true,
+    "deviceSwitchingInRoom": true,
+    "micDropdownDeviceMenu": true,
+    "cameraDropdownDeviceMenu": true,
+    "settingsPanelDeviceFallback": true,
+    "qualityModeSelector": true,
+    "connectionQualityIndicator": false,
+    "networkRecoveryToasts": true,
+    "screenshareModeSelector": true,
+
+    // Other possible values:
+    // "fullscreenTileView": false
+    // "privateMessagesToModerators": false
+    // "typingIndicator": false
+    // "deviceSwitchingInRoom": false
+    // "qualityModeSelector": false
+    // "connectionQualityIndicator": true
+    // "networkRecoveryToasts": false
+    // "screenshareModeSelector": false
+  },
+
+  "moderation": {
+    "muteParticipant": true,
+    "muteAllParticipants": true,
+    "disableParticipantCamera": true,
+    "disableAllParticipantCameras": true,
+    "disableParticipantScreenShare": true,
+    "kickParticipant": true,
+    "admitLobbyParticipant": true,
+    "denyLobbyParticipant": true,
+    "admitAllFromLobby": true,
+    "denyAllFromLobby": true,
+    "skipModeratorsForMuteAll": true,
+    "skipModeratorsForDisableAllCameras": true,
+
+    // Other possible values:
+    // "disableParticipantScreenShare": false
+    // "disableAllParticipantCameras": false
+    // "admitAllFromLobby": false
+    // "denyAllFromLobby": false
+  },
+
+  "chat": {
+    "publicChatEnabled": true,
+    "persistPublicRoomChat": true,
+    "privateModeratorChatEnabled": true,
+    "persistPrivateModeratorChat": false,
+    "typingIndicatorTimeoutMs": 1500,
+    "maxHistoryMessages": 200,
+
+    // Other possible values:
+    // "persistPrivateModeratorChat": true
+    // "typingIndicatorTimeoutMs": 1000
+    // "maxHistoryMessages": 100
+  },
+
+  "prejoin": {
+    "videoEnabledByDefault": true,
+    "audioEnabledByDefault": true,
+    "noiseSuppression": true,
+    "echoCancellation": true,
+    "showDeviceSettingsByDefault": true,  // Devices section expanded by default
+    "defaultAspectRatio": "16:9",  // Auto-detects camera native ratio for 100% coverage
+    "defaultVideoFitMode": "cover",  // 'cover' fills container, 'contain' letterboxes
+
+    // Other possible values:
+    // "videoEnabledByDefault": false
+    // "audioEnabledByDefault": false
+    // "noiseSuppression": false
+    // "echoCancellation": false
+    // "showDeviceSettingsByDefault": false
+    // "defaultAspectRatio": "4:3"
+    // "defaultAspectRatio": "1:1"
+    // "defaultAspectRatio": "9:16"
+    // "defaultVideoFitMode": "contain"
+  },
+
+  "videoEffects": {
+    "backgroundBlur": {
+      "enabled": true,
+      "defaultBlurRadius": 10,  // 1-20, higher = more blur
+      "debounceMs": 300,  // Minimum time between toggle operations
+      "lockTimeoutMs": 8000,  // Safety valve for async lock
+      "implementation": "BackgroundProcessor_switchTo_method"  // Uses switchTo() to avoid TF.js reload
+
+      // Other possible values:
+      // "defaultBlurRadius": 5
+      // "defaultBlurRadius": 15
+      // "debounceMs": 500
+    },
+    "virtualBackground": {
+      "enabled": false  // Not implemented yet - reserved for future
+
+      // Other possible values:
+      // "enabled": true  (when implemented)
+    }
+  },
+
+  "faceCrop": {
+    // NOTE: This feature is NOT YET IMPLEMENTED.
+    // Face crop settings for auto-framing participants like Zoom/Teams
+    // Reserved for future implementation.
+    "enabled": false,
+    "aspectRatio": "16:9",
+    "model": "tiny",
+
+    // Available aspect ratios: "16:9", "9:16", "1:1", "4:3", "none"
+    // Detection models:
+    // - "tiny": TinyFaceDetector (193KB, faster, good for most cases)
+    // - "ssd": SSD MobileNet (5.6MB, more accurate, higher CPU)
+  },
+
+  "mediaSwitching": {
+    "cameraDeviceKind": "videoinput",
+    "microphoneDeviceKind": "audioinput",
+    "defaultCameraDeviceId": "",
+    "defaultMicrophoneDeviceId": "",
+
+    // Other possible values:
+    // "defaultCameraDeviceId": "your-camera-device-id"
+    // "defaultMicrophoneDeviceId": "your-mic-device-id"
+  },
+
+  "qualityModes": {
+    "defaultMode": "highQuality",  // Changed from 'dataSaver' for better video quality
+    "availableModes": ["auto", "dataSaver", "highQuality", "audioOnly"],
+    "auto": {
+      "cameraMaxResolution": "1280x720",
+      "cameraMaxFrameRate": 30,
+      "screenShareMaxResolution": "1920x1080",
+      "screenShareMaxFrameRate": 15,
+      "audioBitrateKbps": 24
+    },
+    "dataSaver": {
+      "cameraMaxResolution": "854x480",
+      "cameraMaxFrameRate": 24,
+      "screenShareMaxResolution": "1280x720",
+      "screenShareMaxFrameRate": 15,
+      "audioBitrateKbps": 24
+    },
+    "highQuality": {
+      "cameraMaxResolution": "1920x1080",
+      "cameraMaxFrameRate": 30,
+      "screenShareMaxResolution": "1920x1080",
+      "screenShareMaxFrameRate": 30,
+      "audioBitrateKbps": 32
+    },
+    "audioOnly": {
+      "cameraDisabled": true,
+      "incomingVideoDisabled": true,
+      "audioBitrateKbps": 24
+    },
+
+    // Other possible values:
+    // "defaultMode": "dataSaver"
+    // "defaultMode": "auto"
+    // "availableModes": ["auto", "dataSaver"]
+  },
+
+  "media": {
+    "cameraCapture": {
+      // Applied as browser capture constraints and initial camera defaults.
+      "width": 1280,
+      "height": 720,
+      "minWidth": 640,
+      "maxWidth": 1920,
+      "minHeight": 360,
+      "maxHeight": 1080,
+      "frameRate": 30,
+      "minFrameRate": 15,
+      "maxFrameRate": 30,
+      "facingMode": "user",
+
+      // Other possible values:
+      // "width": 960
+      // "height": 540
+      // "width": 1920
+      // "height": 1080
+      // "minWidth": 320
+      // "maxWidth": 2560
+      // "minHeight": 180
+      // "maxHeight": 1440
+      // "frameRate": 24
+      // "minFrameRate": 10
+      // "maxFrameRate": 60
+      // "facingMode": "environment"
+    },
+    "audioCapture": {
+      // Applied as browser audio capture constraints and initial mic defaults.
+      "autoGainControl": true,
+      "echoCancellation": true,
+      "noiseSuppression": true,
+      "channelCount": 1,
+      "latency": 0.02,
+      "sampleRate": 48000,
+      "sampleSize": 16,
+
+      // Other possible values:
+      // "autoGainControl": false
+      // "echoCancellation": false
+      // "noiseSuppression": false
+      // "channelCount": 2
+      // "latency": 0.05
+      // "sampleRate": 44100
+    },
+    "publishDefaults": {
+      // Applied through LiveKit publish defaults at room connect time.
+      "videoCodec": "h264",
+      "backupCodec": true,
+      "backupCodecPolicy": "regression",
+      "audioPreset": "speech",
+      "dtx": true,
+      "red": true,
+      "forceStereo": false,
+      "simulcast": true,
+      "scalabilityMode": "L3T3_KEY",
+      "degradationPreference": "balanced",
+      "videoEncoding": {
+        // Increased from 300k/1.5M for better quality range
+        "minBitrate": 500000,
+        "maxBitrate": 3000000,
+        "minFramerate": 15,
+        "maxFramerate": 30
+      },
+      "screenShareEncoding": {
+        "minBitrate": 500000,
+        "maxBitrate": 1000000,
+        "minFramerate": 5,
+        "maxFramerate": 15
+      },
+
+      // Other possible values:
+      // "videoCodec": "vp8"
+      // "videoCodec": "vp9"
+      // "videoCodec": "av1"
+      // "audioPreset": "music"
+      // "audioPreset": "musicHighQuality"
+      // "dtx": false
+      // "red": false
+      // "forceStereo": true
+      // "backupCodec": false
+      // "backupCodecPolicy": "simulcast"
+      // "degradationPreference": "maintain-resolution"
+      // "degradationPreference": "maintain-framerate"
+    },
+    "simulcastLayers": {
+      "low": {
+        "width": 426,
+        "height": 240,
+        "frameRate": 15,
+        "maxBitrate": 200000
+      },
+      "medium": {
+        "width": 854,
+        "height": 480,
+        "frameRate": 24,
+        "maxBitrate": 600000
+      },
+      "high": {
+        "width": 1280,
+        "height": 720,
+        "frameRate": 30,
+        "maxBitrate": 1500000
+      },
+      "ultra": {
+        "width": 1920,
+        "height": 1080,
+        "frameRate": 30,
+        "maxBitrate": 3000000
+      },
+
+      // Other possible values:
+      // Remove "ultra" for 3-layer simulcast on constrained devices.
+      // Lower "high.maxBitrate" to 1200000 for conservative uplink targets.
+    },
+    "screenShare": {
+      "defaultMode": "documents",
+      "resolution": {
+        // Applied as browser screen-share capture constraints/defaults when screen share is started.
+        "width": 1920,
+        "height": 1080,
+        "minWidth": 1280,
+        "maxWidth": 2560,
+        "minHeight": 720,
+        "maxHeight": 1440,
+        "frameRate": 8,
+        "minFrameRate": 5,
+        "maxFrameRate": 15
+      },
+      // Applied as browser screen-share capture options.
+      "audio": true,
+      "contentHint": "detail",
+      "surfaceSwitching": "include",
+      "systemAudio": "include",
+      "selfBrowserSurface": "exclude",
+      "modes": {
+        "documents": {
+          "width": 1920,
+          "height": 1080,
+          "frameRate": 8,
+          "maxBitrate": 1000000
+        },
+        "motion": {
+          "width": 1920,
+          "height": 1080,
+          "frameRate": 30,
+          "maxBitrate": 2500000
+        }
+      },
+
+      // Other possible values:
+      // "defaultMode": "motion"
+      // "resolution": { "width": 1280, "height": 720, "minWidth": 640, "maxWidth": 1920, "minHeight": 360, "maxHeight": 1080, "frameRate": 15, "minFrameRate": 5, "maxFrameRate": 30 }
+      // "audio": false
+      // "contentHint": "motion"
+      // "surfaceSwitching": "exclude"
+      // "systemAudio": "exclude"
+      // "selfBrowserSurface": "include"
+    }
+  },
+
+  "network": {
+    "prioritizeAudioOverVideo": true,
+    "degradeVideoFirstOnCongestion": true,
+    "packetLossWarningPercent": 1,
+    "packetLossPoorPercent": 3,
+    "rttWarningMs": 100,
+    "rttPoorMs": 200,
+    "jitterWarningMs": 30,
+    "jitterPoorMs": 50,
+    "availableBitrateWarningBps": 500000,
+    "availableBitrateGoodBps": 2000000,
+
+    // Other possible values:
+    // "prioritizeAudioOverVideo": false
+    // "degradeVideoFirstOnCongestion": false
+    // "packetLossWarningPercent": 2
+    // "packetLossPoorPercent": 5
+    // "rttWarningMs": 150
+    // "rttPoorMs": 250
+  },
+
+  "activeSpeaker": {
+    "promotionDelayMs": 1500,
+    "demotionDelayMs": 2500,
+    "pinnedParticipantTargetLayer": "high",
+    "hostPresenterTargetLayer": "ultra",
+
+    // Other possible values:
+    // "promotionDelayMs": 1000
+    // "promotionDelayMs": 2000
+    // "demotionDelayMs": 2000
+    // "demotionDelayMs": 3000
+    // "pinnedParticipantTargetLayer": "ultra"
+    // "hostPresenterTargetLayer": "high"
+  },
+
+  "layoutQuality": {
+    "thumbnailMaxWidthPx": 100,
+    "mediumTileMaxWidthPx": 200,
+    "largeTileMaxWidthPx": 400,
+    "thumbnailLayer": "low",
+    "mediumTileLayer": "medium",
+    "largeTileLayer": "high",
+    "fullscreenLayer": "high",
+
+    // Other possible values:
+    // "fullscreenLayer": "ultra"
+    // "mediumTileLayer": "low"
+  },
+
+  "mobile": {
+    "enabled": true,
+    "maxResolution": "960x540",
+    "maxFrameRate": 24,
+    "preferredSimulcastLayerCount": 3,
+    "autoEnableDataSaverOnCellular": true,
+    "reduceQualityWhenBatteryBelowPercent": 20,
+
+    // Other possible values:
+    // "enabled": false
+    // "maxResolution": "1280x720"
+    // "preferredSimulcastLayerCount": 2
+    // "autoEnableDataSaverOnCellular": false
+    // "reduceQualityWhenBatteryBelowPercent": 15
+  },
+
+  "performance": {
+    "cpuMonitorEnabled": true,  // Changed from false
+    "cpuReductionThresholdPercent": 92,
+    "cpuReductionThresholdDurationMs": 5000,
+    "recoveryThresholdPercent": 60,
+    "qualityRestoreDurationMs": 10000,
+    "offscreenPauseDelayMs": 750,
+    "freezeLastFrameWhenPaused": true,
+    // Phase 2: Visible participant culling
+    "enableParticipantCulling": true,
+    "maxVisibleParticipants": 12,
+    "cullingThreshold": 8,
+    // Phase 2: Tab visibility optimization
+    "pauseVideoOnTabHidden": true,
+    "tabVisibilityHideDelayMs": 500,
+    // Phase 2: Video element pooling
+    "enableVideoPooling": true,
+    "videoPoolSize": 16,
+    "videoRecycleDelayMs": 5000,
+
+    // Other possible values:
+    // "cpuMonitorEnabled": false
+    // "cpuReductionThresholdPercent": 90
+    // "recoveryThresholdPercent": 65
+    // "qualityRestoreDurationMs": 5000
+    // "offscreenPauseDelayMs": 500
+    // "offscreenPauseDelayMs": 1000
+    // "freezeLastFrameWhenPaused": false
+  },
+
+  "feedback": {
+    "networkDegradedMessage": "Optimizing video for your connection",
+    "networkRecoveredMessage": "Connection quality restored",
+    "cpuFallbackMessage": "Reducing quality to improve performance",
+    "audioOnlyMessage": "Audio Only - Tap to enable video",
+
+    // Other possible values:
+    // "networkDegradedMessage": "Connection degraded"
+    // "networkRecoveredMessage": "Quality restored"
+  },
+
+  "notes": {
+    "publicChatStorage": "backend_database",
+    "privateModeratorChatStorage": "live_only_not_persisted",
+    "typingIndicatorStorage": "live_only_not_persisted",
+    "deviceSwitchingImplementation": "livekit_room_switchActiveDevice",
+    "livekitServerCodecReference": "audio/opus, video/vp8, video/h264, video/vp9, video/av1",
+    "livekitServerRoomDefaults": "auto_create=false, empty_timeout=300, departure_timeout=20, max_participants=50",
+    "backgroundBlurImplementation": "blurProcessorManager.ts uses BackgroundProcessor with switchTo() method - keeps TF.js loaded",
+    "meetingRestartBehavior": "Host restart sets room status to waiting immediately to prevent race condition",
+    "cameraAspectRatioSystem": "Auto-detects native ratio, calculates optimal crop resolution for selected aspect",
+
+    // Other possible values:
+    // "privateModeratorChatStorage": "backend_database"
+  }
+}

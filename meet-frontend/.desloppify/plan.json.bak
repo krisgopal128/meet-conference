@@ -1,0 +1,3097 @@
+{
+  "version": 8,
+  "created": "2026-03-10T04:54:26+00:00",
+  "updated": "2026-03-26T14:22:06+00:00",
+  "queue_order": [],
+  "deferred": [],
+  "skipped": {},
+  "active_cluster": null,
+  "overrides": {
+    "logs::src/components/panels/ParticipantsPanel.tsx::ParticipantsPanel": {
+      "issue_id": "logs::src/components/panels/ParticipantsPanel.tsx::ParticipantsPanel",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/logs",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "logs::src/pages/RoomPage.tsx::RoomPage": {
+      "issue_id": "logs::src/pages/RoomPage.tsx::RoomPage",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/logs",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "props::src/store/roomStore.ts::UIState": {
+      "issue_id": "props::src/store/roomStore.ts::UIState",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/props-state",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "props::src/pages/RoomPage.tsx::LocationState": {
+      "issue_id": "props::src/pages/RoomPage.tsx::LocationState",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/props-state",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "orphaned::src/utils/date.ts": {
+      "issue_id": "orphaned::src/utils/date.ts",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "orphaned::src/components/ErrorBoundary.tsx": {
+      "issue_id": "orphaned::src/components/ErrorBoundary.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/orphaned",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "orphaned::src/store/authStore.old.ts": {
+      "issue_id": "orphaned::src/store/authStore.old.ts",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/orphaned",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/controls/ControlBar.tsx": {
+      "issue_id": "test_coverage::src/components/controls/ControlBar.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/config/meetingRoomConfig.ts": {
+      "issue_id": "test_coverage::src/config/meetingRoomConfig.ts",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/components/room/ConferenceRoom.tsx": {
+      "issue_id": "test_coverage::src/components/room/ConferenceRoom.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/pages/PreJoinPage.tsx": {
+      "issue_id": "test_coverage::src/pages/PreJoinPage.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/pages/HomePage.tsx": {
+      "issue_id": "test_coverage::src/pages/HomePage.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/components/panels/ParticipantsPanel.tsx": {
+      "issue_id": "test_coverage::src/components/panels/ParticipantsPanel.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/pages/SchedulePage.tsx": {
+      "issue_id": "test_coverage::src/pages/SchedulePage.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/pages/RoomPage.tsx": {
+      "issue_id": "test_coverage::src/pages/RoomPage.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/components/panels/SettingsPanel.tsx": {
+      "issue_id": "test_coverage::src/components/panels/SettingsPanel.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/store/roomStore.ts": {
+      "issue_id": "test_coverage::src/store/roomStore.ts",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/pages/RegisterPage.tsx": {
+      "issue_id": "test_coverage::src/pages/RegisterPage.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/services/api.ts": {
+      "issue_id": "test_coverage::src/services/api.ts",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/components/panels/ChatPanel.tsx": {
+      "issue_id": "test_coverage::src/components/panels/ChatPanel.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/pages/HistoryPage.tsx": {
+      "issue_id": "test_coverage::src/pages/HistoryPage.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/pages/LoginPage.tsx": {
+      "issue_id": "test_coverage::src/pages/LoginPage.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/components/room/ParticipantTile.tsx": {
+      "issue_id": "test_coverage::src/components/room/ParticipantTile.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/store/authStore.ts": {
+      "issue_id": "test_coverage::src/store/authStore.ts",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/components/room/LobbyWaiting.tsx": {
+      "issue_id": "test_coverage::src/components/room/LobbyWaiting.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/router.tsx": {
+      "issue_id": "test_coverage::src/router.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/components/Layout.tsx": {
+      "issue_id": "test_coverage::src/components/Layout.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/utils/date.ts": {
+      "issue_id": "test_coverage::src/utils/date.ts",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/components/ErrorBoundary.tsx": {
+      "issue_id": "test_coverage::src/components/ErrorBoundary.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/components/room/SpeakerLayout.tsx": {
+      "issue_id": "test_coverage::src/components/room/SpeakerLayout.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/pages/NotFoundPage.tsx": {
+      "issue_id": "test_coverage::src/pages/NotFoundPage.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/components/room/ScreenShareLayout.tsx": {
+      "issue_id": "test_coverage::src/components/room/ScreenShareLayout.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/components/room/GridLayout.tsx": {
+      "issue_id": "test_coverage::src/components/room/GridLayout.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/store/authStore.old.ts": {
+      "issue_id": "test_coverage::src/store/authStore.old.ts",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/components/ProtectedRoute.tsx": {
+      "issue_id": "test_coverage::src/components/ProtectedRoute.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "test_coverage::src/main.tsx": {
+      "issue_id": "test_coverage::src/main.tsx",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "smells::src/components/controls/ControlBar.tsx::monster_function": {
+      "issue_id": "smells::src/components/controls/ControlBar.tsx::monster_function",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-monster_function",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/panels/ParticipantsPanel.tsx::monster_function": {
+      "issue_id": "smells::src/components/panels/ParticipantsPanel.tsx::monster_function",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-monster_function",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/panels/SettingsPanel.tsx::monster_function": {
+      "issue_id": "smells::src/components/panels/SettingsPanel.tsx::monster_function",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-monster_function",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/room/ConferenceRoom.tsx::monster_function": {
+      "issue_id": "smells::src/components/room/ConferenceRoom.tsx::monster_function",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-monster_function",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/HistoryPage.tsx::monster_function": {
+      "issue_id": "smells::src/pages/HistoryPage.tsx::monster_function",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-monster_function",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/HomePage.tsx::monster_function": {
+      "issue_id": "smells::src/pages/HomePage.tsx::monster_function",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-monster_function",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/LoginPage.tsx::monster_function": {
+      "issue_id": "smells::src/pages/LoginPage.tsx::monster_function",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-monster_function",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/PreJoinPage.tsx::monster_function": {
+      "issue_id": "smells::src/pages/PreJoinPage.tsx::monster_function",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-monster_function",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/RegisterPage.tsx::monster_function": {
+      "issue_id": "smells::src/pages/RegisterPage.tsx::monster_function",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-monster_function",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/SchedulePage.tsx::monster_function": {
+      "issue_id": "smells::src/pages/SchedulePage.tsx::monster_function",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-monster_function",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/controls/ControlBar.tsx::console_error_no_throw": {
+      "issue_id": "smells::src/components/controls/ControlBar.tsx::console_error_no_throw",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-console_error_no_throw",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/panels/ChatPanel.tsx::console_error_no_throw": {
+      "issue_id": "smells::src/components/panels/ChatPanel.tsx::console_error_no_throw",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-console_error_no_throw",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/panels/ParticipantsPanel.tsx::console_error_no_throw": {
+      "issue_id": "smells::src/components/panels/ParticipantsPanel.tsx::console_error_no_throw",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-console_error_no_throw",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/panels/SettingsPanel.tsx::console_error_no_throw": {
+      "issue_id": "smells::src/components/panels/SettingsPanel.tsx::console_error_no_throw",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-console_error_no_throw",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/room/ParticipantTile.tsx::console_error_no_throw": {
+      "issue_id": "smells::src/components/room/ParticipantTile.tsx::console_error_no_throw",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-console_error_no_throw",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/HistoryPage.tsx::console_error_no_throw": {
+      "issue_id": "smells::src/pages/HistoryPage.tsx::console_error_no_throw",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-console_error_no_throw",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/HomePage.tsx::console_error_no_throw": {
+      "issue_id": "smells::src/pages/HomePage.tsx::console_error_no_throw",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-console_error_no_throw",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/PreJoinPage.tsx::console_error_no_throw": {
+      "issue_id": "smells::src/pages/PreJoinPage.tsx::console_error_no_throw",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/RoomPage.tsx::console_error_no_throw": {
+      "issue_id": "smells::src/pages/RoomPage.tsx::console_error_no_throw",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/controls/ControlBar.tsx::swallowed_error": {
+      "issue_id": "smells::src/components/controls/ControlBar.tsx::swallowed_error",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-swallowed_error",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/panels/ChatPanel.tsx::swallowed_error": {
+      "issue_id": "smells::src/components/panels/ChatPanel.tsx::swallowed_error",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-swallowed_error",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/panels/ParticipantsPanel.tsx::swallowed_error": {
+      "issue_id": "smells::src/components/panels/ParticipantsPanel.tsx::swallowed_error",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-swallowed_error",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/panels/SettingsPanel.tsx::swallowed_error": {
+      "issue_id": "smells::src/components/panels/SettingsPanel.tsx::swallowed_error",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-swallowed_error",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/room/ConferenceRoom.tsx::swallowed_error": {
+      "issue_id": "smells::src/components/room/ConferenceRoom.tsx::swallowed_error",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-swallowed_error",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/room/ParticipantTile.tsx::swallowed_error": {
+      "issue_id": "smells::src/components/room/ParticipantTile.tsx::swallowed_error",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-swallowed_error",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/HistoryPage.tsx::swallowed_error": {
+      "issue_id": "smells::src/pages/HistoryPage.tsx::swallowed_error",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "smells::src/pages/HomePage.tsx::swallowed_error": {
+      "issue_id": "smells::src/pages/HomePage.tsx::swallowed_error",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "smells::src/pages/PreJoinPage.tsx::swallowed_error": {
+      "issue_id": "smells::src/pages/PreJoinPage.tsx::swallowed_error",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "smells::src/pages/RoomPage.tsx::swallowed_error": {
+      "issue_id": "smells::src/pages/RoomPage.tsx::swallowed_error",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-swallowed_error",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/SchedulePage.tsx::swallowed_error": {
+      "issue_id": "smells::src/pages/SchedulePage.tsx::swallowed_error",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "smells::src/components/controls/ControlBar.tsx::high_cyclomatic_complexity": {
+      "issue_id": "smells::src/components/controls/ControlBar.tsx::high_cyclomatic_complexity",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-high_cyclomatic_complexity",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/panels/ChatPanel.tsx::high_cyclomatic_complexity": {
+      "issue_id": "smells::src/components/panels/ChatPanel.tsx::high_cyclomatic_complexity",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-high_cyclomatic_complexity",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/panels/ParticipantsPanel.tsx::high_cyclomatic_complexity": {
+      "issue_id": "smells::src/components/panels/ParticipantsPanel.tsx::high_cyclomatic_complexity",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-high_cyclomatic_complexity",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/panels/SettingsPanel.tsx::high_cyclomatic_complexity": {
+      "issue_id": "smells::src/components/panels/SettingsPanel.tsx::high_cyclomatic_complexity",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-high_cyclomatic_complexity",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/room/ConferenceRoom.tsx::high_cyclomatic_complexity": {
+      "issue_id": "smells::src/components/room/ConferenceRoom.tsx::high_cyclomatic_complexity",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-high_cyclomatic_complexity",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/HistoryPage.tsx::high_cyclomatic_complexity": {
+      "issue_id": "smells::src/pages/HistoryPage.tsx::high_cyclomatic_complexity",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-high_cyclomatic_complexity",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/HomePage.tsx::high_cyclomatic_complexity": {
+      "issue_id": "smells::src/pages/HomePage.tsx::high_cyclomatic_complexity",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-high_cyclomatic_complexity",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/LoginPage.tsx::high_cyclomatic_complexity": {
+      "issue_id": "smells::src/pages/LoginPage.tsx::high_cyclomatic_complexity",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-high_cyclomatic_complexity",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/PreJoinPage.tsx::high_cyclomatic_complexity": {
+      "issue_id": "smells::src/pages/PreJoinPage.tsx::high_cyclomatic_complexity",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-high_cyclomatic_complexity",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/RegisterPage.tsx::high_cyclomatic_complexity": {
+      "issue_id": "smells::src/pages/RegisterPage.tsx::high_cyclomatic_complexity",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-high_cyclomatic_complexity",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/RoomPage.tsx::high_cyclomatic_complexity": {
+      "issue_id": "smells::src/pages/RoomPage.tsx::high_cyclomatic_complexity",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-high_cyclomatic_complexity",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/SchedulePage.tsx::high_cyclomatic_complexity": {
+      "issue_id": "smells::src/pages/SchedulePage.tsx::high_cyclomatic_complexity",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-high_cyclomatic_complexity",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/controls/ControlBar.tsx::nested_closure": {
+      "issue_id": "smells::src/components/controls/ControlBar.tsx::nested_closure",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-nested_closure",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/panels/ParticipantsPanel.tsx::nested_closure": {
+      "issue_id": "smells::src/components/panels/ParticipantsPanel.tsx::nested_closure",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-nested_closure",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/panels/SettingsPanel.tsx::nested_closure": {
+      "issue_id": "smells::src/components/panels/SettingsPanel.tsx::nested_closure",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-nested_closure",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/room/ConferenceRoom.tsx::nested_closure": {
+      "issue_id": "smells::src/components/room/ConferenceRoom.tsx::nested_closure",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-nested_closure",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/HistoryPage.tsx::nested_closure": {
+      "issue_id": "smells::src/pages/HistoryPage.tsx::nested_closure",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-nested_closure",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/HomePage.tsx::nested_closure": {
+      "issue_id": "smells::src/pages/HomePage.tsx::nested_closure",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-nested_closure",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/LoginPage.tsx::nested_closure": {
+      "issue_id": "smells::src/pages/LoginPage.tsx::nested_closure",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-nested_closure",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/PreJoinPage.tsx::nested_closure": {
+      "issue_id": "smells::src/pages/PreJoinPage.tsx::nested_closure",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-nested_closure",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/RegisterPage.tsx::nested_closure": {
+      "issue_id": "smells::src/pages/RegisterPage.tsx::nested_closure",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-nested_closure",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/RoomPage.tsx::nested_closure": {
+      "issue_id": "smells::src/pages/RoomPage.tsx::nested_closure",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-nested_closure",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/SchedulePage.tsx::nested_closure": {
+      "issue_id": "smells::src/pages/SchedulePage.tsx::nested_closure",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-nested_closure",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/panels/ChatPanel.tsx::any_type": {
+      "issue_id": "smells::src/components/panels/ChatPanel.tsx::any_type",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "smells::src/components/panels/ParticipantsPanel.tsx::any_type": {
+      "issue_id": "smells::src/components/panels/ParticipantsPanel.tsx::any_type",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:15:02+00:00"
+    },
+    "smells::src/components/panels/SettingsPanel.tsx::magic_number": {
+      "issue_id": "smells::src/components/panels/SettingsPanel.tsx::magic_number",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-magic_number",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/room/ConferenceRoom.tsx::magic_number": {
+      "issue_id": "smells::src/components/room/ConferenceRoom.tsx::magic_number",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-magic_number",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/pages/HistoryPage.tsx::magic_number": {
+      "issue_id": "smells::src/pages/HistoryPage.tsx::magic_number",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/smells-magic_number",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "react::src/pages/RegisterPage.tsx::bool_state::(mixed)": {
+      "issue_id": "react::src/pages/RegisterPage.tsx::bool_state::(mixed)",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/react-(mixed)",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "react::src/pages/SchedulePage.tsx::bool_state::(mixed)": {
+      "issue_id": "react::src/pages/SchedulePage.tsx::bool_state::(mixed)",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/react-(mixed)",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "react::src/pages/HomePage.tsx::bool_state::(mixed)": {
+      "issue_id": "react::src/pages/HomePage.tsx::bool_state::(mixed)",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/react-(mixed)",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "react::src/pages/LoginPage.tsx::bool_state::(mixed)": {
+      "issue_id": "react::src/pages/LoginPage.tsx::bool_state::(mixed)",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/react-(mixed)",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/components/ErrorBoundary.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/components/ErrorBoundary.tsx::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/components/Layout.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/components/Layout.tsx::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/components/controls/ControlBar.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/components/controls/ControlBar.tsx::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/components/panels/ChatPanel.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/components/panels/ChatPanel.tsx::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/components/panels/ParticipantsPanel.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/components/panels/ParticipantsPanel.tsx::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/components/panels/SettingsPanel.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/components/panels/SettingsPanel.tsx::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/components/room/ConferenceRoom.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/components/room/ConferenceRoom.tsx::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/components/room/GridLayout.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/components/room/GridLayout.tsx::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/components/room/LobbyWaiting.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/components/room/LobbyWaiting.tsx::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/components/room/ParticipantTile.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/components/room/ParticipantTile.tsx::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/components/room/ScreenShareLayout.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/components/room/ScreenShareLayout.tsx::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/components/room/SpeakerLayout.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/components/room/SpeakerLayout.tsx::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/config/meetingRoomConfig.ts::unreviewed": {
+      "issue_id": "subjective_review::src/config/meetingRoomConfig.ts::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/pages/HistoryPage.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/pages/HistoryPage.tsx::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/pages/HomePage.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/pages/HomePage.tsx::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/pages/LoginPage.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/pages/LoginPage.tsx::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/pages/NotFoundPage.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/pages/NotFoundPage.tsx::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/pages/PreJoinPage.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/pages/PreJoinPage.tsx::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/pages/RegisterPage.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/pages/RegisterPage.tsx::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/pages/RoomPage.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/pages/RoomPage.tsx::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/pages/SchedulePage.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/pages/SchedulePage.tsx::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/router.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/router.tsx::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/services/api.ts::unreviewed": {
+      "issue_id": "subjective_review::src/services/api.ts::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/store/authStore.old.ts::unreviewed": {
+      "issue_id": "subjective_review::src/store/authStore.old.ts::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/store/authStore.ts::unreviewed": {
+      "issue_id": "subjective_review::src/store/authStore.ts::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/store/roomStore.ts::unreviewed": {
+      "issue_id": "subjective_review::src/store/roomStore.ts::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/types/api.ts::unreviewed": {
+      "issue_id": "subjective_review::src/types/api.ts::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/utils/date.ts::unreviewed": {
+      "issue_id": "subjective_review::src/utils/date.ts::unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::.::holistic_unreviewed": {
+      "issue_id": "subjective_review::.::holistic_unreviewed",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective::abstraction_fitness": {
+      "issue_id": "subjective::abstraction_fitness",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective::ai_generated_debt": {
+      "issue_id": "subjective::ai_generated_debt",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective::api_surface_coherence": {
+      "issue_id": "subjective::api_surface_coherence",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective::authorization_consistency": {
+      "issue_id": "subjective::authorization_consistency",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective::contract_coherence": {
+      "issue_id": "subjective::contract_coherence",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective::convention_outlier": {
+      "issue_id": "subjective::convention_outlier",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective::cross_module_architecture": {
+      "issue_id": "subjective::cross_module_architecture",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective::dependency_health": {
+      "issue_id": "subjective::dependency_health",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective::design_coherence": {
+      "issue_id": "subjective::design_coherence",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective::error_consistency": {
+      "issue_id": "subjective::error_consistency",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective::high_level_elegance": {
+      "issue_id": "subjective::high_level_elegance",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective::incomplete_migration": {
+      "issue_id": "subjective::incomplete_migration",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective::initialization_coupling": {
+      "issue_id": "subjective::initialization_coupling",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective::logic_clarity": {
+      "issue_id": "subjective::logic_clarity",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective::low_level_elegance": {
+      "issue_id": "subjective::low_level_elegance",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective::mid_level_elegance": {
+      "issue_id": "subjective::mid_level_elegance",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective::naming_quality": {
+      "issue_id": "subjective::naming_quality",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective::package_organization": {
+      "issue_id": "subjective::package_organization",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective::test_strategy": {
+      "issue_id": "subjective::test_strategy",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective::type_safety": {
+      "issue_id": "subjective::type_safety",
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "orphaned::vitest.config.ts": {
+      "issue_id": "orphaned::vitest.config.ts",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/orphaned",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/__tests__/store/authStore.test.ts::nested_closure": {
+      "issue_id": "smells::src/__tests__/store/authStore.test.ts::nested_closure",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/smells-nested_closure",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/__tests__/store/roomStore.test.ts::nested_closure": {
+      "issue_id": "smells::src/__tests__/store/roomStore.test.ts::nested_closure",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/smells-nested_closure",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::vite.config.ts::hardcoded_url": {
+      "issue_id": "smells::vite.config.ts::hardcoded_url",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/smells-hardcoded_url",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/__tests__/store/authStore.test.ts::hardcoded_url": {
+      "issue_id": "smells::src/__tests__/store/authStore.test.ts::hardcoded_url",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/smells-hardcoded_url",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/__tests__/utils/date.test.ts::magic_number": {
+      "issue_id": "smells::src/__tests__/utils/date.test.ts::magic_number",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/smells-magic_number",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/types/participant.ts::unreviewed": {
+      "issue_id": "subjective_review::src/types/participant.ts::unreviewed",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/types/room.ts::unreviewed": {
+      "issue_id": "subjective_review::src/types/room.ts::unreviewed",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/store/authStore.ts::useToken": {
+      "issue_id": "exports::src/store/authStore.ts::useToken",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/store/authStore.ts::useUserInfo": {
+      "issue_id": "exports::src/store/authStore.ts::useUserInfo",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/store/authStore.ts::useAuthHydrated": {
+      "issue_id": "exports::src/store/authStore.ts::useAuthHydrated",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/store/authStore.ts::useAuthHydration": {
+      "issue_id": "exports::src/store/authStore.ts::useAuthHydration",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/store/authStore.ts::getAuthStore": {
+      "issue_id": "exports::src/store/authStore.ts::getAuthStore",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/store/authStore.ts::subscribeToAuthStore": {
+      "issue_id": "exports::src/store/authStore.ts::subscribeToAuthStore",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/store/authStore.ts::clearAuth": {
+      "issue_id": "exports::src/store/authStore.ts::clearAuth",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/store/roomStore.ts::useRoomName": {
+      "issue_id": "exports::src/store/roomStore.ts::useRoomName",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/store/roomStore.ts::useRoomToken": {
+      "issue_id": "exports::src/store/roomStore.ts::useRoomToken",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/store/roomStore.ts::useIsConnecting": {
+      "issue_id": "exports::src/store/roomStore.ts::useIsConnecting",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/store/roomStore.ts::useIsConnected": {
+      "issue_id": "exports::src/store/roomStore.ts::useIsConnected",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/store/roomStore.ts::useRoomError": {
+      "issue_id": "exports::src/store/roomStore.ts::useRoomError",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/store/roomStore.ts::useEgressId": {
+      "issue_id": "exports::src/store/roomStore.ts::useEgressId",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/store/roomStore.ts::useUIState": {
+      "issue_id": "exports::src/store/roomStore.ts::useUIState",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/store/roomStore.ts::getRoomStore": {
+      "issue_id": "exports::src/store/roomStore.ts::getRoomStore",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/store/roomStore.ts::subscribeToRoomStore": {
+      "issue_id": "exports::src/store/roomStore.ts::subscribeToRoomStore",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/store/roomStore.ts::SettingsView": {
+      "issue_id": "exports::src/store/roomStore.ts::SettingsView",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/services/api.ts::handleApiError": {
+      "issue_id": "exports::src/services/api.ts::handleApiError",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/services/api.ts::tokenApi": {
+      "issue_id": "exports::src/services/api.ts::tokenApi",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/services/api.ts::getMeetings": {
+      "issue_id": "exports::src/services/api.ts::getMeetings",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/services/api.ts::getMeeting": {
+      "issue_id": "exports::src/services/api.ts::getMeeting",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/services/api.ts::getMeetingChat": {
+      "issue_id": "exports::src/services/api.ts::getMeetingChat",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/services/api.ts::sendChatMessage": {
+      "issue_id": "exports::src/services/api.ts::sendChatMessage",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/services/api.ts::egressApi": {
+      "issue_id": "exports::src/services/api.ts::egressApi",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/services/api.ts::startRecording": {
+      "issue_id": "exports::src/services/api.ts::startRecording",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/services/api.ts::stopRecording": {
+      "issue_id": "exports::src/services/api.ts::stopRecording",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/services/api.ts::healthApi": {
+      "issue_id": "exports::src/services/api.ts::healthApi",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/services/api.ts::default": {
+      "issue_id": "exports::src/services/api.ts::default",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/participant.ts::isRemoteParticipant": {
+      "issue_id": "exports::src/types/participant.ts::isRemoteParticipant",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/participant.ts::isLocalParticipant": {
+      "issue_id": "exports::src/types/participant.ts::isLocalParticipant",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/participant.ts::Participant": {
+      "issue_id": "exports::src/types/participant.ts::Participant",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/participant.ts::RemoteParticipant": {
+      "issue_id": "exports::src/types/participant.ts::RemoteParticipant",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/participant.ts::LocalParticipant": {
+      "issue_id": "exports::src/types/participant.ts::LocalParticipant",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/participant.ts::AnyParticipant": {
+      "issue_id": "exports::src/types/participant.ts::AnyParticipant",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/participant.ts::ParticipantRole": {
+      "issue_id": "exports::src/types/participant.ts::ParticipantRole",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/participant.ts::ParticipantPermissions": {
+      "issue_id": "exports::src/types/participant.ts::ParticipantPermissions",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/participant.ts::ParticipantUIState": {
+      "issue_id": "exports::src/types/participant.ts::ParticipantUIState",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/participant.ts::ParticipantAction": {
+      "issue_id": "exports::src/types/participant.ts::ParticipantAction",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/participant.ts::BulkParticipantAction": {
+      "issue_id": "exports::src/types/participant.ts::BulkParticipantAction",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/index.ts::ParticipantRole": {
+      "issue_id": "exports::src/types/index.ts::ParticipantRole",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/index.ts::AnyParticipant": {
+      "issue_id": "exports::src/types/index.ts::AnyParticipant",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/index.ts::RemoteParticipant": {
+      "issue_id": "exports::src/types/index.ts::RemoteParticipant",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/index.ts::LocalParticipant": {
+      "issue_id": "exports::src/types/index.ts::LocalParticipant",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/index.ts::Participant": {
+      "issue_id": "exports::src/types/index.ts::Participant",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/index.ts::ParticipantPermissions": {
+      "issue_id": "exports::src/types/index.ts::ParticipantPermissions",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/index.ts::ParticipantUIState": {
+      "issue_id": "exports::src/types/index.ts::ParticipantUIState",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/index.ts::ParticipantAction": {
+      "issue_id": "exports::src/types/index.ts::ParticipantAction",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/index.ts::BulkParticipantAction": {
+      "issue_id": "exports::src/types/index.ts::BulkParticipantAction",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/index.ts::RoomStatus": {
+      "issue_id": "exports::src/types/index.ts::RoomStatus",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/index.ts::CreateRoomPayload": {
+      "issue_id": "exports::src/types/index.ts::CreateRoomPayload",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/index.ts::RoomState": {
+      "issue_id": "exports::src/types/index.ts::RoomState",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/index.ts::RoomWithParticipants": {
+      "issue_id": "exports::src/types/index.ts::RoomWithParticipants",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/index.ts::ParticipantInfo": {
+      "issue_id": "exports::src/types/index.ts::ParticipantInfo",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/index.ts::LobbyParticipantInfo": {
+      "issue_id": "exports::src/types/index.ts::LobbyParticipantInfo",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/index.ts::RoomConfig": {
+      "issue_id": "exports::src/types/index.ts::RoomConfig",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/index.ts::RoomParticipant": {
+      "issue_id": "exports::src/types/index.ts::RoomParticipant",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/index.ts::LobbyParticipant": {
+      "issue_id": "exports::src/types/index.ts::LobbyParticipant",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/config/meetingRoomConfig.ts::SimulcastLayerName": {
+      "issue_id": "exports::src/config/meetingRoomConfig.ts::SimulcastLayerName",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/config/meetingRoomConfig.ts::MeetingRoomConfig": {
+      "issue_id": "exports::src/config/meetingRoomConfig.ts::MeetingRoomConfig",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/api.ts::TokenResponse": {
+      "issue_id": "exports::src/types/api.ts::TokenResponse",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/api.ts::ParticipantTrack": {
+      "issue_id": "exports::src/types/api.ts::ParticipantTrack",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/api.ts::ApiErrorResponse": {
+      "issue_id": "exports::src/types/api.ts::ApiErrorResponse",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/room.ts::Participant": {
+      "issue_id": "exports::src/types/room.ts::Participant",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/room.ts::RemoteParticipant": {
+      "issue_id": "exports::src/types/room.ts::RemoteParticipant",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/room.ts::LocalParticipant": {
+      "issue_id": "exports::src/types/room.ts::LocalParticipant",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/room.ts::AnyParticipant": {
+      "issue_id": "exports::src/types/room.ts::AnyParticipant",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/room.ts::RoomStatus": {
+      "issue_id": "exports::src/types/room.ts::RoomStatus",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/room.ts::CreateRoomPayload": {
+      "issue_id": "exports::src/types/room.ts::CreateRoomPayload",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/room.ts::RoomState": {
+      "issue_id": "exports::src/types/room.ts::RoomState",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/room.ts::RoomWithParticipants": {
+      "issue_id": "exports::src/types/room.ts::RoomWithParticipants",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/room.ts::ParticipantInfo": {
+      "issue_id": "exports::src/types/room.ts::ParticipantInfo",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/room.ts::LobbyParticipantInfo": {
+      "issue_id": "exports::src/types/room.ts::LobbyParticipantInfo",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/types/room.ts::RoomConfig": {
+      "issue_id": "exports::src/types/room.ts::RoomConfig",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/pages/NotFoundPage.tsx::untested_module": {
+      "issue_id": "test_coverage::src/pages/NotFoundPage.tsx::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/panels/ParticipantsPanel.tsx::untested_module": {
+      "issue_id": "test_coverage::src/components/panels/ParticipantsPanel.tsx::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/panels/ChatPanel.tsx::untested_module": {
+      "issue_id": "test_coverage::src/components/panels/ChatPanel.tsx::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/pages/HomePage.tsx::untested_module": {
+      "issue_id": "test_coverage::src/pages/HomePage.tsx::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/room/SpeakerLayout.tsx::untested_module": {
+      "issue_id": "test_coverage::src/components/room/SpeakerLayout.tsx::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/services/api.ts::untested_critical": {
+      "issue_id": "test_coverage::src/services/api.ts::untested_critical",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/room/ConferenceRoom.tsx::untested_critical": {
+      "issue_id": "test_coverage::src/components/room/ConferenceRoom.tsx::untested_critical",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/pages/LoginPage.tsx::untested_module": {
+      "issue_id": "test_coverage::src/pages/LoginPage.tsx::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/pages/RegisterPage.tsx::untested_module": {
+      "issue_id": "test_coverage::src/pages/RegisterPage.tsx::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/room/GridLayout.tsx::untested_module": {
+      "issue_id": "test_coverage::src/components/room/GridLayout.tsx::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/main.tsx::untested_module": {
+      "issue_id": "test_coverage::src/main.tsx::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/config/meetingRoomConfig.ts::transitive_only": {
+      "issue_id": "test_coverage::src/config/meetingRoomConfig.ts::transitive_only",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/Layout.tsx::untested_module": {
+      "issue_id": "test_coverage::src/components/Layout.tsx::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/controls/ControlBar.tsx::untested_module": {
+      "issue_id": "test_coverage::src/components/controls/ControlBar.tsx::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/room/LobbyWaiting.tsx::untested_module": {
+      "issue_id": "test_coverage::src/components/room/LobbyWaiting.tsx::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/store/authStore.old.ts::untested_module": {
+      "issue_id": "test_coverage::src/store/authStore.old.ts::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/pages/RoomPage.tsx::untested_critical": {
+      "issue_id": "test_coverage::src/pages/RoomPage.tsx::untested_critical",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/pages/HistoryPage.tsx::untested_module": {
+      "issue_id": "test_coverage::src/pages/HistoryPage.tsx::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/room/ScreenShareLayout.tsx::untested_module": {
+      "issue_id": "test_coverage::src/components/room/ScreenShareLayout.tsx::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/panels/SettingsPanel.tsx::untested_module": {
+      "issue_id": "test_coverage::src/components/panels/SettingsPanel.tsx::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/ProtectedRoute.tsx::untested_module": {
+      "issue_id": "test_coverage::src/components/ProtectedRoute.tsx::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/ErrorBoundary.tsx::untested_module": {
+      "issue_id": "test_coverage::src/components/ErrorBoundary.tsx::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/router.tsx::untested_module": {
+      "issue_id": "test_coverage::src/router.tsx::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/room/ParticipantTile.tsx::untested_module": {
+      "issue_id": "test_coverage::src/components/room/ParticipantTile.tsx::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/pages/PreJoinPage.tsx::untested_module": {
+      "issue_id": "test_coverage::src/pages/PreJoinPage.tsx::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/pages/SchedulePage.tsx::untested_module": {
+      "issue_id": "test_coverage::src/pages/SchedulePage.tsx::untested_module",
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "logs::src/services/faceCropService.ts::FaceCrop": {
+      "issue_id": "logs::src/services/faceCropService.ts::FaceCrop",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/logs",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "logs::src/services/faceCropService.ts::FaceCropProcessor": {
+      "issue_id": "logs::src/services/faceCropService.ts::FaceCropProcessor",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/logs",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "orphaned::src/components/controls/useControlBarActions.ts": {
+      "issue_id": "orphaned::src/components/controls/useControlBarActions.ts",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/orphaned",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "orphaned::src/hooks/useFaceCrop.ts": {
+      "issue_id": "orphaned::src/hooks/useFaceCrop.ts",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/orphaned",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "orphaned::src/components/controls/AudioControls.tsx": {
+      "issue_id": "orphaned::src/components/controls/AudioControls.tsx",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/orphaned",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "orphaned::src/components/controls/VideoControls.tsx": {
+      "issue_id": "orphaned::src/components/controls/VideoControls.tsx",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/orphaned",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/controls/useControlBarActions.ts::console_error_no_throw": {
+      "issue_id": "smells::src/components/controls/useControlBarActions.ts::console_error_no_throw",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/smells-console_error_no_throw",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/hooks/useFaceCrop.ts::console_error_no_throw": {
+      "issue_id": "smells::src/hooks/useFaceCrop.ts::console_error_no_throw",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/smells-console_error_no_throw",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/controls/useControlBarActions.ts::swallowed_error": {
+      "issue_id": "smells::src/components/controls/useControlBarActions.ts::swallowed_error",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/smells-swallowed_error",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/controls/useControlBarActions.ts::high_cyclomatic_complexity": {
+      "issue_id": "smells::src/components/controls/useControlBarActions.ts::high_cyclomatic_complexity",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/smells-high_cyclomatic_complexity",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/room/GridLayout.tsx::high_cyclomatic_complexity": {
+      "issue_id": "smells::src/components/room/GridLayout.tsx::high_cyclomatic_complexity",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/smells-high_cyclomatic_complexity",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/config/meetingRoomConfig.ts::high_cyclomatic_complexity": {
+      "issue_id": "smells::src/config/meetingRoomConfig.ts::high_cyclomatic_complexity",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/smells-high_cyclomatic_complexity",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/controls/useControlBarActions.ts::nested_closure": {
+      "issue_id": "smells::src/components/controls/useControlBarActions.ts::nested_closure",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/smells-nested_closure",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/components/room/GridLayout.tsx::nested_closure": {
+      "issue_id": "smells::src/components/room/GridLayout.tsx::nested_closure",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/smells-nested_closure",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "smells::src/hooks/useFaceCrop.ts::nested_closure": {
+      "issue_id": "smells::src/hooks/useFaceCrop.ts::nested_closure",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/smells-nested_closure",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/components/controls/AudioControls.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/components/controls/AudioControls.tsx::unreviewed",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/components/controls/VideoControls.tsx::unreviewed": {
+      "issue_id": "subjective_review::src/components/controls/VideoControls.tsx::unreviewed",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/components/controls/useControlBarActions.ts::unreviewed": {
+      "issue_id": "subjective_review::src/components/controls/useControlBarActions.ts::unreviewed",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/hooks/useFaceCrop.ts::unreviewed": {
+      "issue_id": "subjective_review::src/hooks/useFaceCrop.ts::unreviewed",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/services/faceCropService.ts::unreviewed": {
+      "issue_id": "subjective_review::src/services/faceCropService.ts::unreviewed",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "subjective_review::src/types/faceCrop.ts::unreviewed": {
+      "issue_id": "subjective_review::src/types/faceCrop.ts::unreviewed",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/config/meetingRoomConfig.ts::getFaceCropConfig": {
+      "issue_id": "exports::src/config/meetingRoomConfig.ts::getFaceCropConfig",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/config/meetingRoomConfig.ts::FaceCropAspectRatio": {
+      "issue_id": "exports::src/config/meetingRoomConfig.ts::FaceCropAspectRatio",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/config/meetingRoomConfig.ts::FaceDetectionModel": {
+      "issue_id": "exports::src/config/meetingRoomConfig.ts::FaceDetectionModel",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/services/api.ts::getRoomSettings": {
+      "issue_id": "exports::src/services/api.ts::getRoomSettings",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "exports::src/services/api.ts::updateRoomSettings": {
+      "issue_id": "exports::src/services/api.ts::updateRoomSettings",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/exports",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/controls/useControlBarActions.ts::untested_module": {
+      "issue_id": "test_coverage::src/components/controls/useControlBarActions.ts::untested_module",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/controls/VideoControls.tsx::untested_module": {
+      "issue_id": "test_coverage::src/components/controls/VideoControls.tsx::untested_module",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/panels/ParticipantsPanel.tsx::transitive_only": {
+      "issue_id": "test_coverage::src/components/panels/ParticipantsPanel.tsx::transitive_only",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/room/ParticipantTile.tsx::transitive_only": {
+      "issue_id": "test_coverage::src/components/room/ParticipantTile.tsx::transitive_only",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/pages/RoomPage.tsx::over_mocked::RoomPage.test.tsx": {
+      "issue_id": "test_coverage::src/pages/RoomPage.tsx::over_mocked::RoomPage.test.tsx",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/services/api.ts::transitive_only": {
+      "issue_id": "test_coverage::src/services/api.ts::transitive_only",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/controls/AudioControls.tsx::untested_module": {
+      "issue_id": "test_coverage::src/components/controls/AudioControls.tsx::untested_module",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/controls/ControlBar.tsx::transitive_only": {
+      "issue_id": "test_coverage::src/components/controls/ControlBar.tsx::transitive_only",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/room/GridLayout.tsx::transitive_only": {
+      "issue_id": "test_coverage::src/components/room/GridLayout.tsx::transitive_only",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/room/SpeakerLayout.tsx::transitive_only": {
+      "issue_id": "test_coverage::src/components/room/SpeakerLayout.tsx::transitive_only",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/services/faceCropService.ts::untested_module": {
+      "issue_id": "test_coverage::src/services/faceCropService.ts::untested_module",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/hooks/useFaceCrop.ts::untested_module": {
+      "issue_id": "test_coverage::src/hooks/useFaceCrop.ts::untested_module",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/room/LobbyWaiting.tsx::transitive_only": {
+      "issue_id": "test_coverage::src/components/room/LobbyWaiting.tsx::transitive_only",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/room/ScreenShareLayout.tsx::transitive_only": {
+      "issue_id": "test_coverage::src/components/room/ScreenShareLayout.tsx::transitive_only",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/room/ConferenceRoom.tsx::transitive_only": {
+      "issue_id": "test_coverage::src/components/room/ConferenceRoom.tsx::transitive_only",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/panels/SettingsPanel.tsx::transitive_only": {
+      "issue_id": "test_coverage::src/components/panels/SettingsPanel.tsx::transitive_only",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/components/panels/ChatPanel.tsx::transitive_only": {
+      "issue_id": "test_coverage::src/components/panels/ChatPanel.tsx::transitive_only",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    },
+    "test_coverage::src/types/faceCrop.ts::untested_module": {
+      "issue_id": "test_coverage::src/types/faceCrop.ts::untested_module",
+      "created_at": "2026-03-11T07:40:31+00:00",
+      "cluster": "auto/test_coverage",
+      "updated_at": "2026-03-11T07:40:31+00:00"
+    }
+  },
+  "clusters": {
+    "auto/logs": {
+      "name": "auto/logs",
+      "description": "Remove 4 logs issues",
+      "issue_ids": [
+        "logs::src/components/panels/ParticipantsPanel.tsx::ParticipantsPanel",
+        "logs::src/pages/RoomPage.tsx::RoomPage",
+        "logs::src/services/faceCropService.ts::FaceCrop",
+        "logs::src/services/faceCropService.ts::FaceCropProcessor"
+      ],
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "updated_at": "2026-03-11T07:40:31+00:00",
+      "auto": true,
+      "cluster_key": "auto::logs",
+      "action": "desloppify autofix debug-logs --dry-run",
+      "user_modified": false,
+      "action_type": "auto_fix",
+      "execution_policy": "ephemeral_autopromote",
+      "execution_status": "review"
+    },
+    "auto/props-state": {
+      "name": "auto/props-state",
+      "description": "Fix 2 state issues",
+      "issue_ids": [
+        "props::src/store/roomStore.ts::UIState",
+        "props::src/pages/RoomPage.tsx::LocationState"
+      ],
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "updated_at": "2026-03-10T04:54:26+00:00",
+      "auto": true,
+      "cluster_key": "typed::props::state",
+      "action": "split bloated components, extract sub-components",
+      "user_modified": false
+    },
+    "auto/orphaned": {
+      "name": "auto/orphaned",
+      "description": "Fix 7 orphaned issues",
+      "issue_ids": [
+        "orphaned::src/components/ErrorBoundary.tsx",
+        "orphaned::src/store/authStore.old.ts",
+        "orphaned::vitest.config.ts",
+        "orphaned::src/components/controls/useControlBarActions.ts",
+        "orphaned::src/hooks/useFaceCrop.ts",
+        "orphaned::src/components/controls/AudioControls.tsx",
+        "orphaned::src/components/controls/VideoControls.tsx"
+      ],
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "updated_at": "2026-03-11T07:40:31+00:00",
+      "auto": true,
+      "cluster_key": "detector::orphaned",
+      "action": "desloppify move",
+      "user_modified": false,
+      "action_type": "reorganize",
+      "execution_policy": "planned_only",
+      "execution_status": "review"
+    },
+    "auto/test_coverage": {
+      "name": "auto/test_coverage",
+      "description": "Fix 31 test coverage issues",
+      "issue_ids": [
+        "test_coverage::src/pages/NotFoundPage.tsx::untested_module",
+        "test_coverage::src/pages/HomePage.tsx::untested_module",
+        "test_coverage::src/pages/LoginPage.tsx::untested_module",
+        "test_coverage::src/pages/RegisterPage.tsx::untested_module",
+        "test_coverage::src/main.tsx::untested_module",
+        "test_coverage::src/config/meetingRoomConfig.ts::transitive_only",
+        "test_coverage::src/components/Layout.tsx::untested_module",
+        "test_coverage::src/store/authStore.old.ts::untested_module",
+        "test_coverage::src/pages/HistoryPage.tsx::untested_module",
+        "test_coverage::src/components/ProtectedRoute.tsx::untested_module",
+        "test_coverage::src/components/ErrorBoundary.tsx::untested_module",
+        "test_coverage::src/router.tsx::untested_module",
+        "test_coverage::src/pages/SchedulePage.tsx::untested_module",
+        "test_coverage::src/components/controls/useControlBarActions.ts::untested_module",
+        "test_coverage::src/components/controls/VideoControls.tsx::untested_module",
+        "test_coverage::src/components/panels/ParticipantsPanel.tsx::transitive_only",
+        "test_coverage::src/components/room/ParticipantTile.tsx::transitive_only",
+        "test_coverage::src/pages/RoomPage.tsx::over_mocked::RoomPage.test.tsx",
+        "test_coverage::src/services/api.ts::transitive_only",
+        "test_coverage::src/components/controls/AudioControls.tsx::untested_module",
+        "test_coverage::src/components/controls/ControlBar.tsx::transitive_only",
+        "test_coverage::src/components/room/GridLayout.tsx::transitive_only",
+        "test_coverage::src/components/room/SpeakerLayout.tsx::transitive_only",
+        "test_coverage::src/services/faceCropService.ts::untested_module",
+        "test_coverage::src/hooks/useFaceCrop.ts::untested_module",
+        "test_coverage::src/components/room/LobbyWaiting.tsx::transitive_only",
+        "test_coverage::src/components/room/ScreenShareLayout.tsx::transitive_only",
+        "test_coverage::src/components/room/ConferenceRoom.tsx::transitive_only",
+        "test_coverage::src/components/panels/SettingsPanel.tsx::transitive_only",
+        "test_coverage::src/components/panels/ChatPanel.tsx::transitive_only",
+        "test_coverage::src/types/faceCrop.ts::untested_module"
+      ],
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "updated_at": "2026-03-11T07:40:31+00:00",
+      "auto": true,
+      "cluster_key": "detector::test_coverage",
+      "action": "add tests for untested production modules \u2014 prioritize by import count",
+      "user_modified": false
+    },
+    "auto/smells-monster_function": {
+      "name": "auto/smells-monster_function",
+      "description": "Fix 10 monster function issues",
+      "issue_ids": [
+        "smells::src/components/controls/ControlBar.tsx::monster_function",
+        "smells::src/components/panels/ParticipantsPanel.tsx::monster_function",
+        "smells::src/components/panels/SettingsPanel.tsx::monster_function",
+        "smells::src/components/room/ConferenceRoom.tsx::monster_function",
+        "smells::src/pages/HistoryPage.tsx::monster_function",
+        "smells::src/pages/HomePage.tsx::monster_function",
+        "smells::src/pages/LoginPage.tsx::monster_function",
+        "smells::src/pages/PreJoinPage.tsx::monster_function",
+        "smells::src/pages/RegisterPage.tsx::monster_function",
+        "smells::src/pages/SchedulePage.tsx::monster_function"
+      ],
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "updated_at": "2026-03-10T04:54:26+00:00",
+      "auto": true,
+      "cluster_key": "typed::smells::monster_function",
+      "action": "fix code smells",
+      "user_modified": false
+    },
+    "auto/smells-console_error_no_throw": {
+      "name": "auto/smells-console_error_no_throw",
+      "description": "Fix 9 console error no throw issues",
+      "issue_ids": [
+        "smells::src/components/controls/ControlBar.tsx::console_error_no_throw",
+        "smells::src/components/panels/ChatPanel.tsx::console_error_no_throw",
+        "smells::src/components/panels/ParticipantsPanel.tsx::console_error_no_throw",
+        "smells::src/components/panels/SettingsPanel.tsx::console_error_no_throw",
+        "smells::src/components/room/ParticipantTile.tsx::console_error_no_throw",
+        "smells::src/pages/HistoryPage.tsx::console_error_no_throw",
+        "smells::src/pages/HomePage.tsx::console_error_no_throw",
+        "smells::src/components/controls/useControlBarActions.ts::console_error_no_throw",
+        "smells::src/hooks/useFaceCrop.ts::console_error_no_throw"
+      ],
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "updated_at": "2026-03-11T07:40:31+00:00",
+      "auto": true,
+      "cluster_key": "typed::smells::console_error_no_throw",
+      "action": "fix code smells",
+      "user_modified": false
+    },
+    "auto/smells-swallowed_error": {
+      "name": "auto/smells-swallowed_error",
+      "description": "Fix 8 swallowed error issues",
+      "issue_ids": [
+        "smells::src/components/controls/ControlBar.tsx::swallowed_error",
+        "smells::src/components/panels/ChatPanel.tsx::swallowed_error",
+        "smells::src/components/panels/ParticipantsPanel.tsx::swallowed_error",
+        "smells::src/components/panels/SettingsPanel.tsx::swallowed_error",
+        "smells::src/components/room/ConferenceRoom.tsx::swallowed_error",
+        "smells::src/components/room/ParticipantTile.tsx::swallowed_error",
+        "smells::src/pages/RoomPage.tsx::swallowed_error",
+        "smells::src/components/controls/useControlBarActions.ts::swallowed_error"
+      ],
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "updated_at": "2026-03-11T07:40:31+00:00",
+      "auto": true,
+      "cluster_key": "typed::smells::swallowed_error",
+      "action": "fix code smells",
+      "user_modified": false
+    },
+    "auto/smells-high_cyclomatic_complexity": {
+      "name": "auto/smells-high_cyclomatic_complexity",
+      "description": "Fix 15 high cyclomatic complexity issues",
+      "issue_ids": [
+        "smells::src/components/controls/ControlBar.tsx::high_cyclomatic_complexity",
+        "smells::src/components/panels/ChatPanel.tsx::high_cyclomatic_complexity",
+        "smells::src/components/panels/ParticipantsPanel.tsx::high_cyclomatic_complexity",
+        "smells::src/components/panels/SettingsPanel.tsx::high_cyclomatic_complexity",
+        "smells::src/components/room/ConferenceRoom.tsx::high_cyclomatic_complexity",
+        "smells::src/pages/HistoryPage.tsx::high_cyclomatic_complexity",
+        "smells::src/pages/HomePage.tsx::high_cyclomatic_complexity",
+        "smells::src/pages/LoginPage.tsx::high_cyclomatic_complexity",
+        "smells::src/pages/PreJoinPage.tsx::high_cyclomatic_complexity",
+        "smells::src/pages/RegisterPage.tsx::high_cyclomatic_complexity",
+        "smells::src/pages/RoomPage.tsx::high_cyclomatic_complexity",
+        "smells::src/pages/SchedulePage.tsx::high_cyclomatic_complexity",
+        "smells::src/components/controls/useControlBarActions.ts::high_cyclomatic_complexity",
+        "smells::src/components/room/GridLayout.tsx::high_cyclomatic_complexity",
+        "smells::src/config/meetingRoomConfig.ts::high_cyclomatic_complexity"
+      ],
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "updated_at": "2026-03-11T07:40:31+00:00",
+      "auto": true,
+      "cluster_key": "typed::smells::high_cyclomatic_complexity",
+      "action": "fix code smells",
+      "user_modified": false
+    },
+    "auto/smells-nested_closure": {
+      "name": "auto/smells-nested_closure",
+      "description": "Fix 16 nested closure issues",
+      "issue_ids": [
+        "smells::src/components/controls/ControlBar.tsx::nested_closure",
+        "smells::src/components/panels/ParticipantsPanel.tsx::nested_closure",
+        "smells::src/components/panels/SettingsPanel.tsx::nested_closure",
+        "smells::src/components/room/ConferenceRoom.tsx::nested_closure",
+        "smells::src/pages/HistoryPage.tsx::nested_closure",
+        "smells::src/pages/HomePage.tsx::nested_closure",
+        "smells::src/pages/LoginPage.tsx::nested_closure",
+        "smells::src/pages/PreJoinPage.tsx::nested_closure",
+        "smells::src/pages/RegisterPage.tsx::nested_closure",
+        "smells::src/pages/RoomPage.tsx::nested_closure",
+        "smells::src/pages/SchedulePage.tsx::nested_closure",
+        "smells::src/__tests__/store/authStore.test.ts::nested_closure",
+        "smells::src/__tests__/store/roomStore.test.ts::nested_closure",
+        "smells::src/components/controls/useControlBarActions.ts::nested_closure",
+        "smells::src/components/room/GridLayout.tsx::nested_closure",
+        "smells::src/hooks/useFaceCrop.ts::nested_closure"
+      ],
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "updated_at": "2026-03-11T07:40:31+00:00",
+      "auto": true,
+      "cluster_key": "typed::smells::nested_closure",
+      "action": "fix code smells",
+      "user_modified": false
+    },
+    "auto/smells-magic_number": {
+      "name": "auto/smells-magic_number",
+      "description": "Fix 4 magic number issues",
+      "issue_ids": [
+        "smells::src/components/panels/SettingsPanel.tsx::magic_number",
+        "smells::src/components/room/ConferenceRoom.tsx::magic_number",
+        "smells::src/pages/HistoryPage.tsx::magic_number",
+        "smells::src/__tests__/utils/date.test.ts::magic_number"
+      ],
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "updated_at": "2026-03-10T06:15:02+00:00",
+      "auto": true,
+      "cluster_key": "typed::smells::magic_number",
+      "action": "fix code smells",
+      "user_modified": false
+    },
+    "auto/react-(mixed)": {
+      "name": "auto/react-(mixed)",
+      "description": "Fix 4 (mixed) issues",
+      "issue_ids": [
+        "react::src/pages/RegisterPage.tsx::bool_state::(mixed)",
+        "react::src/pages/SchedulePage.tsx::bool_state::(mixed)",
+        "react::src/pages/HomePage.tsx::bool_state::(mixed)",
+        "react::src/pages/LoginPage.tsx::bool_state::(mixed)"
+      ],
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "updated_at": "2026-03-10T04:54:26+00:00",
+      "auto": true,
+      "cluster_key": "typed::react::(mixed)",
+      "action": "refactor React antipatterns (state sync, provider nesting, hook bloat)",
+      "user_modified": false
+    },
+    "auto/subjective_review": {
+      "name": "auto/subjective_review",
+      "description": "Address 37 subjective_review review issues",
+      "issue_ids": [
+        "subjective_review::src/components/ErrorBoundary.tsx::unreviewed",
+        "subjective_review::src/components/Layout.tsx::unreviewed",
+        "subjective_review::src/components/controls/ControlBar.tsx::unreviewed",
+        "subjective_review::src/components/panels/ChatPanel.tsx::unreviewed",
+        "subjective_review::src/components/panels/ParticipantsPanel.tsx::unreviewed",
+        "subjective_review::src/components/panels/SettingsPanel.tsx::unreviewed",
+        "subjective_review::src/components/room/ConferenceRoom.tsx::unreviewed",
+        "subjective_review::src/components/room/GridLayout.tsx::unreviewed",
+        "subjective_review::src/components/room/LobbyWaiting.tsx::unreviewed",
+        "subjective_review::src/components/room/ParticipantTile.tsx::unreviewed",
+        "subjective_review::src/components/room/ScreenShareLayout.tsx::unreviewed",
+        "subjective_review::src/components/room/SpeakerLayout.tsx::unreviewed",
+        "subjective_review::src/config/meetingRoomConfig.ts::unreviewed",
+        "subjective_review::src/pages/HistoryPage.tsx::unreviewed",
+        "subjective_review::src/pages/HomePage.tsx::unreviewed",
+        "subjective_review::src/pages/LoginPage.tsx::unreviewed",
+        "subjective_review::src/pages/NotFoundPage.tsx::unreviewed",
+        "subjective_review::src/pages/PreJoinPage.tsx::unreviewed",
+        "subjective_review::src/pages/RegisterPage.tsx::unreviewed",
+        "subjective_review::src/pages/RoomPage.tsx::unreviewed",
+        "subjective_review::src/pages/SchedulePage.tsx::unreviewed",
+        "subjective_review::src/router.tsx::unreviewed",
+        "subjective_review::src/services/api.ts::unreviewed",
+        "subjective_review::src/store/authStore.old.ts::unreviewed",
+        "subjective_review::src/store/authStore.ts::unreviewed",
+        "subjective_review::src/store/roomStore.ts::unreviewed",
+        "subjective_review::src/types/api.ts::unreviewed",
+        "subjective_review::src/utils/date.ts::unreviewed",
+        "subjective_review::.::holistic_unreviewed",
+        "subjective_review::src/types/participant.ts::unreviewed",
+        "subjective_review::src/types/room.ts::unreviewed",
+        "subjective_review::src/components/controls/AudioControls.tsx::unreviewed",
+        "subjective_review::src/components/controls/VideoControls.tsx::unreviewed",
+        "subjective_review::src/components/controls/useControlBarActions.ts::unreviewed",
+        "subjective_review::src/hooks/useFaceCrop.ts::unreviewed",
+        "subjective_review::src/services/faceCropService.ts::unreviewed",
+        "subjective_review::src/types/faceCrop.ts::unreviewed"
+      ],
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "updated_at": "2026-03-11T07:40:31+00:00",
+      "auto": true,
+      "cluster_key": "detector::subjective_review",
+      "action": "run `desloppify review --prepare` to evaluate files against quality dimensions",
+      "user_modified": false
+    },
+    "auto/initial-review": {
+      "name": "auto/initial-review",
+      "description": "Initial review of 20 unscored subjective dimensions",
+      "issue_ids": [
+        "subjective::abstraction_fitness",
+        "subjective::ai_generated_debt",
+        "subjective::api_surface_coherence",
+        "subjective::authorization_consistency",
+        "subjective::contract_coherence",
+        "subjective::convention_outlier",
+        "subjective::cross_module_architecture",
+        "subjective::dependency_health",
+        "subjective::design_coherence",
+        "subjective::error_consistency",
+        "subjective::high_level_elegance",
+        "subjective::incomplete_migration",
+        "subjective::initialization_coupling",
+        "subjective::logic_clarity",
+        "subjective::low_level_elegance",
+        "subjective::mid_level_elegance",
+        "subjective::naming_quality",
+        "subjective::package_organization",
+        "subjective::test_strategy",
+        "subjective::type_safety"
+      ],
+      "created_at": "2026-03-10T04:54:26+00:00",
+      "updated_at": "2026-03-10T04:54:26+00:00",
+      "auto": true,
+      "cluster_key": "subjective::unscored",
+      "action": "desloppify review --prepare --dimensions abstraction_fitness,ai_generated_debt,api_surface_coherence,authorization_consistency,contract_coherence,convention_outlier,cross_module_architecture,dependency_health,design_coherence,error_consistency,high_level_elegance,incomplete_migration,initialization_coupling,logic_clarity,low_level_elegance,mid_level_elegance,naming_quality,package_organization,test_strategy,type_safety",
+      "user_modified": false
+    },
+    "auto/smells-hardcoded_url": {
+      "name": "auto/smells-hardcoded_url",
+      "description": "Fix 2 hardcoded url issues",
+      "issue_ids": [
+        "smells::vite.config.ts::hardcoded_url",
+        "smells::src/__tests__/store/authStore.test.ts::hardcoded_url"
+      ],
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "updated_at": "2026-03-10T06:15:02+00:00",
+      "auto": true,
+      "cluster_key": "typed::smells::hardcoded_url",
+      "action": "fix code smells",
+      "user_modified": false
+    },
+    "auto/exports": {
+      "name": "auto/exports",
+      "description": "Fix 78 exports issues",
+      "issue_ids": [
+        "exports::src/store/authStore.ts::useToken",
+        "exports::src/store/authStore.ts::useUserInfo",
+        "exports::src/store/authStore.ts::useAuthHydrated",
+        "exports::src/store/authStore.ts::useAuthHydration",
+        "exports::src/store/authStore.ts::getAuthStore",
+        "exports::src/store/authStore.ts::subscribeToAuthStore",
+        "exports::src/store/authStore.ts::clearAuth",
+        "exports::src/store/roomStore.ts::useRoomName",
+        "exports::src/store/roomStore.ts::useRoomToken",
+        "exports::src/store/roomStore.ts::useIsConnecting",
+        "exports::src/store/roomStore.ts::useIsConnected",
+        "exports::src/store/roomStore.ts::useRoomError",
+        "exports::src/store/roomStore.ts::useEgressId",
+        "exports::src/store/roomStore.ts::useUIState",
+        "exports::src/store/roomStore.ts::getRoomStore",
+        "exports::src/store/roomStore.ts::subscribeToRoomStore",
+        "exports::src/store/roomStore.ts::SettingsView",
+        "exports::src/services/api.ts::handleApiError",
+        "exports::src/services/api.ts::tokenApi",
+        "exports::src/services/api.ts::getMeetings",
+        "exports::src/services/api.ts::getMeeting",
+        "exports::src/services/api.ts::getMeetingChat",
+        "exports::src/services/api.ts::sendChatMessage",
+        "exports::src/services/api.ts::egressApi",
+        "exports::src/services/api.ts::startRecording",
+        "exports::src/services/api.ts::stopRecording",
+        "exports::src/services/api.ts::healthApi",
+        "exports::src/services/api.ts::default",
+        "exports::src/types/participant.ts::isRemoteParticipant",
+        "exports::src/types/participant.ts::isLocalParticipant",
+        "exports::src/types/participant.ts::Participant",
+        "exports::src/types/participant.ts::RemoteParticipant",
+        "exports::src/types/participant.ts::LocalParticipant",
+        "exports::src/types/participant.ts::AnyParticipant",
+        "exports::src/types/participant.ts::ParticipantRole",
+        "exports::src/types/participant.ts::ParticipantPermissions",
+        "exports::src/types/participant.ts::ParticipantUIState",
+        "exports::src/types/participant.ts::ParticipantAction",
+        "exports::src/types/participant.ts::BulkParticipantAction",
+        "exports::src/types/index.ts::ParticipantRole",
+        "exports::src/types/index.ts::AnyParticipant",
+        "exports::src/types/index.ts::RemoteParticipant",
+        "exports::src/types/index.ts::LocalParticipant",
+        "exports::src/types/index.ts::Participant",
+        "exports::src/types/index.ts::ParticipantPermissions",
+        "exports::src/types/index.ts::ParticipantUIState",
+        "exports::src/types/index.ts::ParticipantAction",
+        "exports::src/types/index.ts::BulkParticipantAction",
+        "exports::src/types/index.ts::RoomStatus",
+        "exports::src/types/index.ts::CreateRoomPayload",
+        "exports::src/types/index.ts::RoomState",
+        "exports::src/types/index.ts::RoomWithParticipants",
+        "exports::src/types/index.ts::ParticipantInfo",
+        "exports::src/types/index.ts::LobbyParticipantInfo",
+        "exports::src/types/index.ts::RoomConfig",
+        "exports::src/types/index.ts::RoomParticipant",
+        "exports::src/types/index.ts::LobbyParticipant",
+        "exports::src/config/meetingRoomConfig.ts::SimulcastLayerName",
+        "exports::src/config/meetingRoomConfig.ts::MeetingRoomConfig",
+        "exports::src/types/api.ts::TokenResponse",
+        "exports::src/types/api.ts::ParticipantTrack",
+        "exports::src/types/api.ts::ApiErrorResponse",
+        "exports::src/types/room.ts::Participant",
+        "exports::src/types/room.ts::RemoteParticipant",
+        "exports::src/types/room.ts::LocalParticipant",
+        "exports::src/types/room.ts::AnyParticipant",
+        "exports::src/types/room.ts::RoomStatus",
+        "exports::src/types/room.ts::CreateRoomPayload",
+        "exports::src/types/room.ts::RoomState",
+        "exports::src/types/room.ts::RoomWithParticipants",
+        "exports::src/types/room.ts::ParticipantInfo",
+        "exports::src/types/room.ts::LobbyParticipantInfo",
+        "exports::src/types/room.ts::RoomConfig",
+        "exports::src/config/meetingRoomConfig.ts::getFaceCropConfig",
+        "exports::src/config/meetingRoomConfig.ts::FaceCropAspectRatio",
+        "exports::src/config/meetingRoomConfig.ts::FaceDetectionModel",
+        "exports::src/services/api.ts::getRoomSettings",
+        "exports::src/services/api.ts::updateRoomSettings"
+      ],
+      "created_at": "2026-03-10T06:15:02+00:00",
+      "updated_at": "2026-03-11T07:40:31+00:00",
+      "auto": true,
+      "cluster_key": "detector::exports",
+      "action": "run `knip --fix` to remove dead exports",
+      "user_modified": false
+    }
+  },
+  "superseded": {
+    "orphaned::src/utils/date.ts": {
+      "original_id": "orphaned::src/utils/date.ts",
+      "original_detector": "orphaned",
+      "original_file": "src/utils/date.ts",
+      "original_summary": "Orphaned file (79 LOC): zero importers, not an entry point",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "smells::src/components/panels/ChatPanel.tsx::any_type": {
+      "original_id": "smells::src/components/panels/ChatPanel.tsx::any_type",
+      "original_detector": "smells",
+      "original_file": "src/components/panels/ChatPanel.tsx",
+      "original_summary": "1x Explicit `any` types",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "smells::src/components/panels/ChatPanel.tsx::console_error_no_throw",
+        "smells::src/components/panels/ChatPanel.tsx::swallowed_error",
+        "smells::src/components/panels/ChatPanel.tsx::high_cyclomatic_complexity"
+      ]
+    },
+    "smells::src/components/panels/ParticipantsPanel.tsx::any_type": {
+      "original_id": "smells::src/components/panels/ParticipantsPanel.tsx::any_type",
+      "original_detector": "smells",
+      "original_file": "src/components/panels/ParticipantsPanel.tsx",
+      "original_summary": "3x Explicit `any` types",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "smells::src/components/panels/ParticipantsPanel.tsx::monster_function",
+        "smells::src/components/panels/ParticipantsPanel.tsx::console_error_no_throw",
+        "smells::src/components/panels/ParticipantsPanel.tsx::swallowed_error",
+        "smells::src/components/panels/ParticipantsPanel.tsx::high_cyclomatic_complexity",
+        "smells::src/components/panels/ParticipantsPanel.tsx::nested_closure"
+      ]
+    },
+    "smells::src/pages/HistoryPage.tsx::swallowed_error": {
+      "original_id": "smells::src/pages/HistoryPage.tsx::swallowed_error",
+      "original_detector": "smells",
+      "original_file": "src/pages/HistoryPage.tsx",
+      "original_summary": "1x Catch blocks that only log (swallowed errors)",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "smells::src/pages/HistoryPage.tsx::monster_function",
+        "smells::src/pages/HistoryPage.tsx::console_error_no_throw",
+        "smells::src/pages/HistoryPage.tsx::high_cyclomatic_complexity",
+        "smells::src/pages/HistoryPage.tsx::nested_closure",
+        "smells::src/pages/HistoryPage.tsx::magic_number"
+      ]
+    },
+    "smells::src/pages/HomePage.tsx::swallowed_error": {
+      "original_id": "smells::src/pages/HomePage.tsx::swallowed_error",
+      "original_detector": "smells",
+      "original_file": "src/pages/HomePage.tsx",
+      "original_summary": "1x Catch blocks that only log (swallowed errors)",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "smells::src/pages/HomePage.tsx::monster_function",
+        "smells::src/pages/HomePage.tsx::console_error_no_throw",
+        "smells::src/pages/HomePage.tsx::high_cyclomatic_complexity",
+        "smells::src/pages/HomePage.tsx::nested_closure"
+      ]
+    },
+    "smells::src/pages/PreJoinPage.tsx::swallowed_error": {
+      "original_id": "smells::src/pages/PreJoinPage.tsx::swallowed_error",
+      "original_detector": "smells",
+      "original_file": "src/pages/PreJoinPage.tsx",
+      "original_summary": "1x Catch blocks that only log (swallowed errors)",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "smells::src/pages/PreJoinPage.tsx::monster_function",
+        "smells::src/pages/PreJoinPage.tsx::console_error_no_throw",
+        "smells::src/pages/PreJoinPage.tsx::high_cyclomatic_complexity",
+        "smells::src/pages/PreJoinPage.tsx::nested_closure"
+      ]
+    },
+    "smells::src/pages/SchedulePage.tsx::swallowed_error": {
+      "original_id": "smells::src/pages/SchedulePage.tsx::swallowed_error",
+      "original_detector": "smells",
+      "original_file": "src/pages/SchedulePage.tsx",
+      "original_summary": "1x Catch blocks that only log (swallowed errors)",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "smells::src/pages/SchedulePage.tsx::monster_function",
+        "smells::src/pages/SchedulePage.tsx::high_cyclomatic_complexity",
+        "smells::src/pages/SchedulePage.tsx::nested_closure"
+      ]
+    },
+    "test_coverage::src/components/ErrorBoundary.tsx": {
+      "original_id": "test_coverage::src/components/ErrorBoundary.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/ErrorBoundary.tsx",
+      "original_summary": "Untested module (62 LOC, 0 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/ErrorBoundary.tsx::untested_module"
+      ]
+    },
+    "test_coverage::src/components/Layout.tsx": {
+      "original_id": "test_coverage::src/components/Layout.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/Layout.tsx",
+      "original_summary": "Untested module (116 LOC, 1 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/Layout.tsx::untested_module"
+      ]
+    },
+    "test_coverage::src/components/ProtectedRoute.tsx": {
+      "original_id": "test_coverage::src/components/ProtectedRoute.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/ProtectedRoute.tsx",
+      "original_summary": "Untested module (17 LOC, 1 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/ProtectedRoute.tsx::untested_module"
+      ]
+    },
+    "test_coverage::src/components/controls/ControlBar.tsx": {
+      "original_id": "test_coverage::src/components/controls/ControlBar.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/controls/ControlBar.tsx",
+      "original_summary": "Untested module (817 LOC, 1 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/controls/ControlBar.tsx::untested_module"
+      ]
+    },
+    "test_coverage::src/components/panels/ChatPanel.tsx": {
+      "original_id": "test_coverage::src/components/panels/ChatPanel.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/panels/ChatPanel.tsx",
+      "original_summary": "Untested module (312 LOC, 1 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/panels/ChatPanel.tsx::untested_module"
+      ]
+    },
+    "test_coverage::src/components/panels/ParticipantsPanel.tsx": {
+      "original_id": "test_coverage::src/components/panels/ParticipantsPanel.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/panels/ParticipantsPanel.tsx",
+      "original_summary": "Untested module (575 LOC, 1 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/panels/ParticipantsPanel.tsx::untested_module"
+      ]
+    },
+    "test_coverage::src/components/panels/SettingsPanel.tsx": {
+      "original_id": "test_coverage::src/components/panels/SettingsPanel.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/panels/SettingsPanel.tsx",
+      "original_summary": "Untested module (496 LOC, 1 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/panels/SettingsPanel.tsx::untested_module"
+      ]
+    },
+    "test_coverage::src/components/room/ConferenceRoom.tsx": {
+      "original_id": "test_coverage::src/components/room/ConferenceRoom.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/room/ConferenceRoom.tsx",
+      "original_summary": "Untested module (670 LOC, 1 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/room/ConferenceRoom.tsx::untested_critical"
+      ]
+    },
+    "test_coverage::src/components/room/GridLayout.tsx": {
+      "original_id": "test_coverage::src/components/room/GridLayout.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/room/GridLayout.tsx",
+      "original_summary": "Untested module (37 LOC, 1 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/room/GridLayout.tsx::untested_module"
+      ]
+    },
+    "test_coverage::src/components/room/LobbyWaiting.tsx": {
+      "original_id": "test_coverage::src/components/room/LobbyWaiting.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/room/LobbyWaiting.tsx",
+      "original_summary": "Untested module (123 LOC, 1 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/room/LobbyWaiting.tsx::untested_module"
+      ]
+    },
+    "test_coverage::src/components/room/ParticipantTile.tsx": {
+      "original_id": "test_coverage::src/components/room/ParticipantTile.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/room/ParticipantTile.tsx",
+      "original_summary": "Untested module (257 LOC, 3 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/room/ParticipantTile.tsx::untested_module"
+      ]
+    },
+    "test_coverage::src/components/room/ScreenShareLayout.tsx": {
+      "original_id": "test_coverage::src/components/room/ScreenShareLayout.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/room/ScreenShareLayout.tsx",
+      "original_summary": "Untested module (44 LOC, 1 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/room/ScreenShareLayout.tsx::untested_module"
+      ]
+    },
+    "test_coverage::src/components/room/SpeakerLayout.tsx": {
+      "original_id": "test_coverage::src/components/room/SpeakerLayout.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/room/SpeakerLayout.tsx",
+      "original_summary": "Untested module (56 LOC, 1 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/room/SpeakerLayout.tsx::untested_module"
+      ]
+    },
+    "test_coverage::src/config/meetingRoomConfig.ts": {
+      "original_id": "test_coverage::src/config/meetingRoomConfig.ts",
+      "original_detector": "test_coverage",
+      "original_file": "src/config/meetingRoomConfig.ts",
+      "original_summary": "Untested module (719 LOC, 9 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/config/meetingRoomConfig.ts::transitive_only"
+      ]
+    },
+    "test_coverage::src/main.tsx": {
+      "original_id": "test_coverage::src/main.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/main.tsx",
+      "original_summary": "Untested module (11 LOC, 0 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/main.tsx::untested_module"
+      ]
+    },
+    "test_coverage::src/pages/HistoryPage.tsx": {
+      "original_id": "test_coverage::src/pages/HistoryPage.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/pages/HistoryPage.tsx",
+      "original_summary": "Untested module (270 LOC, 0 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/pages/HistoryPage.tsx::untested_module"
+      ]
+    },
+    "test_coverage::src/pages/HomePage.tsx": {
+      "original_id": "test_coverage::src/pages/HomePage.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/pages/HomePage.tsx",
+      "original_summary": "Untested module (593 LOC, 0 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/pages/HomePage.tsx::untested_module"
+      ]
+    },
+    "test_coverage::src/pages/LoginPage.tsx": {
+      "original_id": "test_coverage::src/pages/LoginPage.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/pages/LoginPage.tsx",
+      "original_summary": "Untested module (269 LOC, 0 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/pages/LoginPage.tsx::untested_module"
+      ]
+    },
+    "test_coverage::src/pages/NotFoundPage.tsx": {
+      "original_id": "test_coverage::src/pages/NotFoundPage.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/pages/NotFoundPage.tsx",
+      "original_summary": "Untested module (45 LOC, 0 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/pages/NotFoundPage.tsx::untested_module"
+      ]
+    },
+    "test_coverage::src/pages/PreJoinPage.tsx": {
+      "original_id": "test_coverage::src/pages/PreJoinPage.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/pages/PreJoinPage.tsx",
+      "original_summary": "Untested module (608 LOC, 0 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/pages/PreJoinPage.tsx::untested_module"
+      ]
+    },
+    "test_coverage::src/pages/RegisterPage.tsx": {
+      "original_id": "test_coverage::src/pages/RegisterPage.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/pages/RegisterPage.tsx",
+      "original_summary": "Untested module (425 LOC, 0 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/pages/RegisterPage.tsx::untested_module"
+      ]
+    },
+    "test_coverage::src/pages/RoomPage.tsx": {
+      "original_id": "test_coverage::src/pages/RoomPage.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/pages/RoomPage.tsx",
+      "original_summary": "Untested module (504 LOC, 0 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/pages/RoomPage.tsx::untested_critical"
+      ]
+    },
+    "test_coverage::src/pages/SchedulePage.tsx": {
+      "original_id": "test_coverage::src/pages/SchedulePage.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/pages/SchedulePage.tsx",
+      "original_summary": "Untested module (570 LOC, 0 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/pages/SchedulePage.tsx::untested_module"
+      ]
+    },
+    "test_coverage::src/router.tsx": {
+      "original_id": "test_coverage::src/router.tsx",
+      "original_detector": "test_coverage",
+      "original_file": "src/router.tsx",
+      "original_summary": "Untested module (120 LOC, 1 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/router.tsx::untested_module"
+      ]
+    },
+    "test_coverage::src/services/api.ts": {
+      "original_id": "test_coverage::src/services/api.ts",
+      "original_detector": "test_coverage",
+      "original_file": "src/services/api.ts",
+      "original_summary": "Untested module (362 LOC, 10 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/services/api.ts::untested_critical"
+      ]
+    },
+    "test_coverage::src/store/authStore.old.ts": {
+      "original_id": "test_coverage::src/store/authStore.old.ts",
+      "original_detector": "test_coverage",
+      "original_file": "src/store/authStore.old.ts",
+      "original_summary": "Untested module (36 LOC, 0 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/store/authStore.old.ts::untested_module"
+      ]
+    },
+    "test_coverage::src/store/authStore.ts": {
+      "original_id": "test_coverage::src/store/authStore.ts",
+      "original_detector": "test_coverage",
+      "original_file": "src/store/authStore.ts",
+      "original_summary": "Untested module (139 LOC, 5 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "test_coverage::src/store/roomStore.ts": {
+      "original_id": "test_coverage::src/store/roomStore.ts",
+      "original_detector": "test_coverage",
+      "original_file": "src/store/roomStore.ts",
+      "original_summary": "Untested module (488 LOC, 8 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "test_coverage::src/utils/date.ts": {
+      "original_id": "test_coverage::src/utils/date.ts",
+      "original_detector": "test_coverage",
+      "original_file": "src/utils/date.ts",
+      "original_summary": "Untested module (79 LOC, 0 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:15:02+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "smells::src/pages/PreJoinPage.tsx::console_error_no_throw": {
+      "original_id": "smells::src/pages/PreJoinPage.tsx::console_error_no_throw",
+      "original_detector": "smells",
+      "original_file": "src/pages/PreJoinPage.tsx",
+      "original_summary": "6x console.error without throw/return",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:40:31+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "smells::src/pages/PreJoinPage.tsx::monster_function",
+        "smells::src/pages/PreJoinPage.tsx::high_cyclomatic_complexity",
+        "smells::src/pages/PreJoinPage.tsx::nested_closure"
+      ]
+    },
+    "smells::src/pages/RoomPage.tsx::console_error_no_throw": {
+      "original_id": "smells::src/pages/RoomPage.tsx::console_error_no_throw",
+      "original_detector": "smells",
+      "original_file": "src/pages/RoomPage.tsx",
+      "original_summary": "3x console.error without throw/return",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:40:31+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "smells::src/pages/RoomPage.tsx::swallowed_error",
+        "smells::src/pages/RoomPage.tsx::high_cyclomatic_complexity",
+        "smells::src/pages/RoomPage.tsx::nested_closure"
+      ]
+    },
+    "test_coverage::src/components/controls/ControlBar.tsx::untested_module": {
+      "original_id": "test_coverage::src/components/controls/ControlBar.tsx::untested_module",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/controls/ControlBar.tsx",
+      "original_summary": "Untested module (817 LOC, 1 importers)",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:40:31+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/controls/ControlBar.tsx::transitive_only"
+      ]
+    },
+    "test_coverage::src/components/panels/ChatPanel.tsx::untested_module": {
+      "original_id": "test_coverage::src/components/panels/ChatPanel.tsx::untested_module",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/panels/ChatPanel.tsx",
+      "original_summary": "Untested module (324 LOC, 1 importers)",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:40:31+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/panels/ChatPanel.tsx::transitive_only"
+      ]
+    },
+    "test_coverage::src/components/panels/ParticipantsPanel.tsx::untested_module": {
+      "original_id": "test_coverage::src/components/panels/ParticipantsPanel.tsx::untested_module",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/panels/ParticipantsPanel.tsx",
+      "original_summary": "Untested module (578 LOC, 1 importers)",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:40:31+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/panels/ParticipantsPanel.tsx::transitive_only"
+      ]
+    },
+    "test_coverage::src/components/panels/SettingsPanel.tsx::untested_module": {
+      "original_id": "test_coverage::src/components/panels/SettingsPanel.tsx::untested_module",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/panels/SettingsPanel.tsx",
+      "original_summary": "Untested module (496 LOC, 1 importers)",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:40:31+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/panels/SettingsPanel.tsx::transitive_only"
+      ]
+    },
+    "test_coverage::src/components/room/ConferenceRoom.tsx::untested_critical": {
+      "original_id": "test_coverage::src/components/room/ConferenceRoom.tsx::untested_critical",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/room/ConferenceRoom.tsx",
+      "original_summary": "Untested critical module (670 LOC, 1 importers) \u2014 high blast radius",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:40:31+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/room/ConferenceRoom.tsx::transitive_only"
+      ]
+    },
+    "test_coverage::src/components/room/GridLayout.tsx::untested_module": {
+      "original_id": "test_coverage::src/components/room/GridLayout.tsx::untested_module",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/room/GridLayout.tsx",
+      "original_summary": "Untested module (37 LOC, 1 importers)",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:40:31+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/room/GridLayout.tsx::transitive_only"
+      ]
+    },
+    "test_coverage::src/components/room/LobbyWaiting.tsx::untested_module": {
+      "original_id": "test_coverage::src/components/room/LobbyWaiting.tsx::untested_module",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/room/LobbyWaiting.tsx",
+      "original_summary": "Untested module (123 LOC, 1 importers)",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:40:31+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/room/LobbyWaiting.tsx::transitive_only"
+      ]
+    },
+    "test_coverage::src/components/room/ParticipantTile.tsx::untested_module": {
+      "original_id": "test_coverage::src/components/room/ParticipantTile.tsx::untested_module",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/room/ParticipantTile.tsx",
+      "original_summary": "Untested module (257 LOC, 3 importers)",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:40:31+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/room/ParticipantTile.tsx::transitive_only"
+      ]
+    },
+    "test_coverage::src/components/room/ScreenShareLayout.tsx::untested_module": {
+      "original_id": "test_coverage::src/components/room/ScreenShareLayout.tsx::untested_module",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/room/ScreenShareLayout.tsx",
+      "original_summary": "Untested module (44 LOC, 1 importers)",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:40:31+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/room/ScreenShareLayout.tsx::transitive_only"
+      ]
+    },
+    "test_coverage::src/components/room/SpeakerLayout.tsx::untested_module": {
+      "original_id": "test_coverage::src/components/room/SpeakerLayout.tsx::untested_module",
+      "original_detector": "test_coverage",
+      "original_file": "src/components/room/SpeakerLayout.tsx",
+      "original_summary": "Untested module (56 LOC, 1 importers)",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:40:31+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/components/room/SpeakerLayout.tsx::transitive_only"
+      ]
+    },
+    "test_coverage::src/pages/PreJoinPage.tsx::untested_module": {
+      "original_id": "test_coverage::src/pages/PreJoinPage.tsx::untested_module",
+      "original_detector": "test_coverage",
+      "original_file": "src/pages/PreJoinPage.tsx",
+      "original_summary": "Untested module (612 LOC, 0 importers)",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:40:31+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "test_coverage::src/pages/RoomPage.tsx::untested_critical": {
+      "original_id": "test_coverage::src/pages/RoomPage.tsx::untested_critical",
+      "original_detector": "test_coverage",
+      "original_file": "src/pages/RoomPage.tsx",
+      "original_summary": "Untested critical module (530 LOC, 0 importers) \u2014 high blast radius",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:40:31+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/pages/RoomPage.tsx::over_mocked::RoomPage.test.tsx"
+      ]
+    },
+    "test_coverage::src/services/api.ts::untested_critical": {
+      "original_id": "test_coverage::src/services/api.ts::untested_critical",
+      "original_detector": "test_coverage",
+      "original_file": "src/services/api.ts",
+      "original_summary": "Untested critical module (362 LOC, 10 importers) \u2014 high blast radius",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:40:31+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/services/api.ts::transitive_only"
+      ]
+    }
+  },
+  "promoted_ids": [],
+  "plan_start_scores": {},
+  "execution_log": [
+    {
+      "timestamp": "2026-03-10T04:54:26+00:00",
+      "action": "sync_unscored",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-03-10T04:54:26+00:00",
+      "action": "auto_cluster",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-03-10T04:54:26+00:00",
+      "action": "seed_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-03-10T04:58:01+00:00",
+      "action": "clear_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-03-10T04:58:38+00:00",
+      "action": "seed_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-03-10T06:15:02+00:00",
+      "action": "cluster_done",
+      "issue_ids": [],
+      "cluster_name": "auto/test_coverage",
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "reason": "all issues resolved by scan"
+      }
+    },
+    {
+      "timestamp": "2026-03-10T06:15:02+00:00",
+      "action": "cluster_done",
+      "issue_ids": [],
+      "cluster_name": "auto/smells-any_type",
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "reason": "all issues resolved by scan"
+      }
+    },
+    {
+      "timestamp": "2026-03-10T06:15:02+00:00",
+      "action": "reconcile",
+      "issue_ids": [
+        "orphaned::src/utils/date.ts",
+        "smells::src/components/panels/ChatPanel.tsx::any_type",
+        "smells::src/components/panels/ParticipantsPanel.tsx::any_type",
+        "smells::src/pages/HistoryPage.tsx::swallowed_error",
+        "smells::src/pages/HomePage.tsx::swallowed_error",
+        "smells::src/pages/PreJoinPage.tsx::swallowed_error",
+        "smells::src/pages/SchedulePage.tsx::swallowed_error",
+        "test_coverage::src/components/ErrorBoundary.tsx",
+        "test_coverage::src/components/Layout.tsx",
+        "test_coverage::src/components/ProtectedRoute.tsx",
+        "test_coverage::src/components/controls/ControlBar.tsx",
+        "test_coverage::src/components/panels/ChatPanel.tsx",
+        "test_coverage::src/components/panels/ParticipantsPanel.tsx",
+        "test_coverage::src/components/panels/SettingsPanel.tsx",
+        "test_coverage::src/components/room/ConferenceRoom.tsx",
+        "test_coverage::src/components/room/GridLayout.tsx",
+        "test_coverage::src/components/room/LobbyWaiting.tsx",
+        "test_coverage::src/components/room/ParticipantTile.tsx",
+        "test_coverage::src/components/room/ScreenShareLayout.tsx",
+        "test_coverage::src/components/room/SpeakerLayout.tsx",
+        "test_coverage::src/config/meetingRoomConfig.ts",
+        "test_coverage::src/main.tsx",
+        "test_coverage::src/pages/HistoryPage.tsx",
+        "test_coverage::src/pages/HomePage.tsx",
+        "test_coverage::src/pages/LoginPage.tsx",
+        "test_coverage::src/pages/NotFoundPage.tsx",
+        "test_coverage::src/pages/PreJoinPage.tsx",
+        "test_coverage::src/pages/RegisterPage.tsx",
+        "test_coverage::src/pages/RoomPage.tsx",
+        "test_coverage::src/pages/SchedulePage.tsx",
+        "test_coverage::src/router.tsx",
+        "test_coverage::src/services/api.ts",
+        "test_coverage::src/store/authStore.old.ts",
+        "test_coverage::src/store/authStore.ts",
+        "test_coverage::src/store/roomStore.ts",
+        "test_coverage::src/utils/date.ts"
+      ],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "superseded_count": 36,
+        "pruned_count": 0,
+        "resurfaced_count": 0,
+        "clusters_completed_count": 2
+      }
+    },
+    {
+      "timestamp": "2026-03-10T06:15:02+00:00",
+      "action": "auto_cluster",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-03-10T06:15:02+00:00",
+      "action": "clear_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-03-11T07:40:31+00:00",
+      "action": "reconcile",
+      "issue_ids": [
+        "smells::src/pages/PreJoinPage.tsx::console_error_no_throw",
+        "smells::src/pages/RoomPage.tsx::console_error_no_throw",
+        "test_coverage::src/components/controls/ControlBar.tsx::untested_module",
+        "test_coverage::src/components/panels/ChatPanel.tsx::untested_module",
+        "test_coverage::src/components/panels/ParticipantsPanel.tsx::untested_module",
+        "test_coverage::src/components/panels/SettingsPanel.tsx::untested_module",
+        "test_coverage::src/components/room/ConferenceRoom.tsx::untested_critical",
+        "test_coverage::src/components/room/GridLayout.tsx::untested_module",
+        "test_coverage::src/components/room/LobbyWaiting.tsx::untested_module",
+        "test_coverage::src/components/room/ParticipantTile.tsx::untested_module",
+        "test_coverage::src/components/room/ScreenShareLayout.tsx::untested_module",
+        "test_coverage::src/components/room/SpeakerLayout.tsx::untested_module",
+        "test_coverage::src/pages/PreJoinPage.tsx::untested_module",
+        "test_coverage::src/pages/RoomPage.tsx::untested_critical",
+        "test_coverage::src/services/api.ts::untested_critical"
+      ],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "superseded_count": 15,
+        "pruned_count": 0,
+        "resurfaced_count": 0,
+        "clusters_completed_count": 0
+      }
+    },
+    {
+      "timestamp": "2026-03-11T07:40:31+00:00",
+      "action": "auto_cluster",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-03-11T07:40:31+00:00",
+      "action": "seed_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-03-26T14:22:06+00:00",
+      "action": "sync_lifecycle_phase",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "phase": "scan"
+      }
+    },
+    {
+      "timestamp": "2026-03-26T14:22:06+00:00",
+      "action": "clear_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-03-26T14:22:06+00:00",
+      "action": "complete_postflight_scan",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "scan_count": 5
+      }
+    }
+  ],
+  "epic_triage_meta": {},
+  "commit_log": [],
+  "uncommitted_issues": [],
+  "commit_tracking_branch": null,
+  "scan_count_at_plan_start": 4,
+  "refresh_state": {
+    "_subjective_migration_pruned": true,
+    "lifecycle_phase": "plan",
+    "postflight_scan_completed_at_scan_count": 5
+  }
+}

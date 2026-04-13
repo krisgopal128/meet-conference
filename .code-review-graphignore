@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+build/
+.vite/
+.next/
+.nuxt/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment
+.env
+.env.*
+.env.local
+
+# LiveKit
+livekit/
+
+# Backup folders
+backup_*/
+.backup/
+
+# Temp files
+.tmp/
+*.tmp
+*.temp
+
+# Config files (optional - comment out if you want to track)
+# eslint.config.js
+# vite.config.ts
+# vitest.config.ts
+# postcss.config.js
+# tailwind.config.js

@@ -1,0 +1,30 @@
+# LiveKit Server Configuration
+# Compatible with LiveKit 1.10.0
+
+port: 7880
+prometheus_port: 6798
+
+# API Keys
+keys:
+  APISrVk47D9FvUJ: fKKlfGn2xD7QkGlqaXw9CHQ5P9KDIp2A78SmhXjGVbeB
+
+# Room settings
+room:
+  auto_create: true
+  empty_timeout: 300
+  departure_timeout: 60
+  max_participants: 100
+
+# Logging
+logging:
+  level: info
+  json: false
+
+# Redis for room management
+redis:
+  address: 127.0.0.1:6379
+
+# RTC settings
+rtc:
+  use_external_ip: true
+  node_ip: 66.103.211.193

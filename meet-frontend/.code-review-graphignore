@@ -1,0 +1,23 @@
+# Code Review Graph Ignore File
+# Exclude patterns from code graph indexing
+
+# Backup folders
+backup_*/
+
+# Generated files
+*.generated.ts
+*.generated.js
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Test coverage
+coverage/
+
+# IDE
+.idea/
+.vscode/

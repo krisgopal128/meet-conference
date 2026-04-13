@@ -1,0 +1,584 @@
+/**
+ * Picture-in-Picture Component Styles
+ * 
+ * Styles for PiP container, video grid, and controls.
+ * Includes responsive layout and display-mode media queries.
+ * 
+ * Phase 1 Feature: Picture-in-Picture Foundation
+ */
+
+/* ============================================
+   PIP CONTAINER
+   ============================================ */
+
+.pip-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background-color: #1a1a1a;
+  color: #ffffff;
+  overflow: hidden;
+  font-family: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Dark mode variant (default is dark for PiP) */
+.pip-container.pip-light {
+  background-color: #ffffff;
+  color: #1a1a1a;
+}
+
+/* ============================================
+   PIP VIDEO GRID
+   ============================================ */
+
+.pip-video-grid {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+  padding: 4px;
+  overflow: hidden;
+}
+
+/* Single participant */
+.pip-video-grid.pip-grid-1 {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+
+/* Two participants - side by side */
+.pip-video-grid.pip-grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: 1fr;
+}
+
+/* 3-4 participants - 2x2 grid */
+.pip-video-grid.pip-grid-3,
+.pip-video-grid.pip-grid-4 {
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+}
+
+/* 5-6 participants - 3x2 grid */
+.pip-video-grid.pip-grid-5,
+.pip-video-grid.pip-grid-6 {
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+}
+
+/* 7-9 participants - 3x3 grid */
+.pip-video-grid.pip-grid-7,
+.pip-video-grid.pip-grid-8,
+.pip-video-grid.pip-grid-9 {
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+}
+
+/* 10+ participants - 4x3 grid max */
+.pip-video-grid.pip-grid-10,
+.pip-video-grid.pip-grid-11,
+.pip-video-grid.pip-grid-12 {
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+}
+
+/* ============================================
+   PIP VIDEO TILE
+   ============================================ */
+
+.pip-video-tile {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background-color: #2a2a2a;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.pip-light .pip-video-tile {
+  background-color: #f0f0f0;
+}
+
+.pip-video-tile video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+/* Avatar placeholder when no video */
+.pip-video-tile .pip-avatar {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.pip-avatar-initials {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #ffffff;
+  text-transform: uppercase;
+}
+
+/* Participant name overlay */
+.pip-participant-name {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 4px 8px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pip-light .pip-participant-name {
+  background: linear-gradient(transparent, rgba(255, 255, 255, 0.9));
+  color: #1a1a1a;
+}
+
+/* Audio muted indicator */
+.pip-audio-muted {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background-color: rgba(239, 68, 68, 0.9);
+  border-radius: 50%;
+}
+
+.pip-audio-muted svg {
+  width: 12px;
+  height: 12px;
+  color: #ffffff;
+}
+
+/* ============================================
+   PIP CONTROLS
+   ============================================ */
+
+.pip-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: rgba(0, 0, 0, 0.8);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pip-light .pip-controls {
+  background-color: rgba(255, 255, 255, 0.95);
+  border-top-color: rgba(0, 0, 0, 0.1);
+}
+
+.pip-controls-left,
+.pip-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ============================================
+   PIP BUTTON
+   ============================================ */
+
+.pip-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  min-height: 32px;
+  white-space: nowrap;
+}
+
+.pip-button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.pip-button:active {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.pip-button:focus-visible {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
+.pip-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pip-light .pip-button {
+  color: #1a1a1a;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.pip-light .pip-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Icon-only button */
+.pip-button.pip-button-icon {
+  padding: 6px;
+  min-width: 32px;
+}
+
+.pip-button svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Primary variant */
+.pip-button.pip-button-primary {
+  background-color: #667eea;
+  border-color: #667eea;
+  color: #ffffff;
+}
+
+.pip-button.pip-button-primary:hover {
+  background-color: #5a67d8;
+  border-color: #5a67d8;
+}
+
+/* Danger variant */
+.pip-button.pip-button-danger {
+  background-color: #ef4444;
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+.pip-button.pip-button-danger:hover {
+  background-color: #dc2626;
+  border-color: #dc2626;
+}
+
+/* ============================================
+   PIP STATUS INDICATORS
+   ============================================ */
+
+.pip-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.pip-light .pip-status {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.pip-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #22c55e;
+  animation: pip-pulse 2s ease-in-out infinite;
+}
+
+.pip-status-dot.pip-status-connecting {
+  background-color: #f59e0b;
+}
+
+.pip-status-dot.pip-status-error {
+  background-color: #ef4444;
+  animation: none;
+}
+
+@keyframes pip-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ============================================
+   PIP HEADER
+   ============================================ */
+
+.pip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: rgba(0, 0, 0, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pip-light .pip-header {
+  background-color: rgba(255, 255, 255, 0.9);
+  border-bottom-color: rgba(0, 0, 0, 0.1);
+}
+
+.pip-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pip-light .pip-title {
+  color: #1a1a1a;
+}
+
+.pip-participant-count {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.pip-light .pip-participant-count {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+/* ============================================
+   PIP EMPTY STATE
+   ============================================ */
+
+.pip-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 20px;
+  text-align: center;
+}
+
+.pip-empty-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 12px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.pip-light .pip-empty-icon {
+  color: rgba(0, 0, 0, 0.2);
+}
+
+.pip-empty-text {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.pip-light .pip-empty-text {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+/* ============================================
+   MEDIA QUERIES FOR PIP DISPLAY MODE
+   ============================================ */
+
+/* Styles applied when in Picture-in-Picture mode */
+@media (display-mode: picture-in-picture) {
+  body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #1a1a1a;
+  }
+
+  /* Hide non-essential elements in PiP mode */
+  .pip-hide-in-mode {
+    display: none !important;
+  }
+
+  /* Optimize for small viewport */
+  .pip-container {
+    font-size: 0.8rem;
+  }
+
+  .pip-video-grid {
+    gap: 2px;
+    padding: 2px;
+  }
+
+  .pip-controls {
+    padding: 6px 8px;
+  }
+
+  .pip-button {
+    padding: 4px 8px;
+    font-size: 0.7rem;
+    min-height: 28px;
+  }
+
+  .pip-button svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* Responsive adjustments based on window size */
+@media (max-width: 300px) {
+  .pip-video-grid {
+    gap: 2px;
+    padding: 2px;
+  }
+
+  .pip-participant-name {
+    font-size: 0.65rem;
+    padding: 2px 4px;
+  }
+
+  .pip-audio-muted {
+    width: 16px;
+    height: 16px;
+  }
+
+  .pip-audio-muted svg {
+    width: 10px;
+    height: 10px;
+  }
+
+  .pip-controls {
+    padding: 4px 6px;
+  }
+
+  .pip-button {
+    padding: 4px 6px;
+    font-size: 0.65rem;
+    min-height: 24px;
+  }
+
+  .pip-button svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .pip-status {
+    font-size: 0.6rem;
+  }
+}
+
+/* Landscape orientation adjustments */
+@media (orientation: landscape) and (max-height: 250px) {
+  .pip-header {
+    padding: 4px 8px;
+  }
+
+  .pip-video-grid {
+    gap: 2px;
+    padding: 2px;
+  }
+
+  .pip-controls {
+    padding: 4px 8px;
+  }
+
+  .pip-participant-name {
+    display: none;
+  }
+
+  .pip-avatar-initials {
+    font-size: 1rem;
+  }
+}
+
+/* Portrait orientation adjustments */
+@media (orientation: portrait) and (max-width: 250px) {
+  .pip-header {
+    padding: 4px 8px;
+  }
+
+  .pip-controls {
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px 8px;
+  }
+
+  .pip-controls-left,
+  .pip-controls-right {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes pip-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pip-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pip-animate-fade-in {
+  animation: pip-fade-in 0.2s ease-out;
+}
+
+.pip-animate-slide-up {
+  animation: pip-slide-up 0.2s ease-out;
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+.pip-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.pip-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pip-flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

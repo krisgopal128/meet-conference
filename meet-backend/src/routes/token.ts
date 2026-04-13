@@ -1,0 +1,249 @@
+import { Router, Response } from 'express';
+import { z } from 'zod';
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
+import { AuthRequest, authenticate } from '../middleware/authenticate.js';
+import { tokenLimiter } from '../middleware/rateLimiter.js';
+import { createAccessToken, ParticipantRole, listParticipants } from '../services/livekit.js';
+import { queryOne } from '../services/database.js';
+import { isParticipantKicked, isGuestNameKicked, isGuestNameAdmitted } from '../services/redis.js';
+
+export const tokenRouter = Router();
+
+const requestTokenSchema = z.object({
+  roomName: z.string().min(1).max(255),
+  role: z.enum(['host', 'cohost', 'moderator', 'presenter', 'attendee', 'viewer']).default('attendee'),
+  identity: z.string().min(1).max(255).optional(),
+  name: z.string().max(255).optional(),
+  ttl: z.number().min(60).max(86400).optional(), // 1 min to 24 hours
+});
+
+// Helper: Check if moderator is in the room
+async function isModeratorInRoom(roomName: string, hostId: string): Promise<boolean> {
+  try {
+    const participants = await listParticipants(roomName);
+    // Check if host is connected
+    return participants.some(p => p.identity === hostId);
+  } catch {
+    // Room might not exist yet (first join)
+    return false;
+  }
+}
+
+// Helper: Check if meeting has started (room status is active)
+async function hasMeetingStarted(roomName: string): Promise<boolean> {
+  try {
+    const room = await queryOne<{ status: string }>(
+      'SELECT status FROM rooms WHERE name = $1',
+      [roomName]
+    );
+    // Meeting has started if status is 'active'
+    return room?.status === 'active';
+  } catch {
+    return false;
+  }
+}
+
+// POST /token - Get LiveKit access token
+tokenRouter.post('/', authenticate, tokenLimiter, async (req: AuthRequest, res: Response) => {
+  try {
+    const { roomName, role, identity, name, ttl } = requestTokenSchema.parse(req.body);
+
+    // Use authenticated user's ID as identity if not provided
+    const participantIdentity = identity || req.user!.id;
+    const participantName = name || req.user!.name || req.user!.email.split('@')[0];
+
+    // Check if room exists in database (optional validation)
+    // Include waiting_room_enabled in initial query to avoid double query
+    const room = await queryOne<{ id: string; status: string; host_id: string; waiting_room_enabled: boolean }>(
+      'SELECT id, status, host_id, waiting_room_enabled FROM rooms WHERE name = $1',
+      [roomName]
+    );
+
+    // If room exists and is ended, only host can restart
+    if (room && room.status === 'ended') {
+      if (room.host_id !== req.user!.id) {
+        return res.status(400).json({ error: 'Room has ended. Only the host can restart the meeting.' });
+      }
+      // Host is restarting - reset status to 'waiting' immediately
+      // This prevents race conditions where other checks see 'ended' status
+      await queryOne(
+        "UPDATE rooms SET status = 'waiting' WHERE name = $1",
+        [roomName]
+      );
+      console.log(`[Token] Host ${req.user!.id} restarting room ${roomName}, status reset to 'waiting'`);
+    }
+
+    // Determine the actual role - room creator is always host
+    let actualRole = role;
+    let isHost = false;
+    let isModerator = false;
+    if (room && room.host_id === req.user!.id) {
+      actualRole = 'host';
+      isHost = true;
+    } else if (room && room.host_id !== req.user!.id) {
+      // Check if user is co-host (stored permissions)
+      const participant = await queryOne<{ isModerator: boolean }>(
+        'SELECT is_moderator as isModerator FROM meeting_participants WHERE room_id = $1 AND user_id = $2',
+        [room.id, req.user!.id]
+      );
+      isModerator = participant?.isModerator === true;
+    }
+
+    // If user claims host role, verify they are the host
+    if (role === 'host' && room && room.host_id !== req.user!.id) {
+      return res.status(403).json({ error: 'Only the room creator can be host' });
+    }
+
+    // If user requests moderator role, verify they are host or co-host
+    if (role === 'moderator' && !isHost && !isModerator) {
+      // User is not host nor co-host - check if API key was used for this session
+      const apiKeyUsed = (req as any).apiKeyId;
+      if (apiKeyUsed) {
+        // API key was used - fall back to attendee
+        actualRole = 'attendee';
+      } else {
+        // For regular authenticated users without moderator permissions, also fall back
+        actualRole = 'attendee';
+        console.log(`[Token] User ${req.user!.id} requested moderator but not authorized, falling back to attendee`);
+      }
+    }
+
+    // Check if participant was recently kicked (non-hosts only)
+    if (!isHost) {
+      const kickedTTL = await isParticipantKicked(roomName, participantIdentity);
+      if (kickedTTL > 0) {
+        return res.status(429).json({ 
+          error: `You were recently removed from this meeting. Please wait ${kickedTTL} seconds before rejoining.`,
+          retryAfter: kickedTTL 
+        });
+      }
+    }
+
+    // Check waiting room status for non-hosts (no extra query needed)
+    let inLobby = false;
+    if (!isHost && room) {
+      // If waiting room enabled, always put non-hosts in lobby for moderator approval
+      inLobby = room.waiting_room_enabled === true;
+    }
+
+    // Generate LiveKit access token
+    const accessToken = await createAccessToken(roomName, participantIdentity, actualRole as ParticipantRole, {
+      name: participantName,
+      metadata: JSON.stringify({
+        email: req.user!.email,
+        role: actualRole,
+        inLobby,
+      }),
+      ttl,
+      // Override permissions for lobby
+      lobbyMode: inLobby,
+    });
+
+    res.json({
+      token: accessToken,
+      identity: participantIdentity,
+      name: participantName,
+      roomName,
+      role: actualRole,
+      hostId: room?.host_id || null,
+      inLobby,
+      expiresIn: ttl || 3600,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    // Log error type only, not message (could contain sensitive data)
+    console.error('Token generation failed:', error instanceof Error ? error.constructor.name : 'Unknown error type');
+    res.status(500).json({ error: 'Failed to generate token' });
+  }
+});
+
+// POST /token/guest - Get token for guest users (no auth required)
+tokenRouter.post('/guest', tokenLimiter, async (req, res: Response) => {
+  try {
+    const guestSchema = z.object({
+      roomName: z.string().min(1).max(255),
+      name: z.string().min(1).max(255),
+      role: z.enum(['attendee', 'viewer']).default('attendee'),
+      password: z.string().max(255).optional(),
+    });
+
+    const { roomName, name, role, password } = guestSchema.parse(req.body);
+
+    // Check if room exists and verify password if required
+    const room = await queryOne<{ id: string; status: string; password_hash: string | null }>(
+      'SELECT id, status, password_hash FROM rooms WHERE name = $1',
+      [roomName]
+    );
+
+    if (room && room.status === 'ended') {
+      return res.status(400).json({ error: 'Room has ended. Please wait for the host to restart the meeting.' });
+    }
+
+    // If room has password, verify it
+    if (room?.password_hash) {
+      if (!password) {
+        return res.status(401).json({ error: 'Room password required' });
+      }
+      const validPassword = await bcrypt.compare(password, room.password_hash);
+      if (!validPassword) {
+        return res.status(401).json({ error: 'Invalid room password' });
+      }
+    }
+
+    // Check if this guest name was recently kicked from this room
+    const kickedTTL = await isGuestNameKicked(roomName, name);
+    if (kickedTTL > 0) {
+      return res.status(429).json({ 
+        error: `You were recently removed from this meeting. Please wait ${kickedTTL} seconds before rejoining.`,
+        retryAfter: kickedTTL 
+      });
+    }
+
+    // Generate a guest identity using cryptographically secure random (no timestamp to avoid predictability)
+    const guestIdentity = `guest_${crypto.randomBytes(16).toString('hex')}`;
+
+    // Check if room has waiting room enabled
+    const roomSettings = await queryOne<{ waiting_room_enabled: boolean; host_id: string }>(
+      'SELECT waiting_room_enabled, host_id FROM rooms WHERE name = $1',
+      [roomName]
+    );
+
+    // Check if this guest was previously admitted (auto-admit on rejoin)
+    const wasPreviouslyAdmitted = await isGuestNameAdmitted(roomName, name);
+    
+    // If waiting room is enabled, guests go to lobby for moderator approval
+    // UNLESS they were previously admitted (reconnecting after disconnect)
+    let inLobby = roomSettings?.waiting_room_enabled === true && !wasPreviouslyAdmitted;
+
+    // Generate token with appropriate permissions
+    const accessToken = await createAccessToken(roomName, guestIdentity, role as ParticipantRole, {
+      name,
+      metadata: JSON.stringify({ guest: true, inLobby, wasPreviouslyAdmitted }),
+      ttl: 3600, // 1 hour for guests
+      // Override permissions for lobby
+      lobbyMode: inLobby,
+    });
+
+    res.json({
+      token: accessToken,
+      identity: guestIdentity,
+      name,
+      roomName,
+      role,
+      hostId: roomSettings?.host_id || null,
+      inLobby,
+      wasPreviouslyAdmitted,
+      expiresIn: 3600,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    // Log error type only, not message (could contain sensitive data)
+    console.error('Guest token generation failed:', error instanceof Error ? error.constructor.name : 'Unknown error type');
+    res.status(500).json({ error: 'Failed to generate guest token' });
+  }
+});

@@ -1,0 +1,597 @@
+import { memo, useEffect, useRef, useState, useMemo, Component, ReactNode } from 'react';
+import { Track, RoomEvent, ConnectionQuality, type RemoteTrackPublication, type Participant } from 'livekit-client';
+import {
+  useTracks,
+  VideoTrack,
+  ParticipantName,
+  useIsSpeaking,
+  useRoomContext,
+  useConnectionQualityIndicator,
+  useParticipants,
+} from '@livekit/components-react';
+import {
+  useHasRaisedHand,
+  usePinnedIdentity,
+  useMirrorLocalVideo,
+  useFeatureActions,
+  useHostId,
+  useLayout,
+  useVideoFitMode,
+  useSelectedQualityMode,
+  useQualityOverrideReason,
+  useDisplayName,
+} from '../../store/roomStore';
+import { Pin, Hand, Mic, MicOff, Maximize, Minimize, Crop, Square } from 'lucide-react';
+import {
+  meetingRoomConfig,
+  resolveTileTargetLayer,
+  resolveVideoQuality,
+} from '../../config/meetingRoomConfig';
+import { useParticipantVisibility } from '../../contexts/ParticipantVisibilityContext';
+
+interface ParticipantTileProps {
+  participant: Participant;
+  className?: string;
+  isSpeakerTile?: boolean; // true = main speaker in speaker layout, false = filmstrip
+}
+
+// Custom signal bars indicator (4 bars, fills based on quality)
+function SignalBars({ quality }: { quality: ConnectionQuality }) {
+  const getBarHeights = () => {
+    switch (quality) {
+      case ConnectionQuality.Excellent:
+        return ['25%', '50%', '75%', '100%'];
+      case ConnectionQuality.Good:
+        return ['25%', '50%', '75%', '0%'];
+      case ConnectionQuality.Poor:
+        return ['25%', '50%', '0%', '0%'];
+      case ConnectionQuality.Lost:
+      default:
+        return ['25%', '0%', '0%', '0%'];
+    }
+  };
+
+  const getColor = () => {
+    switch (quality) {
+      case ConnectionQuality.Excellent:
+        return 'bg-green-500';
+      case ConnectionQuality.Good:
+        return 'bg-yellow-500';
+      case ConnectionQuality.Poor:
+        return 'bg-orange-500';
+      case ConnectionQuality.Lost:
+      default:
+        return 'bg-red-500';
+    }
+  };
+
+  const heights = getBarHeights();
+  const color = getColor();
+
+  return (
+    <div className="flex items-end gap-[2px] h-3">
+      {heights.map((h, i) => (
+        <div
+          key={i}
+          className={`w-[3px] ${h !== '0%' ? color : 'bg-white/30'} rounded-[1px]`}
+          style={{ height: h }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ParticipantTileInner({ participant, className = '', isSpeakerTile = true }: ParticipantTileProps) {
+  // Optimized selectors
+  const hasRaisedHand = useHasRaisedHand(participant.identity);
+  const pinnedIdentity = usePinnedIdentity();
+  const mirrorLocalVideo = useMirrorLocalVideo();
+  const localDisplayName = useDisplayName();
+  
+  // Action hooks
+  const { setPinned } = useFeatureActions();
+  
+  // Phase 2: Visibility context for participant culling and tab optimization
+  // Always call the hook - it returns safe defaults when outside provider
+  const visibilityContext = useParticipantVisibility();
+  
+  const isSpeaking = useIsSpeaking(participant);
+  const { quality: connectionQuality } = useConnectionQualityIndicator({ participant });
+  const videoFitMode = useVideoFitMode();
+  const selectedQualityMode = useSelectedQualityMode();
+  const qualityOverrideReason = useQualityOverrideReason();
+  const isPinned = pinnedIdentity === participant.identity;
+  const tileRef = useRef<HTMLDivElement>(null);
+  const room = useRoomContext();
+  const hostId = useHostId();
+  const layout = useLayout();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isVideoPaused, setIsVideoPaused] = useState(false);
+
+  // Get all camera tracks (subscribed or not)
+  const tracks = useTracks([Track.Source.Camera], { onlySubscribed: false });
+  
+  // Find the camera track for this participant
+  const cameraTrackRef = useMemo(() => 
+    tracks.find((ref) => ref.participant.identity === participant.identity),
+    [tracks, participant.identity]
+  );
+  
+  // Get track SID for key to VideoTrack
+  const trackSid = cameraTrackRef?.publication?.trackSid;
+  
+  // Force re-render when track state changes
+  const [, forceRender] = useState(0);
+
+  // ========================================
+  // CRITICAL FIX: Force subscription to remote participant tracks
+  // IMPROVED: More robust with retry mechanism for late joins
+  // ========================================
+  useEffect(() => {
+    if (participant.isLocal) return;
+    
+    // Get camera publications directly from participant
+    const cameraPublications = Array.from(participant.trackPublications.values())
+      .filter(pub => pub.source === Track.Source.Camera);
+    
+    if (cameraPublications.length === 0) {
+      // No camera publication yet - this is normal for late joins
+      // The TrackPublished event listener will trigger a re-render
+      return;
+    }
+    
+    // Force subscription for all camera tracks
+    for (const publication of cameraPublications) {
+      const remotePub = publication as RemoteTrackPublication | undefined;
+      if (remotePub && !remotePub.isSubscribed) {
+        console.log(`[ParticipantTile] Force subscribing to ${participant.identity} (trackSid: ${remotePub.trackSid})`);
+        remotePub.setSubscribed(true);
+      }
+    }
+  }, [participant, participant.trackPublications.size, participant.isLocal]);
+
+  // ========================================
+  // Listen for track events to force re-render
+  // ========================================
+  useEffect(() => {
+    const handleTrackEvent = () => {
+      console.log(`[ParticipantTile] Track event for ${participant.identity}, forcing re-render`);
+      forceRender(v => v + 1);
+    };
+    
+    room.on(RoomEvent.TrackSubscribed, handleTrackEvent);
+    room.on(RoomEvent.TrackUnsubscribed, handleTrackEvent);
+    
+    return () => {
+      room.off(RoomEvent.TrackSubscribed, handleTrackEvent);
+      room.off(RoomEvent.TrackUnsubscribed, handleTrackEvent);
+    };
+  }, [participant.identity, room]);
+
+  // ========================================
+  // Listen for new tracks being published (late joins)
+  // ========================================
+  useEffect(() => {
+    if (participant.isLocal) return;
+    
+    const handleTrackPublished = (publication: RemoteTrackPublication, pubParticipant: Participant) => {
+      if (pubParticipant.identity === participant.identity && publication.source === Track.Source.Camera) {
+        console.log(`[ParticipantTile] Camera published by ${participant.identity}, forcing subscription`);
+        // Force subscription immediately
+        if (!publication.isSubscribed) {
+          publication.setSubscribed(true);
+        }
+        // Force a re-render to update the track reference
+        forceRender(v => v + 1);
+      }
+    };
+    
+    room.on(RoomEvent.TrackPublished, handleTrackPublished);
+    
+    return () => {
+      room.off(RoomEvent.TrackPublished, handleTrackPublished);
+    };
+  }, [participant.identity, participant.isLocal, room]);
+
+  // ========================================
+  // Listen for participant join events (for tracks already published)
+  // ========================================
+  useEffect(() => {
+    if (participant.isLocal) return;
+    
+    const handleParticipantConnected = (connectedParticipant: Participant) => {
+      if (connectedParticipant.identity === participant.identity) {
+        console.log(`[ParticipantTile] Participant connected: ${participant.identity}, checking for existing tracks`);
+        // Check for any already-published camera tracks
+        const cameraPubs = Array.from(connectedParticipant.trackPublications.values())
+          .filter(pub => pub.source === Track.Source.Camera);
+        for (const pub of cameraPubs) {
+          const remotePub = pub as RemoteTrackPublication;
+          if (!remotePub.isSubscribed) {
+            console.log(`[ParticipantTile] Subscribing to existing track for ${participant.identity}`);
+            remotePub.setSubscribed(true);
+          }
+        }
+        forceRender(v => v + 1);
+      }
+    };
+    
+    // Listen for participant metadata changes (permission updates)
+    const handleParticipantMetadataChanged = (_metadata: string | undefined, changedParticipant: Participant) => {
+      if (changedParticipant.identity === participant.identity) {
+        console.log(`[ParticipantTile] Metadata changed for ${participant.identity}`);
+        forceRender(v => v + 1);
+      }
+    };
+    
+    room.on(RoomEvent.ParticipantConnected, handleParticipantConnected);
+    room.on(RoomEvent.ParticipantMetadataChanged, handleParticipantMetadataChanged);
+    
+    return () => {
+      room.off(RoomEvent.ParticipantConnected, handleParticipantConnected);
+      room.off(RoomEvent.ParticipantMetadataChanged, handleParticipantMetadataChanged);
+    };
+  }, [participant.identity, participant.isLocal, room]);
+
+  // Debug logging for track state (development only)
+  useEffect(() => {
+    if (participant.isLocal) return;
+    
+    const logTrackState = () => {
+      const pub = cameraTrackRef?.publication;
+      if (pub) {
+        console.log(`[ParticipantTile] Track state for ${participant.identity}:`, {
+          trackSid: pub.trackSid,
+          isSubscribed: pub.isSubscribed,
+          hasTrack: !!pub.track,
+          isMuted: pub.isMuted,
+          isEnabled: pub.isEnabled,
+        });
+      }
+    };
+    
+    // Log initial state
+    logTrackState();
+    
+    // Log when track changes
+    const handleChange = () => {
+      console.log(`[ParticipantTile] Track changed for ${participant.identity}`);
+      logTrackState();
+    };
+    
+    room.on(RoomEvent.TrackSubscribed, handleChange);
+    room.on(RoomEvent.TrackUnsubscribed, handleChange);
+    
+    return () => {
+      room.off(RoomEvent.TrackSubscribed, handleChange);
+      room.off(RoomEvent.TrackUnsubscribed, handleChange);
+    };
+  }, [cameraTrackRef?.publication, participant.identity, participant.isLocal, room]);
+
+  // Derive subscription state directly from publication
+  const isTrackSubscribed = (cameraTrackRef?.publication as RemoteTrackPublication | undefined)?.isSubscribed ?? false;
+
+  // Phase 2: Check if video should be rendered based on visibility
+  const shouldRenderVideoFromContext = visibilityContext.shouldRenderVideo(participant.identity);
+  const isCullingActive = visibilityContext.isCullingActive;
+  
+  // Register this tile for visibility tracking (Phase 2)
+  useEffect(() => {
+    if (isCullingActive && tileRef.current) {
+      visibilityContext.registerParticipant(participant.identity, tileRef.current);
+      return () => {
+        visibilityContext.unregisterParticipant(participant.identity);
+      };
+    }
+  }, [participant.identity, visibilityContext, isCullingActive]);
+
+  // hasVideo now uses the isTrackSubscribed state (reactive)
+  const hasVideo = participant.isCameraEnabled && 
+                   isTrackSubscribed && 
+                   cameraTrackRef?.publication?.track;
+                   
+  // Phase 2: Only apply visibility culling when it's actually active
+  const shouldShowVideo = Boolean(hasVideo) && 
+                          (!isCullingActive || shouldRenderVideoFromContext) &&
+                          (!isVideoPaused || meetingRoomConfig.performance.freezeLastFrameWhenPaused);
+  const isMicMuted = !participant.isMicrophoneEnabled;
+
+  // Get initials from name or identity
+  // - Single name (Kris) → K
+  // - Two names (Kris Prat) → KP
+  // - Three+ names (Kris Prat Jose) → KJ (first & last)
+  const getInitials = (name: string): string => {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '?';
+    if (parts.length === 1) {
+      return parts[0].charAt(0).toUpperCase();
+    }
+    if (parts.length === 2) {
+      return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+    }
+    // 3+ names: first & last initial
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  };
+  
+  // For local participant, use displayName from store as fallback before LiveKit connects
+  const participantName = participant.isLocal 
+    ? (participant.name || localDisplayName || participant.identity || '')
+    : (participant.name || participant.identity || '');
+  const initial = getInitials(participantName);
+
+  // Avatar size: smaller for filmstrip participants in speaker layout
+  const isFilmstrip = layout === 'speaker' && !isSpeakerTile;
+  const avatarSize = isFilmstrip ? 'w-[84px] h-[84px]' : 'w-[120px] h-[120px]';
+  const avatarTextSize = isFilmstrip ? 'text-[32px]' : 'text-[45px]';
+
+  const toggleFullscreen = async () => {
+    if (!tileRef.current) return;
+
+    try {
+      if (document.fullscreenElement === tileRef.current) {
+        // Already in fullscreen - exit
+        await document.exitFullscreen();
+      } else {
+        // Not in fullscreen - enter
+        await tileRef.current.requestFullscreen();
+      }
+    } catch (error) {
+      console.error('Failed to toggle fullscreen:', error);
+    }
+  };
+
+  // Get all participants for grid-based quality optimization
+  const allParticipants = useParticipants();
+  const gridParticipantCount = allParticipants.length;
+
+  // Determine effective quality mode (considering auto fallbacks)
+  const effectiveQualityMode = qualityOverrideReason ? 'dataSaver' : selectedQualityMode;
+
+  useEffect(() => {
+    if (!cameraTrackRef?.publication || participant.isLocal) {
+      return;
+    }
+
+    const publication = cameraTrackRef.publication as RemoteTrackPublication | undefined;
+    const element = tileRef.current;
+    if (!element || !publication) {
+      return;
+    }
+
+    const applyQuality = () => {
+      const width = element.clientWidth;
+
+      const targetLayer = resolveTileTargetLayer({
+        width,
+        isFullscreen,
+        isPinned,
+        isHostPresenter: layout === 'screenshare' && participant.identity === hostId,
+        qualityMode: effectiveQualityMode,
+        gridParticipantCount,
+        screenWidth: window.innerWidth,
+      });
+
+      publication.setVideoQuality(resolveVideoQuality(targetLayer));
+    };
+
+    // Initial quality application
+    applyQuality();
+
+    // Debounced resize observer to prevent rapid quality changes
+    let resizeTimeout: number | null = null;
+    const resizeObserver = new ResizeObserver(() => {
+      if (resizeTimeout) clearTimeout(resizeTimeout);
+      resizeTimeout = window.setTimeout(applyQuality, 100);
+    });
+    resizeObserver.observe(element);
+
+    const handleFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === element);
+      applyQuality();
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    return () => {
+      if (resizeTimeout) clearTimeout(resizeTimeout);
+      resizeObserver.disconnect();
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, [cameraTrackRef, hostId, isFullscreen, isPinned, layout, participant.identity, participant.isLocal, effectiveQualityMode, gridParticipantCount]);
+
+  useEffect(() => {
+    const publication = cameraTrackRef?.publication as RemoteTrackPublication | undefined;
+    if (!publication || participant.isLocal) {
+      setIsVideoPaused(false);
+      return;
+    }
+
+    const syncPausedState = () => {
+      const streamState = publication.track?.streamState;
+      setIsVideoPaused(streamState === Track.StreamState.Paused);
+    };
+
+    const handleStreamStateChanged = (changedPublication: RemoteTrackPublication, streamState: Track.StreamState) => {
+      if (changedPublication.trackSid !== publication.trackSid) {
+        return;
+      }
+      setIsVideoPaused(streamState === Track.StreamState.Paused);
+    };
+
+    syncPausedState();
+    room.on(RoomEvent.TrackStreamStateChanged, handleStreamStateChanged);
+    return () => {
+      room.off(RoomEvent.TrackStreamStateChanged, handleStreamStateChanged);
+    };
+  }, [cameraTrackRef, participant.isLocal, room]);
+
+  return (
+    <div
+      ref={tileRef}
+      className={`relative bg-surface-800 group ${
+        isSpeaking ? 'ring-[3px] ring-brand-400' : 'ring-[3px] ring-transparent'
+      } ${className}`}
+    >
+      {/* Video or avatar */}
+      <div className="absolute inset-0 overflow-hidden">
+        {shouldShowVideo && cameraTrackRef ? (
+          <div 
+            className={`absolute inset-0 overflow-hidden bg-black video-fit-${videoFitMode}`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <VideoTrack 
+              key={trackSid || 'no-track'}
+              trackRef={cameraTrackRef}
+              className={`w-full h-full ${participant.isLocal && mirrorLocalVideo ? 'scale-x-[-1]' : ''}`}
+              style={{ 
+                objectFit: videoFitMode,
+                objectPosition: 'center',
+                width: '100%',
+                height: '100%',
+              }}
+            />
+          </div>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-surface-700 to-surface-800">
+            <div className={`${avatarSize} rounded-full flex items-center justify-center ${avatarTextSize} font-bold text-white transition-colors ${
+              isSpeaking ? 'bg-brand-500' : 'bg-surface-600'
+            }`}>
+              {initial}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom bar with name and mic status */}
+      <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2">
+        <div className="bg-black/60 backdrop-blur-sm px-2 py-1 flex items-center gap-1.5">
+          {isMicMuted ? (
+            <MicOff size={14} className="text-danger-400 shrink-0" />
+          ) : (
+            <Mic size={14} className={`${isSpeaking ? 'text-brand-400' : 'text-surface-300'} shrink-0`} />
+          )}
+          <span className="text-xs text-white truncate">
+            {participant.isLocal && !participant.name && localDisplayName 
+              ? localDisplayName 
+              : <ParticipantName participant={participant} />}
+          </span>
+        </div>
+        {/* Video fit mode indicator */}
+        <span className="text-[10px] text-surface-400 flex items-center gap-0.5 shrink-0" title={`Video fit: ${videoFitMode}`}>
+          {videoFitMode === 'contain' ? <Square size={10} /> : <Crop size={10} />}
+        </span>
+        {meetingRoomConfig.features.connectionQualityIndicator && (
+          <SignalBars quality={connectionQuality} />
+        )}
+      </div>
+
+      {/* Hand raised badge */}
+      {hasRaisedHand && (
+        <div className="absolute top-2 right-2 bg-warning-500 text-surface-900 text-[10px] font-bold px-2 py-1 flex items-center gap-1 shadow">
+          <Hand size={10} /> 
+          <span>Raised</span>
+        </div>
+      )}
+
+      {/* Pin button (hover) */}
+      <button
+        onClick={() => setPinned(isPinned ? null : participant.identity)}
+        className={`absolute top-2 left-2 p-1.5 transition-all ${
+          isPinned 
+            ? 'opacity-100 bg-brand-500 text-white' 
+            : 'opacity-0 group-hover:opacity-100 bg-black/50 hover:bg-black/70 text-white'
+        }`}
+        title={isPinned ? 'Unpin' : 'Pin'}
+      >
+        <Pin size={14} />
+      </button>
+      {meetingRoomConfig.features.fullscreenTileView && (
+        <button
+          onClick={() => { void toggleFullscreen(); }}
+          className="absolute top-2 left-11 p-1.5 opacity-0 group-hover:opacity-100 bg-black/50 hover:bg-black/70 text-white transition-all"
+          title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+        >
+          {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Custom comparison function for React.memo
+ * 
+ * NOTE: We use a simple identity-based comparison instead of deep property comparison.
+ * This is because track subscription state is internal to LiveKit and changes
+ * without changing the participant's public properties. Deep comparison was
+ * causing videos to not appear when track subscriptions changed.
+ */
+function arePropsEqual(prevProps: ParticipantTileProps, nextProps: ParticipantTileProps): boolean {
+  // Simple reference equality check
+  // This means we only skip re-render if it's the EXACT same props
+  return (
+    prevProps.participant === nextProps.participant &&
+    prevProps.className === nextProps.className &&
+    prevProps.isSpeakerTile === nextProps.isSpeakerTile
+  );
+}
+
+// Export memoized component to prevent cascade re-renders
+const MemoizedParticipantTile = memo(ParticipantTileInner, arePropsEqual);
+
+// Named export for backwards compatibility - uses memoized version
+export const ParticipantTile = MemoizedParticipantTile;
+export const ParticipantTileMemo = MemoizedParticipantTile;
+
+// Error boundary for individual participant tiles
+interface TileErrorBoundaryProps {
+  children: ReactNode;
+  participantName?: string;
+}
+
+interface TileErrorBoundaryState {
+  hasError: boolean;
+}
+
+class TileErrorBoundary extends Component<TileErrorBoundaryProps, TileErrorBoundaryState> {
+  constructor(props: TileErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): TileErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    if (import.meta.env.DEV) {
+      console.error('[ParticipantTile] Error rendering tile:', error);
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex items-center justify-center bg-surface-800 rounded-xl h-full min-h-[120px]">
+          <div className="text-center text-surface-400 p-4">
+            <p className="text-sm">Video unavailable</p>
+            <p className="text-xs mt-1">{this.props.participantName || 'Participant'}</p>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// Safe wrapper that wraps memoized tile in error boundary
+export const SafeParticipantTile = memo(function SafeParticipantTile(props: ParticipantTileProps) {
+  return (
+    <TileErrorBoundary participantName={props.participant.name}>
+      <MemoizedParticipantTile {...props} />
+    </TileErrorBoundary>
+  );
+}, arePropsEqual);

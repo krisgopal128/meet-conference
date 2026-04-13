@@ -1,0 +1,2770 @@
+{
+  "version": 8,
+  "created": "2026-03-10T04:53:13+00:00",
+  "updated": "2026-03-26T14:23:09+00:00",
+  "queue_order": [
+    "subjective::abstraction_fitness",
+    "subjective::ai_generated_debt",
+    "subjective::api_surface_coherence",
+    "subjective::authorization_consistency",
+    "subjective::contract_coherence",
+    "subjective::convention_outlier",
+    "subjective::cross_module_architecture",
+    "subjective::dependency_health",
+    "subjective::design_coherence",
+    "subjective::error_consistency",
+    "subjective::high_level_elegance",
+    "subjective::incomplete_migration",
+    "subjective::initialization_coupling",
+    "subjective::logic_clarity",
+    "subjective::low_level_elegance",
+    "subjective::mid_level_elegance",
+    "subjective::naming_quality",
+    "subjective::package_organization",
+    "subjective::test_strategy",
+    "subjective::type_safety",
+    "logs::src/routes/rooms.ts::KICK",
+    "logs::src/services/livekit.ts::${label}",
+    "logs::src/routes/apiKeys.ts::API Keys",
+    "logs::src/routes/external.ts::External API",
+    "logs::src/routes/prashasakah.ts::meetings",
+    "logs::src/routes/prashasakah.ts::Admin API Keys",
+    "logs::src/routes/rooms.ts::Mute All",
+    "logs::src/routes/token.ts::Token",
+    "logs::src/routes/webhook.ts::Webhook",
+    "logs::src/services/livekit.ts::LiveKit",
+    "logs::src/services/redis.ts::ADMIT",
+    "logs::src/services/redis.ts::KICK"
+  ],
+  "deferred": [],
+  "skipped": {},
+  "active_cluster": null,
+  "overrides": {
+    "logs::src/routes/rooms.ts::KICK": {
+      "issue_id": "logs::src/routes/rooms.ts::KICK",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/logs",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "logs::src/routes/token.ts::TOKEN": {
+      "issue_id": "logs::src/routes/token.ts::TOKEN",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "logs::src/services/livekit.ts::${label}": {
+      "issue_id": "logs::src/services/livekit.ts::${label}",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/logs",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "unused::src/middleware/authenticate.ts::res": {
+      "issue_id": "unused::src/middleware/authenticate.ts::res",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:14:34+00:00"
+    },
+    "unused::src/services/redis.ts::DEFAULT_COMMAND_TIMEOUT": {
+      "issue_id": "unused::src/services/redis.ts::DEFAULT_COMMAND_TIMEOUT",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:14:34+00:00"
+    },
+    "test_coverage::src/routes/rooms.ts": {
+      "issue_id": "test_coverage::src/routes/rooms.ts",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:14:11+00:00"
+    },
+    "test_coverage::src/services/livekit.ts": {
+      "issue_id": "test_coverage::src/services/livekit.ts",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:14:11+00:00"
+    },
+    "test_coverage::src/routes/meetings.ts": {
+      "issue_id": "test_coverage::src/routes/meetings.ts",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:14:11+00:00"
+    },
+    "test_coverage::src/services/redis.ts": {
+      "issue_id": "test_coverage::src/services/redis.ts",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:14:11+00:00"
+    },
+    "test_coverage::src/services/database.ts": {
+      "issue_id": "test_coverage::src/services/database.ts",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:14:11+00:00"
+    },
+    "test_coverage::src/routes/webhook.ts": {
+      "issue_id": "test_coverage::src/routes/webhook.ts",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:14:11+00:00"
+    },
+    "test_coverage::src/index.ts": {
+      "issue_id": "test_coverage::src/index.ts",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:14:11+00:00"
+    },
+    "test_coverage::src/routes/auth.ts": {
+      "issue_id": "test_coverage::src/routes/auth.ts",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:14:11+00:00"
+    },
+    "test_coverage::src/routes/egress.ts": {
+      "issue_id": "test_coverage::src/routes/egress.ts",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:14:11+00:00"
+    },
+    "test_coverage::src/routes/token.ts": {
+      "issue_id": "test_coverage::src/routes/token.ts",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:14:11+00:00"
+    },
+    "test_coverage::src/middleware/authenticate.ts": {
+      "issue_id": "test_coverage::src/middleware/authenticate.ts",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:14:11+00:00"
+    },
+    "test_coverage::src/config.ts": {
+      "issue_id": "test_coverage::src/config.ts",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:14:11+00:00"
+    },
+    "test_coverage::src/middleware/rateLimiter.ts": {
+      "issue_id": "test_coverage::src/middleware/rateLimiter.ts",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:14:11+00:00"
+    },
+    "smells::src/config.ts::console_error_no_throw": {
+      "issue_id": "smells::src/config.ts::console_error_no_throw",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/index.ts::console_error_no_throw": {
+      "issue_id": "smells::src/index.ts::console_error_no_throw",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/routes/auth.ts::console_error_no_throw": {
+      "issue_id": "smells::src/routes/auth.ts::console_error_no_throw",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/routes/egress.ts::console_error_no_throw": {
+      "issue_id": "smells::src/routes/egress.ts::console_error_no_throw",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/routes/meetings.ts::console_error_no_throw": {
+      "issue_id": "smells::src/routes/meetings.ts::console_error_no_throw",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/routes/rooms.ts::console_error_no_throw": {
+      "issue_id": "smells::src/routes/rooms.ts::console_error_no_throw",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/routes/token.ts::console_error_no_throw": {
+      "issue_id": "smells::src/routes/token.ts::console_error_no_throw",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/services/livekit.ts::console_error_no_throw": {
+      "issue_id": "smells::src/services/livekit.ts::console_error_no_throw",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/services/redis.ts::console_error_no_throw": {
+      "issue_id": "smells::src/services/redis.ts::console_error_no_throw",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/services/database.ts::async_no_await": {
+      "issue_id": "smells::src/services/database.ts::async_no_await",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:14:34+00:00"
+    },
+    "smells::src/services/livekit.ts::async_no_await": {
+      "issue_id": "smells::src/services/livekit.ts::async_no_await",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/services/redis.ts::async_no_await": {
+      "issue_id": "smells::src/services/redis.ts::async_no_await",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/routes/meetings.ts::any_type": {
+      "issue_id": "smells::src/routes/meetings.ts::any_type",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:14:11+00:00"
+    },
+    "smells::src/routes/rooms.ts::any_type": {
+      "issue_id": "smells::src/routes/rooms.ts::any_type",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:14:11+00:00"
+    },
+    "smells::src/services/database.ts::any_type": {
+      "issue_id": "smells::src/services/database.ts::any_type",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/services/redis.ts::any_type": {
+      "issue_id": "smells::src/services/redis.ts::any_type",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/routes/rooms.ts::swallowed_error": {
+      "issue_id": "smells::src/routes/rooms.ts::swallowed_error",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/services/livekit.ts::swallowed_error": {
+      "issue_id": "smells::src/services/livekit.ts::swallowed_error",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/routes/meetings.ts::as_any_cast": {
+      "issue_id": "smells::src/routes/meetings.ts::as_any_cast",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:14:11+00:00"
+    },
+    "smells::src/routes/rooms.ts::as_any_cast": {
+      "issue_id": "smells::src/routes/rooms.ts::as_any_cast",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:14:11+00:00"
+    },
+    "smells::src/routes/webhook.ts::as_any_cast": {
+      "issue_id": "smells::src/routes/webhook.ts::as_any_cast",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/services/redis.ts::as_any_cast": {
+      "issue_id": "smells::src/services/redis.ts::as_any_cast",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/routes/auth.ts::non_null_assert": {
+      "issue_id": "smells::src/routes/auth.ts::non_null_assert",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/routes/egress.ts::non_null_assert": {
+      "issue_id": "smells::src/routes/egress.ts::non_null_assert",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/routes/meetings.ts::non_null_assert": {
+      "issue_id": "smells::src/routes/meetings.ts::non_null_assert",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:14:11+00:00"
+    },
+    "smells::src/routes/rooms.ts::non_null_assert": {
+      "issue_id": "smells::src/routes/rooms.ts::non_null_assert",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-10T06:14:11+00:00"
+    },
+    "smells::src/routes/token.ts::non_null_assert": {
+      "issue_id": "smells::src/routes/token.ts::non_null_assert",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/middleware/rateLimiter.ts::magic_number": {
+      "issue_id": "smells::src/middleware/rateLimiter.ts::magic_number",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/routes/meetings.ts::magic_number": {
+      "issue_id": "smells::src/routes/meetings.ts::magic_number",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/routes/rooms.ts::magic_number": {
+      "issue_id": "smells::src/routes/rooms.ts::magic_number",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "smells::src/routes/rooms.ts::debug_tag": {
+      "issue_id": "smells::src/routes/rooms.ts::debug_tag",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/routes/token.ts::debug_tag": {
+      "issue_id": "smells::src/routes/token.ts::debug_tag",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "security::src/config.ts::security::log_sensitive::src/config.ts::48": {
+      "issue_id": "security::src/config.ts::security::log_sensitive::src/config.ts::48",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T09:02:40+00:00"
+    },
+    "security::src/config.ts::security::log_sensitive::src/config.ts::54": {
+      "issue_id": "security::src/config.ts::security::log_sensitive::src/config.ts::54",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T09:02:40+00:00"
+    },
+    "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::43": {
+      "issue_id": "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::43",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::45": {
+      "issue_id": "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::45",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::75": {
+      "issue_id": "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::75",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::148": {
+      "issue_id": "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::148",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "security::src/services/redis.ts::security::json_parse_unguarded::src/services/redis.ts::93": {
+      "issue_id": "security::src/services/redis.ts::security::json_parse_unguarded::src/services/redis.ts::93",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "security::src/services/redis.ts::security::json_parse_unguarded::src/services/redis.ts::96": {
+      "issue_id": "security::src/services/redis.ts::security::json_parse_unguarded::src/services/redis.ts::96",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "security::src/services/redis.ts::security::json_parse_unguarded::src/services/redis.ts::113": {
+      "issue_id": "security::src/services/redis.ts::security::json_parse_unguarded::src/services/redis.ts::113",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "security::src/services/redis.ts::security::json_parse_unguarded::src/services/redis.ts::242": {
+      "issue_id": "security::src/services/redis.ts::security::json_parse_unguarded::src/services/redis.ts::242",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "subjective_review::src/config.ts::unreviewed": {
+      "issue_id": "subjective_review::src/config.ts::unreviewed",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective_review::src/middleware/authenticate.ts::unreviewed": {
+      "issue_id": "subjective_review::src/middleware/authenticate.ts::unreviewed",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective_review::src/middleware/rateLimiter.ts::unreviewed": {
+      "issue_id": "subjective_review::src/middleware/rateLimiter.ts::unreviewed",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective_review::src/routes/auth.ts::unreviewed": {
+      "issue_id": "subjective_review::src/routes/auth.ts::unreviewed",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective_review::src/routes/egress.ts::unreviewed": {
+      "issue_id": "subjective_review::src/routes/egress.ts::unreviewed",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective_review::src/routes/meetings.ts::unreviewed": {
+      "issue_id": "subjective_review::src/routes/meetings.ts::unreviewed",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective_review::src/routes/rooms.ts::unreviewed": {
+      "issue_id": "subjective_review::src/routes/rooms.ts::unreviewed",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective_review::src/routes/token.ts::unreviewed": {
+      "issue_id": "subjective_review::src/routes/token.ts::unreviewed",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective_review::src/routes/webhook.ts::unreviewed": {
+      "issue_id": "subjective_review::src/routes/webhook.ts::unreviewed",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective_review::src/services/database.ts::unreviewed": {
+      "issue_id": "subjective_review::src/services/database.ts::unreviewed",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective_review::src/services/livekit.ts::unreviewed": {
+      "issue_id": "subjective_review::src/services/livekit.ts::unreviewed",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective_review::src/services/redis.ts::unreviewed": {
+      "issue_id": "subjective_review::src/services/redis.ts::unreviewed",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective_review::.::holistic_unreviewed": {
+      "issue_id": "subjective_review::.::holistic_unreviewed",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective::abstraction_fitness": {
+      "issue_id": "subjective::abstraction_fitness",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective::ai_generated_debt": {
+      "issue_id": "subjective::ai_generated_debt",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective::api_surface_coherence": {
+      "issue_id": "subjective::api_surface_coherence",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective::authorization_consistency": {
+      "issue_id": "subjective::authorization_consistency",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective::contract_coherence": {
+      "issue_id": "subjective::contract_coherence",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective::convention_outlier": {
+      "issue_id": "subjective::convention_outlier",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective::cross_module_architecture": {
+      "issue_id": "subjective::cross_module_architecture",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective::dependency_health": {
+      "issue_id": "subjective::dependency_health",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective::design_coherence": {
+      "issue_id": "subjective::design_coherence",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective::error_consistency": {
+      "issue_id": "subjective::error_consistency",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective::high_level_elegance": {
+      "issue_id": "subjective::high_level_elegance",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective::incomplete_migration": {
+      "issue_id": "subjective::incomplete_migration",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective::initialization_coupling": {
+      "issue_id": "subjective::initialization_coupling",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective::logic_clarity": {
+      "issue_id": "subjective::logic_clarity",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective::low_level_elegance": {
+      "issue_id": "subjective::low_level_elegance",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective::mid_level_elegance": {
+      "issue_id": "subjective::mid_level_elegance",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective::naming_quality": {
+      "issue_id": "subjective::naming_quality",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective::package_organization": {
+      "issue_id": "subjective::package_organization",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective::test_strategy": {
+      "issue_id": "subjective::test_strategy",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "subjective::type_safety": {
+      "issue_id": "subjective::type_safety",
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "cluster": "auto/initial-review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "unused::src/__tests__/routes/token.test.ts::jwt": {
+      "issue_id": "unused::src/__tests__/routes/token.test.ts::jwt",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:14:34+00:00"
+    },
+    "smells::src/__tests__/routes/auth.test.ts::any_type": {
+      "issue_id": "smells::src/__tests__/routes/auth.test.ts::any_type",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "smells::src/__tests__/routes/token.test.ts::any_type": {
+      "issue_id": "smells::src/__tests__/routes/token.test.ts::any_type",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "exports::src/services/livekit.ts::roomService": {
+      "issue_id": "exports::src/services/livekit.ts::roomService",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:14:34+00:00"
+    },
+    "exports::src/services/livekit.ts::isModeratorRole": {
+      "issue_id": "exports::src/services/livekit.ts::isModeratorRole",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:14:34+00:00"
+    },
+    "exports::src/services/livekit.ts::muteParticipant": {
+      "issue_id": "exports::src/services/livekit.ts::muteParticipant",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:14:34+00:00"
+    },
+    "exports::src/services/livekit.ts::updateParticipantPermissions": {
+      "issue_id": "exports::src/services/livekit.ts::updateParticipantPermissions",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:14:34+00:00"
+    },
+    "exports::src/services/livekit.ts::verifyWebhook": {
+      "issue_id": "exports::src/services/livekit.ts::verifyWebhook",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:14:34+00:00"
+    },
+    "exports::src/services/database.ts::queryPrepared": {
+      "issue_id": "exports::src/services/database.ts::queryPrepared",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/database.ts::queryOnePrepared": {
+      "issue_id": "exports::src/services/database.ts::queryOnePrepared",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/database.ts::transaction": {
+      "issue_id": "exports::src/services/database.ts::transaction",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:14:34+00:00"
+    },
+    "exports::src/services/database.ts::getRoomWithParticipants": {
+      "issue_id": "exports::src/services/database.ts::getRoomWithParticipants",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/database.ts::getRoomsList": {
+      "issue_id": "exports::src/services/database.ts::getRoomsList",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/database.ts::getChatMessagesCursor": {
+      "issue_id": "exports::src/services/database.ts::getChatMessagesCursor",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/database.ts::getPoolStats": {
+      "issue_id": "exports::src/services/database.ts::getPoolStats",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/database.ts::pool": {
+      "issue_id": "exports::src/services/database.ts::pool",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/database.ts::preparedStatements": {
+      "issue_id": "exports::src/services/database.ts::preparedStatements",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/redis.ts::cacheGet": {
+      "issue_id": "exports::src/services/redis.ts::cacheGet",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/redis.ts::cacheSet": {
+      "issue_id": "exports::src/services/redis.ts::cacheSet",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/redis.ts::cacheDel": {
+      "issue_id": "exports::src/services/redis.ts::cacheDel",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/redis.ts::cacheDelPattern": {
+      "issue_id": "exports::src/services/redis.ts::cacheDelPattern",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/redis.ts::cacheExists": {
+      "issue_id": "exports::src/services/redis.ts::cacheExists",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/redis.ts::cacheTTL": {
+      "issue_id": "exports::src/services/redis.ts::cacheTTL",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/redis.ts::pipeline": {
+      "issue_id": "exports::src/services/redis.ts::pipeline",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/redis.ts::cacheSetMulti": {
+      "issue_id": "exports::src/services/redis.ts::cacheSetMulti",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/redis.ts::cacheGetMulti": {
+      "issue_id": "exports::src/services/redis.ts::cacheGetMulti",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/redis.ts::setRoomState": {
+      "issue_id": "exports::src/services/redis.ts::setRoomState",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/redis.ts::getRoomState": {
+      "issue_id": "exports::src/services/redis.ts::getRoomState",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/redis.ts::delRoomState": {
+      "issue_id": "exports::src/services/redis.ts::delRoomState",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/redis.ts::addParticipants": {
+      "issue_id": "exports::src/services/redis.ts::addParticipants",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/redis.ts::removeParticipants": {
+      "issue_id": "exports::src/services/redis.ts::removeParticipants",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/redis.ts::getParticipantCount": {
+      "issue_id": "exports::src/services/redis.ts::getParticipantCount",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/redis.ts::getRedisInfo": {
+      "issue_id": "exports::src/services/redis.ts::getRedisInfo",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "exports::src/services/redis.ts::redisClient": {
+      "issue_id": "exports::src/services/redis.ts::redisClient",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:14:34+00:00"
+    },
+    "exports::src/services/redis.ts::isConnected": {
+      "issue_id": "exports::src/services/redis.ts::isConnected",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:14:34+00:00"
+    },
+    "test_coverage::src/config.ts::transitive_only": {
+      "issue_id": "test_coverage::src/config.ts::transitive_only",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": "auto/test_coverage-transitive_only",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "test_coverage::src/routes/webhook.ts::untested_module": {
+      "issue_id": "test_coverage::src/routes/webhook.ts::untested_module",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": "auto/test_coverage-untested_module",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "test_coverage::src/routes/rooms.ts::untested_module": {
+      "issue_id": "test_coverage::src/routes/rooms.ts::untested_module",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": "auto/test_coverage-untested_module",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "test_coverage::src/middleware/authenticate.ts::transitive_only": {
+      "issue_id": "test_coverage::src/middleware/authenticate.ts::transitive_only",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": "auto/test_coverage-transitive_only",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "test_coverage::src/routes/egress.ts::untested_module": {
+      "issue_id": "test_coverage::src/routes/egress.ts::untested_module",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": "auto/test_coverage-untested_module",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "test_coverage::src/services/redis.ts::untested_module": {
+      "issue_id": "test_coverage::src/services/redis.ts::untested_module",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T07:36:09+00:00"
+    },
+    "test_coverage::src/index.ts::untested_module": {
+      "issue_id": "test_coverage::src/index.ts::untested_module",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": "auto/test_coverage-untested_module",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "test_coverage::src/middleware/rateLimiter.ts::transitive_only": {
+      "issue_id": "test_coverage::src/middleware/rateLimiter.ts::transitive_only",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": "auto/test_coverage-transitive_only",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "test_coverage::src/routes/meetings.ts::untested_module": {
+      "issue_id": "test_coverage::src/routes/meetings.ts::untested_module",
+      "created_at": "2026-03-10T06:14:11+00:00",
+      "cluster": "auto/test_coverage-untested_module",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "unused::src/services/database.ts::preparedStatements": {
+      "issue_id": "unused::src/services/database.ts::preparedStatements",
+      "created_at": "2026-03-11T07:36:09+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:14:34+00:00"
+    },
+    "smells::src/services/redis.ts::debug_tag": {
+      "issue_id": "smells::src/services/redis.ts::debug_tag",
+      "created_at": "2026-03-11T07:36:09+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::106": {
+      "issue_id": "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::106",
+      "created_at": "2026-03-11T07:36:09+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:51:18+00:00"
+    },
+    "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::184": {
+      "issue_id": "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::184",
+      "created_at": "2026-03-11T07:36:09+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:51:18+00:00"
+    },
+    "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::13": {
+      "issue_id": "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::13",
+      "created_at": "2026-03-11T07:36:09+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:14:34+00:00"
+    },
+    "subjective_review::src/utils/validation.ts::unreviewed": {
+      "issue_id": "subjective_review::src/utils/validation.ts::unreviewed",
+      "created_at": "2026-03-11T07:36:09+00:00",
+      "cluster": "auto/subjective_review",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "test_coverage::src/utils/validation.ts::transitive_only": {
+      "issue_id": "test_coverage::src/utils/validation.ts::transitive_only",
+      "created_at": "2026-03-11T07:36:09+00:00",
+      "cluster": "auto/test_coverage-transitive_only",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::36": {
+      "issue_id": "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::36",
+      "created_at": "2026-03-11T08:14:34+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:20:07+00:00"
+    },
+    "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::35": {
+      "issue_id": "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::35",
+      "created_at": "2026-03-11T08:20:07+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:36:02+00:00"
+    },
+    "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::38": {
+      "issue_id": "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::38",
+      "created_at": "2026-03-11T08:36:02+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:51:18+00:00"
+    },
+    "unused::src/__tests__/services/redis.test.ts::currentMockMulti": {
+      "issue_id": "unused::src/__tests__/services/redis.test.ts::currentMockMulti",
+      "created_at": "2026-03-11T08:37:02+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:58:01+00:00"
+    },
+    "unused::src/__tests__/services/redis.test.ts::client": {
+      "issue_id": "unused::src/__tests__/services/redis.test.ts::client",
+      "created_at": "2026-03-11T08:37:02+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:58:01+00:00"
+    },
+    "unused::src/__tests__/services/redis.test.ts::cachedData": {
+      "issue_id": "unused::src/__tests__/services/redis.test.ts::cachedData",
+      "created_at": "2026-03-11T08:37:02+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T08:58:01+00:00"
+    },
+    "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::107": {
+      "issue_id": "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::107",
+      "created_at": "2026-03-11T08:51:18+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T09:02:40+00:00"
+    },
+    "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::186": {
+      "issue_id": "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::186",
+      "created_at": "2026-03-11T08:51:18+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T09:02:40+00:00"
+    },
+    "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::40": {
+      "issue_id": "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::40",
+      "created_at": "2026-03-11T08:51:18+00:00",
+      "cluster": null,
+      "updated_at": "2026-03-11T09:02:40+00:00"
+    },
+    "logs::src/routes/apiKeys.ts::API Keys": {
+      "issue_id": "logs::src/routes/apiKeys.ts::API Keys",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/logs",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "logs::src/routes/external.ts::External API": {
+      "issue_id": "logs::src/routes/external.ts::External API",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/logs",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "logs::src/routes/prashasakah.ts::meetings": {
+      "issue_id": "logs::src/routes/prashasakah.ts::meetings",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/logs",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "logs::src/routes/prashasakah.ts::Admin API Keys": {
+      "issue_id": "logs::src/routes/prashasakah.ts::Admin API Keys",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/logs",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "logs::src/routes/rooms.ts::Mute All": {
+      "issue_id": "logs::src/routes/rooms.ts::Mute All",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/logs",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "logs::src/routes/token.ts::Token": {
+      "issue_id": "logs::src/routes/token.ts::Token",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/logs",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "logs::src/routes/webhook.ts::Webhook": {
+      "issue_id": "logs::src/routes/webhook.ts::Webhook",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/logs",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "logs::src/services/livekit.ts::LiveKit": {
+      "issue_id": "logs::src/services/livekit.ts::LiveKit",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/logs",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "logs::src/services/redis.ts::ADMIT": {
+      "issue_id": "logs::src/services/redis.ts::ADMIT",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/logs",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "logs::src/services/redis.ts::KICK": {
+      "issue_id": "logs::src/services/redis.ts::KICK",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/logs",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "test_coverage::src/services/lobbyService.ts::transitive_only": {
+      "issue_id": "test_coverage::src/services/lobbyService.ts::transitive_only",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/test_coverage-transitive_only",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "test_coverage::src/services/meetingService.ts::transitive_only": {
+      "issue_id": "test_coverage::src/services/meetingService.ts::transitive_only",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/test_coverage-transitive_only",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "test_coverage::src/middleware/requireUser.ts::transitive_only": {
+      "issue_id": "test_coverage::src/middleware/requireUser.ts::transitive_only",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/test_coverage-transitive_only",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "test_coverage::src/schemas/meetings.ts::transitive_only": {
+      "issue_id": "test_coverage::src/schemas/meetings.ts::transitive_only",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/test_coverage-transitive_only",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "test_coverage::src/middleware/requestId.ts::untested_module": {
+      "issue_id": "test_coverage::src/middleware/requestId.ts::untested_module",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/test_coverage-untested_module",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "test_coverage::src/routes/apiKeys.ts::untested_module": {
+      "issue_id": "test_coverage::src/routes/apiKeys.ts::untested_module",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/test_coverage-untested_module",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "test_coverage::src/services/alertService.ts::untested_module": {
+      "issue_id": "test_coverage::src/services/alertService.ts::untested_module",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/test_coverage-untested_module",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "test_coverage::src/services/webhookService.ts::untested_module": {
+      "issue_id": "test_coverage::src/services/webhookService.ts::untested_module",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/test_coverage-untested_module",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "test_coverage::src/middleware/requireRole.ts::untested_module": {
+      "issue_id": "test_coverage::src/middleware/requireRole.ts::untested_module",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/test_coverage-untested_module",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "test_coverage::scripts/seed-admin.ts::untested_module": {
+      "issue_id": "test_coverage::scripts/seed-admin.ts::untested_module",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/test_coverage-untested_module",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "test_coverage::src/routes/prashasakah.ts::untested_module": {
+      "issue_id": "test_coverage::src/routes/prashasakah.ts::untested_module",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/test_coverage-untested_module",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "test_coverage::src/routes/external.ts::untested_module": {
+      "issue_id": "test_coverage::src/routes/external.ts::untested_module",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/test_coverage-untested_module",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "security::scripts/seed-admin.ts::security::log_sensitive::scripts/seed-admin.ts::32": {
+      "issue_id": "security::scripts/seed-admin.ts::security::log_sensitive::scripts/seed-admin.ts::32",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/security-log_sensitive",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "security::scripts/seed-admin.ts::security::log_sensitive::scripts/seed-admin.ts::61": {
+      "issue_id": "security::scripts/seed-admin.ts::security::log_sensitive::scripts/seed-admin.ts::61",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/security-log_sensitive",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "security::src/routes/auth.ts::security::log_sensitive::src/routes/auth.ts::256": {
+      "issue_id": "security::src/routes/auth.ts::security::log_sensitive::src/routes/auth.ts::256",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/security-log_sensitive",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "security::src/routes/auth.ts::security::log_sensitive::src/routes/auth.ts::326": {
+      "issue_id": "security::src/routes/auth.ts::security::log_sensitive::src/routes/auth.ts::326",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/security-log_sensitive",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "security::src/routes/auth.ts::security::log_sensitive::src/routes/auth.ts::372": {
+      "issue_id": "security::src/routes/auth.ts::security::log_sensitive::src/routes/auth.ts::372",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/security-log_sensitive",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "security::src/routes/external.ts::security::log_sensitive::src/routes/external.ts::324": {
+      "issue_id": "security::src/routes/external.ts::security::log_sensitive::src/routes/external.ts::324",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/security-log_sensitive",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "security::src/routes/external.ts::security::log_sensitive::src/routes/external.ts::335": {
+      "issue_id": "security::src/routes/external.ts::security::log_sensitive::src/routes/external.ts::335",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/security-log_sensitive",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "security::src/routes/prashasakah.ts::security::log_sensitive::src/routes/prashasakah.ts::750": {
+      "issue_id": "security::src/routes/prashasakah.ts::security::log_sensitive::src/routes/prashasakah.ts::750",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/security-log_sensitive",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    },
+    "security::src/routes/prashasakah.ts::security::log_sensitive::src/routes/prashasakah.ts::860": {
+      "issue_id": "security::src/routes/prashasakah.ts::security::log_sensitive::src/routes/prashasakah.ts::860",
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "cluster": "auto/security-log_sensitive",
+      "updated_at": "2026-03-26T14:23:09+00:00"
+    }
+  },
+  "clusters": {
+    "auto/logs": {
+      "name": "auto/logs",
+      "description": "Remove 12 logs issues",
+      "issue_ids": [
+        "logs::src/routes/rooms.ts::KICK",
+        "logs::src/services/livekit.ts::${label}",
+        "logs::src/routes/apiKeys.ts::API Keys",
+        "logs::src/routes/external.ts::External API",
+        "logs::src/routes/prashasakah.ts::meetings",
+        "logs::src/routes/prashasakah.ts::Admin API Keys",
+        "logs::src/routes/rooms.ts::Mute All",
+        "logs::src/routes/token.ts::Token",
+        "logs::src/routes/webhook.ts::Webhook",
+        "logs::src/services/livekit.ts::LiveKit",
+        "logs::src/services/redis.ts::ADMIT",
+        "logs::src/services/redis.ts::KICK"
+      ],
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "updated_at": "2026-03-26T14:23:09+00:00",
+      "auto": true,
+      "cluster_key": "auto::logs",
+      "action": "desloppify autofix debug-logs --dry-run",
+      "user_modified": false,
+      "action_type": "auto_fix",
+      "execution_policy": "ephemeral_autopromote",
+      "execution_status": "active"
+    },
+    "auto/subjective_review": {
+      "name": "auto/subjective_review",
+      "description": "Address 14 subjective_review review issues",
+      "issue_ids": [
+        "subjective_review::src/config.ts::unreviewed",
+        "subjective_review::src/middleware/authenticate.ts::unreviewed",
+        "subjective_review::src/middleware/rateLimiter.ts::unreviewed",
+        "subjective_review::src/routes/auth.ts::unreviewed",
+        "subjective_review::src/routes/egress.ts::unreviewed",
+        "subjective_review::src/routes/meetings.ts::unreviewed",
+        "subjective_review::src/routes/rooms.ts::unreviewed",
+        "subjective_review::src/routes/token.ts::unreviewed",
+        "subjective_review::src/routes/webhook.ts::unreviewed",
+        "subjective_review::src/services/database.ts::unreviewed",
+        "subjective_review::src/services/livekit.ts::unreviewed",
+        "subjective_review::src/services/redis.ts::unreviewed",
+        "subjective_review::.::holistic_unreviewed",
+        "subjective_review::src/utils/validation.ts::unreviewed"
+      ],
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "updated_at": "2026-03-26T14:23:09+00:00",
+      "auto": true,
+      "cluster_key": "detector::subjective_review",
+      "action": "run `desloppify review --prepare` to evaluate files against quality dimensions",
+      "user_modified": false,
+      "execution_status": "review",
+      "action_type": "manual_fix",
+      "execution_policy": "planned_only"
+    },
+    "auto/initial-review": {
+      "name": "auto/initial-review",
+      "description": "Initial review of 20 unscored subjective dimensions",
+      "issue_ids": [
+        "subjective::abstraction_fitness",
+        "subjective::ai_generated_debt",
+        "subjective::api_surface_coherence",
+        "subjective::authorization_consistency",
+        "subjective::contract_coherence",
+        "subjective::convention_outlier",
+        "subjective::cross_module_architecture",
+        "subjective::dependency_health",
+        "subjective::design_coherence",
+        "subjective::error_consistency",
+        "subjective::high_level_elegance",
+        "subjective::incomplete_migration",
+        "subjective::initialization_coupling",
+        "subjective::logic_clarity",
+        "subjective::low_level_elegance",
+        "subjective::mid_level_elegance",
+        "subjective::naming_quality",
+        "subjective::package_organization",
+        "subjective::test_strategy",
+        "subjective::type_safety"
+      ],
+      "created_at": "2026-03-10T04:53:13+00:00",
+      "updated_at": "2026-03-26T14:23:09+00:00",
+      "auto": true,
+      "cluster_key": "subjective::unscored",
+      "action": "desloppify review --prepare --dimensions abstraction_fitness,ai_generated_debt,api_surface_coherence,authorization_consistency,contract_coherence,convention_outlier,cross_module_architecture,dependency_health,design_coherence,error_consistency,high_level_elegance,incomplete_migration,initialization_coupling,logic_clarity,low_level_elegance,mid_level_elegance,naming_quality,package_organization,test_strategy,type_safety",
+      "user_modified": false,
+      "execution_status": "review",
+      "action_type": "manual_fix",
+      "execution_policy": "planned_only"
+    },
+    "auto/test_coverage-transitive_only": {
+      "name": "auto/test_coverage-transitive_only",
+      "description": "Fix 8 test coverage issues",
+      "issue_ids": [
+        "test_coverage::src/config.ts::transitive_only",
+        "test_coverage::src/middleware/authenticate.ts::transitive_only",
+        "test_coverage::src/middleware/rateLimiter.ts::transitive_only",
+        "test_coverage::src/utils/validation.ts::transitive_only",
+        "test_coverage::src/services/lobbyService.ts::transitive_only",
+        "test_coverage::src/services/meetingService.ts::transitive_only",
+        "test_coverage::src/middleware/requireUser.ts::transitive_only",
+        "test_coverage::src/schemas/meetings.ts::transitive_only"
+      ],
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "updated_at": "2026-03-26T14:23:09+00:00",
+      "auto": true,
+      "cluster_key": "detector::test_coverage::transitive_only",
+      "action": "review test coverage gaps",
+      "execution_status": "review",
+      "user_modified": false,
+      "action_type": "refactor",
+      "execution_policy": "planned_only"
+    },
+    "auto/test_coverage-untested_module": {
+      "name": "auto/test_coverage-untested_module",
+      "description": "Fix 13 test coverage issues",
+      "issue_ids": [
+        "test_coverage::src/routes/webhook.ts::untested_module",
+        "test_coverage::src/routes/rooms.ts::untested_module",
+        "test_coverage::src/routes/egress.ts::untested_module",
+        "test_coverage::src/index.ts::untested_module",
+        "test_coverage::src/routes/meetings.ts::untested_module",
+        "test_coverage::src/middleware/requestId.ts::untested_module",
+        "test_coverage::src/routes/apiKeys.ts::untested_module",
+        "test_coverage::src/services/alertService.ts::untested_module",
+        "test_coverage::src/services/webhookService.ts::untested_module",
+        "test_coverage::src/middleware/requireRole.ts::untested_module",
+        "test_coverage::scripts/seed-admin.ts::untested_module",
+        "test_coverage::src/routes/prashasakah.ts::untested_module",
+        "test_coverage::src/routes/external.ts::untested_module"
+      ],
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "updated_at": "2026-03-26T14:23:09+00:00",
+      "auto": true,
+      "cluster_key": "detector::test_coverage::untested_module",
+      "action": "review test coverage gaps",
+      "execution_status": "review",
+      "user_modified": false,
+      "action_type": "refactor",
+      "execution_policy": "planned_only"
+    },
+    "auto/security-log_sensitive": {
+      "name": "auto/security-log_sensitive",
+      "description": "Fix 9 security issues",
+      "issue_ids": [
+        "security::scripts/seed-admin.ts::security::log_sensitive::scripts/seed-admin.ts::32",
+        "security::scripts/seed-admin.ts::security::log_sensitive::scripts/seed-admin.ts::61",
+        "security::src/routes/auth.ts::security::log_sensitive::src/routes/auth.ts::256",
+        "security::src/routes/auth.ts::security::log_sensitive::src/routes/auth.ts::326",
+        "security::src/routes/auth.ts::security::log_sensitive::src/routes/auth.ts::372",
+        "security::src/routes/external.ts::security::log_sensitive::src/routes/external.ts::324",
+        "security::src/routes/external.ts::security::log_sensitive::src/routes/external.ts::335",
+        "security::src/routes/prashasakah.ts::security::log_sensitive::src/routes/prashasakah.ts::750",
+        "security::src/routes/prashasakah.ts::security::log_sensitive::src/routes/prashasakah.ts::860"
+      ],
+      "created_at": "2026-03-26T14:23:09+00:00",
+      "updated_at": "2026-03-26T14:23:09+00:00",
+      "auto": true,
+      "cluster_key": "detector::security::log_sensitive",
+      "action": "review and fix security issues",
+      "execution_status": "review",
+      "user_modified": false,
+      "action_type": "manual_fix",
+      "execution_policy": "planned_only"
+    }
+  },
+  "superseded": {
+    "smells::src/routes/meetings.ts::any_type": {
+      "original_id": "smells::src/routes/meetings.ts::any_type",
+      "original_detector": "smells",
+      "original_file": "src/routes/meetings.ts",
+      "original_summary": "2x Explicit `any` types",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:14:11+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "smells::src/routes/meetings.ts::console_error_no_throw",
+        "smells::src/routes/meetings.ts::magic_number"
+      ]
+    },
+    "smells::src/routes/meetings.ts::as_any_cast": {
+      "original_id": "smells::src/routes/meetings.ts::as_any_cast",
+      "original_detector": "smells",
+      "original_file": "src/routes/meetings.ts",
+      "original_summary": "1x `as any` type casts",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:14:11+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "smells::src/routes/meetings.ts::console_error_no_throw",
+        "smells::src/routes/meetings.ts::magic_number"
+      ]
+    },
+    "smells::src/routes/meetings.ts::non_null_assert": {
+      "original_id": "smells::src/routes/meetings.ts::non_null_assert",
+      "original_detector": "smells",
+      "original_file": "src/routes/meetings.ts",
+      "original_summary": "12x Non-null assertions (!.)",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:14:11+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "smells::src/routes/meetings.ts::console_error_no_throw",
+        "smells::src/routes/meetings.ts::magic_number"
+      ]
+    },
+    "smells::src/routes/rooms.ts::any_type": {
+      "original_id": "smells::src/routes/rooms.ts::any_type",
+      "original_detector": "smells",
+      "original_file": "src/routes/rooms.ts",
+      "original_summary": "1x Explicit `any` types",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:14:11+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "smells::src/routes/rooms.ts::console_error_no_throw",
+        "smells::src/routes/rooms.ts::swallowed_error",
+        "smells::src/routes/rooms.ts::magic_number",
+        "smells::src/routes/rooms.ts::debug_tag"
+      ]
+    },
+    "smells::src/routes/rooms.ts::as_any_cast": {
+      "original_id": "smells::src/routes/rooms.ts::as_any_cast",
+      "original_detector": "smells",
+      "original_file": "src/routes/rooms.ts",
+      "original_summary": "1x `as any` type casts",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:14:11+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "smells::src/routes/rooms.ts::console_error_no_throw",
+        "smells::src/routes/rooms.ts::swallowed_error",
+        "smells::src/routes/rooms.ts::magic_number",
+        "smells::src/routes/rooms.ts::debug_tag"
+      ]
+    },
+    "smells::src/routes/rooms.ts::non_null_assert": {
+      "original_id": "smells::src/routes/rooms.ts::non_null_assert",
+      "original_detector": "smells",
+      "original_file": "src/routes/rooms.ts",
+      "original_summary": "21x Non-null assertions (!.)",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:14:11+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "smells::src/routes/rooms.ts::console_error_no_throw",
+        "smells::src/routes/rooms.ts::swallowed_error",
+        "smells::src/routes/rooms.ts::magic_number",
+        "smells::src/routes/rooms.ts::debug_tag"
+      ]
+    },
+    "test_coverage::src/config.ts": {
+      "original_id": "test_coverage::src/config.ts",
+      "original_detector": "test_coverage",
+      "original_file": "src/config.ts",
+      "original_summary": "Untested module (61 LOC, 7 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:14:11+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/config.ts::transitive_only"
+      ]
+    },
+    "test_coverage::src/index.ts": {
+      "original_id": "test_coverage::src/index.ts",
+      "original_detector": "test_coverage",
+      "original_file": "src/index.ts",
+      "original_summary": "Untested module (183 LOC, 0 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:14:11+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/index.ts::untested_module"
+      ]
+    },
+    "test_coverage::src/middleware/authenticate.ts": {
+      "original_id": "test_coverage::src/middleware/authenticate.ts",
+      "original_detector": "test_coverage",
+      "original_file": "src/middleware/authenticate.ts",
+      "original_summary": "Untested module (89 LOC, 5 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:14:11+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/middleware/authenticate.ts::transitive_only"
+      ]
+    },
+    "test_coverage::src/middleware/rateLimiter.ts": {
+      "original_id": "test_coverage::src/middleware/rateLimiter.ts",
+      "original_detector": "test_coverage",
+      "original_file": "src/middleware/rateLimiter.ts",
+      "original_summary": "Untested module (38 LOC, 3 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:14:11+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/middleware/rateLimiter.ts::transitive_only"
+      ]
+    },
+    "test_coverage::src/routes/auth.ts": {
+      "original_id": "test_coverage::src/routes/auth.ts",
+      "original_detector": "test_coverage",
+      "original_file": "src/routes/auth.ts",
+      "original_summary": "Untested module (157 LOC, 1 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:14:11+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "test_coverage::src/routes/egress.ts": {
+      "original_id": "test_coverage::src/routes/egress.ts",
+      "original_detector": "test_coverage",
+      "original_file": "src/routes/egress.ts",
+      "original_summary": "Untested module (155 LOC, 1 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:14:11+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/routes/egress.ts::untested_module"
+      ]
+    },
+    "test_coverage::src/routes/meetings.ts": {
+      "original_id": "test_coverage::src/routes/meetings.ts",
+      "original_detector": "test_coverage",
+      "original_file": "src/routes/meetings.ts",
+      "original_summary": "Untested module (395 LOC, 1 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:14:11+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/routes/meetings.ts::untested_module"
+      ]
+    },
+    "test_coverage::src/routes/rooms.ts": {
+      "original_id": "test_coverage::src/routes/rooms.ts",
+      "original_detector": "test_coverage",
+      "original_file": "src/routes/rooms.ts",
+      "original_summary": "Untested module (744 LOC, 1 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:14:11+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/routes/rooms.ts::untested_module"
+      ]
+    },
+    "test_coverage::src/routes/token.ts": {
+      "original_id": "test_coverage::src/routes/token.ts",
+      "original_detector": "test_coverage",
+      "original_file": "src/routes/token.ts",
+      "original_summary": "Untested module (151 LOC, 1 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:14:11+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "test_coverage::src/routes/webhook.ts": {
+      "original_id": "test_coverage::src/routes/webhook.ts",
+      "original_detector": "test_coverage",
+      "original_file": "src/routes/webhook.ts",
+      "original_summary": "Untested module (223 LOC, 1 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:14:11+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/routes/webhook.ts::untested_module"
+      ]
+    },
+    "test_coverage::src/services/database.ts": {
+      "original_id": "test_coverage::src/services/database.ts",
+      "original_detector": "test_coverage",
+      "original_file": "src/services/database.ts",
+      "original_summary": "Untested module (348 LOC, 8 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:14:11+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "test_coverage::src/services/livekit.ts": {
+      "original_id": "test_coverage::src/services/livekit.ts",
+      "original_detector": "test_coverage",
+      "original_file": "src/services/livekit.ts",
+      "original_summary": "Untested module (452 LOC, 4 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:14:11+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "test_coverage::src/services/redis.ts": {
+      "original_id": "test_coverage::src/services/redis.ts",
+      "original_detector": "test_coverage",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "Untested module (368 LOC, 2 importers) \u2014 no test files found",
+      "status": "superseded",
+      "superseded_at": "2026-03-10T06:14:11+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "test_coverage::src/services/redis.ts::untested_module"
+      ]
+    },
+    "exports::src/services/database.ts::getChatMessagesCursor": {
+      "original_id": "exports::src/services/database.ts::getChatMessagesCursor",
+      "original_detector": "exports",
+      "original_file": "src/services/database.ts",
+      "original_summary": "Dead export: getChatMessagesCursor",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/database.ts::transaction"
+      ]
+    },
+    "exports::src/services/database.ts::getPoolStats": {
+      "original_id": "exports::src/services/database.ts::getPoolStats",
+      "original_detector": "exports",
+      "original_file": "src/services/database.ts",
+      "original_summary": "Dead export: getPoolStats",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/database.ts::transaction"
+      ]
+    },
+    "exports::src/services/database.ts::getRoomWithParticipants": {
+      "original_id": "exports::src/services/database.ts::getRoomWithParticipants",
+      "original_detector": "exports",
+      "original_file": "src/services/database.ts",
+      "original_summary": "Dead export: getRoomWithParticipants",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/database.ts::transaction"
+      ]
+    },
+    "exports::src/services/database.ts::getRoomsList": {
+      "original_id": "exports::src/services/database.ts::getRoomsList",
+      "original_detector": "exports",
+      "original_file": "src/services/database.ts",
+      "original_summary": "Dead export: getRoomsList",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/database.ts::transaction"
+      ]
+    },
+    "exports::src/services/database.ts::pool": {
+      "original_id": "exports::src/services/database.ts::pool",
+      "original_detector": "exports",
+      "original_file": "src/services/database.ts",
+      "original_summary": "Dead export: pool",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/database.ts::transaction"
+      ]
+    },
+    "exports::src/services/database.ts::preparedStatements": {
+      "original_id": "exports::src/services/database.ts::preparedStatements",
+      "original_detector": "exports",
+      "original_file": "src/services/database.ts",
+      "original_summary": "Dead export: preparedStatements",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/database.ts::transaction"
+      ]
+    },
+    "exports::src/services/database.ts::queryOnePrepared": {
+      "original_id": "exports::src/services/database.ts::queryOnePrepared",
+      "original_detector": "exports",
+      "original_file": "src/services/database.ts",
+      "original_summary": "Dead export: queryOnePrepared",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/database.ts::transaction"
+      ]
+    },
+    "exports::src/services/database.ts::queryPrepared": {
+      "original_id": "exports::src/services/database.ts::queryPrepared",
+      "original_detector": "exports",
+      "original_file": "src/services/database.ts",
+      "original_summary": "Dead export: queryPrepared",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/database.ts::transaction"
+      ]
+    },
+    "exports::src/services/redis.ts::addParticipants": {
+      "original_id": "exports::src/services/redis.ts::addParticipants",
+      "original_detector": "exports",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "Dead export: addParticipants",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/redis.ts::redisClient",
+        "exports::src/services/redis.ts::isConnected"
+      ]
+    },
+    "exports::src/services/redis.ts::cacheDel": {
+      "original_id": "exports::src/services/redis.ts::cacheDel",
+      "original_detector": "exports",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "Dead export: cacheDel",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/redis.ts::redisClient",
+        "exports::src/services/redis.ts::isConnected"
+      ]
+    },
+    "exports::src/services/redis.ts::cacheDelPattern": {
+      "original_id": "exports::src/services/redis.ts::cacheDelPattern",
+      "original_detector": "exports",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "Dead export: cacheDelPattern",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/redis.ts::redisClient",
+        "exports::src/services/redis.ts::isConnected"
+      ]
+    },
+    "exports::src/services/redis.ts::cacheExists": {
+      "original_id": "exports::src/services/redis.ts::cacheExists",
+      "original_detector": "exports",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "Dead export: cacheExists",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/redis.ts::redisClient",
+        "exports::src/services/redis.ts::isConnected"
+      ]
+    },
+    "exports::src/services/redis.ts::cacheGet": {
+      "original_id": "exports::src/services/redis.ts::cacheGet",
+      "original_detector": "exports",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "Dead export: cacheGet",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/redis.ts::redisClient",
+        "exports::src/services/redis.ts::isConnected"
+      ]
+    },
+    "exports::src/services/redis.ts::cacheGetMulti": {
+      "original_id": "exports::src/services/redis.ts::cacheGetMulti",
+      "original_detector": "exports",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "Dead export: cacheGetMulti",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/redis.ts::redisClient",
+        "exports::src/services/redis.ts::isConnected"
+      ]
+    },
+    "exports::src/services/redis.ts::cacheSet": {
+      "original_id": "exports::src/services/redis.ts::cacheSet",
+      "original_detector": "exports",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "Dead export: cacheSet",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/redis.ts::redisClient",
+        "exports::src/services/redis.ts::isConnected"
+      ]
+    },
+    "exports::src/services/redis.ts::cacheSetMulti": {
+      "original_id": "exports::src/services/redis.ts::cacheSetMulti",
+      "original_detector": "exports",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "Dead export: cacheSetMulti",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/redis.ts::redisClient",
+        "exports::src/services/redis.ts::isConnected"
+      ]
+    },
+    "exports::src/services/redis.ts::cacheTTL": {
+      "original_id": "exports::src/services/redis.ts::cacheTTL",
+      "original_detector": "exports",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "Dead export: cacheTTL",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/redis.ts::redisClient",
+        "exports::src/services/redis.ts::isConnected"
+      ]
+    },
+    "exports::src/services/redis.ts::delRoomState": {
+      "original_id": "exports::src/services/redis.ts::delRoomState",
+      "original_detector": "exports",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "Dead export: delRoomState",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/redis.ts::redisClient",
+        "exports::src/services/redis.ts::isConnected"
+      ]
+    },
+    "exports::src/services/redis.ts::getParticipantCount": {
+      "original_id": "exports::src/services/redis.ts::getParticipantCount",
+      "original_detector": "exports",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "Dead export: getParticipantCount",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/redis.ts::redisClient",
+        "exports::src/services/redis.ts::isConnected"
+      ]
+    },
+    "exports::src/services/redis.ts::getRedisInfo": {
+      "original_id": "exports::src/services/redis.ts::getRedisInfo",
+      "original_detector": "exports",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "Dead export: getRedisInfo",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/redis.ts::redisClient",
+        "exports::src/services/redis.ts::isConnected"
+      ]
+    },
+    "exports::src/services/redis.ts::getRoomState": {
+      "original_id": "exports::src/services/redis.ts::getRoomState",
+      "original_detector": "exports",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "Dead export: getRoomState",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/redis.ts::redisClient",
+        "exports::src/services/redis.ts::isConnected"
+      ]
+    },
+    "exports::src/services/redis.ts::pipeline": {
+      "original_id": "exports::src/services/redis.ts::pipeline",
+      "original_detector": "exports",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "Dead export: pipeline",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/redis.ts::redisClient",
+        "exports::src/services/redis.ts::isConnected"
+      ]
+    },
+    "exports::src/services/redis.ts::removeParticipants": {
+      "original_id": "exports::src/services/redis.ts::removeParticipants",
+      "original_detector": "exports",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "Dead export: removeParticipants",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/redis.ts::redisClient",
+        "exports::src/services/redis.ts::isConnected"
+      ]
+    },
+    "exports::src/services/redis.ts::setRoomState": {
+      "original_id": "exports::src/services/redis.ts::setRoomState",
+      "original_detector": "exports",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "Dead export: setRoomState",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "exports::src/services/redis.ts::redisClient",
+        "exports::src/services/redis.ts::isConnected"
+      ]
+    },
+    "logs::src/routes/token.ts::TOKEN": {
+      "original_id": "logs::src/routes/token.ts::TOKEN",
+      "original_detector": "logs",
+      "original_file": "src/routes/token.ts",
+      "original_summary": "2 tagged logs [TOKEN]",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::148": {
+      "original_id": "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::148",
+      "original_detector": "security",
+      "original_file": "src/routes/token.ts",
+      "original_summary": "Sensitive data may be logged",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::106",
+        "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::184"
+      ]
+    },
+    "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::43": {
+      "original_id": "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::43",
+      "original_detector": "security",
+      "original_file": "src/routes/token.ts",
+      "original_summary": "Sensitive data may be logged",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::106",
+        "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::184"
+      ]
+    },
+    "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::45": {
+      "original_id": "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::45",
+      "original_detector": "security",
+      "original_file": "src/routes/token.ts",
+      "original_summary": "Sensitive data may be logged",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::106",
+        "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::184"
+      ]
+    },
+    "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::75": {
+      "original_id": "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::75",
+      "original_detector": "security",
+      "original_file": "src/routes/token.ts",
+      "original_summary": "Sensitive data may be logged",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::106",
+        "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::184"
+      ]
+    },
+    "security::src/services/redis.ts::security::json_parse_unguarded::src/services/redis.ts::113": {
+      "original_id": "security::src/services/redis.ts::security::json_parse_unguarded::src/services/redis.ts::113",
+      "original_detector": "security",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "JSON.parse() without try/catch \u2014 may throw on malformed input",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "security::src/services/redis.ts::security::json_parse_unguarded::src/services/redis.ts::242": {
+      "original_id": "security::src/services/redis.ts::security::json_parse_unguarded::src/services/redis.ts::242",
+      "original_detector": "security",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "JSON.parse() without try/catch \u2014 may throw on malformed input",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "security::src/services/redis.ts::security::json_parse_unguarded::src/services/redis.ts::93": {
+      "original_id": "security::src/services/redis.ts::security::json_parse_unguarded::src/services/redis.ts::93",
+      "original_detector": "security",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "JSON.parse() without try/catch \u2014 may throw on malformed input",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "security::src/services/redis.ts::security::json_parse_unguarded::src/services/redis.ts::96": {
+      "original_id": "security::src/services/redis.ts::security::json_parse_unguarded::src/services/redis.ts::96",
+      "original_detector": "security",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "JSON.parse() without try/catch \u2014 may throw on malformed input",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "smells::src/routes/rooms.ts::magic_number": {
+      "original_id": "smells::src/routes/rooms.ts::magic_number",
+      "original_detector": "smells",
+      "original_file": "src/routes/rooms.ts",
+      "original_summary": "1x Magic numbers (>1000 in logic)",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "smells::src/routes/rooms.ts::console_error_no_throw",
+        "smells::src/routes/rooms.ts::swallowed_error",
+        "smells::src/routes/rooms.ts::debug_tag"
+      ]
+    },
+    "smells::src/routes/token.ts::debug_tag": {
+      "original_id": "smells::src/routes/token.ts::debug_tag",
+      "original_detector": "smells",
+      "original_file": "src/routes/token.ts",
+      "original_summary": "2x Vestigial debug tag in log/print",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "smells::src/routes/token.ts::console_error_no_throw",
+        "smells::src/routes/token.ts::non_null_assert"
+      ]
+    },
+    "test_coverage::src/services/redis.ts::untested_module": {
+      "original_id": "test_coverage::src/services/redis.ts::untested_module",
+      "original_detector": "test_coverage",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "Untested module (368 LOC, 2 importers)",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T07:36:09+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "exports::src/services/database.ts::transaction": {
+      "original_id": "exports::src/services/database.ts::transaction",
+      "original_detector": "exports",
+      "original_file": "src/services/database.ts",
+      "original_summary": "Dead export: transaction",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:14:34+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "exports::src/services/livekit.ts::isModeratorRole": {
+      "original_id": "exports::src/services/livekit.ts::isModeratorRole",
+      "original_detector": "exports",
+      "original_file": "src/services/livekit.ts",
+      "original_summary": "Dead export: isModeratorRole",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:14:34+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "exports::src/services/livekit.ts::muteParticipant": {
+      "original_id": "exports::src/services/livekit.ts::muteParticipant",
+      "original_detector": "exports",
+      "original_file": "src/services/livekit.ts",
+      "original_summary": "Dead export: muteParticipant",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:14:34+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "exports::src/services/livekit.ts::roomService": {
+      "original_id": "exports::src/services/livekit.ts::roomService",
+      "original_detector": "exports",
+      "original_file": "src/services/livekit.ts",
+      "original_summary": "Dead export: roomService",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:14:34+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "exports::src/services/livekit.ts::updateParticipantPermissions": {
+      "original_id": "exports::src/services/livekit.ts::updateParticipantPermissions",
+      "original_detector": "exports",
+      "original_file": "src/services/livekit.ts",
+      "original_summary": "Dead export: updateParticipantPermissions",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:14:34+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "exports::src/services/livekit.ts::verifyWebhook": {
+      "original_id": "exports::src/services/livekit.ts::verifyWebhook",
+      "original_detector": "exports",
+      "original_file": "src/services/livekit.ts",
+      "original_summary": "Dead export: verifyWebhook",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:14:34+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "exports::src/services/redis.ts::isConnected": {
+      "original_id": "exports::src/services/redis.ts::isConnected",
+      "original_detector": "exports",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "Dead export: isConnected",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:14:34+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "exports::src/services/redis.ts::redisClient": {
+      "original_id": "exports::src/services/redis.ts::redisClient",
+      "original_detector": "exports",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "Dead export: redisClient",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:14:34+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::13": {
+      "original_id": "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::13",
+      "original_detector": "security",
+      "original_file": "src/services/database.ts",
+      "original_summary": "TLS rejection disabled",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:14:34+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::36"
+      ]
+    },
+    "smells::src/services/database.ts::async_no_await": {
+      "original_id": "smells::src/services/database.ts::async_no_await",
+      "original_detector": "smells",
+      "original_file": "src/services/database.ts",
+      "original_summary": "1x Async functions without await",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:14:34+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "smells::src/services/database.ts::any_type"
+      ]
+    },
+    "unused::src/__tests__/routes/token.test.ts::jwt": {
+      "original_id": "unused::src/__tests__/routes/token.test.ts::jwt",
+      "original_detector": "unused",
+      "original_file": "src/__tests__/routes/token.test.ts",
+      "original_summary": "Unused imports: jwt",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:14:34+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "unused::src/middleware/authenticate.ts::res": {
+      "original_id": "unused::src/middleware/authenticate.ts::res",
+      "original_detector": "unused",
+      "original_file": "src/middleware/authenticate.ts",
+      "original_summary": "Unused imports: res",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:14:34+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "unused::src/services/database.ts::preparedStatements": {
+      "original_id": "unused::src/services/database.ts::preparedStatements",
+      "original_detector": "unused",
+      "original_file": "src/services/database.ts",
+      "original_summary": "Unused vars: preparedStatements",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:14:34+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "unused::src/services/database.ts::path"
+      ]
+    },
+    "unused::src/services/redis.ts::DEFAULT_COMMAND_TIMEOUT": {
+      "original_id": "unused::src/services/redis.ts::DEFAULT_COMMAND_TIMEOUT",
+      "original_detector": "unused",
+      "original_file": "src/services/redis.ts",
+      "original_summary": "Unused vars: DEFAULT_COMMAND_TIMEOUT",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:14:34+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::36": {
+      "original_id": "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::36",
+      "original_detector": "security",
+      "original_file": "src/services/database.ts",
+      "original_summary": "TLS rejection disabled",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:20:07+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::35"
+      ]
+    },
+    "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::35": {
+      "original_id": "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::35",
+      "original_detector": "security",
+      "original_file": "src/services/database.ts",
+      "original_summary": "TLS rejection disabled",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:36:02+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::38"
+      ]
+    },
+    "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::106": {
+      "original_id": "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::106",
+      "original_detector": "security",
+      "original_file": "src/routes/token.ts",
+      "original_summary": "Sensitive data may be logged",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:51:18+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::107",
+        "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::186"
+      ]
+    },
+    "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::184": {
+      "original_id": "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::184",
+      "original_detector": "security",
+      "original_file": "src/routes/token.ts",
+      "original_summary": "Sensitive data may be logged",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:51:18+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::107",
+        "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::186"
+      ]
+    },
+    "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::38": {
+      "original_id": "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::38",
+      "original_detector": "security",
+      "original_file": "src/services/database.ts",
+      "original_summary": "TLS rejection disabled",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:51:18+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::40"
+      ]
+    },
+    "unused::src/__tests__/services/redis.test.ts::cachedData": {
+      "original_id": "unused::src/__tests__/services/redis.test.ts::cachedData",
+      "original_detector": "unused",
+      "original_file": "src/__tests__/services/redis.test.ts",
+      "original_summary": "Unused vars: cachedData",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:58:01+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "unused::src/__tests__/services/redis.test.ts::createMockMulti"
+      ]
+    },
+    "unused::src/__tests__/services/redis.test.ts::client": {
+      "original_id": "unused::src/__tests__/services/redis.test.ts::client",
+      "original_detector": "unused",
+      "original_file": "src/__tests__/services/redis.test.ts",
+      "original_summary": "Unused vars: client",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:58:01+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "unused::src/__tests__/services/redis.test.ts::createMockMulti"
+      ]
+    },
+    "unused::src/__tests__/services/redis.test.ts::currentMockMulti": {
+      "original_id": "unused::src/__tests__/services/redis.test.ts::currentMockMulti",
+      "original_detector": "unused",
+      "original_file": "src/__tests__/services/redis.test.ts",
+      "original_summary": "Unused vars: currentMockMulti",
+      "status": "superseded",
+      "superseded_at": "2026-03-11T08:58:01+00:00",
+      "remapped_to": null,
+      "candidates": [
+        "unused::src/__tests__/services/redis.test.ts::createMockMulti"
+      ]
+    }
+  },
+  "promoted_ids": [],
+  "plan_start_scores": {
+    "strict": 13.1,
+    "overall": 15.2,
+    "objective": 60.8,
+    "verified": 60.8
+  },
+  "execution_log": [
+    {
+      "timestamp": "2026-03-10T04:53:13+00:00",
+      "action": "sync_unscored",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-03-10T04:53:13+00:00",
+      "action": "auto_cluster",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-03-10T04:53:13+00:00",
+      "action": "seed_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-03-10T04:57:06+00:00",
+      "action": "clear_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-03-10T04:58:05+00:00",
+      "action": "seed_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-03-10T04:59:16+00:00",
+      "action": "clear_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-03-10T06:14:11+00:00",
+      "action": "cluster_done",
+      "issue_ids": [],
+      "cluster_name": "auto/test_coverage",
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "reason": "all issues resolved by scan"
+      }
+    },
+    {
+      "timestamp": "2026-03-10T06:14:11+00:00",
+      "action": "reconcile",
+      "issue_ids": [
+        "smells::src/routes/meetings.ts::any_type",
+        "smells::src/routes/meetings.ts::as_any_cast",
+        "smells::src/routes/meetings.ts::non_null_assert",
+        "smells::src/routes/rooms.ts::any_type",
+        "smells::src/routes/rooms.ts::as_any_cast",
+        "smells::src/routes/rooms.ts::non_null_assert",
+        "test_coverage::src/config.ts",
+        "test_coverage::src/index.ts",
+        "test_coverage::src/middleware/authenticate.ts",
+        "test_coverage::src/middleware/rateLimiter.ts",
+        "test_coverage::src/routes/auth.ts",
+        "test_coverage::src/routes/egress.ts",
+        "test_coverage::src/routes/meetings.ts",
+        "test_coverage::src/routes/rooms.ts",
+        "test_coverage::src/routes/token.ts",
+        "test_coverage::src/routes/webhook.ts",
+        "test_coverage::src/services/database.ts",
+        "test_coverage::src/services/livekit.ts",
+        "test_coverage::src/services/redis.ts"
+      ],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "superseded_count": 19,
+        "pruned_count": 0,
+        "resurfaced_count": 0,
+        "clusters_completed_count": 1
+      }
+    },
+    {
+      "timestamp": "2026-03-10T06:14:11+00:00",
+      "action": "auto_cluster",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-03-10T06:14:11+00:00",
+      "action": "seed_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-03-11T07:36:09+00:00",
+      "action": "reconcile",
+      "issue_ids": [
+        "exports::src/services/database.ts::getChatMessagesCursor",
+        "exports::src/services/database.ts::getPoolStats",
+        "exports::src/services/database.ts::getRoomWithParticipants",
+        "exports::src/services/database.ts::getRoomsList",
+        "exports::src/services/database.ts::pool",
+        "exports::src/services/database.ts::preparedStatements",
+        "exports::src/services/database.ts::queryOnePrepared",
+        "exports::src/services/database.ts::queryPrepared",
+        "exports::src/services/redis.ts::addParticipants",
+        "exports::src/services/redis.ts::cacheDel",
+        "exports::src/services/redis.ts::cacheDelPattern",
+        "exports::src/services/redis.ts::cacheExists",
+        "exports::src/services/redis.ts::cacheGet",
+        "exports::src/services/redis.ts::cacheGetMulti",
+        "exports::src/services/redis.ts::cacheSet",
+        "exports::src/services/redis.ts::cacheSetMulti",
+        "exports::src/services/redis.ts::cacheTTL",
+        "exports::src/services/redis.ts::delRoomState",
+        "exports::src/services/redis.ts::getParticipantCount",
+        "exports::src/services/redis.ts::getRedisInfo",
+        "exports::src/services/redis.ts::getRoomState",
+        "exports::src/services/redis.ts::pipeline",
+        "exports::src/services/redis.ts::removeParticipants",
+        "exports::src/services/redis.ts::setRoomState",
+        "logs::src/routes/token.ts::TOKEN",
+        "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::148",
+        "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::43",
+        "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::45",
+        "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::75",
+        "security::src/services/redis.ts::security::json_parse_unguarded::src/services/redis.ts::113",
+        "security::src/services/redis.ts::security::json_parse_unguarded::src/services/redis.ts::242",
+        "security::src/services/redis.ts::security::json_parse_unguarded::src/services/redis.ts::93",
+        "security::src/services/redis.ts::security::json_parse_unguarded::src/services/redis.ts::96",
+        "smells::src/routes/rooms.ts::magic_number",
+        "smells::src/routes/token.ts::debug_tag",
+        "test_coverage::src/services/redis.ts::untested_module"
+      ],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "superseded_count": 36,
+        "pruned_count": 0,
+        "resurfaced_count": 0,
+        "clusters_completed_count": 0
+      }
+    },
+    {
+      "timestamp": "2026-03-11T07:36:09+00:00",
+      "action": "auto_cluster",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-03-11T07:36:09+00:00",
+      "action": "clear_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-03-11T08:14:34+00:00",
+      "action": "cluster_done",
+      "issue_ids": [],
+      "cluster_name": "auto/unused",
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "reason": "all issues resolved by scan"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T08:14:34+00:00",
+      "action": "cluster_done",
+      "issue_ids": [],
+      "cluster_name": "auto/exports",
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "reason": "all issues resolved by scan"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T08:14:34+00:00",
+      "action": "reconcile",
+      "issue_ids": [
+        "exports::src/services/database.ts::transaction",
+        "exports::src/services/livekit.ts::isModeratorRole",
+        "exports::src/services/livekit.ts::muteParticipant",
+        "exports::src/services/livekit.ts::roomService",
+        "exports::src/services/livekit.ts::updateParticipantPermissions",
+        "exports::src/services/livekit.ts::verifyWebhook",
+        "exports::src/services/redis.ts::isConnected",
+        "exports::src/services/redis.ts::redisClient",
+        "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::13",
+        "smells::src/services/database.ts::async_no_await",
+        "unused::src/__tests__/routes/token.test.ts::jwt",
+        "unused::src/middleware/authenticate.ts::res",
+        "unused::src/services/database.ts::preparedStatements",
+        "unused::src/services/redis.ts::DEFAULT_COMMAND_TIMEOUT"
+      ],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "superseded_count": 14,
+        "pruned_count": 0,
+        "resurfaced_count": 0,
+        "clusters_completed_count": 2
+      }
+    },
+    {
+      "timestamp": "2026-03-11T08:14:34+00:00",
+      "action": "auto_cluster",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-03-11T08:14:34+00:00",
+      "action": "seed_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-03-11T08:20:07+00:00",
+      "action": "reconcile",
+      "issue_ids": [
+        "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::36"
+      ],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "superseded_count": 1,
+        "pruned_count": 0,
+        "resurfaced_count": 0,
+        "clusters_completed_count": 0
+      }
+    },
+    {
+      "timestamp": "2026-03-11T08:20:07+00:00",
+      "action": "auto_cluster",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-03-11T08:20:07+00:00",
+      "action": "clear_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-03-11T08:36:02+00:00",
+      "action": "reconcile",
+      "issue_ids": [
+        "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::35"
+      ],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "superseded_count": 1,
+        "pruned_count": 0,
+        "resurfaced_count": 0,
+        "clusters_completed_count": 0
+      }
+    },
+    {
+      "timestamp": "2026-03-11T08:36:02+00:00",
+      "action": "auto_cluster",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-03-11T08:36:02+00:00",
+      "action": "seed_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-03-11T08:37:02+00:00",
+      "action": "auto_cluster",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-03-11T08:37:02+00:00",
+      "action": "clear_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-03-11T08:51:18+00:00",
+      "action": "reconcile",
+      "issue_ids": [
+        "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::106",
+        "security::src/routes/token.ts::security::log_sensitive::src/routes/token.ts::184",
+        "security::src/services/database.ts::security::weak_crypto_tls::src/services/database.ts::38"
+      ],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "superseded_count": 3,
+        "pruned_count": 0,
+        "resurfaced_count": 0,
+        "clusters_completed_count": 0
+      }
+    },
+    {
+      "timestamp": "2026-03-11T08:51:18+00:00",
+      "action": "auto_cluster",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-03-11T08:51:18+00:00",
+      "action": "seed_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-03-11T08:54:10+00:00",
+      "action": "clear_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-03-11T08:58:01+00:00",
+      "action": "cluster_done",
+      "issue_ids": [],
+      "cluster_name": "auto/unused",
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "reason": "all issues resolved by scan"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T08:58:01+00:00",
+      "action": "reconcile",
+      "issue_ids": [
+        "unused::src/__tests__/services/redis.test.ts::cachedData",
+        "unused::src/__tests__/services/redis.test.ts::client",
+        "unused::src/__tests__/services/redis.test.ts::currentMockMulti"
+      ],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "superseded_count": 3,
+        "pruned_count": 0,
+        "resurfaced_count": 0,
+        "clusters_completed_count": 1
+      }
+    },
+    {
+      "timestamp": "2026-03-11T08:58:01+00:00",
+      "action": "auto_cluster",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-03-11T08:58:01+00:00",
+      "action": "seed_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-03-11T09:02:40+00:00",
+      "action": "auto_cluster",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-03-11T09:02:40+00:00",
+      "action": "clear_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-03-26T14:23:09+00:00",
+      "action": "sync_subjective",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-03-26T14:23:09+00:00",
+      "action": "auto_cluster",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-03-26T14:23:09+00:00",
+      "action": "sync_lifecycle_phase",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "phase": "review_initial"
+      }
+    },
+    {
+      "timestamp": "2026-03-26T14:23:09+00:00",
+      "action": "seed_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    }
+  ],
+  "epic_triage_meta": {},
+  "commit_log": [],
+  "uncommitted_issues": [],
+  "commit_tracking_branch": null,
+  "scan_count_at_plan_start": 13,
+  "refresh_state": {
+    "_subjective_migration_pruned": true,
+    "lifecycle_phase": "plan"
+  }
+}

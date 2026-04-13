@@ -1,0 +1,510 @@
+/**
+ * External API Routes for Third-Party Integrations (Tuition Notebook)
+ *
+ * These routes are for Tuition Notebook and other external apps.
+ * All routes require API key authentication.
+ */
+
+import { Router, Request, Response } from 'express';
+import { RoomServiceClient, AccessToken } from 'livekit-server-sdk';
+import { z } from 'zod';
+import { query, queryOne } from '../services/database.js';
+import { config } from '../config.js';
+import crypto from 'crypto';
+import rateLimit from 'express-rate-limit';
+
+const router = Router();
+
+// ==================== Validation Schemas ====================
+
+const createRoomSchema = z.object({
+  name: z.string().min(1).max(100).regex(/^[a-zA-Z0-9_-]+$/, 'Room name must contain only alphanumeric, hyphens, or underscores'),
+  title: z.string().max(200).optional(),
+  waitingRoomEnabled: z.boolean().optional().default(true),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+const tokenRequestSchema = z.object({
+  room: z.string().min(1).max(100),
+  identity: z.string().min(1).max(100),
+  name: z.string().max(100).optional(),
+  role: z.enum(['moderator', 'attendee', 'observer', 'presenter', 'teacher', 'student']).optional().default('attendee'),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+// ==================== Response Types ====================
+
+interface RoomResponse {
+  name: string;
+  title?: string;
+  url: string;
+  message?: string;
+}
+
+interface TokenResponse {
+  token: string;
+  livekit_url: string;
+  identity: string;
+  role: string;
+  join_url: string;
+}
+
+interface RoomInfoResponse {
+  name: string;
+  title?: string;
+  status: string;
+  participant_count: number;
+  created_at: Date;
+  waiting_room_enabled: boolean;
+}
+
+// Configuration
+const LIVEKIT_URL = process.env.LIVEKIT_URL || 'ws://localhost:7880';
+const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY || 'devkey';
+const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET || 'secret';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+// LiveKit room client
+const roomClient = new RoomServiceClient(LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
+
+// ==================== Rate Limiting ====================
+
+/**
+ * Strict rate limiter for external API - 100 requests per hour per API key
+ * This is separate from the general API limiter and applies specifically to external integrations
+ */
+const externalApiLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 100, // 100 requests per hour per API key
+  message: { error: 'External API rate limit exceeded. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request): string => {
+    // Use API key as the rate limit key (extract from Authorization header)
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      const apiKey = authHeader.substring(7);
+      // Hash the key to avoid storing raw keys in rate limit store
+      return crypto.createHash('sha256').update(apiKey).digest('hex').substring(0, 16);
+    }
+    // Fallback to IP if no API key (will be rejected by auth anyway)
+    return req.ip || 'unknown';
+  },
+});
+
+// ==================== Middleware ====================
+
+/**
+ * Verify API key for external requests
+ * Checks both environment variable and database
+ */
+async function verifyAPIKey(req: Request, res: Response, next: Function) {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing API key. Include Authorization: Bearer <api-key> header.' });
+  }
+  
+  const apiKey = authHeader.substring(7);
+  
+  // Check database for API keys
+  try {
+    const keyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
+    
+    const dbKey = await queryOne<{
+      id: string;
+      user_id: string;
+      is_active: boolean;
+      permissions: any;
+      expires_at: Date | null;
+    }>(
+      `SELECT id, user_id, is_active, permissions, expires_at 
+       FROM api_keys 
+       WHERE key_hash = $1`,
+      [keyHash]
+    );
+    
+    if (!dbKey) {
+      return res.status(403).json({ error: 'Invalid API key' });
+    }
+    
+    if (!dbKey.is_active) {
+      return res.status(403).json({ error: 'API key is disabled' });
+    }
+    
+    if (dbKey.expires_at && new Date(dbKey.expires_at) < new Date()) {
+      return res.status(403).json({ error: 'API key has expired' });
+    }
+    
+    // Update last_used_at
+    await query(
+      'UPDATE api_keys SET last_used_at = NOW() WHERE id = $1',
+      [dbKey.id]
+    );
+    
+    // Attach key info to request for later use
+    (req as any).apiKey = {
+      id: dbKey.id,
+      userId: dbKey.user_id,
+      permissions: dbKey.permissions,
+    };
+    
+    next();
+  } catch (error) {
+    console.error('[External API] Error verifying API key:', error);
+    return res.status(500).json({ error: 'Failed to verify API key' });
+  }
+}
+
+// Apply rate limiting and API key verification to all routes
+router.use(externalApiLimiter);
+router.use(verifyAPIKey);
+
+// ==================== Room Routes ====================
+
+interface CreateRoomRequest {
+  name: string;
+  title?: string;
+  waitingRoomEnabled?: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+interface TokenRequest {
+  room: string;
+  identity: string;
+  name?: string;
+  role?: 'moderator' | 'attendee' | 'observer' | 'presenter' | 'teacher' | 'student';
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Create a new room
+ * POST /external/rooms
+ */
+router.post('/rooms', async (req: Request, res: Response) => {
+  try {
+    const { 
+      name, 
+      title, 
+      waitingRoomEnabled = true, 
+      metadata = {} 
+    } = req.body as CreateRoomRequest;
+    
+    // Get user ID from API key
+    const userId = (req as any).apiKey?.userId;
+    
+    if (!name) {
+      return res.status(400).json({ error: 'Room name is required' });
+    }
+    
+    // Sanitize room name
+    const sanitized = name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+    
+    // Check if room already exists
+    const existing = await queryOne<{ id: string }>(
+      'SELECT id FROM rooms WHERE name = $1',
+      [sanitized]
+    );
+    
+    if (existing) {
+      return res.json({ 
+        name: sanitized, 
+        message: 'Room already exists',
+        url: `${FRONTEND_URL}/join/${sanitized}`
+      });
+    }
+    
+    // Create room in database with host_id from API key owner
+    await query(
+      `INSERT INTO rooms (name, title, host_id, status, waiting_room_enabled, settings) 
+       VALUES ($1, $2, $3, 'idle', $4, $5) 
+       RETURNING id`,
+      [sanitized, title || sanitized, userId, waitingRoomEnabled, JSON.stringify(metadata)]
+    );
+    
+    console.log(`[External API] Created room: ${sanitized}`);
+    
+    res.json({
+      name: sanitized,
+      title: title || sanitized,
+      url: `${FRONTEND_URL}/join/${sanitized}`
+    });
+    
+  } catch (error) {
+    console.error('[External API] Error creating room:', error);
+    res.status(500).json({ error: 'Failed to create room' });
+  }
+});
+
+/**
+ * Get room info
+ * GET /external/rooms/:name
+ */
+router.get('/rooms/:name', async (req: Request, res: Response) => {
+  try {
+    const { name } = req.params;
+    
+    const room = await queryOne<{ 
+      id: string;
+      name: string;
+      title: string;
+      status: string;
+      waiting_room_enabled: boolean;
+    }>(
+      'SELECT id, name, title, status, waiting_room_enabled FROM rooms WHERE name = $1',
+      [name]
+    );
+    
+    if (!room) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+    
+    res.json(room);
+    
+  } catch (error) {
+    console.error('[External API] Error getting room:', error);
+    res.status(500).json({ error: 'Failed to get room' });
+  }
+});
+
+/**
+ * Get access token for joining
+ * POST /external/token
+ */
+router.post('/token', async (req: Request, res: Response) => {
+  try {
+    const { 
+      room, 
+      identity, 
+      name, 
+      role = 'attendee',
+      metadata = {}
+    } = req.body as TokenRequest;
+    
+    if (!room || !identity) {
+      return res.status(400).json({ error: 'Room and identity are required' });
+    }
+    
+    // Verify room exists
+    const roomData = await queryOne<{
+      id: string
+    }>(
+      'SELECT id FROM rooms WHERE name = $1',
+      [room]
+    );
+    
+    if (!roomData) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+    
+    // Check API key permissions
+    const apiKeyInfo = (req as any).apiKey;
+    const permissions = apiKeyInfo?.permissions || {};
+    const tokenPerms = permissions.token || {};
+    const canGenerateToken = tokenPerms.generate === true;
+    
+    // Get the requested role
+    const requestedRole = role || 'attendee';
+    const isElevatedRole = requestedRole === 'moderator' || requestedRole === 'teacher';
+    
+    // If requesting elevated role (moderator/teacher), must have token.generate permission
+    if (isElevatedRole && !canGenerateToken) {
+      return res.status(403).json({ 
+        error: 'API key does not have permission to generate moderator/teacher tokens',
+        requires_permission: 'token.generate'
+      });
+    }
+    
+    // Cap permissions based on API key capabilities
+    // If no token.generate permission, default to attendee
+    const effectiveRole = canGenerateToken ? requestedRole : 'attendee';
+    
+    // Create access token
+    const token = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
+      identity,
+      name: name || identity,
+      metadata: JSON.stringify({
+        ...metadata,
+        role,
+        source: metadata.source || 'external'
+      })
+    });
+    
+    // Add grants based on effective role (capped by API key permissions)
+    const isModerator = effectiveRole === 'moderator' || effectiveRole === 'teacher';
+    const isPresenter = effectiveRole === 'presenter';
+    const isObserver = effectiveRole === 'observer';
+    
+    token.addGrant({
+      room,
+      roomJoin: true,
+      canPublish: isModerator || isPresenter,
+      canSubscribe: true,
+      canPublishData: true,
+      roomAdmin: isModerator,
+      hidden: isObserver
+    });
+    
+    const jwt = await token.toJwt();
+    
+    console.log(`[External API] Generated token for ${identity} in room ${room} (${effectiveRole}) via API key ${apiKeyInfo?.id}`);
+    
+    res.json({
+      token: jwt,
+      livekit_url: LIVEKIT_URL,
+      identity,
+      role,
+      join_url: `${FRONTEND_URL}/join/${room}?token=${jwt}`
+    });
+    
+  } catch (error) {
+    console.error('[External API] Error generating token:', error);
+    res.status(500).json({ error: 'Failed to generate token' });
+  }
+});
+
+/**
+ * End an active room
+ * POST /external/rooms/:name/end
+ */
+router.post('/rooms/:name/end', async (req: Request, res: Response) => {
+  try {
+    const { name } = req.params;
+    
+    // End room via LiveKit
+    try {
+      await roomClient.deleteRoom(name);
+    } catch (e) {
+      // Room might not exist in LiveKit
+      console.log(`[External API] Room ${name} not active in LiveKit`);
+    }
+    
+    // Update any active meetings
+    await query(
+      `UPDATE meetings SET ended_at = NOW(), status = 'ended' 
+       WHERE room_name = $1 AND ended_at IS NULL`,
+      [name]
+    );
+    
+    console.log(`[External API] Ended room: ${name}`);
+    
+    res.json({ success: true, message: 'Room ended' });
+    
+  } catch (error) {
+    console.error('[External API] Error ending room:', error);
+    res.status(500).json({ error: 'Failed to end room' });
+  }
+});
+
+/**
+ * Delete a room permanently
+ * DELETE /external/rooms/:name
+ */
+router.delete('/rooms/:name', async (req: Request, res: Response) => {
+  try {
+    const { name } = req.params;
+    
+    // Delete from database
+    await query('DELETE FROM rooms WHERE name = $1', [name]);
+    
+    console.log(`[External API] Deleted room: ${name}`);
+    
+    res.json({ success: true, message: 'Room deleted' });
+    
+  } catch (error) {
+    console.error('[External API] Error deleting room:', error);
+    res.status(500).json({ error: 'Failed to delete room' });
+  }
+});
+
+// ==================== Join Links ====================
+
+interface JoinLinksResponse {
+  room: string;
+  teacher_url: string;
+  student_url: string;
+  expires_at?: string;
+}
+
+/**
+ * Get join links for a room
+ * Returns teacher link (with embedded token) and student link (common for all)
+ * GET /external/rooms/:name/links
+ */
+router.get('/rooms/:name/links', async (req: Request, res: Response) => {
+  try {
+    const { name } = req.params;
+    const { teacher_identity, teacher_name, expires_in } = req.query;
+    
+    // Verify room exists
+    const room = await queryOne<{ id: string; name: string; title: string }>(
+      'SELECT id, name, title FROM rooms WHERE name = $1',
+      [name]
+    );
+    
+    if (!room) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+    
+    // Generate teacher token with moderator privileges
+    const teacherIdentity = (teacher_identity as string) || `teacher-${Date.now()}`;
+    const teacherName = (teacher_name as string) || 'Teacher';
+    
+    const teacherToken = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
+      identity: teacherIdentity,
+      name: teacherName,
+      metadata: JSON.stringify({
+        role: 'moderator',
+        source: 'external-link'
+      })
+    });
+    
+    // Moderator grants
+    teacherToken.addGrant({
+      room: name,
+      roomJoin: true,
+      canPublish: true,
+      canSubscribe: true,
+      canPublishData: true,
+      roomAdmin: true,
+    });
+    
+    // Set token expiry (default 24 hours)
+    const expiresIn = expires_in ? parseInt(expires_in as string) : 86400; // seconds
+    teacherToken.ttl = expiresIn;
+    
+    const teacherJwt = await teacherToken.toJwt();
+    const expiresAt = new Date(Date.now() + expiresIn * 1000);
+    
+    const response: JoinLinksResponse = {
+      room: name,
+      teacher_url: `${FRONTEND_URL}/join/${name}?t=${teacherJwt}`,
+      student_url: `${FRONTEND_URL}/join/${name}`,
+      expires_at: expiresAt.toISOString(),
+    };
+    
+    console.log(`[External API] Generated join links for room: ${name}`);
+    
+    res.json(response);
+    
+  } catch (error) {
+    console.error('[External API] Error generating join links:', error);
+    res.status(500).json({ error: 'Failed to generate join links' });
+  }
+});
+
+// ==================== Health Check ====================
+
+/**
+ * Health check endpoint (no auth required)
+ */
+router.get('/health', (req: Request, res: Response) => {
+  res.json({ 
+    status: 'ok', 
+    service: 'meet-conference-external-api',
+    livekit: LIVEKIT_URL,
+    timestamp: new Date().toISOString()
+  });
+});
+
+export default router;

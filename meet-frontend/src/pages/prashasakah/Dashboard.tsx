@@ -1,0 +1,376 @@
+import { useState, useEffect, useCallback } from 'react';
+import { useAuthStore } from '../../store/authStore';
+import { prashasakahApi, AdminStats, BandwidthStats, PeakUsersStats } from '../../services/prashasakahApi';
+import { StatCard, StatCardSkeleton } from '../../components/prashasakah/StatCard';
+import { DateRangeFilter } from '../../components/prashasakah/DateRangeFilter';
+import { BandwidthChart } from '../../components/prashasakah/BandwidthChart';
+import { PeakUsersChart } from '../../components/prashasakah/PeakUsersChart';
+
+/**
+ * Dashboard - Admin Dashboard Page
+ * 
+ * Displays key metrics, charts, and quick stats.
+ */
+
+interface DateRange {
+  from: Date;
+  to: Date;
+}
+
+// Icons
+const UsersIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 016-6h6a6 6 0 016 6v1m-6-13a4 4 0 110-8 4 4 0 010 8z" />
+  </svg>
+);
+
+const ActiveUsersIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+const GuestUsersIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+  </svg>
+);
+
+const OngoingMeetingsIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+  </svg>
+);
+
+const TotalMeetingsIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+  </svg>
+);
+
+const PeakUsersIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+  </svg>
+);
+
+const RefreshIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+  </svg>
+);
+
+export function Dashboard() {
+  const { user } = useAuthStore();
+  
+  // State for date range
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+    to: new Date(),
+  });
+
+  // State for stats data
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [bandwidthData, setBandwidthData] = useState<BandwidthStats | null>(null);
+  const [peakUsersData, setPeakUsersData] = useState<PeakUsersStats | null>(null);
+
+  // Loading states
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [bandwidthLoading, setBandwidthLoading] = useState(true);
+  const [peakUsersLoading, setPeakUsersLoading] = useState(true);
+
+  // Error states
+  const [statsError, setStatsError] = useState<string | null>(null);
+  const [bandwidthError, setBandwidthError] = useState<string | null>(null);
+  const [peakUsersError, setPeakUsersError] = useState<string | null>(null);
+
+  // Auto-refresh interval
+  const [autoRefresh, setAutoRefresh] = useState(false);
+
+  // Fetch stats data
+  const fetchStats = useCallback(async () => {
+    setStatsLoading(true);
+    setStatsError(null);
+    
+    try {
+      const params = {
+        from: dateRange.from.toISOString(),
+        to: dateRange.to.toISOString(),
+      };
+      const response = await prashasakahApi.getStatsDetailed(params);
+      // Backend returns stats directly in response.data
+      setStats(response?.data || null);
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+      setStatsError('Failed to load statistics. Please try again.');
+    } finally {
+      setStatsLoading(false);
+    }
+  }, [dateRange]);
+
+  // Fetch bandwidth data
+  const fetchBandwidth = useCallback(async () => {
+    setBandwidthLoading(true);
+    setBandwidthError(null);
+    
+    try {
+      const days = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24));
+      const response = await prashasakahApi.getBandwidthStats(days);
+      setBandwidthData(response.data);
+    } catch (error) {
+      console.error('Failed to fetch bandwidth:', error);
+      setBandwidthError('Failed to load bandwidth data.');
+    } finally {
+      setBandwidthLoading(false);
+    }
+  }, [dateRange]);
+
+  // Fetch peak users data
+  const fetchPeakUsers = useCallback(async () => {
+    setPeakUsersLoading(true);
+    setPeakUsersError(null);
+    
+    try {
+      const days = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24));
+      const response = await prashasakahApi.getPeakUsersStats(days);
+      setPeakUsersData(response.data);
+    } catch (error) {
+      console.error('Failed to fetch peak users:', error);
+      setPeakUsersError('Failed to load peak users data.');
+    } finally {
+      setPeakUsersLoading(false);
+    }
+  }, [dateRange]);
+
+  // Fetch all data
+  const fetchAllData = useCallback(() => {
+    fetchStats();
+    fetchBandwidth();
+    fetchPeakUsers();
+  }, [fetchStats, fetchBandwidth, fetchPeakUsers]);
+
+  // Initial fetch and when date range changes
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
+
+  // Auto-refresh every 30 seconds if enabled
+  useEffect(() => {
+    if (!autoRefresh) return;
+    
+    const interval = setInterval(fetchAllData, 30000);
+    return () => clearInterval(interval);
+  }, [autoRefresh, fetchAllData]);
+
+  // Format number with commas
+  const formatNumber = (num: number): string => {
+    return num.toLocaleString();
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header with Date Filter */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-500 mt-1">
+            Welcome back, {user?.name || 'Admin'}! Here's an overview of your conference platform.
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          {/* Auto-refresh toggle */}
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoRefresh}
+              onChange={(e) => setAutoRefresh(e.target.checked)}
+              className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+            />
+            Auto-refresh
+          </label>
+          
+          {/* Refresh button */}
+          <button
+            onClick={fetchAllData}
+            disabled={statsLoading}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <RefreshIcon />
+            Refresh
+          </button>
+          
+          {/* Date range filter */}
+          <DateRangeFilter
+            value={dateRange}
+            onChange={setDateRange}
+          />
+        </div>
+      </div>
+
+      {/* Error Banner */}
+      {(statsError || bandwidthError || peakUsersError) && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-red-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <h4 className="text-sm font-medium text-red-800">Error Loading Data</h4>
+              <p className="text-sm text-red-600 mt-1">
+                {statsError || bandwidthError || peakUsersError}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        {statsLoading ? (
+          <>
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+          </>
+        ) : stats ? (
+          <>
+            <StatCard
+              title="Total Users"
+              value={formatNumber(stats.users?.total || 0)}
+              color="blue"
+              icon={<UsersIcon />}
+              subtitle="All registered users"
+            />
+            <StatCard
+              title="Active Users"
+              value={formatNumber(stats.users?.active || 0)}
+              color="green"
+              icon={<ActiveUsersIcon />}
+              subtitle="Last 24 hours"
+            />
+            <StatCard
+              title="Guest Users"
+              value={formatNumber(stats.users?.guests || 0)}
+              color="yellow"
+              icon={<GuestUsersIcon />}
+              subtitle="In meetings now"
+            />
+            <StatCard
+              title="Ongoing Meetings"
+              value={formatNumber(stats.meetings?.ongoing || 0)}
+              color="purple"
+              icon={<OngoingMeetingsIcon />}
+              subtitle="In progress now"
+            />
+            <StatCard
+              title="Total Meetings"
+              value={formatNumber(stats.meetings?.total || 0)}
+              color="blue"
+              icon={<TotalMeetingsIcon />}
+              subtitle="All time"
+            />
+            <StatCard
+              title="Peak Concurrent"
+              value={formatNumber(stats.peakConcurrentUsers || 0)}
+              color="red"
+              icon={<PeakUsersIcon />}
+              subtitle="Max simultaneous"
+            />
+          </>
+        ) : null}
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Bandwidth Chart */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">Bandwidth Usage</h3>
+            {bandwidthLoading && (
+              <span className="text-xs text-gray-400 animate-pulse">Loading...</span>
+            )}
+          </div>
+          {bandwidthError ? (
+            <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg border border-gray-200">
+              <p className="text-gray-500">{bandwidthError}</p>
+            </div>
+          ) : (
+            <BandwidthChart
+              data={bandwidthData?.data}
+              loading={bandwidthLoading}
+              height={256}
+            />
+          )}
+        </div>
+
+        {/* Peak Users Chart */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">Peak Users Over Time</h3>
+            {peakUsersLoading && (
+              <span className="text-xs text-gray-400 animate-pulse">Loading...</span>
+            )}
+          </div>
+          {peakUsersError ? (
+            <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg border border-gray-200">
+              <p className="text-gray-500">{peakUsersError}</p>
+            </div>
+          ) : (
+            <PeakUsersChart
+              data={peakUsersData?.data}
+              loading={peakUsersLoading}
+              height={256}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Quick Stats */}
+      {!statsLoading && stats && (
+        <div className="bg-gradient-to-r from-brand-600 to-brand-800 rounded-lg shadow p-6 text-white">
+          <h3 className="text-lg font-semibold mb-4">Quick Stats</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-brand-200 text-sm">Active Rate</p>
+              <p className="text-2xl font-bold">
+                {stats.users?.total > 0 
+                  ? Math.round((stats.users?.active / stats.users?.total) * 100) 
+                  : 0}%
+              </p>
+            </div>
+            <div>
+              <p className="text-brand-200 text-sm">Meetings per User</p>
+              <p className="text-2xl font-bold">
+                {stats.users?.total > 0 
+                  ? (stats.meetings?.total / stats.users?.total).toFixed(1) 
+                  : '0.0'}
+              </p>
+            </div>
+            <div>
+              <p className="text-brand-200 text-sm">Avg per Meeting</p>
+              <p className="text-2xl font-bold">
+                {stats.meetings?.total > 0 
+                  ? Math.round(stats.peakConcurrentUsers / stats.meetings?.total) 
+                  : 0}
+              </p>
+            </div>
+            <div>
+              <p className="text-brand-200 text-sm">Guest Ratio</p>
+              <p className="text-2xl font-bold">
+                {stats.users?.total > 0 
+                  ? Math.round((stats.users?.guests / stats.users?.total) * 100) 
+                  : 0}%
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default Dashboard;

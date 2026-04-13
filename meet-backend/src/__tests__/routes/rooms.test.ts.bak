@@ -1,0 +1,419 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import request from 'supertest';
+import express from 'express';
+import { roomsRouter } from '../../routes/rooms.js';
+
+// Mock dependencies
+vi.mock('../../middleware/authenticate.js', () => ({
+  authenticate: vi.fn((req, _res, next) => {
+    req.user = { id: 'test-user-id', email: 'test@example.com', name: 'Test User' };
+    next();
+  }),
+}));
+
+vi.mock('../../services/database.js', () => ({
+  query: vi.fn(),
+  queryOne: vi.fn(),
+}));
+
+vi.mock('../../services/livekit.js', () => ({
+  createRoom: vi.fn().mockResolvedValue({ name: 'test-room', sid: 'room-sid' }),
+  listRooms: vi.fn().mockResolvedValue([]),
+  getRoomInfo: vi.fn().mockResolvedValue({ name: 'test-room', numParticipants: 0 }),
+  deleteRoom: vi.fn().mockResolvedValue(undefined),
+  listParticipants: vi.fn().mockResolvedValue([]),
+  removeParticipant: vi.fn().mockResolvedValue(undefined),
+  admitFromLobby: vi.fn().mockResolvedValue(undefined),
+  participantCanModerate: vi.fn().mockResolvedValue(false),
+  isModeratorParticipant: vi.fn().mockResolvedValue(false),
+  muteAllAudioTracks: vi.fn().mockResolvedValue(undefined),
+  muteVideoTrack: vi.fn().mockResolvedValue(undefined),
+  disableScreenShareTrack: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../utils/validation.js', () => ({
+  sanitizeRoomName: vi.fn((name) => name),
+  sanitizeDescription: vi.fn((desc) => desc),
+  sanitizeChatMessage: vi.fn((msg) => msg),
+}));
+
+import { query, queryOne } from '../../services/database.js';
+import {
+  createRoom,
+  listRooms,
+  getRoomInfo,
+  deleteRoom,
+  listParticipants,
+  removeParticipant,
+  admitFromLobby,
+  participantCanModerate,
+  muteAllAudioTracks,
+  muteVideoTrack,
+  disableScreenShareTrack,
+} from '../../services/livekit.js';
+
+const mockQuery = query as ReturnType<typeof vi.fn>;
+const mockQueryOne = queryOne as ReturnType<typeof vi.fn>;
+const mockCreateRoom = createRoom as ReturnType<typeof vi.fn>;
+const mockListRooms = listRooms as ReturnType<typeof vi.fn>;
+const mockGetRoomInfo = getRoomInfo as ReturnType<typeof vi.fn>;
+const mockDeleteRoom = deleteRoom as ReturnType<typeof vi.fn>;
+const mockListParticipants = listParticipants as ReturnType<typeof vi.fn>;
+const mockRemoveParticipant = removeParticipant as ReturnType<typeof vi.fn>;
+const mockAdmitFromLobby = admitFromLobby as ReturnType<typeof vi.fn>;
+const mockParticipantCanModerate = participantCanModerate as ReturnType<typeof vi.fn>;
+const mockMuteAllAudioTracks = muteAllAudioTracks as ReturnType<typeof vi.fn>;
+const mockMuteVideoTrack = muteVideoTrack as ReturnType<typeof vi.fn>;
+const mockDisableScreenShareTrack = disableScreenShareTrack as ReturnType<typeof vi.fn>;
+
+const app = express();
+app.use(express.json());
+app.use('/rooms', roomsRouter);
+
+describe('Rooms Router', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
+  describe('POST /rooms', () => {
+    it('should create a room with default settings', async () => {
+      mockQueryOne.mockResolvedValueOnce(null); // No existing room
+      mockCreateRoom.mockResolvedValueOnce({ name: 'test-room', sid: 'room-sid' });
+      mockQuery.mockResolvedValueOnce([{
+        id: 'room-uuid',
+        name: 'test-room',
+        title: null,
+        description: null,
+        host_id: 'test-user-id',
+        max_participants: 50,
+        status: 'active',
+        created_at: new Date(),
+      }]);
+
+      const response = await request(app)
+        .post('/rooms')
+        .send({ name: 'test-room' });
+
+      expect(response.status).toBe(201);
+      expect(response.body).toHaveProperty('name', 'test-room');
+    });
+
+    it('should reject room name with invalid format', async () => {
+      const response = await request(app)
+        .post('/rooms')
+        .send({ name: 'Invalid Room Name!' });
+
+      expect(response.status).toBe(400);
+    });
+
+    it('should reject if room already exists', async () => {
+      mockQueryOne.mockResolvedValueOnce({ id: 'existing-room' });
+
+      const response = await request(app)
+        .post('/rooms')
+        .send({ name: 'existing-room' });
+
+      expect(response.status).toBe(409);
+    });
+
+    it('should create room with waiting room enabled', async () => {
+      mockQueryOne.mockResolvedValueOnce(null);
+      mockCreateRoom.mockResolvedValueOnce({ name: 'test-room', sid: 'room-sid' });
+      mockQuery.mockResolvedValueOnce([{
+        id: 'room-uuid',
+        name: 'test-room',
+        title: null,
+        description: null,
+        host_id: 'test-user-id',
+        max_participants: 50,
+        status: 'active',
+        created_at: new Date(),
+      }]);
+
+      const response = await request(app)
+        .post('/rooms')
+        .send({ name: 'test-room', waitingRoomEnabled: true });
+
+      expect(response.status).toBe(201);
+    });
+
+    it('should create room with custom max participants', async () => {
+      mockQueryOne.mockResolvedValueOnce(null);
+      mockCreateRoom.mockResolvedValueOnce({ name: 'test-room', sid: 'room-sid' });
+      mockQuery.mockResolvedValueOnce([{
+        id: 'room-uuid',
+        name: 'test-room',
+        title: null,
+        description: null,
+        host_id: 'test-user-id',
+        max_participants: 20,
+        status: 'active',
+        created_at: new Date(),
+      }]);
+
+      const response = await request(app)
+        .post('/rooms')
+        .send({ name: 'test-room', maxParticipants: 20 });
+
+      expect(response.status).toBe(201);
+    });
+  });
+
+  describe('GET /rooms', () => {
+    it('should list all rooms', async () => {
+      mockQuery.mockResolvedValueOnce([{
+        id: 'room-1',
+        name: 'room-1',
+        title: 'Test Room',
+        description: null,
+        host_id: 'user-1',
+        max_participants: 50,
+        status: 'active',
+        created_at: new Date(),
+      }]);
+      mockListRooms.mockResolvedValueOnce([]);
+
+      const response = await request(app).get('/rooms');
+
+      expect(response.status).toBe(200);
+      expect(Array.isArray(response.body.rooms)).toBe(true);
+    });
+
+    it('should include active participant counts', async () => {
+      mockQuery.mockResolvedValueOnce([{
+        id: 'room-1',
+        name: 'room-1',
+        title: 'Test Room',
+        description: null,
+        host_id: 'user-1',
+        max_participants: 50,
+        status: 'active',
+        created_at: new Date(),
+      }]);
+      mockListRooms.mockResolvedValueOnce([{ name: 'room-1', numParticipants: 3 }]);
+
+      const response = await request(app).get('/rooms');
+
+      expect(response.status).toBe(200);
+    });
+  });
+
+  describe('GET /rooms/:roomName', () => {
+    it('should get room details', async () => {
+      mockQueryOne.mockResolvedValueOnce({
+        id: 'room-1',
+        name: 'test-room',
+        title: 'Test Room',
+        description: 'A test room',
+        host_id: 'test-user-id',
+        max_participants: 50,
+        status: 'active',
+        created_at: new Date(),
+      });
+      mockGetRoomInfo.mockResolvedValueOnce({ name: 'test-room', numParticipants: 2 });
+      mockListParticipants.mockResolvedValueOnce([
+        { identity: 'user-1', name: 'User 1' },
+        { identity: 'user-2', name: 'User 2' },
+      ]);
+
+      const response = await request(app).get('/rooms/test-room');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('name', 'test-room');
+    });
+
+    it('should return 404 for non-existent room', async () => {
+      mockQueryOne.mockResolvedValueOnce(null);
+
+      const response = await request(app).get('/rooms/nonexistent');
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe('DELETE /rooms/:roomName', () => {
+    it('should delete room if user is host', async () => {
+      mockQueryOne.mockResolvedValueOnce({
+        id: 'room-1',
+        name: 'test-room',
+        host_id: 'test-user-id',
+      });
+      mockParticipantCanModerate.mockResolvedValueOnce(true);
+      mockDeleteRoom.mockResolvedValueOnce(undefined);
+      mockQuery.mockResolvedValueOnce([]);
+
+      const response = await request(app).delete('/rooms/test-room');
+
+      expect(response.status).toBe(200);
+    });
+
+    it('should return 404 for non-existent room', async () => {
+      mockQueryOne.mockResolvedValueOnce(null);
+
+      const response = await request(app).delete('/rooms/nonexistent');
+
+      expect(response.status).toBe(404);
+    });
+
+    it('should return 403 if user is not host', async () => {
+      mockQueryOne.mockResolvedValueOnce({
+        id: 'room-1',
+        name: 'test-room',
+        host_id: 'other-user-id',
+      });
+      mockParticipantCanModerate.mockResolvedValueOnce(false);
+
+      const response = await request(app).delete('/rooms/test-room');
+
+      expect(response.status).toBe(403);
+    });
+  });
+
+  describe('GET /rooms/:roomName/participants', () => {
+    it('should list participants in room', async () => {
+      mockQueryOne.mockResolvedValueOnce({
+        id: 'room-1',
+        name: 'test-room',
+      });
+      mockListParticipants.mockResolvedValueOnce([
+        { identity: 'user-1', name: 'User 1', state: 'active' },
+        { identity: 'user-2', name: 'User 2', state: 'active' },
+      ]);
+
+      const response = await request(app).get('/rooms/test-room/participants');
+
+      expect(response.status).toBe(200);
+      expect(response.body.participants).toHaveLength(2);
+    });
+
+    it('should return 404 for non-existent room', async () => {
+      mockQueryOne.mockResolvedValueOnce(null);
+
+      const response = await request(app).get('/rooms/nonexistent/participants');
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe('DELETE /rooms/:roomName/participants/:identity', () => {
+    it('should remove participant if user is moderator', async () => {
+      mockQueryOne.mockResolvedValueOnce({
+        id: 'room-1',
+        name: 'test-room',
+        host_id: 'test-user-id',
+      });
+      mockParticipantCanModerate.mockResolvedValueOnce(true);
+      mockRemoveParticipant.mockResolvedValueOnce(undefined);
+
+      const response = await request(app).delete('/rooms/test-room/participants/user-2');
+
+      expect(response.status).toBe(200);
+    });
+
+    it('should return 403 if user is not moderator', async () => {
+      mockQueryOne.mockResolvedValueOnce({
+        id: 'room-1',
+        name: 'test-room',
+        host_id: 'other-user-id',
+      });
+      mockParticipantCanModerate.mockResolvedValueOnce(false);
+
+      const response = await request(app).delete('/rooms/test-room/participants/user-2');
+
+      expect(response.status).toBe(403);
+    });
+  });
+
+  describe('POST /rooms/:roomName/lobby/:identity/admit', () => {
+    it('should admit participant from lobby if moderator', async () => {
+      mockQueryOne.mockResolvedValueOnce({
+        id: 'room-1',
+        name: 'test-room',
+        host_id: 'test-user-id',
+      });
+      mockParticipantCanModerate.mockResolvedValueOnce(true);
+      mockAdmitFromLobby.mockResolvedValueOnce(undefined);
+
+      const response = await request(app).post('/rooms/test-room/lobby/guest-1/admit');
+
+      expect(response.status).toBe(200);
+    });
+
+    it('should return 403 if user is not moderator', async () => {
+      mockQueryOne.mockResolvedValueOnce({
+        id: 'room-1',
+        name: 'test-room',
+        host_id: 'other-user-id',
+      });
+      mockParticipantCanModerate.mockResolvedValueOnce(false);
+
+      const response = await request(app).post('/rooms/test-room/lobby/guest-1/admit');
+
+      expect(response.status).toBe(403);
+    });
+  });
+
+  describe('POST /rooms/:roomName/mute-all', () => {
+    it('should mute all participants if moderator', async () => {
+      mockQueryOne.mockResolvedValueOnce({
+        id: 'room-1',
+        name: 'test-room',
+        host_id: 'test-user-id',
+      });
+      mockParticipantCanModerate.mockResolvedValueOnce(true);
+      mockMuteAllAudioTracks.mockResolvedValueOnce(undefined);
+
+      const response = await request(app)
+        .post('/rooms/test-room/mute-all')
+        .send({ enabled: true });
+
+      expect(response.status).toBe(200);
+    });
+
+    it('should return 403 if user is not moderator', async () => {
+      mockQueryOne.mockResolvedValueOnce({
+        id: 'room-1',
+        name: 'test-room',
+        host_id: 'other-user-id',
+      });
+      mockParticipantCanModerate.mockResolvedValueOnce(false);
+
+      const response = await request(app)
+        .post('/rooms/test-room/mute-all')
+        .send({ enabled: true });
+
+      expect(response.status).toBe(403);
+    });
+  });
+
+  describe('PATCH /rooms/:roomName/settings', () => {
+    it('should update room settings if host', async () => {
+      mockQueryOne.mockResolvedValueOnce({
+        id: 'room-1',
+        name: 'test-room',
+        host_id: 'test-user-id',
+      });
+      mockQuery.mockResolvedValueOnce([]);
+
+      const response = await request(app)
+        .patch('/rooms/test-room/settings')
+        .send({ waitingRoomEnabled: false });
+
+      expect(response.status).toBe(200);
+    });
+
+    it('should return 404 for non-existent room', async () => {
+      mockQueryOne.mockResolvedValueOnce(null);
+
+      const response = await request(app)
+        .patch('/rooms/nonexistent/settings')
+        .send({ waitingRoomEnabled: false });
+
+      expect(response.status).toBe(404);
+    });
+  });
+});

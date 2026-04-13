@@ -1,0 +1,171 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+// Create mock pool instance first
+const mockPoolInstance = {
+  query: vi.fn(),
+  connect: vi.fn(),
+  end: vi.fn(),
+  on: vi.fn(),
+};
+
+// Mock pg Pool
+vi.mock('pg', () => ({
+  Pool: vi.fn().mockImplementation(() => mockPoolInstance),
+}));
+
+// Mock config
+vi.mock('../../config.js', () => ({
+  config: {
+    database: {
+      url: 'postgresql://test:test@localhost:5432/testdb',
+    },
+    nodeEnv: 'test',
+  },
+}));
+
+// Import after mocking
+import { query, queryOne, transaction, closePool } from '../../services/database.js';
+
+const mockQuery = mockPoolInstance.query as ReturnType<typeof vi.fn>;
+const mockConnect = mockPoolInstance.connect as ReturnType<typeof vi.fn>;
+const mockEnd = mockPoolInstance.end as ReturnType<typeof vi.fn>;
+
+describe('Database Service', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
+  describe('query', () => {
+    it('should execute query and return rows', async () => {
+      const mockRows = [{ id: 1, name: 'test' }, { id: 2, name: 'test2' }];
+      mockQuery.mockResolvedValueOnce({ rows: mockRows });
+
+      const result = await query('SELECT * FROM test');
+
+      expect(result).toEqual(mockRows);
+    });
+
+    it('should execute query with parameters', async () => {
+      const mockRows = [{ id: 1, name: 'test' }];
+      mockQuery.mockResolvedValueOnce({ rows: mockRows });
+
+      const result = await query('SELECT * FROM test WHERE id = $1', [1]);
+
+      expect(mockQuery).toHaveBeenCalledWith('SELECT * FROM test WHERE id = $1', [1]);
+      expect(result).toEqual(mockRows);
+    });
+
+    it('should return empty array for no results', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] });
+
+      const result = await query('SELECT * FROM test WHERE id = $1', [999]);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should propagate database errors', async () => {
+      const dbError = new Error('Connection refused');
+      mockQuery.mockRejectedValueOnce(dbError);
+
+      await expect(query('SELECT * FROM test')).rejects.toThrow('Connection refused');
+    });
+  });
+
+  describe('queryOne', () => {
+    it('should return single row', async () => {
+      const mockRow = { id: 1, name: 'test' };
+      mockQuery.mockResolvedValueOnce({ rows: [mockRow] });
+
+      const result = await queryOne('SELECT * FROM test WHERE id = $1', [1]);
+
+      expect(result).toEqual(mockRow);
+    });
+
+    it('should return null for no results', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] });
+
+      const result = await queryOne('SELECT * FROM test WHERE id = $1', [999]);
+
+      expect(result).toBeNull();
+    });
+
+    it('should return only first row if multiple results', async () => {
+      const mockRows = [{ id: 1, name: 'first' }, { id: 2, name: 'second' }];
+      mockQuery.mockResolvedValueOnce({ rows: mockRows });
+
+      const result = await queryOne('SELECT * FROM test');
+
+      expect(result).toEqual({ id: 1, name: 'first' });
+    });
+  });
+
+  describe('transaction', () => {
+    it('should execute callback in transaction', async () => {
+      const mockClient = {
+        query: vi.fn(),
+        release: vi.fn(),
+      };
+      mockConnect.mockResolvedValueOnce(mockClient);
+      mockClient.query.mockResolvedValue({ rows: [] });
+
+      const result = await transaction(async (client) => {
+        await client.query('INSERT INTO test VALUES ($1)', ['value']);
+        return 'success';
+      });
+
+      expect(result).toBe('success');
+      expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+      expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+      expect(mockClient.release).toHaveBeenCalled();
+    });
+
+    it('should rollback on error', async () => {
+      const mockClient = {
+        query: vi.fn(),
+        release: vi.fn(),
+      };
+      mockConnect.mockResolvedValueOnce(mockClient);
+      mockClient.query.mockResolvedValue({ rows: [] });
+
+      await expect(transaction(async (client) => {
+        await client.query('INSERT INTO test VALUES ($1)', ['value']);
+        throw new Error('Rollback test');
+      })).rejects.toThrow('Rollback test');
+
+      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+      expect(mockClient.release).toHaveBeenCalled();
+    });
+
+    it('should release client even if rollback fails', async () => {
+      const mockClient = {
+        query: vi.fn(),
+        release: vi.fn(),
+      };
+      mockConnect.mockResolvedValueOnce(mockClient);
+      mockClient.query.mockImplementation((sql: string) => {
+        if (sql === 'ROLLBACK') throw new Error('Rollback failed');
+        return Promise.resolve({ rows: [] });
+      });
+
+      await expect(transaction(async () => {
+        throw new Error('Transaction error');
+      })).rejects.toThrow();
+
+      expect(mockClient.release).toHaveBeenCalled();
+    });
+  });
+
+  describe('closePool', () => {
+    it('should close the pool', async () => {
+      mockEnd.mockResolvedValueOnce(undefined);
+
+      await closePool();
+
+      expect(mockEnd).toHaveBeenCalled();
+    });
+  });
+});
