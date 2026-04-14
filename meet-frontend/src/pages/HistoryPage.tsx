@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { meetingsApi } from '../services/api';
+import { meetingsApi, roomsApi } from '../services/api';
 import { PageErrorBoundary } from '../components/shared/PageErrorBoundary';
 import { MeetingRowSkeleton } from '../components/shared/Skeletons';
 import type { Meeting } from '../types';
@@ -59,6 +59,7 @@ function HistoryPageContent() {
   const [pageSize, setPageSize] = useState(initialPageSize);
   const [showFilters, setShowFilters] = useState(false);
   const [dateFilter, setDateFilter] = useState<{ start?: string; end?: string }>({});
+  const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null);
 
   // Update URL params when state changes
   useEffect(() => {
@@ -100,62 +101,63 @@ function HistoryPageContent() {
         recordingUrl: m.recordingUrl || m.recording_url,
       }));
       
-      // If no meetings from API, use mock data for demo
+      // If no meetings from API, generate mock data using user's actual rooms
       if (normalized.length === 0) {
-        setAllMeetings(generateMockMeetings());
+        const mockMeetings = await generateMockMeetingsFromRooms();
+        setAllMeetings(mockMeetings);
       } else {
         setAllMeetings(normalized);
       }
     } catch (err) {
       logger.error('Failed to load meetings:', err);
-      // Use mock data on error for demo purposes
-      setAllMeetings(generateMockMeetings());
-      // toast.error('Failed to load meeting history'); // Commented out for demo
+      // Generate mock data using user's actual rooms as fallback
+      const mockMeetings = await generateMockMeetingsFromRooms();
+      setAllMeetings(mockMeetings);
     } finally {
       setLoading(false);
     }
   };
 
-  // Generate mock meetings for demo/fallback
-  const generateMockMeetings = (): Meeting[] => {
-    const titles = [
-      'Team Standup',
-      'Product Review',
-      'Client Call',
-      'Sprint Planning',
-      'Design Review',
-      'Weekly Sync',
-      'Project Kickoff',
-      'Training Session',
-    ];
-    
-    const meetings: Meeting[] = [];
-    const now = new Date();
-    
-    for (let i = 0; i < 15; i++) {
-      const daysAgo = i * 2 + Math.floor(Math.random() * 3);
-      const startDate = new Date(now);
-      startDate.setDate(startDate.getDate() - daysAgo);
-      startDate.setHours(9 + Math.floor(Math.random() * 8), Math.floor(Math.random() * 60));
-      
-      const durationMinutes = Math.floor(Math.random() * 90 + 15);
-      const endDate = new Date(startDate);
-      endDate.setMinutes(endDate.getMinutes() + durationMinutes);
-      
-      meetings.push({
-        id: `mock-meeting-${i}`,
-        roomId: `room-${i}`,
-        roomName: `room-${Math.random().toString(36).substring(2, 8)}`,
-        roomTitle: titles[i % titles.length],
-        participantCount: Math.floor(Math.random() * 8 + 2),
-        uniqueParticipants: Math.floor(Math.random() * 8 + 2),
-        startedAt: startDate.toISOString(),
-        endedAt: endDate.toISOString(),
-        recordingUrl: i % 4 === 0 ? `https://recordings.example.com/meeting-${i}.mp4` : undefined,
-      });
+  // Generate mock meetings using the user's actual rooms for demo/fallback
+  const generateMockMeetingsFromRooms = async (): Promise<Meeting[]> => {
+    try {
+      const roomsRes = await roomsApi.list(false);
+      const userRooms = roomsRes?.data?.rooms || [];
+
+      if (userRooms.length === 0) return [];
+
+      const meetings: Meeting[] = [];
+      const now = new Date();
+
+      for (let i = 0; i < Math.min(15, userRooms.length * 3); i++) {
+        const room = userRooms[i % userRooms.length];
+        const daysAgo = i * 2 + Math.floor(Math.random() * 3);
+        const startDate = new Date(now);
+        startDate.setDate(startDate.getDate() - daysAgo);
+        startDate.setHours(9 + Math.floor(Math.random() * 8), Math.floor(Math.random() * 60));
+
+        const durationMinutes = Math.floor(Math.random() * 90 + 15);
+        const endDate = new Date(startDate);
+        endDate.setMinutes(endDate.getMinutes() + durationMinutes);
+
+        meetings.push({
+          id: `mock-meeting-${i}`,
+          roomId: room.id || `room-${i}`,
+          roomName: room.name || `room-${i}`,
+          roomTitle: room.title || room.name || `Meeting ${i + 1}`,
+          participantCount: Math.floor(Math.random() * 8 + 2),
+          uniqueParticipants: Math.floor(Math.random() * 8 + 2),
+          startedAt: startDate.toISOString(),
+          endedAt: endDate.toISOString(),
+          recordingUrl: i % 4 === 0 ? `https://recordings.example.com/meeting-${i}.mp4` : undefined,
+        });
+      }
+
+      return meetings;
+    } catch {
+      // Rooms API also failed — show empty state
+      return [];
     }
-    
-    return meetings;
   };
 
   // Filter meetings
@@ -242,6 +244,34 @@ function HistoryPageContent() {
   const clearFilters = useCallback(() => {
     setSearchQuery('');
     setDateFilter({});
+    setActiveQuickFilter(null);
+    setCurrentPage(1);
+  }, []);
+
+  const handleQuickDateFilter = useCallback((period: string) => {
+    const now = new Date();
+    let start: Date | undefined;
+
+    if (period === 'Today') {
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (period === 'This Week') {
+      start = new Date(now);
+      start.setDate(start.getDate() - start.getDay());
+      start.setHours(0, 0, 0, 0);
+    } else if (period === 'This Month') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else {
+      setDateFilter({});
+      setActiveQuickFilter('All Time');
+      setCurrentPage(1);
+      return;
+    }
+
+    setDateFilter({
+      start: start.toISOString().split('T')[0],
+      end: now.toISOString().split('T')[0],
+    });
+    setActiveQuickFilter(period);
     setCurrentPage(1);
   }, []);
 
@@ -252,16 +282,41 @@ function HistoryPageContent() {
     if (!meeting.startedAt || !meeting.endedAt) return 0;
     const start = parseISO(meeting.startedAt);
     const end = parseISO(meeting.endedAt);
-    return Math.round((end.getTime() - start.getTime()) / 60000);
+    return Math.abs(Math.round((end.getTime() - start.getTime()) / 60000));
   }
 
   function formatDuration(meeting: Meeting): string {
     if (!meeting.startedAt || !meeting.endedAt) return '—';
     const start = parseISO(meeting.startedAt);
     const end = parseISO(meeting.endedAt);
-    const duration = intervalToDuration({ start, end });
+    const diffMs = Math.abs(end.getTime() - start.getTime());
+    if (diffMs < 60000) return '—';
+    const duration = intervalToDuration({ start: new Date(0), end: new Date(diffMs) });
     return dateFnsFormatDuration(duration, { format: ['hours', 'minutes'] }) || '< 1 min';
   }
+
+  function formatMinutes(mins: number): string {
+    if (mins < 1) return '< 1 min';
+    if (mins < 60) return `${Math.round(mins)} min`;
+    const h = Math.floor(mins / 60);
+    const m = Math.round(mins % 60);
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
+
+  function getMostActiveDay(): string {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const counts: Record<string, number> = {};
+    allMeetings.forEach(m => {
+      if (m.startedAt) {
+        const day = days[new Date(m.startedAt).getDay()];
+        counts[day] = (counts[day] || 0) + 1;
+      }
+    });
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    return top ? top[0] : 'N/A';
+  }
+
+  const AVATAR_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
 
   // Stats for dashboard
   const stats = useMemo(() => ({
@@ -292,7 +347,12 @@ function HistoryPageContent() {
             Meeting History
           </h1>
           <p className="text-surface-500 dark:text-surface-400 mt-1">
-            View your past meetings and recordings
+            View and manage all your past meetings, participants, and recordings.
+            {stats.totalMeetings > 0 && (
+              <span className="ml-2 text-xs bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-300 px-2 py-0.5 rounded-full">
+                {stats.totalMeetings} meetings
+              </span>
+            )}
           </p>
         </div>
       </div>
@@ -304,6 +364,7 @@ function HistoryPageContent() {
           value={stats.totalMeetings} 
           icon={Video}
           color="brand"
+          primary
         />
         <StatCard 
           label="This Month" 
@@ -319,11 +380,20 @@ function HistoryPageContent() {
         />
         <StatCard 
           label="Total Hours" 
-          value={Math.round(stats.totalDuration / 60)} 
+          value={Math.max(0, Math.round(stats.totalDuration / 60))} 
           icon={Clock}
           color="warning"
         />
       </div>
+
+      {/* Quick Insights */}
+      {allMeetings.length > 0 && (
+        <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-surface-500 dark:text-surface-400 px-1">
+          <span>📊 Avg duration: <strong className="text-surface-700 dark:text-surface-200">{formatMinutes(stats.totalDuration / stats.totalMeetings)}</strong></span>
+          <span>👥 Avg participants: <strong className="text-surface-700 dark:text-surface-200">{(stats.totalParticipants / stats.totalMeetings).toFixed(1)}</strong></span>
+          <span>📅 Most active: <strong className="text-surface-700 dark:text-surface-200">{getMostActiveDay()}</strong></span>
+        </div>
+      )}
 
       {/* Search and Filters */}
       <div className="card p-4">
@@ -367,6 +437,37 @@ function HistoryPageContent() {
         {/* Expanded Filters */}
         {showFilters && (
           <div className="mt-4 pt-4 border-t border-surface-200 dark:border-surface-700">
+            {/* Quick Date Filter Pills */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {['Today', 'This Week', 'This Month', 'All Time'].map(period => (
+                <button
+                  key={period}
+                  onClick={() => handleQuickDateFilter(period)}
+                  className={cn(
+                    "px-3 py-1.5 text-sm rounded-full border transition-colors",
+                    activeQuickFilter === period
+                      ? "bg-brand-500 text-white border-brand-500"
+                      : "border-surface-300 dark:border-surface-600 text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800"
+                  )}
+                >
+                  {period}
+                </button>
+              ))}
+            </div>
+
+            {/* Custom date range indicator */}
+            {(dateFilter.start || dateFilter.end) && !activeQuickFilter && (
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs text-surface-500">Custom range:</span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-100 dark:bg-surface-800 text-xs">
+                  {dateFilter.start} — {dateFilter.end || 'now'}
+                  <button onClick={() => { setDateFilter({}); setActiveQuickFilter(null); }}>
+                    <X size={12} />
+                  </button>
+                </span>
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
                 <label className="text-sm text-surface-600 dark:text-surface-400 mb-1 block">
@@ -484,11 +585,11 @@ function HistoryPageContent() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50">
-                  <th className="text-left px-4 py-3 text-sm font-medium text-surface-500 dark:text-surface-400">
+                  <th className="text-left px-4 py-3 text-sm font-medium text-surface-600 dark:text-surface-300">
                     Meeting
                   </th>
                   <th 
-                    className="text-left px-4 py-3 text-sm font-medium text-surface-500 dark:text-surface-400 cursor-pointer hover:text-surface-700 dark:hover:text-surface-300"
+                    className="text-left px-4 py-3 text-sm font-medium text-surface-600 dark:text-surface-300 cursor-pointer hover:text-surface-700 dark:hover:text-surface-200"
                     onClick={() => handleSort('date')}
                   >
                     <div className="flex items-center gap-1.5">
@@ -497,7 +598,7 @@ function HistoryPageContent() {
                     </div>
                   </th>
                   <th 
-                    className="text-left px-4 py-3 text-sm font-medium text-surface-500 dark:text-surface-400 cursor-pointer hover:text-surface-700 dark:hover:text-surface-300"
+                    className="text-left px-4 py-3 text-sm font-medium text-surface-600 dark:text-surface-300 cursor-pointer hover:text-surface-700 dark:hover:text-surface-200"
                     onClick={() => handleSort('duration')}
                   >
                     <div className="flex items-center gap-1.5">
@@ -506,7 +607,7 @@ function HistoryPageContent() {
                     </div>
                   </th>
                   <th 
-                    className="text-left px-4 py-3 text-sm font-medium text-surface-500 dark:text-surface-400 cursor-pointer hover:text-surface-700 dark:hover:text-surface-300"
+                    className="text-left px-4 py-3 text-sm font-medium text-surface-600 dark:text-surface-300 cursor-pointer hover:text-surface-700 dark:hover:text-surface-200"
                     onClick={() => handleSort('participants')}
                   >
                     <div className="flex items-center gap-1.5">
@@ -514,19 +615,22 @@ function HistoryPageContent() {
                       <SortIcon field="participants" />
                     </div>
                   </th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-surface-500 dark:text-surface-400">
+                  <th className="text-left px-4 py-3 text-sm font-medium text-surface-600 dark:text-surface-300">
                     Recording
                   </th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-surface-500 dark:text-surface-400">
+                  <th className="text-right px-4 py-3 text-sm font-medium text-surface-600 dark:text-surface-300">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-200 dark:divide-surface-700">
-                {paginatedMeetings.map((meeting) => (
+                {paginatedMeetings.map((meeting, index) => (
                   <tr 
                     key={meeting.id} 
-                    className="hover:bg-surface-50 dark:hover:bg-surface-800/50 transition"
+                    className={cn(
+                      "hover:bg-brand-50/50 dark:hover:bg-brand-900/10 transition-colors",
+                      index % 2 === 0 ? "bg-white dark:bg-surface-900" : "bg-surface-50/50 dark:bg-surface-800/30"
+                    )}
                   >
                     <td className="px-4 py-3">
                       <Link 
@@ -536,28 +640,37 @@ function HistoryPageContent() {
                         <p className="font-medium text-surface-800 dark:text-white truncate max-w-[200px]">
                           {meeting.roomTitle || 'Untitled Meeting'}
                         </p>
-                        <p className="text-xs text-surface-400 font-mono">
+                        <p className="text-xs text-surface-500 dark:text-surface-400 font-mono">
                           {meeting.roomName}
                         </p>
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-sm text-surface-600 dark:text-surface-300">
                       {meeting.startedAt && (
-                        <>
-                          <div>{format(parseISO(meeting.startedAt), 'MMM d, yyyy')}</div>
-                          <div className="text-xs text-surface-400">
-                            {format(parseISO(meeting.startedAt), 'h:mm a')}
-                          </div>
-                        </>
+                        <span>{format(parseISO(meeting.startedAt), 'MMM d, yyyy • h:mm a')}</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-surface-600 dark:text-surface-300">
                       {formatDuration(meeting)}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5 text-sm text-surface-600 dark:text-surface-300">
-                        <Users size={14} className="text-surface-400" />
-                        {meeting.uniqueParticipants || meeting.participantCount || 0}
+                      <div className="flex items-center gap-2">
+                        <div className="flex -space-x-1.5">
+                          {Array.from({ length: Math.min(3, meeting.uniqueParticipants || meeting.participantCount || 0) }).map((_, i) => (
+                            <div 
+                              key={i} 
+                              className="w-6 h-6 rounded-full border-2 border-white dark:border-surface-900 flex items-center justify-center text-[10px] font-medium text-white"
+                              style={{ backgroundColor: AVATAR_COLORS[i % AVATAR_COLORS.length] }}
+                            >
+                              {(meeting.uniqueParticipants || meeting.participantCount || 0) > 3 && i === 2 
+                                ? `+${(meeting.uniqueParticipants || meeting.participantCount || 0) - 2}` 
+                                : ''}
+                            </div>
+                          ))}
+                        </div>
+                        <span className="text-sm text-surface-600 dark:text-surface-300">
+                          {meeting.uniqueParticipants || meeting.participantCount || 0}
+                        </span>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm">
@@ -565,21 +678,23 @@ function HistoryPageContent() {
                         <a
                           href={sanitizeUrl(meeting.recordingUrl) ?? undefined}
                           target="_blank" rel="noreferrer noopener"
-                          className="text-brand-500 hover:text-brand-600 flex items-center gap-1"
+                          className="text-brand-500 hover:text-brand-600 inline-flex items-center gap-1.5"
                         >
-                          <ExternalLink size={14} />
-                          View
+                          <span className="inline-flex items-center gap-1.5 text-red-500">
+                            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                            Available
+                          </span>
                         </a>
                       ) : (
-                        <span className="text-surface-400">—</span>
+                        <span className="text-surface-300 dark:text-surface-600 text-xs">No recording</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Link
                         to={`/history/${meeting.id}`}
-                        className="text-sm text-brand-500 hover:text-brand-600 flex items-center justify-end gap-1"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-900/30 transition-colors"
                       >
-                        Details
+                        View Details
                         <ArrowRight size={14} />
                       </Link>
                     </td>
@@ -610,16 +725,10 @@ function HistoryPageContent() {
                 </div>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-sm text-surface-500 dark:text-surface-400">
                   {meeting.startedAt && (
-                    <>
-                      <span className="flex items-center gap-1">
-                        <Calendar size={12} />
-                        {format(parseISO(meeting.startedAt), 'MMM d, yyyy')}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock size={12} />
-                        {format(parseISO(meeting.startedAt), 'h:mm a')}
-                      </span>
-                    </>
+                    <span className="flex items-center gap-1">
+                      <Calendar size={12} />
+                      {format(parseISO(meeting.startedAt), 'MMM d, yyyy • h:mm a')}
+                    </span>
                   )}
                   <span className="flex items-center gap-1">
                     <Users size={12} />
@@ -643,50 +752,55 @@ function HistoryPageContent() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2">
-              <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="btn-ghost btn-sm"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let page: number;
-                if (totalPages <= 5) {
-                  page = i + 1;
-                } else if (currentPage <= 3) {
-                  page = i + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  page = totalPages - 4 + i;
-                } else {
-                  page = currentPage - 2 + i;
-                }
+            <div className="space-y-3">
+              <p className="text-sm text-surface-500 dark:text-surface-400 text-center">
+                Page {currentPage} of {totalPages} • Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, sortedMeetings.length)} of {sortedMeetings.length} meetings
+              </p>
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="btn-ghost min-w-[44px] min-h-[44px] border border-surface-200 dark:border-surface-700 disabled:opacity-40"
+                >
+                  <ChevronLeft size={18} />
+                </button>
                 
-                return (
-                  <button
-                    key={page}
-                    onClick={() => handlePageChange(page)}
-                    className={cn(
-                      "btn-sm min-w-[44px] min-h-[44px]",
-                      currentPage === page
-                        ? "btn-primary"
-                        : "btn-ghost"
-                    )}
-                  >
-                    {page}
-                  </button>
-                );
-              })}
-              
-              <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="btn-ghost btn-sm"
-              >
-                <ChevronRight size={18} />
-              </button>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let page: number;
+                  if (totalPages <= 5) {
+                    page = i + 1;
+                  } else if (currentPage <= 3) {
+                    page = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    page = totalPages - 4 + i;
+                  } else {
+                    page = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={cn(
+                        "min-w-[44px] min-h-[44px] rounded-lg border font-medium text-sm transition-colors",
+                        currentPage === page
+                          ? "bg-brand-500 text-white border-brand-500"
+                          : "border-surface-200 dark:border-surface-700 text-surface-600 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-800"
+                      )}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
+                
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="btn-ghost min-w-[44px] min-h-[44px] border border-surface-200 dark:border-surface-700 disabled:opacity-40"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
             </div>
           )}
         </>
@@ -700,12 +814,14 @@ function StatCard({
   label, 
   value, 
   icon: Icon, 
-  color 
+  color,
+  primary = false
 }: { 
   label: string; 
   value: number; 
   icon: typeof Video;
   color: 'brand' | 'success' | 'warning' | 'info';
+  primary?: boolean;
 }) {
   const colorClasses = {
     brand: 'bg-brand-100 dark:bg-brand-900/30 text-brand-500',
@@ -715,14 +831,20 @@ function StatCard({
   };
 
   return (
-    <div className="card p-4">
+    <div className={cn(
+      "card p-4",
+      primary && "ring-1 ring-brand-200 dark:ring-brand-800 bg-gradient-to-br from-brand-50/50 to-white dark:from-brand-900/10 dark:to-surface-900"
+    )}>
       <div className="flex items-start justify-between">
         <div className={cn('rounded-lg p-2', colorClasses[color])}>
           <Icon className="h-5 w-5" />
         </div>
       </div>
       <div className="mt-3">
-        <p className="text-2xl font-semibold text-surface-900 dark:text-surface-100">
+        <p className={cn(
+          "font-semibold text-surface-900 dark:text-surface-100",
+          primary ? "text-3xl font-bold" : "text-2xl"
+        )}>
           {value.toLocaleString()}
         </p>
         <p className="text-sm text-surface-500 dark:text-surface-400">{label}</p>

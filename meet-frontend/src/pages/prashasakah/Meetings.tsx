@@ -26,7 +26,8 @@ export default function Meetings() {
       const response = await prashasakahApi.getMeetings({
         limit: 20,
         offset: (page - 1) * 20,
-        roomId: search,
+        roomName: search,
+        status: status || undefined,
         fromDate: dateFrom,
         toDate: dateTo,
       });
@@ -44,7 +45,7 @@ export default function Meetings() {
         setLoading(false);
       }
     }
-  }, [page, search, dateFrom, dateTo]);
+  }, [page, search, status, dateFrom, dateTo]);
 
   useEffect(() => {
     cancelledRef.current = false;
@@ -74,11 +75,22 @@ export default function Meetings() {
 
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
-      active: 'bg-success-100 text-green-800',
-      ended: 'bg-surface-100 text-surface-700',
-      scheduled: 'bg-brand-100 text-brand-800',
+      ongoing: 'bg-green-100 text-green-800',
+      ended: 'bg-gray-100 text-gray-700',
+      scheduled: 'bg-blue-100 text-blue-800',
+      active: 'bg-green-100 text-green-800',
     };
-    return colors[status] || 'bg-surface-100 text-surface-700';
+    return colors[status] || 'bg-gray-100 text-gray-700';
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      ongoing: 'Active',
+      ended: 'Ended',
+      scheduled: 'Scheduled',
+      active: 'Active',
+    };
+    return labels[status] || status;
   };
 
   return (
@@ -86,13 +98,13 @@ export default function Meetings() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-surface-800">Meeting History</h1>
-          <p className="text-sm text-surface-500 mt-1">View and manage all meetings</p>
+          <h1 className="text-2xl font-bold text-surface-800 dark:text-white">Meeting History</h1>
+          <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">View and manage all meetings</p>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-surface-200 p-4">
+      <div className="bg-white dark:bg-surface-900 rounded-xl border border-surface-200 dark:border-surface-700 p-4">
         <div className="flex flex-col sm:flex-row flex-wrap items-center gap-3">
           <div className="flex-1 min-w-64 w-full sm:w-auto">
             <input
@@ -101,18 +113,17 @@ export default function Meetings() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="w-full px-3 py-2 border border-surface-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400"
+              className="w-full px-3 py-2 border border-surface-300 dark:border-surface-600 dark:bg-surface-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400"
             />
           </div>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className="px-3 py-2 border border-surface-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400"
+            className="px-3 py-2 border border-surface-300 dark:border-surface-600 dark:bg-surface-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             <option value="">All Status</option>
-            <option value="active">Active</option>
+            <option value="ongoing">Active</option>
             <option value="ended">Ended</option>
-            <option value="scheduled">Scheduled</option>
           </select>
           <DateRangeFilter onChange={handleDateChange} />
           <button
@@ -125,11 +136,11 @@ export default function Meetings() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
+      <div className="bg-white dark:bg-surface-900 rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-surface-500">Loading...</div>
+          <div className="p-8 text-center text-surface-500 dark:text-surface-400">Loading...</div>
         ) : !meetings || meetings.length === 0 ? (
-          <div className="p-8 text-center text-surface-500">No meetings found</div>
+          <div className="p-8 text-center text-surface-500 dark:text-surface-400">No meetings found</div>
         ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-surface-200">
@@ -172,7 +183,7 @@ export default function Meetings() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadge(meeting.status)}`}>
-                      {meeting.status}
+                      {getStatusLabel(meeting.status)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

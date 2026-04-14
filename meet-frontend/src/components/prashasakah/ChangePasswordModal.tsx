@@ -59,7 +59,7 @@ export default function ChangePasswordModal({ user, isOpen, onClose }: ChangePas
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div className="fixed inset-0 bg-black/50" onClick={handleClose} />
       <div className="flex min-h-full items-center justify-center p-4">
         <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6">
@@ -71,7 +71,7 @@ export default function ChangePasswordModal({ user, isOpen, onClose }: ChangePas
               </svg>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-surface-800">Change Password</h3>
+              <h3 id="modal-title" className="text-lg font-semibold text-surface-800">Change Password</h3>
               <p className="text-sm text-surface-500">
                 Set a new password for {user.name || user.email}
               </p>

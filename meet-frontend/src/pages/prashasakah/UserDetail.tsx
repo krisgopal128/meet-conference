@@ -398,10 +398,10 @@ export default function UserDetail() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="modal-title-delete">
           <div 
-            className="fixed inset-0 bg-black bg-opacity-50"
-            onClick={() => setActionLoading === null && setShowDeleteConfirm(false)}
+            className="fixed inset-0 bg-black/50"
+            onClick={() => !actionLoading && setShowDeleteConfirm(false)}
           />
           <div className="flex min-h-full items-center justify-center p-4">
             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
@@ -412,7 +412,7 @@ export default function UserDetail() {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-surface-800">Delete User</h3>
+                  <h3 id="modal-title-delete" className="text-lg font-semibold text-surface-800">Delete User</h3>
                   <p className="text-sm text-surface-500">This action cannot be undone.</p>
                 </div>
               </div>
@@ -445,10 +445,10 @@ export default function UserDetail() {
 
       {/* Reset Password Confirmation Modal */}
       {showResetConfirm && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="modal-title-reset">
           <div 
-            className="fixed inset-0 bg-black bg-opacity-50"
-            onClick={() => setActionLoading === null && setShowResetConfirm(false)}
+            className="fixed inset-0 bg-black/50"
+            onClick={() => !actionLoading && setShowResetConfirm(false)}
           />
           <div className="flex min-h-full items-center justify-center p-4">
             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
@@ -459,7 +459,7 @@ export default function UserDetail() {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-surface-800">Reset Password</h3>
+                  <h3 id="modal-title-reset" className="text-lg font-semibold text-surface-800">Reset Password</h3>
                   <p className="text-sm text-surface-500">Generate a password reset link</p>
                 </div>
               </div>

@@ -299,9 +299,9 @@ export default function Users() {
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && deleteUser && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="modal-title">
           <div 
-            className="fixed inset-0 bg-black bg-opacity-50"
+            className="fixed inset-0 bg-black/50"
             onClick={() => !isDeleting && setIsDeleteModalOpen(false)}
           />
           <div className="flex min-h-full items-center justify-center p-4">
@@ -313,7 +313,7 @@ export default function Users() {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-surface-800">Delete User</h3>
+                  <h3 id="modal-title" className="text-lg font-semibold text-surface-800">Delete User</h3>
                   <p className="text-sm text-surface-500">This action cannot be undone.</p>
                 </div>
               </div>

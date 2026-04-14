@@ -418,7 +418,9 @@ export const prashasakahApi = {
     limit?: number;
     offset?: number;
     roomId?: string;
+    roomName?: string;
     hostId?: string;
+    status?: string;
     fromDate?: string;
     toDate?: string;
   }): Promise<AxiosResponse<AdminMeetingsListResponse>> =>

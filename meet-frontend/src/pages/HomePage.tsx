@@ -133,7 +133,7 @@ function HomePageContent() {
         if (!m.startedAt || !m.endedAt) return sum;
         const start = parseISO(m.startedAt);
         const end = parseISO(m.endedAt);
-        return sum + Math.round((end.getTime() - start.getTime()) / 60000);
+        return sum + Math.abs(Math.round((end.getTime() - start.getTime()) / 60000));
       }, 0);
       
       const now = new Date();
@@ -145,10 +145,10 @@ function HomePageContent() {
       
       if (!mountedRef.current) return;
       setStats([
-        { label: 'Total Meetings', value: totalMeetings, icon: Video, color: 'brand' },
+        { label: 'Total Meetings', value: totalMeetings, icon: Video, color: 'brand', primary: true },
         { label: 'This Week', value: upcomingThisWeek, icon: Calendar, color: 'success' },
         { label: 'Total Participants', value: totalParticipants, icon: Users, color: 'info' },
-        { label: 'Total Hours', value: Math.round(totalMinutes / 60), icon: Clock, color: 'warning' },
+        { label: 'Total Hours', value: Math.max(0, Math.round(totalMinutes / 60)), icon: Clock, color: 'warning' },
       ]);
       setLoadingStats(false);
       setStatsLoaded(true);
@@ -244,9 +244,17 @@ function HomePageContent() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-bold text-surface-800 dark:text-white">
-            Welcome{user?.name ? `, ${user.name}` : ''}
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="font-display text-2xl font-bold text-surface-800 dark:text-white">
+              Welcome{user?.name ? `, ${user.name}` : ''}
+            </h1>
+            {upcomingMeetings.length > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400">
+                <Calendar size={12} />
+                {upcomingMeetings.length} today
+              </span>
+            )}
+          </div>
           <p className="text-surface-500 dark:text-surface-400 mt-1">
             Start or join a meeting
           </p>

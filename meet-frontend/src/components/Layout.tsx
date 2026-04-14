@@ -102,6 +102,7 @@ export default function Layout() {
             <Link
               key={path}
               to={path}
+              aria-current={isActive(path) ? 'page' : undefined}
               className={`
                 flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-150 min-h-[48px]
                 ${isActive(path)
@@ -160,6 +161,7 @@ export default function Layout() {
             <Link
               key={path}
               to={path}
+              aria-current={isActive(path) ? 'page' : undefined}
               className={`
                 flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-150 min-h-[48px]
                 ${isActive(path)
@@ -201,7 +203,7 @@ export default function Layout() {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 md:ml-60 overflow-auto pt-14 md:pt-0">
+      <main className="flex-1 md:ml-60 overflow-auto pt-14 md:pt-0 pb-16 md:pb-0">
         <div className="p-4 sm:p-6 lg:p-8">
           <Outlet />
         </div>
@@ -213,6 +215,7 @@ export default function Layout() {
           <Link
             key={path}
             to={path}
+            aria-current={isActive(path) ? 'page' : undefined}
             className={`
               flex flex-col items-center justify-center gap-1 px-4 py-2 min-w-[64px] min-h-[48px]
               ${isActive(path)

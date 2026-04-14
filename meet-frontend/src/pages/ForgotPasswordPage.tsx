@@ -116,7 +116,7 @@ export default function ForgotPasswordPage() {
 
         {/* Error message */}
         {error && (
-          <div className="mb-6 p-4 rounded-lg bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800">
+          <div role="alert" className="mb-6 p-4 rounded-lg bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800">
             <p className="text-sm text-danger-600 dark:text-danger-400 flex items-center gap-2">
               <AlertCircle size={18} aria-hidden="true" />
               {error}
@@ -180,6 +180,9 @@ export default function ForgotPasswordPage() {
               </>
             )}
           </button>
+          {!isFormValid && !loading && (
+            <p id="form-disabled-reason" className="sr-only">Please fill in all required fields correctly</p>
+          )}
           {!isFormValid && !loading && (
             <p id="form-disabled-reason" className="text-xs text-surface-400 text-center">
               Please enter a valid email address

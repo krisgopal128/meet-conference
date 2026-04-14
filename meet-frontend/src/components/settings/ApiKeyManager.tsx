@@ -178,15 +178,15 @@ export default function ApiKeyManager({ className = '' }: ApiKeyManagerProps) {
   }
 
   return (
-    <div className={`bg-white rounded-lg shadow ${className}`}>
+    <div className={`bg-white dark:bg-surface-800 rounded-lg border border-surface-200 dark:border-surface-700 ${className}`}>
       {/* Header */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-surface-200 dark:border-surface-700">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Key className="w-6 h-6 text-brand-600" />
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">API Keys</h3>
-              <p className="text-sm text-gray-500">
+              <h3 className="text-lg font-semibold text-surface-800 dark:text-white">API Keys</h3>
+              <p className="text-sm text-surface-500 dark:text-surface-400">
                 Generate API keys for external integrations (e.g., Tuition Notebook)
               </p>
             </div>
@@ -203,38 +203,40 @@ export default function ApiKeyManager({ className = '' }: ApiKeyManagerProps) {
 
       {/* Generated Key Modal */}
       {generatedKey && (
-        <div className="p-6 bg-green-50 border-b border-green-200">
+        <div className="p-6 bg-emerald-50 dark:bg-emerald-500/10 border-b border-emerald-200 dark:border-emerald-500/20">
           <div className="flex items-start gap-3">
-            <Check className="w-5 h-5 text-green-600 mt-0.5" />
+            <Check className="w-5 h-5 text-success-600 mt-0.5" />
             <div className="flex-1">
-              <h4 className="font-medium text-green-900 mb-2">
+              <h4 className="font-medium text-success-800 dark:text-success-300 mb-2">
                 API Key Created - Copy Now!
               </h4>
-              <p className="text-sm text-green-700 mb-3">
+              <p className="text-sm text-emerald-700 dark:text-emerald-300 mb-3">
                 This is the only time you'll see this key. Copy it now and store it securely.
               </p>
               <div className="flex items-center gap-2">
-                <code className="flex-1 px-3 py-2 bg-white rounded border border-green-200 font-mono text-sm overflow-x-auto">
+                <code className="flex-1 px-3 py-2 bg-white dark:bg-surface-900 rounded border border-emerald-200 dark:border-emerald-500/20 font-mono text-sm overflow-x-auto text-surface-800 dark:text-surface-200">
                   {showKey ? generatedKey.key : '••••••••••••••••••••••••••••••••'}
                 </code>
                 <button
                   onClick={() => setShowKey(!showKey)}
-                  className="p-2 text-gray-500 hover:text-gray-700"
+                  className="p-2 text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200"
                   title={showKey ? 'Hide' : 'Show'}
+                  aria-label={showKey ? 'Hide key' : 'Show key'}
                 >
                   {showKey ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
                 <button
                   onClick={handleCopyKey}
                   className={`p-2 rounded transition-colors ${
-                    copied ? 'text-green-600 bg-green-100' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                    copied ? 'text-success-600 bg-success-50 dark:bg-success-500/10' : 'text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 hover:bg-surface-100 dark:hover:bg-surface-700'
                   }`}
                   title="Copy"
+                  aria-label="Copy"
                 >
                   {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
                 </button>
               </div>
-              <p className="text-xs text-green-600 mt-2">
+              <p className="text-xs text-success-600 dark:text-success-400 mt-2">
                 Key prefix: {generatedKey.prefix}...
               </p>
             </div>
@@ -243,7 +245,7 @@ export default function ApiKeyManager({ className = '' }: ApiKeyManagerProps) {
                 setGeneratedKey(null);
                 setShowKey(false);
               }}
-              className="p-1 text-green-600 hover:text-green-800"
+              className="p-1 text-success-600 dark:text-success-400 hover:text-success-800 dark:hover:text-success-300"
             >
               <X className="w-5 h-5" />
             </button>

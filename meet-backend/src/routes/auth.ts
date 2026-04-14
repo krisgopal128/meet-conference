@@ -244,6 +244,19 @@ authRouter.post('/refresh', authenticate, async (req: AuthRequest, res: Response
       { expiresIn: TOKEN_EXPIRY_SHORT }
     );
 
+    // Blacklist old token
+    const oldToken = req.headers.authorization?.slice(7);
+    if (oldToken) {
+      try {
+        const decoded = jwt.decode(oldToken) as { exp?: number } | null;
+        const ttl = decoded?.exp ? Math.max(decoded.exp - Math.floor(Date.now() / 1000), 1) : 86400;
+        await blacklistToken(oldToken, ttl);
+      } catch (blacklistError) {
+        logger.error('Failed to blacklist old token on refresh:', blacklistError);
+        // Continue — new token is still valid
+      }
+    }
+
     res.json({
       user: {
         id: user.id,
@@ -310,13 +323,6 @@ authRouter.post('/forgot-password', authLimiter, async (req, res: Response) => {
     if (!user) {
       return res.json({ message: 'If an account with that email exists, a reset link has been sent.' });
     }
-    
-    // Generate reset token (expires in 1 hour)
-    const _resetToken = jwt.sign(
-      { userId: user.id, purpose: 'password-reset' },
-      config.jwt.secret,
-      { expiresIn: '1h' }
-    );
     
     // In production, send email with reset link
     // SECURITY: Never return the token in response, even in development

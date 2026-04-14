@@ -38,8 +38,9 @@ export function useTokenRefresh() {
       lastRefreshRef.current = now;
       logger.info('[TokenRefresh] Token refreshed successfully');
     } catch (error) {
-      logger.error('[TokenRefresh] Failed to refresh token:', error);
-      // Don't logout on refresh failure - let the next API call handle it
+      logger.warn('[TokenRefresh] Failed to refresh token:', error);
+      // Don't logout on refresh failure - the response interceptor will handle it
+      // by trying refresh again on 401 before giving up
     }
   }, [token, login]);
 
@@ -91,18 +92,37 @@ export function useTokenRefresh() {
 
   // Also refresh on window focus (user returns to tab)
   useEffect(() => {
+    let lastFocusTime = Date.now();
+    
     const handleFocus = () => {
       if (!token) return;
+      
+      // Only refresh if tab was hidden for more than 2 minutes
+      const timeSinceLastFocus = Date.now() - lastFocusTime;
+      if (timeSinceLastFocus < 2 * 60 * 1000) return;
       
       const secondsUntilExpiry = getSecondsUntilExpiry(token);
       if (secondsUntilExpiry !== null && secondsUntilExpiry <= REFRESH_BUFFER_SECONDS * 2) {
         // Token will expire soon, refresh it
         refreshToken();
       }
+      
+      lastFocusTime = Date.now();
+    };
+
+    // Also handle visibility change (more reliable than focus for tab switching)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        handleFocus();
+      }
     };
 
     window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [token, refreshToken]);
 }
 

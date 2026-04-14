@@ -14,6 +14,7 @@ export interface StatItem {
   changeLabel?: string;
   icon: typeof Video;
   color?: 'brand' | 'success' | 'warning' | 'error' | 'info';
+  primary?: boolean;
 }
 
 interface DashboardStatsProps {
@@ -75,20 +76,30 @@ function StatCard({ stat }: { stat: StatItem }) {
   const Icon = stat.icon;
 
   return (
-    <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 hover:shadow-sm transition">
+    <div className={cn(
+      "rounded-xl border bg-white dark:bg-surface-800 p-4 hover:shadow-sm transition",
+      stat.primary
+        ? "border-brand-200 dark:border-brand-800 shadow-sm ring-1 ring-brand-100 dark:ring-brand-900/50"
+        : "border-surface-200 dark:border-surface-700"
+    )}>
       <div className="flex items-start justify-between">
         <div className={cn('rounded-lg p-2', colors.bg)}>
-          <Icon className={cn('h-5 w-5', colors.icon)} />
+          <Icon className={cn(stat.primary ? 'h-6 w-6' : 'h-5 w-5', colors.icon)} />
         </div>
         {stat.change !== undefined && (
           <TrendIndicator change={stat.change} label={stat.changeLabel} />
         )}
       </div>
       <div className="mt-3">
-        <p className="text-2xl font-semibold text-surface-900 dark:text-surface-100">
+        <p className={cn(
+          "font-semibold text-surface-900 dark:text-surface-100",
+          stat.primary ? "text-3xl font-bold" : "text-2xl"
+        )}>
           {typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}
         </p>
-        <p className="text-sm text-surface-500 dark:text-surface-400">{stat.label}</p>
+        <p className={cn(
+          stat.primary ? "text-sm font-medium text-surface-600 dark:text-surface-300" : "text-sm text-surface-500 dark:text-surface-400"
+        )}>{stat.label}</p>
       </div>
     </div>
   );

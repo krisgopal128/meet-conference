@@ -66,7 +66,7 @@ export async function query<T = unknown>(
        const result = await pool.query(sql, params);
        return result.rows as T[];
      } catch (error) {
-       lastError = error;
+        lastError = error as Error;
        
        // Treat error as possibly a Postgres error with code/errno
        const pgError = error as { code?: string; errno?: string } | null;

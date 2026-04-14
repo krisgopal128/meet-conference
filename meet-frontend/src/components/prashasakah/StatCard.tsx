@@ -1,4 +1,10 @@
 import { cn } from '../../utils/cn';
+import { Skeleton } from '../shared/Skeletons';
+import {
+  TrendingUp,
+  TrendingDown,
+  Minus,
+} from 'lucide-react';
 
 interface StatCardProps {
   title: string;
@@ -6,34 +12,39 @@ interface StatCardProps {
   icon: React.ReactNode;
   subtitle?: string;
   trend?: { value: number; isPositive: boolean };
-  color?: 'blue' | 'green' | 'yellow' | 'red' | 'purple';
+  color?: 'brand' | 'success' | 'warning' | 'danger' | 'info';
   loading?: boolean;
 }
 
-const colorClasses = {
-  blue: 'bg-brand-500',
-  green: 'bg-success-500',
-  yellow: 'bg-warning-500',
-  red: 'bg-danger-500',
-  purple: 'bg-brand-500',
-};
-
-const trendColorClasses = {
-  positive: 'text-success-600',
-  negative: 'text-danger-600',
+const colorMap = {
+  brand: {
+    bg: 'bg-brand-100 dark:bg-brand-900/30',
+    icon: 'text-brand-500',
+  },
+  success: {
+    bg: 'bg-success-100 dark:bg-success-900/30',
+    icon: 'text-success-500',
+  },
+  warning: {
+    bg: 'bg-warning-100 dark:bg-warning-900/30',
+    icon: 'text-warning-500',
+  },
+  danger: {
+    bg: 'bg-danger-100 dark:bg-danger-900/30',
+    icon: 'text-danger-500',
+  },
+  info: {
+    bg: 'bg-info-100 dark:bg-info-900/30',
+    icon: 'text-info-500',
+  },
 };
 
 export function StatCardSkeleton() {
   return (
-    <div className="bg-white rounded-xl border border-surface-200 p-5">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <div className="h-4 w-24 bg-surface-200 rounded animate-pulse" />
-          <div className="h-8 w-16 bg-surface-200 rounded animate-pulse mt-2" />
-          <div className="h-3 w-20 bg-surface-200 rounded animate-pulse mt-2" />
-        </div>
-        <div className="w-12 h-12 bg-surface-200 rounded-full animate-pulse" />
-      </div>
+    <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4">
+      <Skeleton className="h-9 w-9 rounded-lg mb-3" />
+      <Skeleton className="h-7 w-16 mb-1" />
+      <Skeleton className="h-4 w-24" />
     </div>
   );
 }
@@ -44,45 +55,44 @@ export function StatCard({
   icon,
   subtitle,
   trend,
-  color = 'blue',
+  color = 'brand',
   loading = false,
 }: StatCardProps) {
   if (loading) {
     return <StatCardSkeleton />;
   }
 
+  const colors = colorMap[color];
+
   return (
-    <div className="bg-white rounded-xl border border-surface-200 p-5 transition-shadow hover:shadow-md">
-      <div className="flex items-center justify-between">
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-surface-500 truncate">{title}</p>
-          <p className="text-2xl font-bold text-surface-800 mt-1">{value}</p>
-          {subtitle && (
-            <p className="text-xs text-surface-400 mt-1">{subtitle}</p>
-          )}
-          {trend && (
-            <p
-              className={cn(
-                'text-sm mt-1 flex items-center gap-1',
-                trend.isPositive ? trendColorClasses.positive : trendColorClasses.negative
-              )}
-            >
-              {trend.isPositive ? (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                </svg>
-              )}
-              {Math.abs(trend.value)}%
-            </p>
-          )}
+    <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 hover:shadow-sm transition">
+      <div className="flex items-start justify-between">
+        <div className={cn('rounded-lg p-2', colors.bg)}>
+          <div className={cn('h-6 w-6', colors.icon)}>
+            {icon}
+          </div>
         </div>
-        <div className={cn('p-3 rounded-full text-white flex-shrink-0', colorClasses[color])}>
-          {icon}
-        </div>
+        {trend && (
+          <div className={cn('flex items-center gap-1 text-xs', trend.isPositive ? 'text-success-500' : 'text-danger-500')}>
+            {trend.value === 0 ? (
+              <Minus size={12} />
+            ) : trend.isPositive ? (
+              <TrendingUp size={12} />
+            ) : (
+              <TrendingDown size={12} />
+            )}
+            {trend.value !== 0 && <span>{Math.abs(trend.value)}%</span>}
+          </div>
+        )}
+      </div>
+      <div className="mt-3">
+        <p className="text-2xl font-semibold text-surface-900 dark:text-surface-100">
+          {typeof value === 'number' ? value.toLocaleString() : value}
+        </p>
+        <p className="text-sm text-surface-500 dark:text-surface-400">{title}</p>
+        {subtitle && (
+          <p className="text-xs text-surface-400 dark:text-surface-500 mt-0.5">{subtitle}</p>
+        )}
       </div>
     </div>
   );

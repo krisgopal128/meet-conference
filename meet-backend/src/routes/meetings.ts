@@ -7,6 +7,7 @@ import { requireUser } from '../middleware/requireUser.js';
 import { query, queryOne } from '../services/database.js';
 import { verifyMeetingAccess } from '../services/meetingService.js';
 import { scheduleMeetingSchema, diagnosticsPayloadSchema } from '../schemas/meetings.js';
+import { sanitizeChatMessage } from '../utils/validation.js';
 import logger from '../utils/logger.js';
 
 export const meetingsRouter = Router();
@@ -465,7 +466,7 @@ meetingsRouter.post('/:id/chat', authenticate, async (req: AuthRequest, res: Res
       `INSERT INTO chat_messages (meeting_id, user_id, content, message_type)
        VALUES ($1, $2, $3, $4)
        RETURNING id, content, created_at, message_type`,
-      [id, user.id, content.trim(), messageType]
+      [id, user.id, sanitizeChatMessage(content), messageType]
     );
 
     const message = messages[0];

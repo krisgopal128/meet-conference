@@ -61,7 +61,7 @@ function getCsrfToken(): string {
 }
 
 // Add auth token and CSRF token to requests
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
   // Add CSRF token for state-changing requests
   const method = config.method?.toUpperCase();
   if (method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
@@ -102,7 +102,30 @@ api.interceptors.request.use((config) => {
   if (token) {
     const expired = isTokenExpired(token);
     if (expired === true) {
-      // Token is expired - clear auth and reject
+      // Token is expired - try to refresh first before redirecting
+      try {
+        const refreshRes = await api.post<LoginResponse>('/auth/refresh');
+        if (refreshRes.data?.token) {
+          // Update stored token
+          const authStorage = localStorage.getItem('auth-storage');
+          if (authStorage) {
+            try {
+              const parsed = JSON.parse(authStorage);
+              parsed.state.token = refreshRes.data.token;
+              parsed.state.user = refreshRes.data.user;
+              parsed.state.isAuthenticated = true;
+              localStorage.setItem('auth-storage', JSON.stringify(parsed));
+            } catch {
+              // Ignore parse errors
+            }
+          }
+          config.headers.Authorization = `Bearer ${refreshRes.data.token}`;
+          return config;
+        }
+      } catch {
+        // Refresh failed - fall through to clear auth
+      }
+      // Refresh also failed - clear auth
       localStorage.removeItem('auth-storage');
       localStorage.removeItem('auth_token');
       localStorage.removeItem('token');
@@ -116,29 +139,105 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 responses
+// Handle 401 responses — try token refresh before giving up
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (error: unknown) => void;
+}> = [];
+
+function processQueue(error: unknown, token: string | null) {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (token) resolve(token);
+    else reject(error);
+  });
+  failedQueue = [];
+}
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Check if this is a password-required error for guest access (not an auth failure)
+  async (error) => {
+    const originalRequest = error.config;
+    
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      // Check if this is a password-required error for guest access
       const errorMsg = error.response?.data?.error || '';
       const isPasswordError = errorMsg.includes('password');
-      
-      // Only clear auth and redirect if user was trying to access protected resource
-      // Don't redirect guests on public pages (join, room, login, register, thank-you)
+      if (isPasswordError) {
+        return Promise.reject(error);
+      }
+
+      // Don't try to refresh on public pages
       const isPublicPage = window.location.pathname.match(/^\/(join|room|login|register|thank-you)/);
-      
-      if (!isPasswordError && !isPublicPage) {
-        // Clear zustand auth storage
+      if (isPublicPage) {
+        return Promise.reject(error);
+      }
+
+      // Don't try to refresh if this IS the refresh request
+      if (originalRequest.url?.includes('/auth/refresh')) {
+        // Refresh itself failed — clear auth and redirect
         localStorage.removeItem('auth-storage');
         localStorage.removeItem('auth_token');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        // Redirect to login
         window.location.href = '/login';
+        return Promise.reject(error);
+      }
+
+      // If already refreshing, queue this request
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then((token) => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return api(originalRequest);
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        // Try to refresh the token
+        const refreshRes = await api.post<LoginResponse>('/auth/refresh');
+        const newToken = refreshRes.data?.token;
+
+        if (newToken) {
+          // Update stored token
+          const authStorage = localStorage.getItem('auth-storage');
+          if (authStorage) {
+            try {
+              const parsed = JSON.parse(authStorage);
+              parsed.state.token = newToken;
+              parsed.state.user = refreshRes.data.user;
+              parsed.state.isAuthenticated = true;
+              localStorage.setItem('auth-storage', JSON.stringify(parsed));
+            } catch {
+              // Ignore parse errors
+            }
+          }
+
+          // Process queued requests
+          processQueue(null, newToken);
+
+          // Retry original request with new token
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return api(originalRequest);
+        }
+      } catch (refreshError) {
+        // Refresh failed — clear auth
+        processQueue(refreshError, null);
+        localStorage.removeItem('auth-storage');
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
+
     return Promise.reject(error);
   }
 );

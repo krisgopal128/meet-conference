@@ -4,8 +4,8 @@
  import bcrypt from 'bcryptjs';
  import { AuthRequest, authenticate } from '../middleware/authenticate.js';
  import { tokenLimiter } from '../middleware/rateLimiter.js';
- import { createAccessToken, ParticipantRole, listParticipants } from '../services/livekit.js';
- import { queryOne } from '../services/database.js';
+import { createAccessToken, ParticipantRole } from '../services/livekit.js';
+import { queryOne } from '../services/database.js';
  import * as roomService from '../services/roomService.js';
  import { isParticipantKicked, isGuestNameKicked, isGuestNameAdmitted } from '../services/redis.js';
  import logger from '../utils/logger.js';
@@ -24,32 +24,6 @@ const requestTokenSchema = z.object({
   name: z.string().max(255).optional(),
   ttl: z.number().min(60).max(86400).optional(), // 1 min to 24 hours
 });
-
-// Helper: Check if moderator is in the room
-async function isModeratorInRoom(roomName: string, hostId: string): Promise<boolean> {
-  try {
-    const participants = await listParticipants(roomName);
-    // Check if host is connected
-    return participants.some(p => p.identity === hostId);
-  } catch {
-    // Room might not exist yet (first join)
-    return false;
-  }
-}
-
-// Helper: Check if meeting has started (room status is active)
-async function hasMeetingStarted(roomName: string): Promise<boolean> {
-  try {
-    const room = await queryOne<{ status: string }>(
-      'SELECT status FROM rooms WHERE name = $1',
-      [roomName]
-    );
-    // Meeting has started if status is 'active'
-    return room?.status === 'active';
-  } catch {
-    return false;
-  }
-}
 
 // POST /token - Get LiveKit access token
 tokenRouter.post('/', authenticate, tokenLimiter, async (req: AuthRequest, res: Response) => {
@@ -220,7 +194,7 @@ tokenRouter.post('/guest', tokenLimiter, async (req, res: Response) => {
     
     // If waiting room is enabled, guests go to lobby for moderator approval
     // UNLESS they were previously admitted (reconnecting after disconnect)
-    let inLobby = roomSettings?.waiting_room_enabled === true && !wasPreviouslyAdmitted;
+    const inLobby = roomSettings?.waiting_room_enabled === true && !wasPreviouslyAdmitted;
 
     // Generate token with appropriate permissions
     const accessToken = await createAccessToken(roomName, guestIdentity, role as ParticipantRole, {

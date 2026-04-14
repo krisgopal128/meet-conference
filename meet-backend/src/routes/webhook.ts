@@ -141,7 +141,7 @@ webhookRouter.post('/', async (req: Request, res: Response) => {
         // Mark only the most recent active meeting as ended
         await query(
           `UPDATE meetings 
-           SET ended_at = NOW() 
+           SET ended_at = NOW(), status = 'ended'
            WHERE id = (
              SELECT m.id FROM meetings m
              JOIN rooms r ON m.room_id = r.id
@@ -293,7 +293,7 @@ webhookRouter.post('/', async (req: Request, res: Response) => {
               // End the meeting in database
               try {
                 await query(
-                  `UPDATE meetings SET ended_at = NOW() WHERE id = (
+                  `UPDATE meetings SET ended_at = NOW(), status = 'ended' WHERE id = (
                     SELECT m.id FROM meetings m JOIN rooms r ON m.room_id = r.id
                     WHERE r.name = $1 AND m.ended_at IS NULL ORDER BY m.started_at DESC LIMIT 1
                   )`,

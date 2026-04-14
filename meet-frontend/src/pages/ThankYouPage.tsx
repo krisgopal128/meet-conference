@@ -42,17 +42,17 @@ export default function ThankYouPage() {
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {showConfetti && (
           <>
-            <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-brand-400 rounded-full animate-ping" />
-            <div className="absolute top-1/3 right-1/4 w-3 h-3 bg-emerald-400 rounded-full animate-ping" style={ANIMATION_DELAYS.delay200} />
-            <div className="absolute bottom-1/4 left-1/3 w-2 h-2 bg-purple-400 rounded-full animate-ping" style={ANIMATION_DELAYS.delay400} />
-            <div className="absolute top-1/2 right-1/3 w-2 h-2 bg-yellow-400 rounded-full animate-ping" style={ANIMATION_DELAYS.delay600} />
+            <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-brand-400 rounded-full animate-ping" aria-hidden="true" />
+            <div className="absolute top-1/3 right-1/4 w-3 h-3 bg-emerald-400 rounded-full animate-ping" style={ANIMATION_DELAYS.delay200} aria-hidden="true" />
+            <div className="absolute bottom-1/4 left-1/3 w-2 h-2 bg-purple-400 rounded-full animate-ping" style={ANIMATION_DELAYS.delay400} aria-hidden="true" />
+            <div className="absolute top-1/2 right-1/3 w-2 h-2 bg-yellow-400 rounded-full animate-ping" style={ANIMATION_DELAYS.delay600} aria-hidden="true" />
           </>
         )}
       </div>
 
       <div className="max-w-lg w-full">
         {/* Main Card */}
-        <div className="bg-white dark:bg-surface-800 rounded-3xl shadow-xl border border-surface-200 dark:border-surface-700 p-6 sm:p-8 text-center relative">
+        <div className="bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 p-6 sm:p-8 text-center relative">
           {/* Success Icon */}
           <div className="relative inline-block mb-6">
             <div className="w-24 h-24 bg-gradient-to-br from-emerald-400 to-brand-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-brand-500/30">
@@ -109,7 +109,7 @@ export default function ThankYouPage() {
               <>
                 <Link
                   to="/"
-                  className="w-full flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 shadow-lg shadow-brand-500/30 hover:shadow-xl hover:shadow-brand-500/40 hover:-translate-y-0.5"
+                  className="w-full flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 shadow-lg shadow-brand-500/30 hover:shadow-xl hover:shadow-brand-500/40"
                 >
                   <Home className="w-5 h-5" />
                   Back to Dashboard
@@ -126,7 +126,7 @@ export default function ThankYouPage() {
               <>
                 <Link
                   to="/login"
-                  className="w-full flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 shadow-lg shadow-brand-500/30 hover:shadow-xl hover:shadow-brand-500/40 hover:-translate-y-0.5"
+                  className="w-full flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 shadow-lg shadow-brand-500/30 hover:shadow-xl hover:shadow-brand-500/40"
                 >
                   <Home className="w-5 h-5" />
                   Sign In to Your Account

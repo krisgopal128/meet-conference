@@ -19,6 +19,7 @@ import { addKickedParticipant } from '../services/redis.js';
 import { processLobbyParticipants } from '../services/lobbyService.js';
 import { sanitizeRoomName, sanitizeDescription, sanitizeChatMessage } from '../utils/validation.js';
 import logger from '../utils/logger.js';
+import { query, queryOne } from '../services/database.js';
 import * as roomService from '../services/roomService.js';
 
 export const roomsRouter = Router();

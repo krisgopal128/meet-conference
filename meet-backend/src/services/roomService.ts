@@ -262,16 +262,16 @@ export async function getRoomWaitingEnabled(name: string): Promise<{ waiting_roo
 export function createVirtualRoom(
   name: string,
   lkRoom: unknown,
-  isAuthenticated: boolean
+  _isAuthenticated: boolean
 ): RoomWithMetadata {
   return {
     id: `lk-${name}`,
     name,
-    title: null,
-    description: null,
+    title: null as string | null,
+    description: null as string | null,
     host_id: 'livekit',
-    host_name: null,
-    host_email: null,
+    host_name: undefined,
+    host_email: undefined,
     max_participants: (lkRoom as { maxParticipants?: number })?.maxParticipants || 50,
     status: 'active',
     created_at: new Date(),

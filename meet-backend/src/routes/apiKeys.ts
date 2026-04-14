@@ -49,33 +49,6 @@ const updateApiKeySchema = z.object({
   is_active: z.boolean().optional(),
 });
 
-// ==================== Response Types ====================
-
-interface ApiKeyResponse {
-  id: string;
-  name: string;
-  prefix: string;
-  key?: string; // Only present on create/regenerate
-  permissions: Record<string, unknown>;
-  last_used_at: string | null;
-  expires_at: string | null;
-  is_active: boolean;
-  created_at: string;
-}
-
-interface ApiKeyListResponse {
-  keys: ApiKeyResponse[];
-}
-
-interface ApiKeyCreateResponse extends ApiKeyResponse {
-  message?: string;
-}
-
-interface ApiKeyUpdateResponse {
-  success: boolean;
-  message: string;
-}
-
 // ==================== Helper Functions ====================
 
 /**

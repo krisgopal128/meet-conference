@@ -16,7 +16,7 @@ import externalRouter from './routes/external.js';
 import { initDatabase, closeDatabase, query } from './services/database.js';
 import { initRedis, closeRedis } from './services/redis.js';
 import { config } from './config.js';
-import { apiLimiter, webhookLimiter } from './middleware/rateLimiter.js';
+import { apiLimiter } from './middleware/rateLimiter.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
 import logger from './utils/logger.js';
 
@@ -93,6 +93,7 @@ app.use('/meetings', apiLimiter);
 app.use('/egress', apiLimiter);
 app.use('/prashasakah', apiLimiter);
 app.use('/api-keys', apiLimiter);
+app.use('/external', apiLimiter);
 
 // ============================================
 // Routes
@@ -120,7 +121,7 @@ app.get('/health', async (_req, res) => {
       env: config.nodeEnv,
       version: '1.0.0',
     });
-  } catch (error) {
+  } catch {
     res.status(503).json({
       status: 'error',
       message: 'Service unavailable',

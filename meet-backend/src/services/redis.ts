@@ -119,7 +119,7 @@ async function initPool(): Promise<void> {
 /**
  * Get a connection from the pool (event-based, no busy-wait)
  */
-async function getPooledConnection(): Promise<RedisClientType> {
+export async function getPooledConnection(): Promise<RedisClientType> {
   if (!poolInitialized || connectionPool.length === 0) {
     if (!mainClient) throw new Error('Redis not initialized');
     return mainClient;
@@ -155,21 +155,9 @@ async function getPooledConnection(): Promise<RedisClientType> {
 /**
  * Release a connection back to the pool
  */
-function releaseConnection(client: RedisClientType): void {
+export function releaseConnection(client: RedisClientType): void {
   const conn = connectionPool.find(c => c.client === client);
   if (conn) conn.inUse = false;
-}
-
-/**
- * Execute a Redis operation using connection pool
- */
-async function withConnection<T>(fn: (client: RedisClientType) => Promise<T>): Promise<T> {
-  const client = await getPooledConnection();
-  try {
-    return await fn(client);
-  } finally {
-    releaseConnection(client);
-  }
 }
 
 /**
@@ -326,7 +314,8 @@ export async function cacheTTL(key: string): Promise<number> {
     if (typeof fn !== 'function') {
       throw new Error(`Unsupported Redis multi command: ${cmd.command}`);
     }
-    fn.apply(multi, cmd.args);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (fn as any).apply(multi, cmd.args);
   }
   return multi.exec();
 }

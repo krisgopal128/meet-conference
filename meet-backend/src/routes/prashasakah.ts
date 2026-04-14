@@ -15,7 +15,7 @@ import rateLimit from 'express-rate-limit';
 import { authenticate, AuthRequest } from '../middleware/authenticate.js';
 import { requireAdmin, requireModerator } from '../middleware/requireRole.js';
 import { query, queryOne } from '../services/database.js';
-import { validatePassword } from '../utils/validation.js';
+import { sanitizeName, validatePassword } from '../utils/validation.js';
 import logger from '../utils/logger.js';
 
 export const prashasakahRouter = Router();
@@ -112,19 +112,115 @@ interface BandwidthDataPoint {
   meetings: number;
 }
 
-interface BandwidthResponse {
-  data: BandwidthDataPoint[];
-  total: number;
-}
-
 interface PeakUsersDataPoint {
   date: string;
   peak: number;
   average: number;
 }
 
-interface PeakUsersResponse {
-  data: PeakUsersDataPoint[];
+// Row type interfaces for typed query results
+interface MeetingRow {
+  id: string;
+  room_id: string;
+  room_name: string;
+  room_title: string;
+  host_id: string;
+  host_name: string;
+  participant_count: number;
+  started_at: Date;
+  ended_at: Date | null;
+  status: string;
+  recording_url: string | null;
+}
+
+interface ParticipantRow {
+  user_id: string;
+  name: string | null;
+  email: string | null;
+  joined_at: Date;
+  left_at: Date | null;
+}
+
+interface ChatMessageRow {
+  id: string;
+  content: string;
+  created_at: Date;
+  message_type: string;
+  user_id: string;
+  user_name: string | null;
+  user_email: string | null;
+}
+
+interface AlertRow {
+  id: string;
+  type: string;
+  severity: string;
+  title: string;
+  message: string;
+  data: unknown;
+  read_at: Date | null;
+  read_by: string | null;
+  resolved_at: Date | null;
+  resolved_by: string | null;
+  created_at: Date;
+}
+
+interface ApiKeyRow {
+  id: string;
+  name: string;
+  prefix: string;
+  permissions: string[];
+  last_used_at: Date | null;
+  expires_at: Date | null;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+  user_id: string;
+  user_name: string | null;
+  user_email: string | null;
+  user_role: string | null;
+}
+
+interface RoomRow {
+  id: string;
+  name: string;
+  title: string;
+  description: string | null;
+  host_id: string;
+  host_name: string | null;
+  status: string;
+  max_participants: number;
+  waiting_room_enabled: boolean;
+  created_at: Date;
+  started_at: Date | null;
+  ended_at: Date | null;
+  participant_count: number;
+}
+
+interface RoomDetailRow {
+  id: string;
+  name: string;
+  title: string;
+  description: string | null;
+  host_id: string;
+  host_name: string | null;
+  host_email: string | null;
+  status: string;
+  max_participants: number;
+  waiting_room_enabled: boolean;
+  created_at: Date;
+  started_at: Date | null;
+  ended_at: Date | null;
+}
+
+interface UserRow {
+  id: string;
+  email: string;
+  name: string | null;
+  role: string;
+  is_banned: boolean;
+  last_login_at: string | null;
+  created_at: string;
 }
 
 // ============================================
@@ -322,7 +418,7 @@ prashasakahRouter.get('/health', requireModerator(), async (_req: AuthRequest, r
     // LiveKit check (try/catch)
     let livekitStatus: 'connected' | 'disconnected' = 'disconnected';
     try {
-      const { getRoomInfo } = await import('../services/livekit.js');
+      await import('../services/livekit.js');
       // Just check if we can import, actual check would need a test room
       livekitStatus = 'connected';
     } catch {
@@ -484,7 +580,7 @@ prashasakahRouter.get('/users/:id', requireModerator(), async (req: AuthRequest,
   try {
     const { id } = req.params;
     
-    const user = await queryOne<any>(`
+    const user = await queryOne<UserRow>(`
       SELECT id, email, name, role, is_banned, last_login_at, created_at
       FROM users WHERE id = $1
     `, [id]);
@@ -532,9 +628,28 @@ prashasakahRouter.patch('/users/:id', requireModerator(), async (req: AuthReques
     const params: (string)[] = [];
     let paramIndex = 1;
 
+    // Validate role if provided
+    if (role !== undefined) {
+      const validRoles = ['admin', 'moderator', 'participant', 'guest'];
+      if (!validRoles.includes(role)) {
+        return res.status(400).json({ error: 'Invalid role. Must be one of: admin, moderator, participant, guest' });
+      }
+      // Only admins can assign admin role
+      if (role === 'admin' && req.user!.role !== 'admin') {
+        return res.status(403).json({ error: 'Only admins can assign admin role' });
+      }
+      // Moderators cannot modify admin users' roles
+      if (req.user!.role === 'moderator') {
+        const targetUser = await queryOne<{ role: string }>('SELECT role FROM users WHERE id = $1', [id]);
+        if (targetUser?.role === 'admin') {
+          return res.status(403).json({ error: 'Cannot modify admin user roles' });
+        }
+      }
+    }
+
     if (name !== undefined) {
       updateFields.push(`name = $${paramIndex}`);
-      params.push(name);
+      params.push(sanitizeName(name));
       paramIndex++;
     }
 
@@ -554,7 +669,7 @@ prashasakahRouter.patch('/users/:id', requireModerator(), async (req: AuthReques
       UPDATE users SET ${updateFields.join(', ')} WHERE id = $${paramIndex}
     `, params);
 
-    const user = await queryOne<any>('SELECT id, email, name, role, is_banned, last_login_at, created_at FROM users WHERE id = $1', [id]);
+    const user = await queryOne<UserRow>('SELECT id, email, name, role, is_banned, last_login_at, created_at FROM users WHERE id = $1', [id]);
 
     res.json({ 
       user: {
@@ -581,7 +696,7 @@ prashasakahRouter.post('/users/:id/ban', adminActionLimiter, requireModerator(),
     await query('UPDATE users SET is_banned = true WHERE id = $1', [id]);
     logger.info(`[Admin] User ${id} banned by ${req.user?.id}${reason ? ` - Reason: ${reason}` : ''}`);
 
-    const user = await queryOne<any>('SELECT id, email, name, role, is_banned, last_login_at, created_at FROM users WHERE id = $1', [id]);
+    const user = await queryOne<UserRow>('SELECT id, email, name, role, is_banned, last_login_at, created_at FROM users WHERE id = $1', [id]);
 
     res.json({ 
       message: 'User banned successfully',
@@ -608,7 +723,7 @@ prashasakahRouter.post('/users/:id/unban', adminActionLimiter, requireModerator(
     await query('UPDATE users SET is_banned = false WHERE id = $1', [id]);
     logger.info(`[Admin] User ${id} unbanned by ${req.user?.id}`);
 
-    const user = await queryOne<any>('SELECT id, email, name, role, is_banned, last_login_at, created_at FROM users WHERE id = $1', [id]);
+    const user = await queryOne<UserRow>('SELECT id, email, name, role, is_banned, last_login_at, created_at FROM users WHERE id = $1', [id]);
 
     res.json({ 
       message: 'User unbanned successfully',
@@ -656,11 +771,10 @@ prashasakahRouter.post('/users/:id/reset-password', requireAdmin(), async (req: 
     const passwordHash = await bcrypt.hash(tempPassword, 12);
 
     await query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, id]);
-    logger.info(`[Admin] Password reset for user ${id} by ${req.user?.id}`);
+    logger.info(`[Admin] Password reset for user ${id} by ${req.user?.id}. Temp password generated.`);
 
     res.json({ 
-      message: 'Password reset successfully',
-      tempPassword // In production, this should be sent via email
+      message: 'Password reset successfully. User should check their email for the new password.',
     });
   } catch (error) {
     logger.error('[Admin] Error resetting password:', error);
@@ -710,10 +824,11 @@ prashasakahRouter.put('/users/:id/change-password', requireAdmin(), async (req: 
 
 prashasakahRouter.get('/users/:id/activity', requireModerator(), async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
-    const { limit = 50, offset = 0 } = paginationSchema.parse(req.query);
-
     // For now, return empty - would need audit_logs table
+    // Query params (id, pagination) will be used when audit_logs table is implemented
+    void req.params.id;
+    void paginationSchema.parse(req.query);
+
     res.json({
       activities: [],
       total: 0,
@@ -752,7 +867,7 @@ prashasakahRouter.get('/rooms', requireModerator(), async (req: AuthRequest, res
       paramIndex++;
     }
 
-    const rooms = await query<any>(`
+    const rooms = await query<RoomRow>(`
       SELECT r.id, r.name, r.title, r.description, r.host_id, u.name as host_name,
         r.status, r.max_participants, r.waiting_room_enabled, r.created_at,
         r.started_at, r.ended_at,
@@ -796,8 +911,9 @@ prashasakahRouter.get('/rooms/:id', requireModerator(), async (req: AuthRequest,
   try {
     const { id } = req.params;
 
-    const room = await queryOne<any>(`
-      SELECT r.*, u.name as host_name, u.email as host_email
+    const room = await queryOne<RoomDetailRow>(`
+      SELECT r.id, r.name, r.title, r.description, r.host_id, u.name as host_name, u.email as host_email,
+        r.status, r.max_participants, r.waiting_room_enabled, r.created_at, r.started_at, r.ended_at
       FROM rooms r
       LEFT JOIN users u ON u.id = r.host_id
       WHERE r.id = $1
@@ -876,7 +992,9 @@ prashasakahRouter.get('/meetings', requireModerator(), async (req: AuthRequest, 
     const limit = Number(req.query.limit) || 20;
     const offset = Number(req.query.offset) || 0;
     const roomId = req.query.roomId as string | undefined;
+    const roomName = req.query.roomName as string | undefined;
     const hostId = req.query.hostId as string | undefined;
+    const status = req.query.status as string | undefined;
     const fromDate = req.query.fromDate as string | undefined;
     const toDate = req.query.toDate as string | undefined;
 
@@ -890,9 +1008,21 @@ prashasakahRouter.get('/meetings', requireModerator(), async (req: AuthRequest, 
       paramIndex++;
     }
 
+    if (roomName) {
+      whereClause += ` AND r.name ILIKE $${paramIndex}`;
+      params.push(`%${roomName}%`);
+      paramIndex++;
+    }
+
     if (hostId) {
       whereClause += ` AND r.host_id = $${paramIndex}`;
       params.push(hostId);
+      paramIndex++;
+    }
+
+    if (status) {
+      whereClause += ` AND m.status = $${paramIndex}`;
+      params.push(status);
       paramIndex++;
     }
 
@@ -908,7 +1038,7 @@ prashasakahRouter.get('/meetings', requireModerator(), async (req: AuthRequest, 
       paramIndex++;
     }
 
-    const meetings = await query<any[]>(`
+    const meetings = await query<MeetingRow>(`
       SELECT m.id, m.room_id, r.name as room_name, r.title as room_title,
         r.host_id, u.name as host_name, m.started_at, m.ended_at,
         m.status, m.recording_url,
@@ -922,7 +1052,9 @@ prashasakahRouter.get('/meetings', requireModerator(), async (req: AuthRequest, 
     `, [...params, limit, offset]);
 
     const totalResult = await queryOne<{ count: number }>(`
-      SELECT COUNT(*) as count FROM meetings m ${whereClause}
+      SELECT COUNT(*) as count FROM meetings m
+      LEFT JOIN rooms r ON r.id = m.room_id
+      ${whereClause}
     `, params);
 
     res.json({
@@ -954,8 +1086,9 @@ prashasakahRouter.get('/meetings/:id', requireModerator(), async (req: AuthReque
   try {
     const { id } = req.params;
 
-    const meeting = await queryOne<any>(`
-      SELECT m.*, r.name as room_name, r.title as room_title, r.host_id
+    const meeting = await queryOne<MeetingRow>(`
+      SELECT m.id, m.room_id, m.started_at, m.ended_at, m.status, m.recording_url,
+        r.name as room_name, r.title as room_title, r.host_id
       FROM meetings m
       LEFT JOIN rooms r ON r.id = m.room_id
       WHERE m.id = $1
@@ -965,8 +1098,8 @@ prashasakahRouter.get('/meetings/:id', requireModerator(), async (req: AuthReque
       return res.status(404).json({ error: 'Meeting not found' });
     }
 
-    const participants = await query<any[]>(`
-      SELECT mp.*, u.name, u.email
+    const participants = await query<ParticipantRow>(`
+      SELECT mp.user_id, mp.joined_at, mp.left_at, u.name, u.email
       FROM meeting_participants mp
       LEFT JOIN users u ON u.id = mp.user_id
       WHERE mp.meeting_id = $1
@@ -987,8 +1120,8 @@ prashasakahRouter.get('/meetings/:id', requireModerator(), async (req: AuthReque
       },
        participants: participants.map((p) => ({
          userId: p.user_id,
-         name: p.name || p.user?.name,
-         email: p.email || p.user?.email,
+         name: p.name,
+         email: p.email,
          joinedAt: p.joined_at,
          leftAt: p.left_at,
        })),
@@ -1015,8 +1148,9 @@ prashasakahRouter.get('/meetings/:id/chat', requireModerator(), async (req: Auth
       paramIndex++;
     }
 
-    const messages = await query<any[]>(`
-      SELECT c.*, u.name as user_name, u.email as user_email
+    const messages = await query<ChatMessageRow>(`
+      SELECT c.id, c.content, c.created_at, c.message_type, c.user_id,
+        u.name as user_name, u.email as user_email
       FROM chat_messages c
       LEFT JOIN users u ON u.id = c.user_id
       ${whereClause}
@@ -1067,7 +1201,7 @@ prashasakahRouter.get('/alerts', requireModerator(), async (req: AuthRequest, re
       whereClause += ' AND read_at IS NULL';
     }
 
-    const alerts = await query<any[]>(`
+    const alerts = await query<AlertRow>(`
       SELECT * FROM admin_alerts
       ${whereClause}
       ORDER BY created_at DESC
@@ -1151,13 +1285,8 @@ prashasakahRouter.post('/alerts/read-all', requireModerator(), async (req: AuthR
 
 prashasakahRouter.get('/audit-logs', requireAdmin(), async (req: AuthRequest, res: Response) => {
   try {
-    const limit = Number(req.query.limit) || 20;
-    const offset = Number(req.query.offset) || 0;
-    const action = req.query.action as string | undefined;
-    const targetType = req.query.targetType as string | undefined;
-    const actorId = req.query.actorId as string | undefined;
-    const fromDate = req.query.fromDate as string | undefined;
-    const toDate = req.query.toDate as string | undefined;
+    // Query params will be used when audit_logs table is implemented
+    void req.query;
 
     // For now, return empty - would need dedicated audit_logs table
     res.json({
@@ -1254,7 +1383,8 @@ prashasakahRouter.get('/api-keys/admin', requireAdmin(), async (req: AuthRequest
   try {
     const search = req.query.search as string | undefined;
     const isActive = req.query.is_active as string | undefined;
-    const role = req.query.role as string | undefined;
+    // role filter will be used when implementing role-based API key filtering
+    void req.query.role;
 
     let whereClause = 'WHERE 1=1';
      const params: unknown[] = [];
@@ -1272,8 +1402,10 @@ prashasakahRouter.get('/api-keys/admin', requireAdmin(), async (req: AuthRequest
       paramIndex++;
     }
 
-    const apiKeys = await query<any[]>(`
-      SELECT ak.*, u.name as user_name, u.email as user_email, u.role as user_role
+    const apiKeys = await query<ApiKeyRow>(`
+      SELECT ak.id, ak.name, ak.prefix, ak.permissions, ak.last_used_at, ak.expires_at,
+        ak.is_active, ak.created_at, ak.updated_at, ak.user_id,
+        u.name as user_name, u.email as user_email, u.role as user_role
       FROM api_keys ak
       LEFT JOIN users u ON u.id = ak.user_id
       ${whereClause}

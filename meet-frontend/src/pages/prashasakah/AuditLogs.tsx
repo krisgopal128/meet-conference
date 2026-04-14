@@ -5,6 +5,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { prashasakahApi, AdminAuditLog } from '../../services/prashasakahApi';
+import AuditLogTable from '../../components/prashasakah/AuditLogTable';
 import logger from '../../utils/logger';
 
 export default function AuditLogs() {
@@ -47,20 +48,6 @@ export default function AuditLogs() {
     };
   }, [fetchLogs]);
 
-  const getActionIcon = (action: string) => {
-    const icons: Record<string, string> = {
-      user_ban: '🚫',
-      user_unban: '✅',
-      user_delete: '🗑️',
-      user_update: '✏️',
-      meeting_end: '⏹️',
-      room_delete: '🗑️',
-      settings_update: '⚙️',
-      login: '🔑',
-    };
-    return icons[action] || '📋';
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -80,6 +67,7 @@ export default function AuditLogs() {
               setActionFilter(e.target.value);
               setPage(1);
             }}
+            aria-label="Filter by action type"
             className="px-3 py-2 border border-surface-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             <option value="">All Actions</option>
@@ -94,87 +82,33 @@ export default function AuditLogs() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-surface-500">Loading...</div>
-        ) : !logs || logs.length === 0 ? (
-          <div className="p-8 text-center text-surface-500">No audit logs found</div>
-        ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-surface-200">
-            <thead className="bg-surface-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
-                  Action
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
-                  Actor
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
-                  Target
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
-                  IP Address
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
-                  Timestamp
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-surface-200">
-              {logs.map((log) => (
-                <tr key={log.id} className="hover:bg-surface-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="flex items-center gap-2">
-                      <span>{getActionIcon(log.action)}</span>
-                      <span className="text-sm font-medium text-surface-800">{log.action}</span>
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-surface-500">
-                    {log.actorEmail}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-surface-500">
-                    {log.targetType}: {log.targetId || '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-surface-500">
-                    {log.ipAddress || '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-surface-500">
-                    {new Date(log.createdAt).toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        )}
+      {/* Audit Log Table */}
+      <AuditLogTable logs={logs} loading={loading} />
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-surface-200">
-            <div className="text-sm text-surface-600">
-              Page {page} of {totalPages}
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPage(page - 1)}
-                disabled={page === 1}
-                className="px-4 py-2 text-sm font-medium text-surface-600 bg-white border border-surface-300 rounded-lg hover:bg-surface-50 disabled:opacity-50 transition-colors"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() => setPage(page + 1)}
-                disabled={page === totalPages}
-                className="px-4 py-2 text-sm font-medium text-surface-600 bg-white border border-surface-300 rounded-lg hover:bg-surface-50 disabled:opacity-50 transition-colors"
-              >
-                Next
-              </button>
-            </div>
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-surface-200 rounded-xl">
+          <div className="text-sm text-surface-600">
+            Page {page} of {totalPages}
           </div>
-        )}
-      </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(page - 1)}
+              disabled={page === 1}
+              className="px-4 py-2 text-sm font-medium text-surface-600 bg-white border border-surface-300 rounded-lg hover:bg-surface-50 disabled:opacity-50 transition-colors"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage(page + 1)}
+              disabled={page === totalPages}
+              className="px-4 py-2 text-sm font-medium text-surface-600 bg-white border border-surface-300 rounded-lg hover:bg-surface-50 disabled:opacity-50 transition-colors"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -85,10 +85,10 @@ export default function UserEditModal({
   const canChangeRole = currentUserRole === 'admin' && !isEditingSelf;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        className="fixed inset-0 bg-black/50 transition-opacity"
         onClick={onClose}
       />
 
@@ -97,7 +97,7 @@ export default function UserEditModal({
         <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-surface-800">Edit User</h3>
+            <h3 id="modal-title" className="text-lg font-semibold text-surface-800">Edit User</h3>
             <button
               onClick={onClose}
               className="text-surface-400 hover:text-surface-500 transition-colors"

@@ -173,15 +173,15 @@ export function Dashboard() {
       {/* Header with Date Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-surface-800">Dashboard</h1>
-          <p className="text-surface-500 mt-1">
+          <h1 className="text-2xl font-bold text-surface-800 dark:text-white">Dashboard</h1>
+          <p className="text-surface-500 dark:text-surface-400 mt-1">
             Welcome back, {user?.name || 'Admin'}! Here's an overview of your conference platform.
           </p>
         </div>
         
         <div className="flex flex-col sm:flex-row flex-wrap items-center gap-3">
           {/* Auto-refresh toggle */}
-          <label className="flex items-center gap-2 text-sm text-surface-500 cursor-pointer">
+          <label className="flex items-center gap-2 text-sm text-surface-500 dark:text-surface-400 cursor-pointer">
             <input
               type="checkbox"
               checked={autoRefresh}
@@ -195,7 +195,7 @@ export function Dashboard() {
           <button
             onClick={fetchAllData}
             disabled={statsLoading}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-surface-600 bg-white border border-surface-300 rounded-lg hover:bg-surface-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-surface-600 dark:text-surface-300 bg-white dark:bg-surface-900 border border-surface-300 dark:border-surface-600 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <RefreshIcon />
             Refresh
@@ -242,42 +242,42 @@ export function Dashboard() {
             <StatCard
               title="Total Users"
               value={formatNumber(stats.users?.total || 0)}
-              color="blue"
+              color="brand"
               icon={<UsersIcon />}
               subtitle="All registered users"
             />
             <StatCard
               title="Active Users"
               value={formatNumber(stats.users?.active || 0)}
-              color="green"
+              color="success"
               icon={<ActiveUsersIcon />}
               subtitle="Last 24 hours"
             />
             <StatCard
               title="Guest Users"
               value={formatNumber(stats.users?.guests || 0)}
-              color="yellow"
+              color="warning"
               icon={<GuestUsersIcon />}
               subtitle="In meetings now"
             />
             <StatCard
               title="Ongoing Meetings"
               value={formatNumber(stats.meetings?.ongoing || 0)}
-              color="purple"
+              color="info"
               icon={<OngoingMeetingsIcon />}
               subtitle="In progress now"
             />
             <StatCard
               title="Total Meetings"
               value={formatNumber(stats.meetings?.total || 0)}
-              color="blue"
+              color="brand"
               icon={<TotalMeetingsIcon />}
               subtitle="All time"
             />
             <StatCard
               title="Peak Concurrent"
               value={formatNumber(stats.peakConcurrentUsers || 0)}
-              color="red"
+              color="danger"
               icon={<PeakUsersIcon />}
               subtitle="Max simultaneous"
             />
@@ -288,16 +288,16 @@ export function Dashboard() {
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Bandwidth Chart */}
-        <div className="bg-white rounded-xl border border-surface-200 p-5">
+        <div className="bg-white dark:bg-surface-900 rounded-xl border border-surface-200 dark:border-surface-700 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-surface-700">Bandwidth Usage</h3>
+            <h3 className="text-lg font-semibold text-surface-700 dark:text-surface-200">Bandwidth Usage</h3>
             {bandwidthLoading && (
-              <span className="text-xs text-surface-400 animate-pulse">Loading...</span>
+              <span className="text-xs text-surface-400 dark:text-surface-500 animate-pulse">Loading...</span>
             )}
           </div>
           {bandwidthError ? (
-            <div className="h-64 flex items-center justify-center bg-surface-50 rounded-lg border border-surface-200">
-              <p className="text-surface-500">{bandwidthError}</p>
+            <div className="h-64 flex items-center justify-center bg-surface-50 dark:bg-surface-800 rounded-lg border border-surface-200 dark:border-surface-700">
+              <p className="text-surface-500 dark:text-surface-400">{bandwidthError}</p>
             </div>
           ) : (
             <BandwidthChart
@@ -309,16 +309,16 @@ export function Dashboard() {
         </div>
 
         {/* Peak Users Chart */}
-        <div className="bg-white rounded-xl border border-surface-200 p-5">
+        <div className="bg-white dark:bg-surface-900 rounded-xl border border-surface-200 dark:border-surface-700 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-surface-700">Peak Users Over Time</h3>
+            <h3 className="text-lg font-semibold text-surface-700 dark:text-surface-200">Peak Users Over Time</h3>
             {peakUsersLoading && (
-              <span className="text-xs text-surface-400 animate-pulse">Loading...</span>
+              <span className="text-xs text-surface-400 dark:text-surface-500 animate-pulse">Loading...</span>
             )}
           </div>
           {peakUsersError ? (
-            <div className="h-64 flex items-center justify-center bg-surface-50 rounded-lg border border-surface-200">
-              <p className="text-surface-500">{peakUsersError}</p>
+            <div className="h-64 flex items-center justify-center bg-surface-50 dark:bg-surface-800 rounded-lg border border-surface-200 dark:border-surface-700">
+              <p className="text-surface-500 dark:text-surface-400">{peakUsersError}</p>
             </div>
           ) : (
             <PeakUsersChart
@@ -352,7 +352,7 @@ export function Dashboard() {
               </p>
             </div>
             <div>
-              <p className="text-brand-200 text-sm">Avg per Meeting</p>
+              <p className="text-brand-200 text-sm">Peak Ratio</p>
               <p className="text-2xl font-bold">
                 {stats.meetings?.total > 0 
                   ? Math.round(stats.peakConcurrentUsers / stats.meetings?.total) 

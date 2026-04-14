@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { meetingsApi } from '../services/api';
+import { meetingsApi, roomsApi } from '../services/api';
 import { PageErrorBoundary } from '../components/shared/PageErrorBoundary';
 import { Skeleton } from '../components/shared/Skeletons';
 import { format, formatDuration, intervalToDuration, parseISO } from 'date-fns';
@@ -41,8 +41,22 @@ function MeetingDetailContent() {
   const [chatMessages, setChatMessages] = useState<Array<{ id: string; content: string; userName: string; createdAt: string }>>([]);
 
   // Mock data generator - only used as fallback when API fails
-  const generateMockMeetingDetail = useCallback((meetingId: string): Meeting => {
-    const titles = ['Team Standup', 'Product Review', 'Client Call', 'Sprint Planning'];
+  const generateMockMeetingDetail = useCallback(async (meetingId: string): Promise<Meeting> => {
+    // Try to get user's actual rooms for realistic mock data
+    let roomName = `room-${Math.random().toString(36).substring(2, 8)}`;
+    let roomTitle = 'Meeting';
+    try {
+      const roomsRes = await roomsApi.list(false);
+      const userRooms = roomsRes?.data?.rooms || [];
+      if (userRooms.length > 0) {
+        const room = userRooms[Math.floor(Math.random() * userRooms.length)];
+        roomName = room.name || roomName;
+        roomTitle = room.title || room.name || roomTitle;
+      }
+    } catch {
+      // Rooms API failed, use defaults
+    }
+
     const names = ['John Smith', 'Sarah Johnson', 'Mike Williams', 'Emily Davis', 'Chris Brown'];
 
     const now = new Date();
@@ -71,8 +85,8 @@ function MeetingDetailContent() {
     return {
       id: meetingId,
       roomId: `room-${meetingId}`,
-      roomName: `room-${Math.random().toString(36).substring(2, 8)}`,
-      roomTitle: titles[Math.floor(Math.random() * titles.length)],
+      roomName,
+      roomTitle,
       participantCount: mockParticipants.length,
       uniqueParticipants: mockParticipants.length,
       startedAt: startDate.toISOString(),
@@ -149,8 +163,8 @@ function MeetingDetailContent() {
         if (cancelled) return;
         logger.error('Failed to fetch meeting from API, using mock data:', err);
         // Only use mock data as fallback when API fails
-        const mockMeeting = generateMockMeetingDetail(id);
-        setMeeting(mockMeeting);
+        const mockMeeting = await generateMockMeetingDetail(id);
+        if (!cancelled) setMeeting(mockMeeting);
       } finally {
         if (!cancelled) setLoading(false);
       }

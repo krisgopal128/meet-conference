@@ -5,13 +5,14 @@
  * All routes require API key authentication.
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { z } from 'zod';
 import { RoomServiceClient, AccessToken } from 'livekit-server-sdk';
 import rateLimit from 'express-rate-limit';
 import { query, queryOne } from '../services/database.js';
 import logger from '../utils/logger.js';
+import type { AuthRequest } from '../middleware/authenticate.js';
 
 const router = Router();
 
@@ -25,6 +26,21 @@ const router = Router();
  }
 
 // ==================== Validation Schemas ====================
+
+const createExternalRoomSchema = z.object({
+  name: z.string().min(1).max(255),
+  title: z.string().max(255).optional(),
+  waitingRoomEnabled: z.boolean().optional().default(true),
+  metadata: z.record(z.unknown()).optional().default({}),
+});
+
+const externalTokenSchema = z.object({
+  room: z.string().min(1).max(255),
+  identity: z.string().min(1).max(255),
+  name: z.string().max(255).optional(),
+  role: z.enum(['moderator', 'attendee', 'observer', 'presenter', 'teacher', 'student']).optional().default('attendee'),
+  metadata: z.record(z.unknown()).optional().default({}),
+});
 
 // ==================== Response Types ====================
 
@@ -70,7 +86,7 @@ const externalApiLimiter = rateLimit({
  * Verify API key for external requests
  * Checks both environment variable and database
  */
-async function verifyAPIKey(req: Request, res: Response, next: Function) {
+async function verifyAPIKey(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -134,40 +150,25 @@ router.use(verifyAPIKey);
 
 // ==================== Room Routes ====================
 
-interface CreateRoomRequest {
-  name: string;
-  title?: string;
-  waitingRoomEnabled?: boolean;
-  metadata?: Record<string, unknown>;
-}
-
-interface TokenRequest {
-  room: string;
-  identity: string;
-  name?: string;
-  role?: 'moderator' | 'attendee' | 'observer' | 'presenter' | 'teacher' | 'student';
-  metadata?: Record<string, unknown>;
-}
-
 /**
  * Create a new room
  * POST /external/rooms
  */
 router.post('/rooms', async (req: Request, res: Response) => {
   try {
-    const { 
-      name, 
-      title, 
-      waitingRoomEnabled = true, 
-      metadata = {} 
-    } = req.body as CreateRoomRequest;
+    let name: string, title: string | undefined, waitingRoomEnabled: boolean, metadata: Record<string, unknown>;
+    try {
+      const parsed = createExternalRoomSchema.parse(req.body);
+      name = parsed.name;
+      title = parsed.title;
+      waitingRoomEnabled = parsed.waitingRoomEnabled;
+      metadata = parsed.metadata;
+    } catch (validationError) {
+      return res.status(400).json({ error: 'Invalid request body', details: (validationError as Error).message });
+    }
     
      // Get user ID from API key
      const userId = (req as ExternalApiRequest).apiKey?.userId;
-    
-    if (!name) {
-      return res.status(400).json({ error: 'Room name is required' });
-    }
     
     // Sanitize room name
     const sanitized = name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
@@ -245,16 +246,16 @@ router.get('/rooms/:name', async (req: Request, res: Response) => {
  */
 router.post('/token', async (req: Request, res: Response) => {
   try {
-    const { 
-      room, 
-      identity, 
-      name, 
-      role = 'attendee',
-      metadata = {}
-    } = req.body as TokenRequest;
-    
-    if (!room || !identity) {
-      return res.status(400).json({ error: 'Room and identity are required' });
+    let room: string, identity: string, name: string | undefined, role: string, metadata: Record<string, unknown>;
+    try {
+      const parsed = externalTokenSchema.parse(req.body);
+      room = parsed.room;
+      identity = parsed.identity;
+      name = parsed.name;
+      role = parsed.role;
+      metadata = parsed.metadata;
+    } catch (validationError) {
+      return res.status(400).json({ error: 'Invalid request body', details: (validationError as Error).message });
     }
     
     // Verify room exists
@@ -272,7 +273,7 @@ router.post('/token', async (req: Request, res: Response) => {
      // Check API key permissions
      const apiKeyInfo = (req as ExternalApiRequest).apiKey;
      const permissions = apiKeyInfo?.permissions || {};
-    const tokenPerms = permissions.token || {};
+    const tokenPerms = (permissions.token || {}) as Record<string, unknown>;
     const canGenerateToken = tokenPerms.generate === true;
     
     // Get the requested role
@@ -343,10 +344,17 @@ router.post('/rooms/:name/end', async (req: Request, res: Response) => {
   try {
     const { name } = req.params;
     
+    // Verify ownership
+    const apiKeyInfo = (req as ExternalApiRequest).apiKey;
+    const roomOwner = await queryOne<{ host_id: string }>('SELECT host_id FROM rooms WHERE name = $1', [name]);
+    if (roomOwner && roomOwner.host_id !== apiKeyInfo?.userId) {
+      return res.status(403).json({ error: 'Not authorized to modify this room' });
+    }
+    
     // End room via LiveKit
     try {
       await roomClient.deleteRoom(name);
-    } catch (e) {
+    } catch {
       // Room might not exist in LiveKit
       logger.info(`[External API] Room ${name} not active in LiveKit`);
     }
@@ -375,6 +383,13 @@ router.post('/rooms/:name/end', async (req: Request, res: Response) => {
 router.delete('/rooms/:name', async (req: Request, res: Response) => {
   try {
     const { name } = req.params;
+    
+    // Verify ownership
+    const apiKeyInfo = (req as ExternalApiRequest).apiKey;
+    const roomOwner = await queryOne<{ host_id: string }>('SELECT host_id FROM rooms WHERE name = $1', [name]);
+    if (roomOwner && roomOwner.host_id !== apiKeyInfo?.userId) {
+      return res.status(403).json({ error: 'Not authorized to modify this room' });
+    }
     
     // Delete from database
     await query('DELETE FROM rooms WHERE name = $1', [name]);
@@ -416,6 +431,13 @@ router.get('/rooms/:name/links', async (req: Request, res: Response) => {
     
     if (!room) {
       return res.status(404).json({ error: 'Room not found' });
+    }
+    
+    // Check API key has token generation permission
+    const apiKeyInfo = (req as ExternalApiRequest).apiKey;
+    const permissions = apiKeyInfo?.permissions || {};
+    if (!permissions.token || !(permissions.token as Record<string, unknown>).generate) {
+      return res.status(403).json({ error: 'API key does not have permission to generate join links' });
     }
     
     // Generate teacher token with moderator privileges

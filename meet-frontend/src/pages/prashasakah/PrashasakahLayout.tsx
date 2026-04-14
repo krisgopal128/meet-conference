@@ -1,4 +1,6 @@
-import { Outlet, NavLink, Link, Navigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Outlet, NavLink, Link, Navigate, useLocation } from 'react-router-dom';
+import { Menu, X } from 'lucide-react';
 import { useUser, useAuthActions } from '../../store/authStore';
 
 /**
@@ -6,8 +8,6 @@ import { useUser, useAuthActions } from '../../store/authStore';
  * 
  * Provides the sidebar navigation and header for the admin panel.
  * Named "Prashāsakaḥ" (Sanskrit: प्रशासकः) meaning "Administrator"
- * 
- * Desktop only - no mobile optimization
  */
 
 interface NavItem {
@@ -90,21 +90,35 @@ const navItems: NavItem[] = [
 export default function PrashasakahLayout() {
   const user = useUser();
   const { logout } = useAuthActions();
-  const isAdmin = user?.role === 'admin';
-  
-  // Redirect non-admin/moderator users
-  if (!user || (user.role !== 'admin' && user.role !== 'moderator')) {
+  const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  // Admin only
+  if (!user || user.role !== 'admin') {
     return <Navigate to="/" replace />;
   }
 
-  const filteredNavItems = navItems.filter(
-    (item) => !item.adminOnly || isAdmin
-  );
+  const filteredNavItems = navItems;
 
   return (
     <div className="min-h-screen bg-surface-100 flex">
+      {/* Mobile overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-surface-800 text-white flex flex-col fixed h-full">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-surface-800 text-white flex flex-col transform transition-transform duration-200 ease-in-out ${
+        mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+      } md:translate-x-0`}>
         {/* Logo */}
         <div className="p-4 border-b border-surface-700">
           <Link to="/prashasakah" className="flex items-center gap-2">
@@ -119,7 +133,7 @@ export default function PrashasakahLayout() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4">
+        <nav className="flex-1 p-4" aria-label="Admin navigation">
           <ul className="space-y-1">
             {filteredNavItems.map((item) => (
               <li key={item.path}>
@@ -166,11 +180,20 @@ export default function PrashasakahLayout() {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 ml-64 flex flex-col">
+      <div className="flex-1 ml-0 md:ml-64 flex flex-col">
         {/* Header */}
         <header className="bg-white border-b border-surface-200 px-6 py-4">
           <div className="flex items-center justify-between">
-            <div />
+            <div>
+              {/* Hamburger menu button - mobile only */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden p-2 text-surface-500 hover:text-surface-700 transition-colors"
+                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+              >
+                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
+            </div>
             <div className="flex items-center gap-4">
               {/* Alert Bell */}
               <Link
