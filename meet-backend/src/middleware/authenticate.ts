@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
 import { query, queryOne } from '../services/database.js';
 import { cacheGet, cacheSet, isTokenBlacklisted } from '../services/redis.js';
+import logger from '../utils/logger.js';
 
 /**
  * Log failed authentication attempts to audit log
@@ -27,7 +28,7 @@ async function logFailedAuthAttempt(
     );
   } catch (err) {
     // Don't fail the request if audit logging fails
-    console.error('[Audit] Failed to log auth failure:', err);
+    logger.error('[Audit] Failed to log auth failure:', err);
   }
 }
 
@@ -62,10 +63,12 @@ async function getUserById(userId: string): Promise<AuthUser | null> {
     [userId]
   );
 
-  // Cache result for 5 minutes (ignore cache errors)
-  if (user) {
-    cacheSet(cacheKey, user, 300).catch(() => {});
-  }
+   // Cache result for 5 minutes (ignore cache errors)
+   if (user) {
+     cacheSet(cacheKey, user, 300).catch((err) => {
+       logger.warn('[AuthCache] Failed to cache user:', err);
+     });
+   }
 
   return user;
 }
@@ -78,11 +81,13 @@ export async function authenticate(
   const authHeader = req.headers.authorization;
 
   // Debug logging for auth issues
-  console.log(`[Auth] ${req.method} ${req.path} - Authorization header: ${authHeader ? 'present' : 'MISSING'}`);
+  logger.info(`[Auth] ${req.method} ${req.path} - Authorization header: ${authHeader ? 'present' : 'MISSING'}`);
 
   if (!authHeader?.startsWith('Bearer ')) {
-    console.log(`[Auth] Missing/invalid header for ${req.path}`);
-    logFailedAuthAttempt('missing_header', req).catch(() => {});
+    logger.info(`[Auth] Missing/invalid header for ${req.path}`);
+     logFailedAuthAttempt('missing_header', req).catch((err) => {
+       logger.error('[Audit] Failed to log auth failure (missing_header):', err);
+     });
     res.status(401).json({ error: 'Missing or invalid authorization header' });
     return;
   }
@@ -93,7 +98,9 @@ export async function authenticate(
     // Check if token is blacklisted
     const blacklisted = await isTokenBlacklisted(token);
     if (blacklisted) {
-      logFailedAuthAttempt('token_revoked', req).catch(() => {});
+       logFailedAuthAttempt('token_revoked', req).catch((err) => {
+         logger.error('[Audit] Failed to log auth failure (token_revoked):', err);
+       });
       res.status(401).json({ error: 'Token has been revoked' });
       return;
     }
@@ -103,7 +110,9 @@ export async function authenticate(
     const user = await getUserById(payload.userId);
 
     if (!user) {
-      logFailedAuthAttempt('user_not_found', req).catch(() => {});
+       logFailedAuthAttempt('user_not_found', req).catch((err) => {
+         logger.error('[Audit] Failed to log auth failure (user_not_found):', err);
+       });
       res.status(401).json({ error: 'User not found' });
       return;
     }
@@ -118,23 +127,27 @@ export async function authenticate(
       `INSERT INTO user_activity (user_id, activity_type, metadata, ip_address, user_agent)
        VALUES ($1, 'login', $2, $3, $4)`,
       [user.id, JSON.stringify({ method: 'jwt' }), ipAddress, userAgent]
-    ).catch(err => console.error('Failed to log login activity:', err));
+    ).catch(err => logger.error('Failed to log login activity:', err));
     
     // Update last_login_at (non-blocking)
     query(
       'UPDATE users SET last_login_at = NOW() WHERE id = $1',
       [user.id]
-    ).catch(err => console.error('Failed to update last_login_at:', err));
+    ).catch(err => logger.error('Failed to update last_login_at:', err));
     
     next();
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
-      logFailedAuthAttempt('token_expired', req).catch(() => {});
+       logFailedAuthAttempt('token_expired', req).catch((err) => {
+         logger.error('[Audit] Failed to log auth failure (token_expired):', err);
+       });
       res.status(401).json({ error: 'Token expired' });
       return;
     }
     if (error instanceof jwt.JsonWebTokenError) {
-      logFailedAuthAttempt('invalid_token', req).catch(() => {});
+       logFailedAuthAttempt('invalid_token', req).catch((err) => {
+         logger.error('[Audit] Failed to log auth failure (invalid_token):', err);
+       });
       res.status(401).json({ error: 'Invalid token' });
       return;
     }

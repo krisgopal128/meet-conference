@@ -27,6 +27,13 @@ import type {
 import type { TokenResponse, Meeting, MeetingParticipant } from '../types';
 import { isTokenExpired } from '../utils/security';
 
+// Module-level reference to auth store getState — set by authStore after creation
+// This avoids circular dependency while allowing the interceptor to read the store
+let _authStoreGetState: (() => { token: string | null; user: unknown; isAuthenticated: boolean }) | null = null;
+export function registerAuthStore(getState: typeof _authStoreGetState) {
+  _authStoreGetState = getState;
+}
+
 // Use the full API URL from environment
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -61,45 +68,51 @@ api.interceptors.request.use((config) => {
     config.headers['X-CSRF-Token'] = getCsrfToken();
   }
 
-  // Read from zustand persisted storage
+  // Try to get token from multiple sources (defensive)
+  let token: string | null = null;
+
+  // Source 1: Zustand persisted storage (primary)
   const authStorage = localStorage.getItem('auth-storage');
-  console.log('[API Interceptor] Request to:', config.url, '| auth-storage exists:', !!authStorage);
   if (authStorage) {
     try {
       const parsed = JSON.parse(authStorage);
-      const token = parsed?.state?.token;
-      console.log('[API Interceptor] Token exists:', !!token, '| Token preview:', token ? token.substring(0, 20) + '...' : 'null');
-      if (token) {
-        // Check token expiry before sending
-        const expired = isTokenExpired(token);
-        if (expired === true) {
-          // Token is expired - clear auth and reject
-          localStorage.removeItem('auth-storage');
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          window.location.href = '/login?reason=expired';
-          return Promise.reject(new Error('Token expired'));
-        }
-        config.headers.Authorization = `Bearer ${token}`;
-      }
+      token = parsed?.state?.token || null;
     } catch {
-      // Fallback to direct token keys
-      const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
-      if (token) {
-        const expired = isTokenExpired(token);
-        if (expired === true) {
-          localStorage.removeItem('auth-storage');
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          window.location.href = '/login?reason=expired';
-          return Promise.reject(new Error('Token expired'));
-        }
-        config.headers.Authorization = `Bearer ${token}`;
-      }
+      // Ignore parse errors
     }
   }
+
+  // Source 2: Direct localStorage keys (fallback)
+  if (!token) {
+    token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+  }
+
+  // Source 3: Zustand store directly (handles rehydration timing)
+  if (!token) {
+    try {
+      const storeState = _authStoreGetState?.();
+      if (storeState?.token) {
+        token = storeState.token;
+      }
+    } catch {
+      // Store not available yet
+    }
+  }
+
+  if (token) {
+    const expired = isTokenExpired(token);
+    if (expired === true) {
+      // Token is expired - clear auth and reject
+      localStorage.removeItem('auth-storage');
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login?reason=expired';
+      return Promise.reject(new Error('Token expired'));
+    }
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
   return config;
 });
 

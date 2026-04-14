@@ -22,7 +22,7 @@ export function PeakUsersChartSkeleton({ height = 256 }: { height?: number }) {
     <div className="animate-pulse" style={{ height }}>
       <div className="h-full flex items-end gap-2 px-4">
         {Array.from({ length: 7 }).map((_, i) => (
-          <div key={i} className="flex-1 bg-gray-200 rounded" style={{ height: `${Math.random() * 60 + 40}%` }} />
+          <div key={i} className="flex-1 bg-surface-200 rounded" style={{ height: `${Math.random() * 60 + 40}%` }} />
         ))}
       </div>
     </div>
@@ -50,11 +50,11 @@ export function PeakUsersChart({ data, loading = false, height = 256 }: PeakUser
   if (!data || data.length === 0) {
     return (
       <div 
-        className="flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-200"
+        className="flex items-center justify-center bg-surface-50 rounded-lg border-2 border-dashed border-surface-200"
         style={{ height }}
       >
-        <div className="text-center text-gray-500">
-          <svg className="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="text-center text-surface-500">
+          <svg className="w-12 h-12 mx-auto mb-2 text-surface-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
           </svg>
           <p>No peak users data available</p>
@@ -68,12 +68,12 @@ export function PeakUsersChart({ data, loading = false, height = 256 }: PeakUser
       {/* Legend */}
       <div className="flex items-center gap-4 mb-4">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-purple-500" />
-          <span className="text-xs text-gray-600">Peak Users</span>
+          <div className="w-3 h-3 rounded-full bg-brand-500" />
+          <span className="text-xs text-surface-500">Peak Users</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-6 h-0.5 bg-brand-400" />
-          <span className="text-xs text-gray-600">Average</span>
+          <span className="text-xs text-surface-500">Average</span>
         </div>
       </div>
 
@@ -81,7 +81,7 @@ export function PeakUsersChart({ data, loading = false, height = 256 }: PeakUser
       <div className="h-[calc(100%-2rem)] flex flex-col">
         {/* Y-axis labels + Chart */}
         <div className="flex-1 flex">
-          <div className="w-12 flex flex-col justify-between text-xs text-gray-400 py-1">
+          <div className="w-12 flex flex-col justify-between text-xs text-surface-400 py-1">
             <span>{maxValue}</span>
             <span>{Math.round(maxValue / 2)}</span>
             <span>0</span>
@@ -91,9 +91,9 @@ export function PeakUsersChart({ data, loading = false, height = 256 }: PeakUser
           <div className="flex-1 relative">
             {/* Grid lines */}
             <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-              <div className="border-b border-gray-100" />
-              <div className="border-b border-gray-100" />
-              <div className="border-b border-gray-100" />
+              <div className="border-b border-surface-100" />
+              <div className="border-b border-surface-100" />
+              <div className="border-b border-surface-100" />
             </div>
             
             {/* Bars for peak */}
@@ -117,12 +117,12 @@ export function PeakUsersChart({ data, loading = false, height = 256 }: PeakUser
                     />
                     
                     {/* Tooltip */}
-                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 whitespace-nowrap">
+                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-surface-700 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 whitespace-nowrap">
                       Peak: {point.peak} | Avg: {point.average}
                     </div>
                     
                     {/* X-axis label */}
-                    <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-xs text-gray-500 whitespace-nowrap">
+                    <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-xs text-surface-500 whitespace-nowrap">
                       {point.label}
                     </span>
                   </div>

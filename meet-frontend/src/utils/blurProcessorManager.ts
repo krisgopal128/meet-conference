@@ -21,6 +21,7 @@ import {
   type BackgroundProcessorWrapper,
   supportsBackgroundProcessors,
 } from '@livekit/track-processors';
+import logger from './logger';
 
 interface VideoTrack {
   setProcessor: (processor: BackgroundProcessorWrapper) => Promise<void>;
@@ -84,7 +85,7 @@ async function acquireLock(): Promise<() => void> {
     // Safety valve: auto-release after timeout
     safetyTimeout = setTimeout(() => {
       if (state.lockPromise) {
-        console.warn('[BlurManager] ⚠️ Lock timeout, forcing release');
+        logger.warn('[BlurManager] ⚠️ Lock timeout, forcing release');
         state.isApplying = false;
         safetyTimeout = null;
         resolve();
@@ -101,7 +102,7 @@ async function acquireLock(): Promise<() => void> {
 function canToggle(): boolean {
   const now = Date.now();
   if (now - state.lastToggleTime < DEBOUNCE_MS) {
-    console.log('[BlurManager] ⏸️ Toggle debounced (too fast)');
+    logger.info('[BlurManager] ⏸️ Toggle debounced (too fast)');
     return false;
   }
   return true;
@@ -118,7 +119,7 @@ export async function enableBlur(track: VideoTrack): Promise<boolean> {
 
   // Prevent nested calls
   if (state.isApplying) {
-    console.log('[BlurManager] ⏸️ Already applying, skipping enable');
+    logger.info('[BlurManager] ⏸️ Already applying, skipping enable');
     return false;
   }
 
@@ -127,24 +128,24 @@ export async function enableBlur(track: VideoTrack): Promise<boolean> {
   state.lastToggleTime = Date.now();
 
   try {
-    console.log('[BlurManager] 🔄 Enabling blur...');
+    logger.info('[BlurManager] 🔄 Enabling blur...');
     
     // If processor exists and is already on this track, just switch mode
     if (state.processor && state.currentTrack === track) {
-      console.log('[BlurManager] ♻️ Reusing existing processor');
+      logger.info('[BlurManager] ♻️ Reusing existing processor');
       await state.processor.switchTo({ 
         mode: 'background-blur', 
         blurRadius: 10
       });
       state.isEnabled = true;
-      console.log('[BlurManager] ✅ Blur enabled successfully (reused processor)');
+      logger.info('[BlurManager] ✅ Blur enabled successfully (reused processor)');
       return true;
     }
     
     // Need to initialize or reinitialize
     // Clean up old processor if exists
     if (state.processor && state.currentTrack) {
-      console.log('[BlurManager] 🧹 Cleaning up old processor');
+      logger.info('[BlurManager] 🧹 Cleaning up old processor');
       try {
         await state.currentTrack.stopProcessor();
       } catch {
@@ -155,7 +156,7 @@ export async function enableBlur(track: VideoTrack): Promise<boolean> {
     }
 
     // Create processor in disabled mode first
-    console.log('[BlurManager] 🔧 Initializing processor in disabled mode...');
+    logger.info('[BlurManager] 🔧 Initializing processor in disabled mode...');
     state.processor = BackgroundProcessor({ 
       mode: 'disabled',
     });
@@ -171,10 +172,10 @@ export async function enableBlur(track: VideoTrack): Promise<boolean> {
     });
     
     state.isEnabled = true;
-    console.log('[BlurManager] ✅ Blur enabled successfully (via switchTo)');
+    logger.info('[BlurManager] ✅ Blur enabled successfully (via switchTo)');
     return true;
   } catch (e) {
-    console.error('[BlurManager] ❌ Failed to enable blur:', e);
+    logger.error('[BlurManager] ❌ Failed to enable blur:', e);
     return false;
   } finally {
     state.isApplying = false;
@@ -193,13 +194,13 @@ export async function disableBlur(_track: VideoTrack): Promise<boolean> {
 
   // Prevent nested calls
   if (state.isApplying) {
-    console.log('[BlurManager] ⏸️ Already applying, skipping disable');
+    logger.info('[BlurManager] ⏸️ Already applying, skipping disable');
     return false;
   }
 
   // If no processor exists at all, nothing to disable
   if (!state.processor) {
-    console.log('[BlurManager] ℹ️ No processor exists, blur already disabled');
+    logger.info('[BlurManager] ℹ️ No processor exists, blur already disabled');
     state.isEnabled = false;
     return true;
   }
@@ -209,17 +210,17 @@ export async function disableBlur(_track: VideoTrack): Promise<boolean> {
   state.lastToggleTime = Date.now();
 
   try {
-    console.log('[BlurManager] 🔄 Disabling blur...');
+    logger.info('[BlurManager] 🔄 Disabling blur...');
     
     // Switch to disabled mode using switchTo() - keeps pipeline alive
     // We call this even if track reference differs, to ensure blur is actually off
     await state.processor!.switchTo({ mode: 'disabled' });
     
     state.isEnabled = false;
-    console.log('[BlurManager] ✅ Blur disabled successfully (via switchTo)');
+    logger.info('[BlurManager] ✅ Blur disabled successfully (via switchTo)');
     return true;
   } catch (e) {
-    console.error('[BlurManager] ❌ Failed to disable blur:', e);
+    logger.error('[BlurManager] ❌ Failed to disable blur:', e);
     // Even on error, reset the enabled state
     state.isEnabled = false;
     return false;
@@ -232,7 +233,7 @@ export async function disableBlur(_track: VideoTrack): Promise<boolean> {
 /**
  * Toggle background blur
  */
-export async function toggleBlur(
+export function toggleBlur(
   track: VideoTrack,
   enabled: boolean
 ): Promise<boolean> {
@@ -262,7 +263,7 @@ export function isBlurApplying(): boolean {
  * Only call this when completely done with the processor
  */
 export async function forceCleanup(track?: VideoTrack): Promise<void> {
-  console.log('[BlurManager] 🧹 Force cleanup');
+  logger.info('[BlurManager] 🧹 Force cleanup');
   
   const targetTrack = track || state.currentTrack;
   if (targetTrack) {
@@ -284,7 +285,7 @@ export async function forceCleanup(track?: VideoTrack): Promise<void> {
  * Reset state when switching cameras (call before enabling blur on new camera)
  */
 export async function resetForNewTrack(): Promise<void> {
-  console.log('[BlurManager] 🔄 Resetting for new track');
+  logger.info('[BlurManager] 🔄 Resetting for new track');
   if (state.currentTrack) {
     try {
       await state.currentTrack.stopProcessor();

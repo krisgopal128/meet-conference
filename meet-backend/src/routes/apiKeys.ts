@@ -4,12 +4,13 @@
  * Only moderators and admins can manage API keys.
  */
 
-import { Router, Request, Response } from 'express';
-import crypto from 'crypto';
-import { z } from 'zod';
-import { query, queryOne } from '../services/database.js';
-import { authenticate } from '../middleware/authenticate.js';
-import { requireRole } from '../middleware/requireRole.js';
+ import { Router, Request, Response } from 'express';
+ import crypto from 'crypto';
+ import { z } from 'zod';
+ import { query, queryOne } from '../services/database.js';
+ import { authenticate, AuthRequest } from '../middleware/authenticate.js';
+ import { requireRole } from '../middleware/requireRole.js';
+ import logger from '../utils/logger.js';
 
 const router = Router();
 
@@ -98,18 +99,18 @@ function generateApiKey(): { key: string; hash: string; prefix: string } {
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as AuthRequest).user?.id;
     
-    const keys = await query<{
-      id: string;
-      name: string;
-      prefix: string;
-      permissions: any;
-      last_used_at: Date | null;
-      expires_at: Date | null;
-      is_active: boolean;
-      created_at: Date;
-    }>(
+     const keys = await query<{
+       id: string;
+       name: string;
+       prefix: string;
+       permissions: Record<string, unknown>;
+       last_used_at: Date | null;
+       expires_at: Date | null;
+       is_active: boolean;
+       created_at: Date;
+     }>(
       `SELECT id, name, prefix, permissions, last_used_at, expires_at, is_active, created_at 
        FROM api_keys 
        WHERE user_id = $1 
@@ -120,7 +121,7 @@ router.get('/', async (req: Request, res: Response) => {
     res.json({ keys });
     
   } catch (error) {
-    console.error('[API Keys] Error listing keys:', error);
+    logger.error('[API Keys] Error listing keys:', error);
     res.status(500).json({ error: 'Failed to list API keys' });
   }
 });
@@ -131,7 +132,7 @@ router.get('/', async (req: Request, res: Response) => {
  */
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as AuthRequest).user?.id;
     
     // Validate input
     const validationResult = createApiKeySchema.safeParse(req.body);
@@ -179,7 +180,7 @@ router.post('/', async (req: Request, res: Response) => {
       ]
     );
     
-    console.log(`[API Keys] User ${userId} created API key: ${name}`);
+    logger.info(`[API Keys] User ${userId} created API key: ${name}`);
     
     // Return the key ONLY on creation (can't be retrieved later)
     res.status(201).json({
@@ -192,7 +193,7 @@ router.post('/', async (req: Request, res: Response) => {
     });
     
   } catch (error) {
-    console.error('[API Keys] Error creating key:', error);
+    logger.error('[API Keys] Error creating key:', error);
     res.status(500).json({ error: 'Failed to create API key' });
   }
 });
@@ -203,19 +204,19 @@ router.post('/', async (req: Request, res: Response) => {
  */
 router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as AuthRequest).user?.id;
     const { id } = req.params;
     
-    const key = await queryOne<{
-      id: string;
-      name: string;
-      prefix: string;
-      permissions: any;
-      last_used_at: Date | null;
-      expires_at: Date | null;
-      is_active: boolean;
-      created_at: Date;
-    }>(
+     const key = await queryOne<{
+       id: string;
+       name: string;
+       prefix: string;
+       permissions: Record<string, unknown>;
+       last_used_at: Date | null;
+       expires_at: Date | null;
+       is_active: boolean;
+       created_at: Date;
+     }>(
       `SELECT id, name, prefix, permissions, last_used_at, expires_at, is_active, created_at 
        FROM api_keys 
        WHERE id = $1 AND user_id = $2`,
@@ -229,7 +230,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     res.json({ key });
     
   } catch (error) {
-    console.error('[API Keys] Error getting key:', error);
+    logger.error('[API Keys] Error getting key:', error);
     res.status(500).json({ error: 'Failed to get API key' });
   }
 });
@@ -240,7 +241,7 @@ router.get('/:id', async (req: Request, res: Response) => {
  */
 router.patch('/:id', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as AuthRequest).user?.id;
     const { id } = req.params;
     
     // Validate input
@@ -266,7 +267,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
     
     // Build update query
     const updates: string[] = [];
-    const values: any[] = [];
+     const values: unknown[] = [];
     let paramCount = 1;
     
     if (name !== undefined) {
@@ -295,12 +296,12 @@ router.patch('/:id', async (req: Request, res: Response) => {
       values
     );
     
-    console.log(`[API Keys] User ${userId} updated API key: ${id}`);
+    logger.info(`[API Keys] User ${userId} updated API key: ${id}`);
     
     res.json({ success: true, message: 'API key updated' });
     
   } catch (error) {
-    console.error('[API Keys] Error updating key:', error);
+    logger.error('[API Keys] Error updating key:', error);
     res.status(500).json({ error: 'Failed to update API key' });
   }
 });
@@ -311,7 +312,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
  */
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as AuthRequest).user?.id;
     const { id } = req.params;
     
     // Check if key exists and belongs to user
@@ -327,12 +328,12 @@ router.delete('/:id', async (req: Request, res: Response) => {
     // Delete the key
     await query('DELETE FROM api_keys WHERE id = $1 AND user_id = $2', [id, userId]);
     
-    console.log(`[API Keys] User ${userId} deleted API key: ${existing.name}`);
+    logger.info(`[API Keys] User ${userId} deleted API key: ${existing.name}`);
     
     res.json({ success: true, message: 'API key deleted' });
     
   } catch (error) {
-    console.error('[API Keys] Error deleting key:', error);
+    logger.error('[API Keys] Error deleting key:', error);
     res.status(500).json({ error: 'Failed to delete API key' });
   }
 });
@@ -343,11 +344,11 @@ router.delete('/:id', async (req: Request, res: Response) => {
  */
 router.post('/:id/regenerate', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as AuthRequest).user?.id;
     const { id } = req.params;
     
     // Check if key exists and belongs to user
-    const existing = await queryOne<{ name: string; permissions: any; expires_at: Date | null }>(
+     const existing = await queryOne<{ name: string; permissions: Record<string, unknown>; expires_at: Date | null }>(
       'SELECT name, permissions, expires_at FROM api_keys WHERE id = $1 AND user_id = $2',
       [id, userId]
     );
@@ -366,7 +367,7 @@ router.post('/:id/regenerate', async (req: Request, res: Response) => {
       [hash, prefix, id, userId]
     );
     
-    console.log(`[API Keys] User ${userId} regenerated API key: ${existing.name}`);
+    logger.info(`[API Keys] User ${userId} regenerated API key: ${existing.name}`);
     
     // Return the new key (only shown once!)
     res.json({
@@ -379,7 +380,7 @@ router.post('/:id/regenerate', async (req: Request, res: Response) => {
     });
     
   } catch (error) {
-    console.error('[API Keys] Error regenerating key:', error);
+    logger.error('[API Keys] Error regenerating key:', error);
     res.status(500).json({ error: 'Failed to regenerate API key' });
   }
 });

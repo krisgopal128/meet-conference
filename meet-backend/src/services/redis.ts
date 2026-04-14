@@ -2,6 +2,20 @@ import { createClient, type RedisClientType } from 'redis';
 import { config } from '../config.js';
 import { gzip as gzipCb, gunzip as gunzipCb } from 'zlib';
 import { promisify } from 'util';
+import logger from '../utils/logger.js';
+
+// Minimal subset of Redis multi/transactions commands we use in pipeline()
+interface PartialMulti {
+  set(key: string, value: string): this;
+  get(key: string): this;
+  del(...keys: string[]): this;
+  sAdd(key: string, ...members: string[]): this;
+  sRem(key: string, ...members: string[]): this;
+  sMembers(key: string): this;
+  expire(key: string, seconds: number): this;
+  setEx(key: string, seconds: number, value: string): this;
+  exec(): Promise<unknown[]>;
+}
 
 const gzip = promisify(gzipCb);
 const gunzip = promisify(gunzipCb);
@@ -36,12 +50,12 @@ function createOptimizedClient(): RedisClientType {
     socket: {
       reconnectStrategy: (retries) => {
         if (retries > 10) {
-          console.error('Redis: Too many reconnection attempts');
+          logger.error('Redis: Too many reconnection attempts');
           return new Error('Too many retries');
         }
         // Exponential backoff with jitter
         const delay = Math.min(retries * 100 + Math.random() * 50, 3000);
-        console.log(`Redis: Reconnecting in ${Math.round(delay)}ms (attempt ${retries})`);
+        logger.info(`Redis: Reconnecting in ${Math.round(delay)}ms (attempt ${retries})`);
         return delay;
       },
       keepAlive: 5000,
@@ -59,13 +73,13 @@ function createOptimizedClient(): RedisClientType {
 async function initPool(): Promise<void> {
   if (poolInitialized) return;
 
-  console.log(`🔄 Initializing Redis connection pool (${POOL_SIZE} connections)...`);
+  logger.info(`🔄 Initializing Redis connection pool (${POOL_SIZE} connections)...`);
 
   const initPromises = [];
 
   for (let i = 0; i < POOL_SIZE; i++) {
     const client = createOptimizedClient();
-    client.on('error', (err) => console.error(`Redis pool[${i}] error:`, err));
+    client.on('error', (err) => logger.error(`Redis pool[${i}] error:`, err));
 
     initPromises.push(
       client.connect().then(() => {
@@ -74,14 +88,14 @@ async function initPool(): Promise<void> {
           inUse: false,
           lastUsed: Date.now(),
         });
-        console.log(`✅ Redis pool[${i}] connected`);
+        logger.info(`✅ Redis pool[${i}] connected`);
       })
     );
   }
 
   await Promise.all(initPromises);
   poolInitialized = true;
-  console.log(`✅ Redis connection pool ready (${connectionPool.length} connections)`);
+  logger.info(`✅ Redis connection pool ready (${connectionPool.length} connections)`);
 
   // Start periodic health checks for pool connections (every 30s)
   poolHealthCheckInterval = setInterval(async () => {
@@ -90,12 +104,12 @@ async function initPool(): Promise<void> {
       if (!conn.inUse && !conn.client.isOpen) {
         try {
           const newClient = createOptimizedClient();
-          newClient.on('error', (err) => console.error(`Redis pool[${i}] error:`, err));
+          newClient.on('error', (err) => logger.error(`Redis pool[${i}] error:`, err));
           await newClient.connect();
           conn.client = newClient;
-          console.log(`✅ Redis pool[${i}] reconnected`);
+          logger.info(`✅ Redis pool[${i}] reconnected`);
         } catch (err) {
-          console.error(`Redis pool[${i}] reconnection failed:`, err);
+          logger.error(`Redis pool[${i}] reconnection failed:`, err);
         }
       }
     }
@@ -164,24 +178,24 @@ async function withConnection<T>(fn: (client: RedisClientType) => Promise<T>): P
 export async function initRedis(): Promise<void> {
   mainClient = createOptimizedClient();
 
-  mainClient.on('error', (err) => console.error('Redis error:', err));
+  mainClient.on('error', (err) => logger.error('Redis error:', err));
   mainClient.on('connect', () => {
-    console.log('✅ Redis connected');
+    logger.info('✅ Redis connected');
     isConnected = true;
   });
   mainClient.on('disconnect', () => {
-    console.warn('⚠️ Redis disconnected');
+    logger.warn('⚠️ Redis disconnected');
     isConnected = false;
   });
   mainClient.on('ready', () => {
-    console.log('📊 Redis ready for commands');
+    logger.info('📊 Redis ready for commands');
   });
 
   await mainClient.connect();
 
   // Initialize pool in background (non-blocking)
   initPool().catch(err => {
-    console.warn('Redis pool initialization failed, using single connection:', err);
+    logger.warn('Redis pool initialization failed, using single connection:', err);
   });
 }
 
@@ -216,7 +230,7 @@ async function decompressValue<T>(data: string, compressed: boolean): Promise<T 
     }
     return JSON.parse(data);
   } catch (e) {
-    console.error('[REDIS] Failed to parse JSON in decompressValue:', e);
+    logger.error('[REDIS] Failed to parse JSON in decompressValue:', e);
     return null;
   }
 }
@@ -239,7 +253,7 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
   try {
     return JSON.parse(data);
   } catch (e) {
-    console.error('[REDIS] Failed to parse JSON in cacheGet:', e);
+    logger.error('[REDIS] Failed to parse JSON in cacheGet:', e);
     return null;
   }
 }
@@ -299,16 +313,20 @@ export async function cacheTTL(key: string): Promise<number> {
 // PIPELINE OPERATIONS (Batch)
 // ============================================
 
-export async function pipeline(commands: Array<{
-  command: 'set' | 'get' | 'del' | 'sAdd' | 'sRem' | 'sMembers' | 'expire' | 'setEx';
-  args: any[];
-}>): Promise<any[]> {
+ export async function pipeline(commands: Array<{
+   command: 'set' | 'get' | 'del' | 'sAdd' | 'sRem' | 'sMembers' | 'expire' | 'setEx';
+   args: unknown[];
+ }>): Promise<unknown[]> {
   await ensureConnected();
   if (!mainClient) throw new Error('Redis not initialized');
 
-  const multi = mainClient.multi();
+  const multi = mainClient.multi() as PartialMulti;
   for (const cmd of commands) {
-    (multi as any)[cmd.command](...cmd.args);
+    const fn = multi[cmd.command];
+    if (typeof fn !== 'function') {
+      throw new Error(`Unsupported Redis multi command: ${cmd.command}`);
+    }
+    fn.apply(multi, cmd.args);
   }
   return multi.exec();
 }
@@ -352,7 +370,7 @@ export async function cacheGetMulti<T>(keys: string[]): Promise<Map<string, T | 
       try {
         results.set(keys[i], JSON.parse(data));
       } catch (e) {
-        console.error('[REDIS] Failed to parse JSON in cacheGetMulti:', e);
+        logger.error('[REDIS] Failed to parse JSON in cacheGetMulti:', e);
         results.set(keys[i], null);
       }
     }
@@ -466,7 +484,7 @@ export async function getRedisInfo(): Promise<{
       hitRate: Math.round(hitRate * 100) / 100,
     };
   } catch (error) {
-    console.error('Failed to get Redis info:', error);
+    logger.error('Failed to get Redis info:', error);
     return { connected: true, usedMemory: 'unknown', totalKeys: 0, hitRate: 0 };
   }
 }
@@ -492,7 +510,7 @@ export async function addAdmittedParticipant(roomName: string, identity: string,
     ADMITTED_TTL_SECONDS,
     JSON.stringify({ identity, guestName, admittedAt: Date.now() })
   );
-  console.log(`[ADMIT] Added ${identity} to admitted list for room ${roomName}, TTL: ${ADMITTED_TTL_SECONDS}s`);
+  logger.info(`[ADMIT] Added ${identity} to admitted list for room ${roomName}, TTL: ${ADMITTED_TTL_SECONDS}s`);
 
   // Also store by guest name for name-based lookup
   if (guestName) {
@@ -502,7 +520,7 @@ export async function addAdmittedParticipant(roomName: string, identity: string,
       ADMITTED_TTL_SECONDS,
       identity
     );
-    console.log(`[ADMIT] Also tracking guest "${guestName}" for room ${roomName}`);
+    logger.info(`[ADMIT] Also tracking guest "${guestName}" for room ${roomName}`);
   }
 }
 
@@ -566,7 +584,7 @@ export async function addKickedParticipant(roomName: string, identity: string, g
     KICK_COOLDOWN_SECONDS,
     Date.now().toString()
   );
-  console.log(`[KICK] Added ${identity} to kicked list for room ${roomName}, cooldown: ${KICK_COOLDOWN_SECONDS}s`);
+  logger.info(`[KICK] Added ${identity} to kicked list for room ${roomName}, cooldown: ${KICK_COOLDOWN_SECONDS}s`);
 
   if (guestName) {
     const normalizedName = guestName.toLowerCase().trim();
@@ -575,7 +593,7 @@ export async function addKickedParticipant(roomName: string, identity: string, g
       KICK_COOLDOWN_SECONDS,
       identity
     );
-    console.log(`[KICK] Also tracking guest "${guestName}" for room ${roomName}`);
+    logger.info(`[KICK] Also tracking guest "${guestName}" for room ${roomName}`);
   }
 }
 

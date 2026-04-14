@@ -8,6 +8,7 @@ import type { ScheduledMeeting } from '../types';
 import { format } from 'date-fns';
 import { Plus, Calendar, Clock, Video, Trash2, Play, X, Check, ArrowRight, Edit2, Share2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import logger from '../utils/logger';
 
 export type RecurrenceType = 'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly';
 
@@ -107,7 +108,7 @@ function SchedulePageContent() {
       const response = await meetingsApi.getScheduled();
       setMeetings(response?.data?.meetings || []);
     } catch (error) {
-      console.error('Failed to load meetings:', error);
+      logger.error('Failed to load meetings:', error);
       toast.error('Failed to load scheduled meetings. Please try again.');
     } finally {
       setLoading(false);

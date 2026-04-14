@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import logger from './utils/logger.js';
 dotenv.config();
 
 function getSSLConfig(): false | { rejectUnauthorized: boolean; ca?: string } {
@@ -37,7 +38,7 @@ function getSSLConfig(): false | { rejectUnauthorized: boolean; ca?: string } {
   }
 
   if (process.env.DATABASE_SSL === 'true') {
-    console.warn('⚠️  DATABASE_SSL=true: Using self-signed certificate (development only)');
+    logger.warn('⚠️  DATABASE_SSL=true: Using self-signed certificate (development only)');
     return { rejectUnauthorized: false };
   }
 
@@ -89,19 +90,19 @@ export const config = {
 
 // Validation - never log actual secret values
 if (!config.livekit.apiKey || !config.livekit.apiSecret) {
-  console.warn('⚠️  LiveKit credentials not configured');
+  logger.warn('⚠️  LiveKit credentials not configured');
 }
 
 // Critical validation - JWT_SECRET is required in all environments
 if (!process.env.JWT_SECRET) {
-  console.error('❌ FATAL: JWT_SECRET environment variable is required');
+  logger.error('❌ FATAL: JWT_SECRET environment variable is required');
   process.exit(1);
 }
 
 // Critical validation for production
 if (config.nodeEnv === 'production') {
   if (!process.env.DATABASE_URL) {
-    console.error('❌ FATAL: DATABASE_URL must be set');
+    logger.error('❌ FATAL: DATABASE_URL must be set');
     process.exit(1);
   }
 }

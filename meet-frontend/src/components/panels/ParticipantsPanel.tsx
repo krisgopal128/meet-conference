@@ -11,13 +11,8 @@ import type { LobbyParticipant as ApiLobbyParticipant } from '../../types/api';
 import { X, UserCheck, UserX, Users, Clock, Mic2, CameraOff } from 'lucide-react';
 import { meetingRoomConfig } from '../../config/meetingRoomConfig';
 import ParticipantListItem, { getInitials } from './ParticipantListItem';
-
-// Local lobby participant state
-interface LobbyParticipantState {
-  identity: string;
-  name: string;
-  joinedAt: number;
-}
+import { useParticipantActions } from '../../hooks/useParticipantActions';
+import logger from '../../utils/logger';
 
 // Sort options for participants
 type SortOption = 'name' | 'joinTime' | 'role';
@@ -71,41 +66,33 @@ export function ParticipantsPanel() {
   const { toggleParticipants, setLobbyCount } = useUIActions();
   
   // Local state
-  const [lobbyParticipants, setLobbyParticipants] = useState<LobbyParticipantState[]>([]);
-  const [admitting, setAdmitting] = useState<string | null>(null);
-  const [pendingParticipantActions, setPendingParticipantActions] = useState<Set<string>>(new Set());
-  const [muteAllPending, setMuteAllPending] = useState(false);
-  const [bulkActionPending, setBulkActionPending] = useState<string | null>(null);
+  const [lobbyParticipants, setLobbyParticipants] = useState<{ identity: string; name: string; joinedAt: number }[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>(() => getPersistedSortPreference());
+
+  // Wire up extracted participant actions hook
+  const {
+    admitting,
+    pendingParticipantActions,
+    muteAllPending,
+    bulkActionPending,
+    handleAdmit,
+    handleDeny,
+    handleMute,
+    handleDisableCamera,
+    handleDisableScreenShare,
+    handleKick,
+    handleMuteAll,
+    handleDisableAllCameras,
+    handleAdmitAll,
+    handleDenyAll,
+  } = useParticipantActions(room, setLobbyCount, setLobbyParticipants, lobbyParticipants);
 
   // Handle sort change with persistence
   const handleSortChange = useCallback((newSort: SortOption) => {
     setSortBy(newSort);
     persistSortPreference(newSort);
   }, []);
-
-  const getErrorMessage = (err: unknown, fallback: string) => {
-    const message = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-    return message || fallback;
-  };
-
-  const withParticipantAction = async (participantIdentity: string, action: () => Promise<void>) => {
-    if (pendingParticipantActions.has(participantIdentity)) {
-      return;
-    }
-
-    setPendingParticipantActions((prev) => new Set(prev).add(participantIdentity));
-    try {
-      await action();
-    } finally {
-      setPendingParticipantActions((prev) => {
-        const next = new Set(prev);
-        next.delete(participantIdentity);
-        return next;
-      });
-    }
-  };
 
   // Fetch lobby participants periodically for moderators
   useEffect(() => {
@@ -122,7 +109,7 @@ export function ParticipantsPanel() {
           joinedAt: Date.now(),
         })));
       } catch (err) {
-        console.error('Failed to fetch lobby:', err);
+        logger.error('Failed to fetch lobby:', err);
       }
     };
 
@@ -151,157 +138,6 @@ export function ParticipantsPanel() {
       room.off('participantConnected', handleParticipantConnected);
     };
   }, [room, isModerator, setLobbyCount]);
-
-  // Admit participant from lobby
-  const handleAdmit = async (participantIdentity: string) => {
-    setAdmitting(participantIdentity);
-    try {
-      await roomsApi.admitParticipant(room.name, participantIdentity);
-      setLobbyParticipants((prev) => {
-        const next = prev.filter((p) => p.identity !== participantIdentity);
-        setLobbyCount(next.length);
-        return next;
-      });
-      console.log('[ParticipantsPanel] Participant admitted:', participantIdentity);
-    } catch (err) {
-      console.error('Failed to admit participant:', err);
-      console.error('[ParticipantsPanel]', getErrorMessage(err, 'Failed to admit participant'));
-    } finally {
-      setAdmitting(null);
-    }
-  };
-
-  // Deny participant
-  const handleDeny = async (participantIdentity: string) => {
-    try {
-      await roomsApi.kickParticipant(room.name, participantIdentity);
-      setLobbyParticipants((prev) => {
-        const next = prev.filter((p) => p.identity !== participantIdentity);
-        setLobbyCount(next.length);
-        return next;
-      });
-      console.log('[ParticipantsPanel] Participant denied:', participantIdentity);
-    } catch (err) {
-      console.error('Failed to deny participant:', err);
-      console.error('[ParticipantsPanel]', getErrorMessage(err, 'Failed to deny participant'));
-    }
-  };
-
-  // Mute participant
-  const handleMute = async (participantIdentity: string) => {
-    await withParticipantAction(participantIdentity, async () => {
-      try {
-        await roomsApi.muteParticipant(room.name, participantIdentity);
-        console.log('[ParticipantsPanel] Participant muted:', participantIdentity);
-      } catch (err) {
-        console.error('Failed to mute participant:', err);
-        console.error('[ParticipantsPanel]', getErrorMessage(err, 'Failed to mute participant'));
-      }
-    });
-  };
-
-  // Disable camera
-  const handleDisableCamera = async (participantIdentity: string) => {
-    await withParticipantAction(participantIdentity, async () => {
-      try {
-        await roomsApi.muteVideo(room.name, participantIdentity);
-        console.log('[ParticipantsPanel] Participant camera disabled:', participantIdentity);
-      } catch (err) {
-        console.error('Failed to disable camera:', err);
-        console.error('[ParticipantsPanel]', getErrorMessage(err, 'Failed to disable camera'));
-      }
-    });
-  };
-
-  // Disable screen share
-  const handleDisableScreenShare = async (participantIdentity: string) => {
-    await withParticipantAction(participantIdentity, async () => {
-      try {
-        await roomsApi.disableScreenShare(room.name, participantIdentity);
-        console.log('[ParticipantsPanel] Participant screen share disabled:', participantIdentity);
-      } catch (err) {
-        console.error('Failed to disable screen share:', err);
-        console.error('[ParticipantsPanel]', getErrorMessage(err, 'Failed to disable screen share'));
-      }
-    });
-  };
-
-  // Kick participant
-  const handleKick = async (participantIdentity: string) => {
-    await withParticipantAction(participantIdentity, async () => {
-      try {
-        await roomsApi.kickParticipant(room.name, participantIdentity);
-        console.log('[ParticipantsPanel] Participant removed:', participantIdentity);
-      } catch (err) {
-        console.error('Failed to kick participant:', err);
-        console.error('[ParticipantsPanel]', getErrorMessage(err, 'Failed to remove participant'));
-      }
-    });
-  };
-
-  // Mute all
-  const handleMuteAll = async () => {
-    if (muteAllPending) return;
-    setMuteAllPending(true);
-    try {
-      await roomsApi.muteAllParticipants(room.name);
-      console.log('[ParticipantsPanel] All participants muted');
-    } catch (err) {
-      console.error('Failed to mute all participants:', err);
-      console.error('[ParticipantsPanel]', getErrorMessage(err, 'Failed to mute all participants'));
-    } finally {
-      setMuteAllPending(false);
-    }
-  };
-
-  // Disable all cameras
-  const handleDisableAllCameras = async () => {
-    if (bulkActionPending) return;
-    setBulkActionPending('disable-cameras');
-    try {
-      await roomsApi.disableAllCameras(room.name);
-      console.log('[ParticipantsPanel] All participant cameras disabled');
-    } catch (err) {
-      console.error('Failed to disable all cameras:', err);
-      console.error('[ParticipantsPanel]', getErrorMessage(err, 'Failed to disable all cameras'));
-    } finally {
-      setBulkActionPending(null);
-    }
-  };
-
-  // Admit all
-  const handleAdmitAll = async () => {
-    if (bulkActionPending || lobbyParticipants.length === 0) return;
-    setBulkActionPending('admit-all');
-    try {
-      await roomsApi.admitAllParticipants(room.name);
-      setLobbyParticipants([]);
-      setLobbyCount(0);
-      console.log('[ParticipantsPanel] All lobby participants admitted');
-    } catch (err) {
-      console.error('Failed to admit all participants:', err);
-      console.error('[ParticipantsPanel]', getErrorMessage(err, 'Failed to admit all participants'));
-    } finally {
-      setBulkActionPending(null);
-    }
-  };
-
-  // Deny all
-  const handleDenyAll = async () => {
-    if (bulkActionPending || lobbyParticipants.length === 0) return;
-    setBulkActionPending('deny-all');
-    try {
-      await roomsApi.denyAllParticipants(room.name);
-      setLobbyParticipants([]);
-      setLobbyCount(0);
-      console.log('[ParticipantsPanel] All lobby participants denied');
-    } catch (err) {
-      console.error('Failed to deny all participants:', err);
-      console.error('[ParticipantsPanel]', getErrorMessage(err, 'Failed to deny all participants'));
-    } finally {
-      setBulkActionPending(null);
-    }
-  };
 
   // Filter participants
   const activeParticipants = participants.filter((p) => p.permissions?.canPublish !== false);

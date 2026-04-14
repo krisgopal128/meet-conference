@@ -97,10 +97,10 @@ export default function UserEditModal({
         <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">Edit User</h3>
+            <h3 className="text-lg font-semibold text-surface-800">Edit User</h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-surface-400 hover:text-surface-500 transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -109,13 +109,13 @@ export default function UserEditModal({
           </div>
 
           {/* User Info Banner */}
-          <div className="flex items-center gap-3 mb-6 p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center gap-3 mb-6 p-3 bg-surface-50 rounded-lg">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-white font-medium text-lg">
               {user.name?.charAt(0).toUpperCase() || user.email.charAt(0).toUpperCase()}
             </div>
             <div>
-              <p className="font-medium text-gray-900">{user.name || 'No name'}</p>
-              <p className="text-sm text-gray-500">{user.email}</p>
+              <p className="font-medium text-surface-800">{user.name || 'No name'}</p>
+              <p className="text-sm text-surface-500">{user.email}</p>
             </div>
           </div>
 
@@ -123,14 +123,14 @@ export default function UserEditModal({
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Error Message */}
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">{error}</p>
+              <div className="p-3 bg-danger-50 border border-danger-200 rounded-lg">
+                <p className="text-sm text-danger-600">{error}</p>
               </div>
             )}
 
             {/* Name Field */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="name" className="block text-sm font-medium text-surface-600 mb-1">
                 Display Name
               </label>
               <input
@@ -138,14 +138,14 @@ export default function UserEditModal({
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
+                className="w-full px-3 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-brand-400 focus:border-brand-400 outline-none transition-colors"
                 placeholder="Enter display name"
               />
             </div>
 
             {/* Role Field */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-surface-600 mb-2">
                 Role
               </label>
               <div className="space-y-2">
@@ -159,8 +159,8 @@ export default function UserEditModal({
                         role === option.value
                           ? 'border-brand-500 bg-brand-50'
                           : isDisabled
-                          ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          ? 'border-surface-200 bg-surface-50 cursor-not-allowed opacity-60'
+                          : 'border-surface-200 hover:border-surface-300 hover:bg-surface-50'
                       }`}
                     >
                       <input
@@ -173,15 +173,15 @@ export default function UserEditModal({
                         className="mt-0.5"
                       />
                       <div>
-                        <p className="font-medium text-gray-900">{option.label}</p>
-                        <p className="text-sm text-gray-500">{option.description}</p>
+                        <p className="font-medium text-surface-800">{option.label}</p>
+                        <p className="text-sm text-surface-500">{option.description}</p>
                       </div>
                     </label>
                   );
                 })}
               </div>
               {!canChangeRole && (
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-surface-500 mt-2">
                   {isEditingSelf 
                     ? 'You cannot change your own role.'
                     : 'Only administrators can change user roles.'}
@@ -194,7 +194,7 @@ export default function UserEditModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                className="flex-1 px-4 py-2 text-sm font-medium text-surface-600 bg-surface-100 rounded-lg hover:bg-surface-200 transition-colors"
               >
                 Cancel
               </button>

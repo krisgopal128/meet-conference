@@ -1,5 +1,6 @@
 import { AudioPresets, BackupCodecPolicy, VideoPreset, VideoQuality, type AudioCaptureOptions, type VideoCaptureOptions } from 'livekit-client';
 import rawConfig from '../../meeting-room.config.example.jsonc?raw';
+import logger from '../utils/logger';
 
 type LayoutMode = 'speaker' | 'grid' | 'spotlight' | 'screenshare';
 type VideoCodec = 'vp8' | 'h264' | 'vp9' | 'av1' | 'h265';
@@ -558,7 +559,7 @@ function loadConfig(): MeetingRoomConfig {
   try {
     return JSON.parse(stripJsonComments(rawConfig)) as MeetingRoomConfig;
   } catch (error) {
-    console.error('Failed to parse meeting room config, falling back to defaults:', error);
+    logger.error('Failed to parse meeting room config, falling back to defaults:', error);
     return fallbackConfig;
   }
 }
@@ -734,7 +735,7 @@ export function buildCameraCaptureOptions(
     maxWidth = hardwareCaps.maxWidth;
     maxHeight = hardwareCaps.maxHeight;
     nativeAspectRatio = hardwareCaps.nativeAspectRatio;
-    console.log(`📷 Camera native: ${maxWidth}×${maxHeight} (${nativeAspectRatio.toFixed(3)})`);
+    logger.info(`📷 Camera native: ${maxWidth}×${maxHeight} (${nativeAspectRatio.toFixed(3)})`);
   } else {
     // Fallback to config-based limits
     maxWidth = Math.min(targetResolution?.width ?? cameraCapture.width, cameraCapture.maxWidth);
@@ -766,7 +767,7 @@ export function buildCameraCaptureOptions(
     height = matched.height;
   }
   
-  console.log(`📷 Capture: ${width}×${height} @ ${targetRatio} (native caps: ${hardwareCaps ? `${hardwareCaps.maxWidth}×${hardwareCaps.maxHeight}` : 'unknown'})`);
+  logger.info(`📷 Capture: ${width}×${height} @ ${targetRatio} (native caps: ${hardwareCaps ? `${hardwareCaps.maxWidth}×${hardwareCaps.maxHeight}` : 'unknown'})`);
 
   return {
     deviceId: selectedCamera || undefined,

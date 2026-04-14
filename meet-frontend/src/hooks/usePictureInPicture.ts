@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import logger from '../utils/logger';
 
 export type PiPPermissionState = 'granted' | 'prompt' | 'denied' | 'unsupported';
 
@@ -52,7 +53,7 @@ export function usePictureInPicture(): PiPSupport {
       }
 
       // Debug logging
-      console.log('[usePictureInPicture] Detection:', {
+      logger.info('[usePictureInPicture] Detection:', {
         isSupported: hasDocumentPiP || hasVideoPiP,
         isDocumentPiPSupported: hasDocumentPiP,
         isVideoPiPSupported: hasVideoPiP,

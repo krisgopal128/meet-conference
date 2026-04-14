@@ -1,3 +1,4 @@
+import logger from '../utils/logger';
 /**
  * PiPWindowManager - Manages the Document Picture-in-Picture window lifecycle
  *
@@ -63,19 +64,19 @@ class PiPWindowManager {
   async open(options?: PiPOpenOptions): Promise<Window | null> {
     // Check if already open or opening
     if (this.isOpen()) {
-      console.log('[PiPWindowManager] PiP window already open, focusing');
+      logger.info('[PiPWindowManager] PiP window already open, focusing');
       this.pipWindow?.focus();
       return this.pipWindow;
     }
 
     if (this.isOpening) {
-      console.log('[PiPWindowManager] Already opening PiP window');
+      logger.info('[PiPWindowManager] Already opening PiP window');
       return null;
     }
 
     // Check if supported
     if (!this.isSupported()) {
-      console.warn('[PiPWindowManager] Document Picture-in-Picture is not supported');
+      logger.warn('[PiPWindowManager] Document Picture-in-Picture is not supported');
       return null;
     }
 
@@ -96,7 +97,7 @@ class PiPWindowManager {
 
       const docPip = (window as unknown as { documentPictureInPicture?: { requestWindow: (opts: Record<string, number | boolean | undefined>) => Promise<Window> } }).documentPictureInPicture;
       if (!docPip?.requestWindow) {
-        console.warn('[PiPWindowManager] Document Picture-in-Picture is not supported');
+        logger.warn('[PiPWindowManager] Document Picture-in-Picture is not supported');
         return null;
       }
 
@@ -112,17 +113,17 @@ class PiPWindowManager {
 
         // Set up error handler
         pipWin.addEventListener('error', (event: ErrorEvent) => {
-          console.error('[PiPWindowManager] PiP window error:', event.error);
+          logger.error('[PiPWindowManager] PiP window error:', event.error);
         });
       }
 
       // Trigger onEnter callback
       this.onEnterCallback?.();
 
-      console.log('[PiPWindowManager] PiP window opened successfully');
+      logger.info('[PiPWindowManager] PiP window opened successfully');
       return this.pipWindow;
     } catch (error) {
-      console.error('[PiPWindowManager] Failed to open PiP window:', error);
+      logger.error('[PiPWindowManager] Failed to open PiP window:', error);
       this.pipWindow = null;
       return null;
     } finally {
@@ -146,7 +147,7 @@ class PiPWindowManager {
   private handleClose(): void {
     this.pipWindow = null;
     this.onExitCallback?.();
-    console.log('[PiPWindowManager] PiP window closed');
+    logger.info('[PiPWindowManager] PiP window closed');
   }
 
   /**

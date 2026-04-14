@@ -11,6 +11,7 @@ import { useLocalParticipant, useParticipants, useTracks } from '@livekit/compon
 import type { Participant } from 'livekit-client';
 import { Track } from 'livekit-client';
 import { useUserIdentity, useUserRole, useHostId, useIsPiPOpen, usePiPActions } from '../../store/roomStore';
+import logger from '../../utils/logger';
 
 const PIP_WINDOW_WIDTH = 400;
 const PIP_WINDOW_HEIGHT = 300;
@@ -31,7 +32,7 @@ function copyStylesToPiPWindow(pipWindow: Window): void {
         pipWindow.document.head.appendChild(style);
       }
     } catch (e) {
-      console.warn('[PiPContainer] Could not copy stylesheet:', e);
+      logger.warn('[PiPContainer] Could not copy stylesheet:', e);
     }
   });
 }
@@ -56,7 +57,7 @@ export function PiPContainer() {
 
   const openPiPWindow = useCallback(async () => {
     if (!('documentPictureInPicture' in window)) {
-      console.warn('[PiPContainer] Document Picture-in-Picture is not supported');
+      logger.warn('[PiPContainer] Document Picture-in-Picture is not supported');
       return null;
     }
 
@@ -101,7 +102,7 @@ export function PiPContainer() {
 
       return newPipWindow;
     } catch (error) {
-      console.error('[PiPContainer] Failed to open PiP window:', error);
+      logger.error('[PiPContainer] Failed to open PiP window:', error);
       setPiPOpen(false);
       return null;
     }

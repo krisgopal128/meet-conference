@@ -225,11 +225,7 @@ export default function LoginPage() {
               </>
             )}
           </button>
-          {!isFormValid && !loading && (
-            <p id="form-disabled-reason" className="text-xs text-surface-400 text-center">
-              Please fill in all required fields correctly
-            </p>
-          )}
+
         </form>
 
         <p className="text-center text-surface-500 dark:text-surface-400 text-sm mt-6">

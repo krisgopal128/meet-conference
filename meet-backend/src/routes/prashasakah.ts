@@ -15,6 +15,8 @@ import rateLimit from 'express-rate-limit';
 import { authenticate, AuthRequest } from '../middleware/authenticate.js';
 import { requireAdmin, requireModerator } from '../middleware/requireRole.js';
 import { query, queryOne } from '../services/database.js';
+import { validatePassword } from '../utils/validation.js';
+import logger from '../utils/logger.js';
 
 export const prashasakahRouter = Router();
 
@@ -162,7 +164,7 @@ prashasakahRouter.get('/stats', requireModerator(), async (req: AuthRequest, res
     }>(`
       SELECT 
         COUNT(*) as total,
-        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as ongoing,
+        SUM(CASE WHEN status = 'ongoing' THEN 1 ELSE 0 END) as ongoing,
         SUM(CASE WHEN DATE(started_at) = CURRENT_DATE THEN 1 ELSE 0 END) as today,
         SUM(CASE WHEN started_at >= DATE_TRUNC('week', CURRENT_DATE) THEN 1 ELSE 0 END) as thisWeek,
         SUM(CASE WHEN started_at >= DATE_TRUNC('month', CURRENT_DATE) THEN 1 ELSE 0 END) as thisMonth
@@ -235,7 +237,7 @@ prashasakahRouter.get('/stats', requireModerator(), async (req: AuthRequest, res
 
     res.json(stats);
   } catch (error) {
-    console.error('[Admin] Error fetching stats:', error);
+    logger.error('[Admin] Error fetching stats:', error);
     res.status(500).json({ error: 'Failed to fetch stats' });
   }
 });
@@ -246,22 +248,28 @@ prashasakahRouter.get('/stats/bandwidth', requireModerator(), async (req: AuthRe
     const { days } = dateRangeSchema.parse(req.query);
     const daysNum = days || 7;
 
-    const bandwidthData = await query<BandwidthDataPoint>(`
-      SELECT 
-        DATE(created_at) as date,
-        COALESCE(SUM(bytes_sent + bytes_received), 0) as bytes,
-        COUNT(DISTINCT meeting_id) as meetings
-      FROM meeting_diagnostics
-      WHERE created_at >= CURRENT_DATE - INTERVAL '${daysNum} days'
-      GROUP BY DATE(created_at)
-      ORDER BY date ASC
-    `);
+    let bandwidthData: BandwidthDataPoint[] = [];
+    try {
+      bandwidthData = await query<BandwidthDataPoint>(`
+        SELECT 
+          DATE(created_at) as date,
+          COALESCE(SUM(bytes_sent + bytes_received), 0) as bytes,
+          COUNT(DISTINCT meeting_id) as meetings
+        FROM meeting_diagnostics
+        WHERE created_at >= CURRENT_DATE - INTERVAL '${daysNum} days'
+        GROUP BY DATE(created_at)
+        ORDER BY date ASC
+      `);
+    } catch {
+      // meeting_diagnostics table may not exist yet — return empty data
+      logger.info('[Admin] meeting_diagnostics table not available, returning empty bandwidth data');
+    }
 
     const total = bandwidthData.reduce((sum, row) => sum + Number(row.bytes), 0);
 
     res.json({ data: bandwidthData, total });
   } catch (error) {
-    console.error('[Admin] Error fetching bandwidth stats:', error);
+    logger.error('[Admin] Error fetching bandwidth stats:', error);
     res.status(500).json({ error: 'Failed to fetch bandwidth stats' });
   }
 });
@@ -286,7 +294,7 @@ prashasakahRouter.get('/stats/peak-users', requireModerator(), async (req: AuthR
 
     res.json({ data: peakData });
   } catch (error) {
-    console.error('[Admin] Error fetching peak users stats:', error);
+    logger.error('[Admin] Error fetching peak users stats:', error);
     res.status(500).json({ error: 'Failed to fetch peak users stats' });
   }
 });
@@ -344,7 +352,7 @@ prashasakahRouter.get('/health', requireModerator(), async (_req: AuthRequest, r
 
     res.json({ health });
   } catch (error) {
-    console.error('[Admin] Health check error:', error);
+    logger.error('[Admin] Health check error:', error);
     res.status(503).json({ 
       error: 'Health check failed',
       health: { status: 'unhealthy' as const }
@@ -370,7 +378,7 @@ prashasakahRouter.get('/config', requireModerator(), async (_req: AuthRequest, r
 
     res.json({ config });
   } catch (error) {
-    console.error('[Admin] Error fetching config:', error);
+    logger.error('[Admin] Error fetching config:', error);
     res.status(500).json({ error: 'Failed to fetch config' });
   }
 });
@@ -400,7 +408,7 @@ prashasakahRouter.patch('/config', requireAdmin(), async (req: AuthRequest, res:
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('[Admin] Error updating config:', error);
+    logger.error('[Admin] Error updating config:', error);
     res.status(500).json({ error: 'Failed to update config' });
   }
 });
@@ -415,7 +423,7 @@ prashasakahRouter.get('/users', requireModerator(), async (req: AuthRequest, res
     const status = (req.query.status as string) || undefined;
 
     let whereClause = 'WHERE 1=1';
-    const params: any[] = [];
+     const params: unknown[] = [];
     let paramIndex = 1;
 
     if (search) {
@@ -425,7 +433,7 @@ prashasakahRouter.get('/users', requireModerator(), async (req: AuthRequest, res
     }
 
     // Note: role filtering skipped for simplicity
-    if (role) { console.log("role filter applied"); }
+    if (role) { logger.info("role filter applied"); }
 
     if (status === 'banned') {
       whereClause += ' AND is_banned = true';
@@ -453,21 +461,21 @@ prashasakahRouter.get('/users', requireModerator(), async (req: AuthRequest, res
       SELECT COUNT(*) as count FROM users ${whereClause}
     `, params);
 
-    res.json({
-      users: users.map((u: any) => ({
-        id: u.id,
-        email: u.email,
-        name: u.name,
-        role: u.role,
-        isBanned: u.is_banned,
-        lastLoginAt: u.last_login_at,
-        createdAt: u.created_at,
-      })),
-      total: Number(totalResult?.count || 0),
-      hasMore: Number(totalResult?.count || 0) > offset + limit,
-    });
+     res.json({
+       users: users.map((u) => ({
+         id: u.id,
+         email: u.email,
+         name: u.name,
+         role: u.role,
+         isBanned: u.is_banned,
+         lastLoginAt: u.last_login_at,
+         createdAt: u.created_at,
+       })),
+       total: Number(totalResult?.count || 0),
+       hasMore: Number(totalResult?.count || 0) > offset + limit,
+     });
   } catch (error) {
-    console.error('[Admin] Error fetching users:', error);
+    logger.error('[Admin] Error fetching users:', error);
     res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
@@ -477,7 +485,7 @@ prashasakahRouter.get('/users/:id', requireModerator(), async (req: AuthRequest,
     const { id } = req.params;
     
     const user = await queryOne<any>(`
-      SELECT id, email, name, role, is_banned, last_login_at, created_at, email_verified
+      SELECT id, email, name, role, is_banned, last_login_at, created_at
       FROM users WHERE id = $1
     `, [id]);
 
@@ -488,7 +496,7 @@ prashasakahRouter.get('/users/:id', requireModerator(), async (req: AuthRequest,
     // Get meeting stats
     const meetingStats = await queryOne<{ hosted: number; attended: number; duration: number }>(`
       SELECT 
-        (SELECT COUNT(*) FROM meetings WHERE host_id = $1) as hosted,
+        (SELECT COUNT(*) FROM rooms WHERE host_id = $1) as hosted,
         (SELECT COUNT(*) FROM meeting_participants WHERE user_id = $1 AND left_at IS NOT NULL) as attended,
         (SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (left_at - joined_at)) / 60), 0) FROM meeting_participants WHERE user_id = $1) as duration
     `, [id]);
@@ -502,7 +510,7 @@ prashasakahRouter.get('/users/:id', requireModerator(), async (req: AuthRequest,
         isBanned: user.is_banned,
         lastLoginAt: user.last_login_at,
         createdAt: user.created_at,
-        emailVerified: user.email_verified,
+        emailVerified: false, // Not tracked in current schema
         lastLoginIp: null, // Would need to track this
         meetingsAttended: Number(meetingStats?.attended || 0),
         meetingsHosted: Number(meetingStats?.hosted || 0),
@@ -510,7 +518,7 @@ prashasakahRouter.get('/users/:id', requireModerator(), async (req: AuthRequest,
       },
     });
   } catch (error) {
-    console.error('[Admin] Error fetching user:', error);
+    logger.error('[Admin] Error fetching user:', error);
     res.status(500).json({ error: 'Failed to fetch user' });
   }
 });
@@ -560,7 +568,7 @@ prashasakahRouter.patch('/users/:id', requireModerator(), async (req: AuthReques
       }
     });
   } catch (error) {
-    console.error('[Admin] Error updating user:', error);
+    logger.error('[Admin] Error updating user:', error);
     res.status(500).json({ error: 'Failed to update user' });
   }
 });
@@ -571,7 +579,7 @@ prashasakahRouter.post('/users/:id/ban', adminActionLimiter, requireModerator(),
     const { reason } = req.body;
 
     await query('UPDATE users SET is_banned = true WHERE id = $1', [id]);
-    console.log(`[Admin] User ${id} banned by ${req.user?.id}${reason ? ` - Reason: ${reason}` : ''}`);
+    logger.info(`[Admin] User ${id} banned by ${req.user?.id}${reason ? ` - Reason: ${reason}` : ''}`);
 
     const user = await queryOne<any>('SELECT id, email, name, role, is_banned, last_login_at, created_at FROM users WHERE id = $1', [id]);
 
@@ -588,7 +596,7 @@ prashasakahRouter.post('/users/:id/ban', adminActionLimiter, requireModerator(),
       }
     });
   } catch (error) {
-    console.error('[Admin] Error banning user:', error);
+    logger.error('[Admin] Error banning user:', error);
     res.status(500).json({ error: 'Failed to ban user' });
   }
 });
@@ -598,7 +606,7 @@ prashasakahRouter.post('/users/:id/unban', adminActionLimiter, requireModerator(
     const { id } = req.params;
 
     await query('UPDATE users SET is_banned = false WHERE id = $1', [id]);
-    console.log(`[Admin] User ${id} unbanned by ${req.user?.id}`);
+    logger.info(`[Admin] User ${id} unbanned by ${req.user?.id}`);
 
     const user = await queryOne<any>('SELECT id, email, name, role, is_banned, last_login_at, created_at FROM users WHERE id = $1', [id]);
 
@@ -615,7 +623,7 @@ prashasakahRouter.post('/users/:id/unban', adminActionLimiter, requireModerator(
       }
     });
   } catch (error) {
-    console.error('[Admin] Error unbanning user:', error);
+    logger.error('[Admin] Error unbanning user:', error);
     res.status(500).json({ error: 'Failed to unban user' });
   }
 });
@@ -630,11 +638,11 @@ prashasakahRouter.delete('/users/:id', adminActionLimiter, requireAdmin(), async
     }
 
     await query('DELETE FROM users WHERE id = $1', [id]);
-    console.log(`[Admin] User ${id} deleted by ${req.user?.id}`);
+    logger.info(`[Admin] User ${id} deleted by ${req.user?.id}`);
 
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
-    console.error('[Admin] Error deleting user:', error);
+    logger.error('[Admin] Error deleting user:', error);
     res.status(500).json({ error: 'Failed to delete user' });
   }
 });
@@ -648,15 +656,55 @@ prashasakahRouter.post('/users/:id/reset-password', requireAdmin(), async (req: 
     const passwordHash = await bcrypt.hash(tempPassword, 12);
 
     await query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, id]);
-    console.log(`[Admin] Password reset for user ${id} by ${req.user?.id}`);
+    logger.info(`[Admin] Password reset for user ${id} by ${req.user?.id}`);
 
     res.json({ 
       message: 'Password reset successfully',
       tempPassword // In production, this should be sent via email
     });
   } catch (error) {
-    console.error('[Admin] Error resetting password:', error);
+    logger.error('[Admin] Error resetting password:', error);
     res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+prashasakahRouter.put('/users/:id/change-password', requireAdmin(), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body;
+
+    if (!password || typeof password !== 'string') {
+      res.status(400).json({ error: 'Password is required' });
+      return;
+    }
+
+    validatePassword(password);
+
+    // Prevent changing own password through admin endpoint (use profile settings instead)
+    if (req.user?.id === id) {
+      res.status(400).json({ error: 'Use profile settings to change your own password' });
+      return;
+    }
+
+    // Check user exists
+    const user = await queryOne<{ id: string }>('SELECT id FROM users WHERE id = $1', [id]);
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    await query('UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2', [passwordHash, id]);
+    logger.info(`[Admin] Password changed for user ${id} by admin ${req.user?.id}`);
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('Password')) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+    logger.error('[Admin] Error changing password:', error);
+    res.status(500).json({ error: 'Failed to change password' });
   }
 });
 
@@ -672,7 +720,7 @@ prashasakahRouter.get('/users/:id/activity', requireModerator(), async (req: Aut
       hasMore: false,
     });
   } catch (error) {
-    console.error('[Admin] Error fetching user activity:', error);
+    logger.error('[Admin] Error fetching user activity:', error);
     res.status(500).json({ error: 'Failed to fetch user activity' });
   }
 });
@@ -689,7 +737,7 @@ prashasakahRouter.get('/rooms', requireModerator(), async (req: AuthRequest, res
     const status = req.query.status as string | undefined;
 
     let whereClause = 'WHERE 1=1';
-    const params: any[] = [];
+     const params: unknown[] = [];
     let paramIndex = 1;
 
     if (search) {
@@ -722,27 +770,24 @@ prashasakahRouter.get('/rooms', requireModerator(), async (req: AuthRequest, res
       SELECT COUNT(*) as count FROM rooms ${whereClause}
     `, params);
 
-    res.json({
-      rooms: rooms.map((r: any) => ({
-        id: r.id,
-        name: r.name,
-        title: r.title,
-        description: r.description,
-        hostId: r.host_id,
-        hostName: r.host_name,
-        status: r.status,
-        maxParticipants: r.max_participants,
-        waitingRoomEnabled: r.waiting_room_enabled,
-        createdAt: r.created_at,
-        startedAt: r.started_at,
-        endedAt: r.ended_at,
-        participantCount: Number(r.participant_count),
-      })),
+     res.json({
+       rooms: rooms.map((r) => ({
+         id: r.id,
+         name: r.name,
+         title: r.title,
+         description: r.description,
+         hostId: r.host_id,
+         hostName: r.host_name,
+         status: r.status,
+         maxParticipants: r.max_participants,
+         waitingRoomEnabled: r.waiting_room_enabled,
+         createdAt: r.created_at,
+       })),
       total: Number(totalResult?.count || 0),
       hasMore: Number(totalResult?.count || 0) > offset + limit,
     });
   } catch (error) {
-    console.error('[Admin] Error fetching rooms:', error);
+    logger.error('[Admin] Error fetching rooms:', error);
     res.status(500).json({ error: 'Failed to fetch rooms' });
   }
 });
@@ -780,7 +825,7 @@ prashasakahRouter.get('/rooms/:id', requireModerator(), async (req: AuthRequest,
       },
     });
   } catch (error) {
-    console.error('[Admin] Error fetching room:', error);
+    logger.error('[Admin] Error fetching room:', error);
     res.status(500).json({ error: 'Failed to fetch room' });
   }
 });
@@ -790,20 +835,20 @@ prashasakahRouter.post('/rooms/:id/end', adminActionLimiter, requireModerator(),
     const { id } = req.params;
 
     await query(`
-      UPDATE rooms SET status = 'ended', ended_at = NOW() WHERE id = $1
+      UPDATE rooms SET status = 'ended' WHERE id = $1
     `, [id]);
 
     // Also update any active meetings
     await query(`
       UPDATE meetings SET status = 'ended', ended_at = NOW()
-      WHERE room_id = $1 AND status = 'active'
+      WHERE room_id = $1 AND status = 'ongoing'
     `, [id]);
 
-    console.log(`[Admin] Room ${id} ended by ${req.user?.id}`);
+    logger.info(`[Admin] Room ${id} ended by ${req.user?.id}`);
 
     res.json({ message: 'Room ended successfully' });
   } catch (error) {
-    console.error('[Admin] Error ending room:', error);
+    logger.error('[Admin] Error ending room:', error);
     res.status(500).json({ error: 'Failed to end room' });
   }
 });
@@ -813,11 +858,11 @@ prashasakahRouter.delete('/rooms/:id', adminActionLimiter, requireAdmin(), async
     const { id } = req.params;
 
     await query('DELETE FROM rooms WHERE id = $1', [id]);
-    console.log(`[Admin] Room ${id} deleted by ${req.user?.id}`);
+    logger.info(`[Admin] Room ${id} deleted by ${req.user?.id}`);
 
     res.json({ message: 'Room deleted successfully' });
   } catch (error) {
-    console.error('[Admin] Error deleting room:', error);
+    logger.error('[Admin] Error deleting room:', error);
     res.status(500).json({ error: 'Failed to delete room' });
   }
 });
@@ -836,7 +881,7 @@ prashasakahRouter.get('/meetings', requireModerator(), async (req: AuthRequest, 
     const toDate = req.query.toDate as string | undefined;
 
     let whereClause = 'WHERE 1=1';
-    const params: any[] = [];
+     const params: unknown[] = [];
     let paramIndex = 1;
 
     if (roomId) {
@@ -846,7 +891,7 @@ prashasakahRouter.get('/meetings', requireModerator(), async (req: AuthRequest, 
     }
 
     if (hostId) {
-      whereClause += ` AND m.host_id = $${paramIndex}`;
+      whereClause += ` AND r.host_id = $${paramIndex}`;
       params.push(hostId);
       paramIndex++;
     }
@@ -865,12 +910,12 @@ prashasakahRouter.get('/meetings', requireModerator(), async (req: AuthRequest, 
 
     const meetings = await query<any[]>(`
       SELECT m.id, m.room_id, r.name as room_name, r.title as room_title,
-        m.host_id, u.name as host_name, m.started_at, m.ended_at,
+        r.host_id, u.name as host_name, m.started_at, m.ended_at,
         m.status, m.recording_url,
         (SELECT COUNT(*) FROM meeting_participants WHERE meeting_id = m.id) as participant_count
       FROM meetings m
       LEFT JOIN rooms r ON r.id = m.room_id
-      LEFT JOIN users u ON u.id = m.host_id
+      LEFT JOIN users u ON u.id = r.host_id
       ${whereClause}
       ORDER BY m.started_at DESC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
@@ -881,26 +926,26 @@ prashasakahRouter.get('/meetings', requireModerator(), async (req: AuthRequest, 
     `, params);
 
     res.json({
-      meetings: meetings.map((m: any) => ({
-        id: m.id,
-        roomId: m.room_id,
-        roomName: m.room_name,
-        roomTitle: m.room_title,
-        hostId: m.host_id,
-        hostName: m.host_name,
-        participantCount: Number(m.participant_count),
-        startedAt: m.started_at,
-        endedAt: m.ended_at,
-        duration: m.ended_at ? Math.round((new Date(m.ended_at).getTime() - new Date(m.started_at).getTime()) / 60000) : null,
-        status: m.status,
-        recordingUrl: m.recording_url,
-      })),
+       meetings: meetings.map((m) => ({
+         id: m.id,
+         roomId: m.room_id,
+         roomName: m.room_name,
+         roomTitle: m.room_title,
+         hostId: m.host_id,
+         hostName: m.host_name,
+         participantCount: Number(m.participant_count),
+         startedAt: m.started_at,
+         endedAt: m.ended_at,
+         duration: m.ended_at ? Math.round((new Date(m.ended_at).getTime() - new Date(m.started_at).getTime()) / 60000) : null,
+         status: m.status,
+         recordingUrl: m.recording_url,
+       })),
       total: Number(totalResult?.count || 0),
       limit,
       offset,
     });
   } catch (error) {
-    console.error('[Admin] Error fetching meetings:', error);
+    logger.error('[Admin] Error fetching meetings:', error);
     res.status(500).json({ error: 'Failed to fetch meetings' });
   }
 });
@@ -910,7 +955,7 @@ prashasakahRouter.get('/meetings/:id', requireModerator(), async (req: AuthReque
     const { id } = req.params;
 
     const meeting = await queryOne<any>(`
-      SELECT m.*, r.name as room_name, r.title as room_title
+      SELECT m.*, r.name as room_name, r.title as room_title, r.host_id
       FROM meetings m
       LEFT JOIN rooms r ON r.id = m.room_id
       WHERE m.id = $1
@@ -940,16 +985,16 @@ prashasakahRouter.get('/meetings/:id', requireModerator(), async (req: AuthReque
         status: meeting.status,
         recordingUrl: meeting.recording_url,
       },
-      participants: participants.map((p: any) => ({
-        userId: p.user_id,
-        name: p.name || p.user?.name,
-        email: p.email || p.user?.email,
-        joinedAt: p.joined_at,
-        leftAt: p.left_at,
-      })),
+       participants: participants.map((p) => ({
+         userId: p.user_id,
+         name: p.name || p.user?.name,
+         email: p.email || p.user?.email,
+         joinedAt: p.joined_at,
+         leftAt: p.left_at,
+       })),
     });
   } catch (error) {
-    console.error('[Admin] Error fetching meeting:', error);
+    logger.error('[Admin] Error fetching meeting:', error);
     res.status(500).json({ error: 'Failed to fetch meeting' });
   }
 });
@@ -979,20 +1024,20 @@ prashasakahRouter.get('/meetings/:id/chat', requireModerator(), async (req: Auth
       LIMIT $2
     `, params);
 
-    res.json({
-      messages: messages.map((m: any) => ({
-        id: m.id,
-        content: m.content,
-        createdAt: m.created_at,
-        messageType: m.message_type,
-        userId: m.user_id,
-        userName: m.user_name,
-        userEmail: m.user_email,
-      })),
-      hasMore: messages.length === limit,
-    });
+     res.json({
+       messages: messages.map((m) => ({
+         id: m.id,
+         content: m.content,
+         createdAt: m.created_at,
+         messageType: m.message_type,
+         userId: m.user_id,
+         userName: m.user_name,
+         userEmail: m.user_email,
+       })),
+       hasMore: messages.length === limit,
+     });
   } catch (error) {
-    console.error('[Admin] Error fetching meeting chat:', error);
+    logger.error('[Admin] Error fetching meeting chat:', error);
     res.status(500).json({ error: 'Failed to fetch meeting chat' });
   }
 });
@@ -1009,7 +1054,7 @@ prashasakahRouter.get('/alerts', requireModerator(), async (req: AuthRequest, re
     const unreadOnly = req.query.unreadOnly === 'true';
 
     let whereClause = 'WHERE resolved_at IS NULL';
-    const params: any[] = [];
+     const params: unknown[] = [];
     let paramIndex = 1;
 
     if (severity) {
@@ -1033,25 +1078,25 @@ prashasakahRouter.get('/alerts', requireModerator(), async (req: AuthRequest, re
       SELECT COUNT(*) as count FROM admin_alerts ${whereClause}
     `, params);
 
-    res.json({
-      alerts: alerts.map((a: any) => ({
-        id: a.id,
-        type: a.type,
-        severity: a.severity,
-        title: a.title,
-        message: a.message,
-        data: a.data,
-        readAt: a.read_at,
-        readBy: a.read_by,
-        resolvedAt: a.resolved_at,
-        resolvedBy: a.resolved_by,
-        createdAt: a.created_at,
-      })),
+     res.json({
+       alerts: alerts.map((a) => ({
+         id: a.id,
+         type: a.type,
+         severity: a.severity,
+         title: a.title,
+         message: a.message,
+         data: a.data,
+         readAt: a.read_at,
+         readBy: a.read_by,
+         resolvedAt: a.resolved_at,
+         resolvedBy: a.resolved_by,
+         createdAt: a.created_at,
+       })),
       total: Number(totalResult?.count || 0),
       hasMore: Number(totalResult?.count || 0) > offset + limit,
     });
   } catch (error) {
-    console.error('[Admin] Error fetching alerts:', error);
+    logger.error('[Admin] Error fetching alerts:', error);
     res.status(500).json({ error: 'Failed to fetch alerts' });
   }
 });
@@ -1066,7 +1111,7 @@ prashasakahRouter.post('/alerts/:id/read', requireModerator(), async (req: AuthR
 
     res.json({ message: 'Alert marked as read' });
   } catch (error) {
-    console.error('[Admin] Error marking alert as read:', error);
+    logger.error('[Admin] Error marking alert as read:', error);
     res.status(500).json({ error: 'Failed to mark alert as read' });
   }
 });
@@ -1081,7 +1126,7 @@ prashasakahRouter.post('/alerts/:id/resolve', requireModerator(), async (req: Au
 
     res.json({ message: 'Alert resolved' });
   } catch (error) {
-    console.error('[Admin] Error resolving alert:', error);
+    logger.error('[Admin] Error resolving alert:', error);
     res.status(500).json({ error: 'Failed to resolve alert' });
   }
 });
@@ -1095,7 +1140,7 @@ prashasakahRouter.post('/alerts/read-all', requireModerator(), async (req: AuthR
 
     res.json({ message: 'All alerts marked as read', updated: result.length });
   } catch (error) {
-    console.error('[Admin] Error marking all alerts as read:', error);
+    logger.error('[Admin] Error marking all alerts as read:', error);
     res.status(500).json({ error: 'Failed to mark all alerts as read' });
   }
 });
@@ -1121,7 +1166,7 @@ prashasakahRouter.get('/audit-logs', requireAdmin(), async (req: AuthRequest, re
       hasMore: false,
     });
   } catch (error) {
-    console.error('[Admin] Error fetching audit logs:', error);
+    logger.error('[Admin] Error fetching audit logs:', error);
     res.status(500).json({ error: 'Failed to fetch audit logs' });
   }
 });
@@ -1156,7 +1201,7 @@ prashasakahRouter.get('/settings', requireModerator(), async (_req: AuthRequest,
 
     res.json({ settings });
   } catch (error) {
-    console.error('[Admin] Error fetching settings:', error);
+    logger.error('[Admin] Error fetching settings:', error);
     res.status(500).json({ error: 'Failed to fetch settings' });
   }
 });
@@ -1196,7 +1241,7 @@ prashasakahRouter.patch('/settings', requireAdmin(), async (req: AuthRequest, re
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('[Admin] Error updating settings:', error);
+    logger.error('[Admin] Error updating settings:', error);
     res.status(500).json({ error: 'Failed to update settings' });
   }
 });
@@ -1212,7 +1257,7 @@ prashasakahRouter.get('/api-keys/admin', requireAdmin(), async (req: AuthRequest
     const role = req.query.role as string | undefined;
 
     let whereClause = 'WHERE 1=1';
-    const params: any[] = [];
+     const params: unknown[] = [];
     let paramIndex = 1;
 
     if (search) {
@@ -1235,28 +1280,28 @@ prashasakahRouter.get('/api-keys/admin', requireAdmin(), async (req: AuthRequest
       ORDER BY ak.created_at DESC
     `, params);
 
-    res.json({
-      keys: apiKeys.map((ak: any) => ({
-        id: ak.id,
-        name: ak.name,
-        prefix: ak.prefix,
-        permissions: ak.permissions,
-        lastUsedAt: ak.last_used_at,
-        expiresAt: ak.expires_at,
-        isActive: ak.is_active,
-        createdAt: ak.created_at,
-        updatedAt: ak.updated_at,
-        user: {
-          id: ak.user_id,
-          name: ak.user_name,
-          email: ak.user_email,
-          role: ak.user_role,
-        },
-      })),
+     res.json({
+       keys: apiKeys.map((ak) => ({
+         id: ak.id,
+         name: ak.name,
+         prefix: ak.prefix,
+         permissions: ak.permissions,
+         lastUsedAt: ak.last_used_at,
+         expiresAt: ak.expires_at,
+         isActive: ak.is_active,
+         createdAt: ak.created_at,
+         updatedAt: ak.updated_at,
+         user: {
+           id: ak.user_id,
+           name: ak.user_name,
+           email: ak.user_email,
+           role: ak.user_role,
+         },
+       })),
       total: apiKeys.length,
     });
   } catch (error) {
-    console.error('[Admin API Keys] Error fetching keys:', error);
+    logger.error('[Admin API Keys] Error fetching keys:', error);
     res.status(500).json({ error: 'Failed to fetch API keys' });
   }
 });
@@ -1289,7 +1334,7 @@ prashasakahRouter.patch('/api-keys/admin/:id', adminActionLimiter, requireAdmin(
 
     await query(`UPDATE api_keys SET ${updateFields.join(', ')} WHERE id = $${paramIndex}`, params);
     
-    console.log(`[Admin API Keys] Admin ${req.user?.id} updated key ${id}: is_active=${isActive}${reason ? `, reason: ${reason}` : ''}`);
+    logger.info(`[Admin API Keys] Admin ${req.user?.id} updated key ${id}: is_active=${isActive}${reason ? `, reason: ${reason}` : ''}`);
 
     res.json({ 
       success: true, 
@@ -1297,7 +1342,7 @@ prashasakahRouter.patch('/api-keys/admin/:id', adminActionLimiter, requireAdmin(
       key: { id, isActive: isActive ?? true }
     });
   } catch (error) {
-    console.error('[Admin API Keys] Error updating key:', error);
+    logger.error('[Admin API Keys] Error updating key:', error);
     res.status(500).json({ error: 'Failed to update API key' });
   }
 });
@@ -1314,12 +1359,12 @@ prashasakahRouter.delete('/api-keys/admin/:id', adminActionLimiter, requireAdmin
 
     await query('DELETE FROM api_keys WHERE id = $1', [id]);
     
-    console.log(`[Admin API Keys] Admin ${adminId} deleted API key ${id} (owner: ${existing.user_id})`);
+    logger.info(`[Admin API Keys] Admin ${adminId} deleted API key ${id} (owner: ${existing.user_id})`);
     
     res.json({ success: true, message: 'API key deleted' });
     
   } catch (error) {
-    console.error('[Admin API Keys] Error deleting key:', error);
+    logger.error('[Admin API Keys] Error deleting key:', error);
     res.status(500).json({ error: 'Failed to delete API key' });
   }
 });

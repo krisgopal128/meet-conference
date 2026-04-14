@@ -11,6 +11,7 @@ import {
   buildAudioCaptureOptions,
 } from '../config/meetingRoomConfig';
 import type { QualityModeName, CameraHardwareCaps } from '../config/meetingRoomConfig';
+import logger from '../utils/logger';
 
 interface UseMediaSyncProps {
   videoEnabled: boolean;
@@ -58,7 +59,7 @@ export function useMediaSync({
             : undefined);
         }
       } catch (e) {
-        console.error('[RoomPage] Failed to sync camera state:', e);
+        logger.error('[RoomPage] Failed to sync camera state:', e);
         return;
       }
 
@@ -71,7 +72,7 @@ export function useMediaSync({
             : undefined);
         }
       } catch (e) {
-        console.error('[RoomPage] Failed to sync microphone state:', e);
+        logger.error('[RoomPage] Failed to sync microphone state:', e);
         return;
       }
 

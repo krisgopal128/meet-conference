@@ -7,6 +7,7 @@
 
 import { useMemo } from 'react';
 import type { Participant } from 'livekit-client';
+import logger from '../utils/logger';
 
 export function useAdmittedParticipants(
   participants: Participant[],
@@ -25,7 +26,7 @@ export function useAdmittedParticipants(
     // Debug logging in development
     if (import.meta.env.DEV && participants.length !== admitted.length) {
       const filtered = participants.filter(p => !admitted.includes(p));
-      console.log('[useAdmittedParticipants] Filtered participants:', {
+      logger.info('[useAdmittedParticipants] Filtered participants:', {
         total: participants.length,
         admitted: admitted.length,
         filtered: filtered.map(p => ({

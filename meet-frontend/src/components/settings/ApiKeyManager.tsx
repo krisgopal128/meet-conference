@@ -10,6 +10,12 @@ import toast from 'react-hot-toast';
 import { apiKeysApi, ApiKey, ApiKeyWithSecret } from '../../services/apiKeysApi';
 import { useAuthStore } from '../../store/authStore';
 import { Copy, Key, Plus, RefreshCw, Trash2, Eye, EyeOff, Check, X, AlertTriangle } from 'lucide-react';
+import logger from '../../utils/logger';
+
+// Type guard for Axios-like errors
+function isApiError(err: unknown): err is { response?: { data?: { error?: string } } } {
+  return typeof err === 'object' && err !== null && 'response' in (err as object);
+}
 
 interface ApiKeyManagerProps {
   className?: string;
@@ -43,7 +49,7 @@ export default function ApiKeyManager({ className = '' }: ApiKeyManagerProps) {
       const response = await apiKeysApi.list();
       setKeys(response?.data?.keys || []);
     } catch (err) {
-      console.error('Failed to fetch API keys:', err);
+      logger.error('Failed to fetch API keys:', err);
       toast.error('Failed to load API keys');
     } finally {
       setLoading(false);
@@ -73,10 +79,14 @@ export default function ApiKeyManager({ className = '' }: ApiKeyManagerProps) {
       await fetchKeys();
       
       toast.success('API key created! Copy it now - it won\'t be shown again.');
-    } catch (err: any) {
-      console.error('Failed to create API key:', err);
-      toast.error(err.response?.data?.error || 'Failed to create API key');
-    } finally {
+     } catch (err) {
+       logger.error('Failed to create API key:', err);
+       if (isApiError(err)) {
+         toast.error(err.response?.data?.error || 'Failed to create API key');
+       } else {
+         toast.error('Failed to create API key');
+       }
+     } finally {
       setCreating(false);
     }
   };
@@ -90,7 +100,7 @@ export default function ApiKeyManager({ className = '' }: ApiKeyManagerProps) {
       toast.success('API key copied to clipboard!');
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      logger.error('Failed to copy:', err);
       toast.error('Failed to copy to clipboard');
     }
   };
@@ -106,10 +116,14 @@ export default function ApiKeyManager({ className = '' }: ApiKeyManagerProps) {
       setShowKey(true);
       await fetchKeys();
       toast.success('API key regenerated! Copy it now - it won\'t be shown again.');
-    } catch (err: any) {
-      console.error('Failed to regenerate API key:', err);
-      toast.error(err.response?.data?.error || 'Failed to regenerate API key');
-    }
+     } catch (err) {
+       logger.error('Failed to regenerate API key:', err);
+       if (isApiError(err)) {
+         toast.error(err.response?.data?.error || 'Failed to regenerate API key');
+       } else {
+         toast.error('Failed to regenerate API key');
+       }
+     }
   };
 
   const handleDeleteKey = async (id: string) => {
@@ -122,10 +136,14 @@ export default function ApiKeyManager({ className = '' }: ApiKeyManagerProps) {
       await apiKeysApi.delete(id);
       await fetchKeys();
       toast.success('API key deleted');
-    } catch (err: any) {
-      console.error('Failed to delete API key:', err);
-      toast.error(err.response?.data?.error || 'Failed to delete API key');
-    } finally {
+     } catch (err) {
+       logger.error('Failed to delete API key:', err);
+       if (isApiError(err)) {
+         toast.error(err.response?.data?.error || 'Failed to delete API key');
+       } else {
+         toast.error('Failed to delete API key');
+       }
+     } finally {
       setDeletingId(null);
     }
   };
@@ -135,10 +153,14 @@ export default function ApiKeyManager({ className = '' }: ApiKeyManagerProps) {
       await apiKeysApi.update(key.id, { is_active: !key.is_active });
       await fetchKeys();
       toast.success(key.is_active ? 'API key disabled' : 'API key enabled');
-    } catch (err: any) {
-      console.error('Failed to update API key:', err);
-      toast.error(err.response?.data?.error || 'Failed to update API key');
-    }
+     } catch (err) {
+       logger.error('Failed to update API key:', err);
+       if (isApiError(err)) {
+         toast.error(err.response?.data?.error || 'Failed to update API key');
+       } else {
+         toast.error('Failed to update API key');
+       }
+     }
   };
 
   const formatDate = (date: string | null) => {

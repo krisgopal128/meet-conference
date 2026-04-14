@@ -5,6 +5,7 @@ import { AuthRequest, authenticate } from '../middleware/authenticate.js';
 import { egressClient } from '../services/livekit.js';
 import { query, queryOne } from '../services/database.js';
 import { config } from '../config.js';
+import logger from '../utils/logger.js';
 
 export const egressRouter = Router();
 
@@ -93,7 +94,7 @@ egressRouter.post('/start', authenticate, async (req: AuthRequest, res: Response
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Start recording error:', error);
+    logger.error('Start recording error:', error);
     res.status(500).json({ error: 'Failed to start recording' });
   }
 });
@@ -121,7 +122,7 @@ egressRouter.post('/stop', authenticate, async (req: AuthRequest, res: Response)
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Stop recording error:', error);
+    logger.error('Stop recording error:', error);
     res.status(500).json({ error: 'Failed to stop recording' });
   }
 });
@@ -146,7 +147,7 @@ egressRouter.get('/status/:roomName', authenticate, async (req: AuthRequest, res
       allRecordings: allEgress.slice(0, 10), // Last 10 recordings
     });
   } catch (error) {
-    console.error('Get recording status error:', error);
+    logger.error('Get recording status error:', error);
     res.status(500).json({ error: 'Failed to get recording status' });
   }
 });
@@ -169,7 +170,7 @@ egressRouter.get('/list', authenticate, async (req: AuthRequest, res: Response) 
       hasMore: offset + limit < total,
     });
   } catch (error) {
-    console.error('List recordings error:', error);
+    logger.error('List recordings error:', error);
     res.status(500).json({ error: 'Failed to list recordings' });
   }
 });

@@ -11,6 +11,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { meetingRoomConfig } from '../config/meetingRoomConfig';
+import logger from '../utils/logger';
 
 export type CpuStatus = 'normal' | 'elevated' | 'critical' | 'unknown';
 
@@ -146,10 +147,10 @@ export function useCpuMonitor(options: CpuMonitorOptions = {}): CpuMonitorState 
       });
       observerRef.current.observe({ type: 'longtask', buffered: true });
       longTaskSupportedRef.current = true;
-      console.debug('[CpuMonitor] Using LongTask API for CPU monitoring');
+      logger.debug('[CpuMonitor] Using LongTask API for CPU monitoring');
     } catch {
       longTaskSupportedRef.current = false;
-      console.debug('[CpuMonitor] LongTask API not available, using FPS fallback');
+      logger.debug('[CpuMonitor] LongTask API not available, using FPS fallback');
       
       // Start FPS monitoring as fallback
       const measureFrame = (timestamp: number) => {

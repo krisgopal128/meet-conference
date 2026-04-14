@@ -7,6 +7,7 @@ import type { Meeting } from '../types';
 import { format, parseISO, intervalToDuration, formatDuration as dateFnsFormatDuration } from 'date-fns';
 import { cn } from '../utils/cn';
 import { sanitizeUrl } from '../utils/security';
+import logger from '../utils/logger';
 import {
   Clock,
   Video,
@@ -106,7 +107,7 @@ function HistoryPageContent() {
         setAllMeetings(normalized);
       }
     } catch (err) {
-      console.error('Failed to load meetings:', err);
+      logger.error('Failed to load meetings:', err);
       // Use mock data on error for demo purposes
       setAllMeetings(generateMockMeetings());
       // toast.error('Failed to load meeting history'); // Commented out for demo
@@ -563,8 +564,7 @@ function HistoryPageContent() {
                       {meeting.recordingUrl && sanitizeUrl(meeting.recordingUrl) ? (
                         <a
                           href={sanitizeUrl(meeting.recordingUrl) ?? undefined}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          target="_blank" rel="noreferrer noopener"
                           className="text-brand-500 hover:text-brand-600 flex items-center gap-1"
                         >
                           <ExternalLink size={14} />

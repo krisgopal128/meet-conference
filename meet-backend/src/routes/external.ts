@@ -6,57 +6,29 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { RoomServiceClient, AccessToken } from 'livekit-server-sdk';
-import { z } from 'zod';
-import { query, queryOne } from '../services/database.js';
-import { config } from '../config.js';
 import crypto from 'crypto';
+import { z } from 'zod';
+import { RoomServiceClient, AccessToken } from 'livekit-server-sdk';
 import rateLimit from 'express-rate-limit';
+import { query, queryOne } from '../services/database.js';
+import logger from '../utils/logger.js';
 
 const router = Router();
 
+ // Request augmented with API key info after verification
+ interface ExternalApiRequest extends AuthRequest {
+   apiKey?: {
+     id: string;
+     userId: string;
+     permissions: Record<string, unknown>;
+   };
+ }
+
 // ==================== Validation Schemas ====================
-
-const createRoomSchema = z.object({
-  name: z.string().min(1).max(100).regex(/^[a-zA-Z0-9_-]+$/, 'Room name must contain only alphanumeric, hyphens, or underscores'),
-  title: z.string().max(200).optional(),
-  waitingRoomEnabled: z.boolean().optional().default(true),
-  metadata: z.record(z.unknown()).optional(),
-});
-
-const tokenRequestSchema = z.object({
-  room: z.string().min(1).max(100),
-  identity: z.string().min(1).max(100),
-  name: z.string().max(100).optional(),
-  role: z.enum(['moderator', 'attendee', 'observer', 'presenter', 'teacher', 'student']).optional().default('attendee'),
-  metadata: z.record(z.unknown()).optional(),
-});
 
 // ==================== Response Types ====================
 
-interface RoomResponse {
-  name: string;
-  title?: string;
-  url: string;
-  message?: string;
-}
-
-interface TokenResponse {
-  token: string;
-  livekit_url: string;
-  identity: string;
-  role: string;
-  join_url: string;
-}
-
-interface RoomInfoResponse {
-  name: string;
-  title?: string;
-  status: string;
-  participant_count: number;
-  created_at: Date;
-  waiting_room_enabled: boolean;
-}
+// API Key verification middleware
 
 // Configuration
 const LIVEKIT_URL = process.env.LIVEKIT_URL || 'ws://localhost:7880';
@@ -111,13 +83,13 @@ async function verifyAPIKey(req: Request, res: Response, next: Function) {
   try {
     const keyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
     
-    const dbKey = await queryOne<{
-      id: string;
-      user_id: string;
-      is_active: boolean;
-      permissions: any;
-      expires_at: Date | null;
-    }>(
+     const dbKey = await queryOne<{
+       id: string;
+       user_id: string;
+       is_active: boolean;
+       permissions: Record<string, unknown>;
+       expires_at: Date | null;
+     }>(
       `SELECT id, user_id, is_active, permissions, expires_at 
        FROM api_keys 
        WHERE key_hash = $1`,
@@ -142,16 +114,16 @@ async function verifyAPIKey(req: Request, res: Response, next: Function) {
       [dbKey.id]
     );
     
-    // Attach key info to request for later use
-    (req as any).apiKey = {
-      id: dbKey.id,
-      userId: dbKey.user_id,
-      permissions: dbKey.permissions,
-    };
+     // Attach key info to request for later use
+     (req as ExternalApiRequest).apiKey = {
+       id: dbKey.id,
+       userId: dbKey.user_id,
+       permissions: dbKey.permissions,
+     };
     
     next();
   } catch (error) {
-    console.error('[External API] Error verifying API key:', error);
+    logger.error('[External API] Error verifying API key:', error);
     return res.status(500).json({ error: 'Failed to verify API key' });
   }
 }
@@ -190,8 +162,8 @@ router.post('/rooms', async (req: Request, res: Response) => {
       metadata = {} 
     } = req.body as CreateRoomRequest;
     
-    // Get user ID from API key
-    const userId = (req as any).apiKey?.userId;
+     // Get user ID from API key
+     const userId = (req as ExternalApiRequest).apiKey?.userId;
     
     if (!name) {
       return res.status(400).json({ error: 'Room name is required' });
@@ -222,7 +194,7 @@ router.post('/rooms', async (req: Request, res: Response) => {
       [sanitized, title || sanitized, userId, waitingRoomEnabled, JSON.stringify(metadata)]
     );
     
-    console.log(`[External API] Created room: ${sanitized}`);
+    logger.info(`[External API] Created room: ${sanitized}`);
     
     res.json({
       name: sanitized,
@@ -231,7 +203,7 @@ router.post('/rooms', async (req: Request, res: Response) => {
     });
     
   } catch (error) {
-    console.error('[External API] Error creating room:', error);
+    logger.error('[External API] Error creating room:', error);
     res.status(500).json({ error: 'Failed to create room' });
   }
 });
@@ -262,7 +234,7 @@ router.get('/rooms/:name', async (req: Request, res: Response) => {
     res.json(room);
     
   } catch (error) {
-    console.error('[External API] Error getting room:', error);
+    logger.error('[External API] Error getting room:', error);
     res.status(500).json({ error: 'Failed to get room' });
   }
 });
@@ -297,9 +269,9 @@ router.post('/token', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Room not found' });
     }
     
-    // Check API key permissions
-    const apiKeyInfo = (req as any).apiKey;
-    const permissions = apiKeyInfo?.permissions || {};
+     // Check API key permissions
+     const apiKeyInfo = (req as ExternalApiRequest).apiKey;
+     const permissions = apiKeyInfo?.permissions || {};
     const tokenPerms = permissions.token || {};
     const canGenerateToken = tokenPerms.generate === true;
     
@@ -347,7 +319,7 @@ router.post('/token', async (req: Request, res: Response) => {
     
     const jwt = await token.toJwt();
     
-    console.log(`[External API] Generated token for ${identity} in room ${room} (${effectiveRole}) via API key ${apiKeyInfo?.id}`);
+    logger.info(`[External API] Generated token for ${identity} in room ${room} (${effectiveRole}) via API key ${apiKeyInfo?.id}`);
     
     res.json({
       token: jwt,
@@ -358,7 +330,7 @@ router.post('/token', async (req: Request, res: Response) => {
     });
     
   } catch (error) {
-    console.error('[External API] Error generating token:', error);
+    logger.error('[External API] Error generating token:', error);
     res.status(500).json({ error: 'Failed to generate token' });
   }
 });
@@ -376,22 +348,22 @@ router.post('/rooms/:name/end', async (req: Request, res: Response) => {
       await roomClient.deleteRoom(name);
     } catch (e) {
       // Room might not exist in LiveKit
-      console.log(`[External API] Room ${name} not active in LiveKit`);
+      logger.info(`[External API] Room ${name} not active in LiveKit`);
     }
     
-    // Update any active meetings
+    // Update any active meetings (join via room_id -> rooms.name)
     await query(
       `UPDATE meetings SET ended_at = NOW(), status = 'ended' 
-       WHERE room_name = $1 AND ended_at IS NULL`,
+       WHERE room_id IN (SELECT id FROM rooms WHERE name = $1) AND ended_at IS NULL`,
       [name]
     );
     
-    console.log(`[External API] Ended room: ${name}`);
+    logger.info(`[External API] Ended room: ${name}`);
     
     res.json({ success: true, message: 'Room ended' });
     
   } catch (error) {
-    console.error('[External API] Error ending room:', error);
+    logger.error('[External API] Error ending room:', error);
     res.status(500).json({ error: 'Failed to end room' });
   }
 });
@@ -407,12 +379,12 @@ router.delete('/rooms/:name', async (req: Request, res: Response) => {
     // Delete from database
     await query('DELETE FROM rooms WHERE name = $1', [name]);
     
-    console.log(`[External API] Deleted room: ${name}`);
+    logger.info(`[External API] Deleted room: ${name}`);
     
     res.json({ success: true, message: 'Room deleted' });
     
   } catch (error) {
-    console.error('[External API] Error deleting room:', error);
+    logger.error('[External API] Error deleting room:', error);
     res.status(500).json({ error: 'Failed to delete room' });
   }
 });
@@ -483,12 +455,12 @@ router.get('/rooms/:name/links', async (req: Request, res: Response) => {
       expires_at: expiresAt.toISOString(),
     };
     
-    console.log(`[External API] Generated join links for room: ${name}`);
+    logger.info(`[External API] Generated join links for room: ${name}`);
     
     res.json(response);
     
   } catch (error) {
-    console.error('[External API] Error generating join links:', error);
+    logger.error('[External API] Error generating join links:', error);
     res.status(500).json({ error: 'Failed to generate join links' });
   }
 });

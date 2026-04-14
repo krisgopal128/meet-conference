@@ -1,14 +1,21 @@
-import { Router, Response } from 'express';
-import { z } from 'zod';
-import crypto from 'crypto';
-import bcrypt from 'bcryptjs';
-import { AuthRequest, authenticate } from '../middleware/authenticate.js';
-import { tokenLimiter } from '../middleware/rateLimiter.js';
-import { createAccessToken, ParticipantRole, listParticipants } from '../services/livekit.js';
-import { queryOne } from '../services/database.js';
-import { isParticipantKicked, isGuestNameKicked, isGuestNameAdmitted } from '../services/redis.js';
+ import { Router, Response } from 'express';
+ import { z } from 'zod';
+ import crypto from 'crypto';
+ import bcrypt from 'bcryptjs';
+ import { AuthRequest, authenticate } from '../middleware/authenticate.js';
+ import { tokenLimiter } from '../middleware/rateLimiter.js';
+ import { createAccessToken, ParticipantRole, listParticipants } from '../services/livekit.js';
+ import { queryOne } from '../services/database.js';
+ import * as roomService from '../services/roomService.js';
+ import { isParticipantKicked, isGuestNameKicked, isGuestNameAdmitted } from '../services/redis.js';
+ import logger from '../utils/logger.js';
 
-export const tokenRouter = Router();
+ export const tokenRouter = Router();
+
+ // Request may have apiKeyId attached by (hypothetical) middleware
+ interface TokenRequest extends AuthRequest {
+   apiKeyId?: string | number;
+ }
 
 const requestTokenSchema = z.object({
   roomName: z.string().min(1).max(255),
@@ -49,19 +56,16 @@ tokenRouter.post('/', authenticate, tokenLimiter, async (req: AuthRequest, res: 
   try {
     const { roomName, role, identity, name, ttl } = requestTokenSchema.parse(req.body);
 
-    // Use authenticated user's ID as identity if not provided
-    const participantIdentity = identity || req.user!.id;
-    const participantName = name || req.user!.name || req.user!.email.split('@')[0];
+     // Use authenticated user's ID as identity if not provided
+     const participantIdentity = identity || req.user!.id;
+     const participantName = name || req.user!.name || req.user!.email.split('@')[0];
 
-    // Check if room exists in database (optional validation)
-    // Include waiting_room_enabled in initial query to avoid double query
-    const room = await queryOne<{ id: string; status: string; host_id: string; waiting_room_enabled: boolean }>(
-      'SELECT id, status, host_id, waiting_room_enabled FROM rooms WHERE name = $1',
-      [roomName]
-    );
+     // Check if room exists in database (optional validation)
+     // Include waiting_room_enabled in initial query to avoid double query
+     const room = await roomService.getRoomByName(roomName);
 
-    // If room exists and is ended, only host can restart
-    if (room && room.status === 'ended') {
+     // If room exists and is ended, only host can restart
+     if (room && room.status === 'ended') {
       if (room.host_id !== req.user!.id) {
         return res.status(400).json({ error: 'Room has ended. Only the host can restart the meeting.' });
       }
@@ -71,7 +75,7 @@ tokenRouter.post('/', authenticate, tokenLimiter, async (req: AuthRequest, res: 
         "UPDATE rooms SET status = 'waiting' WHERE name = $1",
         [roomName]
       );
-      console.log(`[Token] Host ${req.user!.id} restarting room ${roomName}, status reset to 'waiting'`);
+      logger.info(`[Token] Host ${req.user!.id} restarting room ${roomName}, status reset to 'waiting'`);
     }
 
     // Determine the actual role - room creator is always host
@@ -98,14 +102,14 @@ tokenRouter.post('/', authenticate, tokenLimiter, async (req: AuthRequest, res: 
     // If user requests moderator role, verify they are host or co-host
     if (role === 'moderator' && !isHost && !isModerator) {
       // User is not host nor co-host - check if API key was used for this session
-      const apiKeyUsed = (req as any).apiKeyId;
+       const apiKeyUsed = (req as TokenRequest).apiKeyId;
       if (apiKeyUsed) {
         // API key was used - fall back to attendee
         actualRole = 'attendee';
       } else {
         // For regular authenticated users without moderator permissions, also fall back
         actualRole = 'attendee';
-        console.log(`[Token] User ${req.user!.id} requested moderator but not authorized, falling back to attendee`);
+        logger.info(`[Token] User ${req.user!.id} requested moderator but not authorized, falling back to attendee`);
       }
     }
 
@@ -155,7 +159,7 @@ tokenRouter.post('/', authenticate, tokenLimiter, async (req: AuthRequest, res: 
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
     // Log error type only, not message (could contain sensitive data)
-    console.error('Token generation failed:', error instanceof Error ? error.constructor.name : 'Unknown error type');
+    logger.error('Token generation failed:', error instanceof Error ? error.constructor.name : 'Unknown error type');
     res.status(500).json({ error: 'Failed to generate token' });
   }
 });
@@ -243,7 +247,7 @@ tokenRouter.post('/guest', tokenLimiter, async (req, res: Response) => {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
     // Log error type only, not message (could contain sensitive data)
-    console.error('Guest token generation failed:', error instanceof Error ? error.constructor.name : 'Unknown error type');
+    logger.error('Guest token generation failed:', error instanceof Error ? error.constructor.name : 'Unknown error type');
     res.status(500).json({ error: 'Failed to generate guest token' });
   }
 });

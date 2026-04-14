@@ -9,6 +9,7 @@ import {
 } from 'livekit-server-sdk';
 import { ParticipantInfo, TrackSource } from '@livekit/protocol';
 import { config } from '../config.js';
+import logger from '../utils/logger.js';
 
 const { apiKey, apiSecret, url } = config.livekit;
 
@@ -175,7 +176,7 @@ function parseParticipantRole(metadata?: string): ParticipantRole | null {
   } catch {
     // Log at debug level for troubleshooting malformed metadata
     if (process.env.NODE_ENV === 'development') {
-      console.warn('[LiveKit] Failed to parse participant metadata:', metadata.slice(0, 100));
+      logger.warn('[LiveKit] Failed to parse participant metadata:', metadata.slice(0, 100));
     }
   }
 
@@ -261,12 +262,12 @@ async function muteMatchingTracks(
       await roomService.mutePublishedTrack(roomName, identity, track.sid, true);
       mutedCount++;
     } catch (err) {
-      console.error(`[${label}] Failed to mute track ${track.sid} for ${identity}:`, err);
+      logger.error(`[${label}] Failed to mute track ${track.sid} for ${identity}:`, err);
     }
   }
 
   if (mutedCount === 0) {
-    console.warn(`[${label}] No matching tracks found for participant ${identity}`);
+    logger.warn(`[${label}] No matching tracks found for participant ${identity}`);
   }
 
   return mutedCount;

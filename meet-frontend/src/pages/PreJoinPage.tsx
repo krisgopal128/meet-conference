@@ -21,6 +21,7 @@ import { cn } from '../utils/cn';
 import { generateRoomName } from '../utils/roomName';
 import { isValidRoomName } from '../utils/security';
 import toast from 'react-hot-toast';
+import logger from '../utils/logger';
 import {
   Video,
   MicOff,
@@ -133,7 +134,7 @@ export default function PreJoinPage() {
       }
     }
 
-    console.log(`📷 Native ratio ${nativeRatio.toFixed(3)} → closest: ${closest.ratio} (${closest.value.toFixed(3)})`);
+    logger.info(`📷 Native ratio ${nativeRatio.toFixed(3)} → closest: ${closest.ratio} (${closest.value.toFixed(3)})`);
     return closest.ratio;
   }, []);
 
@@ -197,7 +198,7 @@ export default function PreJoinPage() {
     const tokenParam = searchParams.get('t');
     const roleParam = searchParams.get('role');
     if (tokenParam && roomName) {
-      console.log('[PreJoin] Token found in URL, redirecting to room...');
+      logger.info('[PreJoin] Token found in URL, redirecting to room...');
       // Store token in sessionStorage for RoomPage to use
       sessionStorage.setItem(`token_${roomName}`, tokenParam);
       // Store role in sessionStorage as well (for moderator links)
@@ -276,7 +277,7 @@ export default function PreJoinPage() {
           setInitializing(false);
         }
       } catch (e) {
-        console.error('Failed to get permissions:', e);
+        logger.error('Failed to get permissions:', e);
         toast.error('Could not access camera and microphone. Please check permissions.');
         try {
           setInitStatus('Requesting camera only...');
@@ -297,7 +298,7 @@ export default function PreJoinPage() {
             setInitializing(false);
           }
         } catch (videoError) {
-          console.error('Video permission denied:', videoError);
+          logger.error('Video permission denied:', videoError);
           toast.error('Camera and microphone access denied. You may still join with limited functionality.');
           setVideoEnabled(false);
           setAudioEnabled(false);
@@ -343,7 +344,7 @@ export default function PreJoinPage() {
         speakers: all.filter((d) => d.kind === 'audiooutput'),
       });
     } catch (e) {
-      console.error('Failed to enumerate devices:', e);
+      logger.error('Failed to enumerate devices:', e);
       toast.error('Could not detect audio/video devices.');
     }
   }
@@ -376,7 +377,7 @@ export default function PreJoinPage() {
             effectiveAspectRatio = nativeRatio; // Use immediately for this capture
             setGridAspectRatio(nativeRatio);
             aspectRatioAutoSelectedRef.current = true;
-            console.log(`📷 Auto-selected aspect ratio: ${nativeRatio} (native: ${caps.nativeAspectRatio.toFixed(3)})`);
+            logger.info(`📷 Auto-selected aspect ratio: ${nativeRatio} (native: ${caps.nativeAspectRatio.toFixed(3)})`);
           }
         }
       }
@@ -385,7 +386,7 @@ export default function PreJoinPage() {
 
       // Reuse existing track if provided (optimization: avoids 2nd getUserMedia call)
       if (reuseTrack && reuseTrack.readyState === 'live') {
-        console.log('📷 Reusing permission video track for preview (1 request optimization)');
+        logger.info('📷 Reusing permission video track for preview (1 request optimization)');
         // Create LocalVideoTrack from existing MediaStreamTrack
         track = new LocalVideoTrack(reuseTrack, undefined, false);
       } else {
@@ -404,7 +405,7 @@ export default function PreJoinPage() {
       videoTrackRef.current = track;
       if (videoRef.current) track.attach(videoRef.current);
     } catch (e) {
-      console.error('Failed to start video preview:', e);
+      logger.error('Failed to start video preview:', e);
       if (isMountedRef.current) {
         toast.error('Could not start camera preview.');
         setVideoEnabled(false);
@@ -434,7 +435,7 @@ export default function PreJoinPage() {
         if (videoRef.current) track.attach(videoRef.current);
         setVideoEnabled(true);
       } catch (e) {
-        console.error('Failed to start video preview:', e);
+        logger.error('Failed to start video preview:', e);
         toast.error('Could not start camera');
       }
     }
@@ -466,7 +467,7 @@ export default function PreJoinPage() {
         // Auto-select aspect ratio for new camera
         const nativeRatio = getClosestAspectRatio(caps.nativeAspectRatio);
         setGridAspectRatio(nativeRatio);
-        console.log(`📷 Camera changed - auto-selected aspect ratio: ${nativeRatio}`);
+        logger.info(`📷 Camera changed - auto-selected aspect ratio: ${nativeRatio}`);
 
         if (cancelled) return;
 
@@ -487,7 +488,7 @@ export default function PreJoinPage() {
     };
 
     detectAndStart().catch((error) => {
-      console.error('Failed to switch camera:', error);
+      logger.error('Failed to switch camera:', error);
       if (!cancelled && isMountedRef.current) {
         toast.error('Failed to switch camera');
       }

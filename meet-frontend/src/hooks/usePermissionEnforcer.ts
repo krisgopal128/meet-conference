@@ -7,6 +7,7 @@
 import { useEffect } from 'react';
 import { useLocalParticipant } from '@livekit/components-react';
 import { shouldDisableSource } from '../pages/RoomPage';
+import logger from '../utils/logger';
 
 export function usePermissionEnforcer() {
   const { localParticipant } = useLocalParticipant();
@@ -17,19 +18,19 @@ export function usePermissionEnforcer() {
 
     if (shouldDisableSource(localParticipant, 'camera')) {
       void localParticipant.setCameraEnabled(false).catch((error) => {
-        console.error('[RoomPage] Failed to enforce camera disable from permissions:', error);
+        logger.error('[RoomPage] Failed to enforce camera disable from permissions:', error);
       });
     }
 
     if (shouldDisableSource(localParticipant, 'microphone')) {
       void localParticipant.setMicrophoneEnabled(false).catch((error) => {
-        console.error('[RoomPage] Failed to enforce microphone mute from permissions:', error);
+        logger.error('[RoomPage] Failed to enforce microphone mute from permissions:', error);
       });
     }
 
     if (shouldDisableSource(localParticipant, 'screen_share')) {
       void localParticipant.setScreenShareEnabled(false).catch((error) => {
-        console.error('[RoomPage] Failed to enforce screen share disable from permissions:', error);
+        logger.error('[RoomPage] Failed to enforce screen share disable from permissions:', error);
       });
     }
   }, [

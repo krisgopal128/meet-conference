@@ -8,6 +8,7 @@
  */
 
 import { useRef, useCallback, useEffect, useMemo } from 'react';
+import logger from '../utils/logger';
 
 interface PooledVideo {
   id: string;
@@ -151,7 +152,7 @@ export function useVideoPool(
     }
 
     // Fallback - create temporary element (not pooled)
-    console.warn('[useVideoPool] Pool exhausted, creating temporary video element');
+    logger.warn('[useVideoPool] Pool exhausted, creating temporary video element');
     return createVideoElement();
   }, [enabled, poolSize, createVideoElement]);
 

@@ -3,6 +3,8 @@ import { persist, devtools, createJSONStorage } from 'zustand/middleware';
 import { shallow } from 'zustand/shallow';
 import type { User } from '../types';
 import { isTokenExpired } from '../utils/security';
+import logger from '../utils/logger';
+import { registerAuthStore } from '../services/api';
 
 // ============================================
 // AUTH STORE WITH OPTIMIZATIONS
@@ -31,7 +33,7 @@ export const useAuthStore = create<AuthStoreState>()(
         isAuthenticated: false,
 
         login: (user: User, token: string) => {
-          console.log('[AuthStore] Login called with user:', user.email, '| Token preview:', token.substring(0, 20) + '...');
+          logger.info('[AuthStore] Login called with user:', user.email, '| Token preview:', token.substring(0, 20) + '...');
           set({ user, token, isAuthenticated: true }, false, 'login');
         },
 
@@ -70,16 +72,16 @@ export const useAuthStore = create<AuthStoreState>()(
         // Called when storage is rehydrated
         onRehydrateStorage: () => (state, error) => {
           if (error) {
-            console.error('Failed to rehydrate auth store:', error);
+            logger.error('Failed to rehydrate auth store:', error);
           }
           // Validate token on rehydration
           if (state?.token) {
             const expired = isTokenExpired(state.token);
             if (expired === true) {
-              // Clear expired token state
-              state.user = null;
-              state.token = null;
-              state.isAuthenticated = false;
+              // Clear expired token state via scheduled update (avoids direct mutation)
+              Promise.resolve().then(() => {
+                useAuthStore.setState({ user: null, token: null, isAuthenticated: false });
+              });
             }
           }
         },
@@ -88,6 +90,9 @@ export const useAuthStore = create<AuthStoreState>()(
     { name: 'auth-store', enabled: import.meta.env.DEV }
   )
 );
+
+// Register store with API interceptor so it can read the token directly
+registerAuthStore(() => useAuthStore.getState());
 
 // ============================================
 // OPTIMIZED SELECTORS

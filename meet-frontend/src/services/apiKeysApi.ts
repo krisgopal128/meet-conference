@@ -56,14 +56,14 @@ export const apiKeysApi = {
   /**
    * List all API keys for current user
    */
-  list: async () => {
+  list: () => {
     return api.get<{ keys: ApiKey[] }>('/api-keys');
   },
 
   /**
    * Get a single API key by ID
    */
-  get: async (id: string) => {
+  get: (id: string) => {
     return api.get<{ key: ApiKey }>(`/api-keys/${id}`);
   },
 
@@ -71,21 +71,21 @@ export const apiKeysApi = {
    * Create a new API key
    * Returns the full key (only time it's visible)
    */
-  create: async (data: CreateApiKeyRequest) => {
+  create: (data: CreateApiKeyRequest) => {
     return api.post<ApiKeyWithSecret>('/api-keys', data);
   },
 
   /**
    * Update an API key
    */
-  update: async (id: string, data: UpdateApiKeyRequest) => {
+  update: (id: string, data: UpdateApiKeyRequest) => {
     return api.patch<{ success: boolean; message: string }>(`/api-keys/${id}`, data);
   },
 
   /**
    * Delete an API key
    */
-  delete: async (id: string) => {
+  delete: (id: string) => {
     return api.delete<{ success: boolean; message: string }>(`/api-keys/${id}`);
   },
 
@@ -93,7 +93,7 @@ export const apiKeysApi = {
    * Regenerate an API key (invalidates old one)
    * Returns the new full key (only time it's visible)
    */
-  regenerate: async (id: string) => {
+  regenerate: (id: string) => {
     return api.post<ApiKeyWithSecret>(`/api-keys/${id}/regenerate`);
   },
 };

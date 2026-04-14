@@ -17,6 +17,8 @@ import { ChatMessageList } from '../chat/ChatMessageList';
 import { ChatInput } from '../chat/ChatInput';
 import { PollCreator } from '../chat/PollCreator';
 import { parseMentions, type MentionableParticipant } from '../chat/chatUtils';
+import logger from '../../utils/logger';
+import toast from 'react-hot-toast';
 
 // API response type for chat history messages
 interface ChatHistoryMessage {
@@ -217,7 +219,8 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
         }));
         mergeMessages(history);
       } catch (error) {
-        console.error('Failed to load room chat history:', error);
+        logger.error('Failed to load room chat history:', error);
+      toast.error('Failed to load chat history');
       } finally {
         setHistoryLoaded(true);
       }
@@ -311,7 +314,8 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
           sentAt = response.data.message.created_at || response.data.message.createdAt || sentAt;
         }
       } catch (error) {
-        console.error('Failed to persist room chat message:', error);
+        logger.error('Failed to persist room chat message:', error);
+        toast.error('Failed to persist room chat message');
       }
     }
 

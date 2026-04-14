@@ -24,6 +24,7 @@ import {
 } from '../config/meetingRoomConfig';
 import { Video, WifiOff } from 'lucide-react';
 import '@livekit/components-styles';
+import logger from '../utils/logger';
 
 interface LocationState {
   token: string;
@@ -86,7 +87,7 @@ async function teardownRoomMedia(room: ReturnType<typeof useRoomContext>) {
     // No need to manually stop tracks - this avoids duplicate stops
     await room.disconnect();
   } catch (error) {
-    console.error('[RoomPage] Failed to disconnect room during teardown:', error);
+    logger.error('[RoomPage] Failed to disconnect room during teardown:', error);
   }
 }
 
@@ -149,23 +150,23 @@ function RoomContent({
   // Monitor connection state for reconnection
   useEffect(() => {
     if (connectionState === 'reconnecting') {
-      console.log('[RoomPage] Connection state: reconnecting');
+      logger.info('[RoomPage] Connection state: reconnecting');
       setIsReconnecting(true);
     } else if (connectionState === 'connected') {
-      console.log('[RoomPage] Connection state: connected');
+      logger.info('[RoomPage] Connection state: connected');
       setIsReconnecting(false);
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
       }
     } else if (connectionState === 'disconnected') {
-      console.log('[RoomPage] Connection state: disconnected');
+      logger.info('[RoomPage] Connection state: disconnected');
       // Give LiveKit time to attempt reconnection before showing permanent disconnect
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
       reconnectTimeoutRef.current = setTimeout(() => {
-        console.log('[RoomPage] Reconnection timeout, staying disconnected');
+        logger.info('[RoomPage] Reconnection timeout, staying disconnected');
       }, 30000); // 30 second grace period
     }
     
@@ -189,7 +190,7 @@ function RoomContent({
         if (cancelled) return;
         const success = await enableBlur(cameraTrack as Parameters<typeof enableBlur>[0]);
         if (!cancelled) {
-          console.log(`[RoomPage] Background blur ${success ? 'applied' : 'failed'}`);
+          logger.info(`[RoomPage] Background blur ${success ? 'applied' : 'failed'}`);
         }
       }
     };
@@ -205,7 +206,7 @@ function RoomContent({
 
   useEffect(() => {
     if (import.meta.env.DEV) {
-      console.log('[RoomPage] State received:', { 
+      logger.info('[RoomPage] State received:', { 
         role: state.role, 
         hostId: state.hostId, 
         identity: localParticipant.identity,
@@ -233,7 +234,7 @@ function RoomContent({
 
     const deviceId = state.selectedSpeaker || 'default';
     void room.switchActiveDevice('audiooutput', deviceId).catch((error) => {
-      console.error('[RoomPage] Failed to switch speaker device:', error);
+      logger.error('[RoomPage] Failed to switch speaker device:', error);
     });
   }, [room, state.selectedSpeaker]);
 
@@ -257,7 +258,7 @@ function RoomContent({
     }
 
     void localParticipant.setCameraEnabled(false).catch((error) => {
-      console.error('[RoomPage] Failed to disable camera for audio-only mode:', error);
+      logger.error('[RoomPage] Failed to disable camera for audio-only mode:', error);
     });
   }, [qualityMode, localParticipant]);
 
@@ -275,10 +276,10 @@ function RoomContent({
         if (cameraTrack?.track) {
           const newOptions = buildCameraCaptureOptions(state.selectedCamera, qualityMode, currentGridAspectRatio, state.cameraHardwareCaps);
           await localParticipant.setCameraEnabled(true, newOptions);
-          console.log(`[RoomPage] Camera reconfigured for quality mode: ${qualityMode}`);
+          logger.info(`[RoomPage] Camera reconfigured for quality mode: ${qualityMode}`);
         }
       } catch (error) {
-        console.error('[RoomPage] Failed to reconfigure camera for quality mode:', error);
+        logger.error('[RoomPage] Failed to reconfigure camera for quality mode:', error);
       }
     };
 
@@ -291,19 +292,19 @@ function RoomContent({
 
     if (shouldDisableSource(localParticipant, 'camera')) {
       void localParticipant.setCameraEnabled(false).catch((error) => {
-        console.error('[RoomPage] Failed to enforce camera disable from permissions:', error);
+        logger.error('[RoomPage] Failed to enforce camera disable from permissions:', error);
       });
     }
 
     if (shouldDisableSource(localParticipant, 'microphone')) {
       void localParticipant.setMicrophoneEnabled(false).catch((error) => {
-        console.error('[RoomPage] Failed to enforce microphone mute from permissions:', error);
+        logger.error('[RoomPage] Failed to enforce microphone mute from permissions:', error);
       });
     }
 
     if (shouldDisableSource(localParticipant, 'screen_share')) {
       void localParticipant.setScreenShareEnabled(false).catch((error) => {
-        console.error('[RoomPage] Failed to enforce screen share disable from permissions:', error);
+        logger.error('[RoomPage] Failed to enforce screen share disable from permissions:', error);
       });
     }
   }, [
@@ -318,7 +319,7 @@ function RoomContent({
   useEffect(() => {
     const checkLobbyStatus = () => {
       const permissions = localParticipant.permissions;
-      console.log('[RoomPage] Checking lobby status:', {
+      logger.info('[RoomPage] Checking lobby status:', {
         initialInLobby: state.inLobby,
         permissions,
         canPublish: permissions?.canPublish
@@ -331,11 +332,11 @@ function RoomContent({
         // Check if they've been admitted (have explicit canPublish: true)
         if (permissions?.canPublish === true) {
           // Moderator has admitted them - they now have publish permission
-          console.log('[RoomPage] Guest admitted by moderator - exiting lobby');
+          logger.info('[RoomPage] Guest admitted by moderator - exiting lobby');
           setInLobby(false);
         } else {
           // Still in lobby - no publish permission yet
-          console.log('[RoomPage] Guest in lobby - waiting for moderator');
+          logger.info('[RoomPage] Guest in lobby - waiting for moderator');
           setInLobby(true);
         }
       } else {
@@ -352,7 +353,7 @@ function RoomContent({
   useEffect(() => {
     const handlePermissionChange = () => {
       const permissions = localParticipant.permissions;
-      console.log('[RoomPage] Permission changed event:', {
+      logger.info('[RoomPage] Permission changed event:', {
         canPublish: permissions?.canPublish,
         currentInLobby: inLobby,
         initialInLobby: state.inLobby
@@ -360,7 +361,7 @@ function RoomContent({
       
       // Only process permission changes if user was initially in lobby
       if (state.inLobby === true && permissions?.canPublish === true && inLobby) {
-        console.log('[RoomPage] Guest admitted from lobby by moderator');
+        logger.info('[RoomPage] Guest admitted from lobby by moderator');
         setInLobby(false);
       }
     };
@@ -499,7 +500,7 @@ export default function RoomPage() {
         }
       } catch (error) {
         if (!cancelled) {
-          console.warn('[RoomPage] Could not fetch room settings:', error);
+          logger.warn('[RoomPage] Could not fetch room settings:', error);
         }
       }
     };
@@ -597,28 +598,28 @@ export default function RoomPage() {
     // Register meeting in history for moderators
     if (state.role === 'moderator' && roomName) {
       roomsApi.startMeeting(roomName).catch((error) => {
-        console.warn('[RoomPage] Failed to register meeting in history:', error);
+        logger.warn('[RoomPage] Failed to register meeting in history:', error);
       });
     }
     
     if (import.meta.env.DEV) {
-      console.log('✅ Connected to room:', roomName);
-      console.log('Initial state - Video:', state.videoEnabled, 'Audio:', state.audioEnabled);
+      logger.info('✅ Connected to room:', roomName);
+      logger.info('Initial state - Video:', state.videoEnabled, 'Audio:', state.audioEnabled);
     }
   };
 
   const handleDisconnected = () => {
-    console.log('[RoomPage] Disconnected from room');
+    logger.info('[RoomPage] Disconnected from room');
   };
 
   const handleError = (error: Error) => {
     if (import.meta.env.DEV) {
-      console.error('❌ Room error:', error);
+      logger.error('❌ Room error:', error);
     }
   };
 
   if (import.meta.env.DEV) {
-    console.log('🎬 LiveKitRoom options:', { 
+    logger.info('🎬 LiveKitRoom options:', { 
       videoEnabled: state.videoEnabled, 
       audioEnabled: state.audioEnabled,
       videoOptions, 

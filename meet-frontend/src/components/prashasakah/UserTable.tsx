@@ -21,9 +21,9 @@ type SortField = 'name' | 'email' | 'role' | 'createdAt' | 'lastLoginAt';
 type SortOrder = 'asc' | 'desc';
 
 const roleColors: Record<string, string> = {
-  admin: 'bg-purple-100 text-purple-800',
+  admin: 'bg-brand-100 text-purple-800',
   moderator: 'bg-brand-100 text-brand-800',
-  participant: 'bg-gray-100 text-gray-800',
+  participant: 'bg-surface-100 text-surface-700',
 };
 
 const roleIcons: Record<string, React.ReactNode> = {
@@ -102,11 +102,12 @@ export default function UserTable({
       case 'createdAt':
         comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
         break;
-      case 'lastLoginAt':
+      case 'lastLoginAt': {
         const aTime = a.lastLoginAt ? new Date(a.lastLoginAt).getTime() : 0;
         const bTime = b.lastLoginAt ? new Date(b.lastLoginAt).getTime() : 0;
         comparison = aTime - bTime;
         break;
+      }
     }
     return sortOrder === 'asc' ? comparison : -comparison;
   });
@@ -123,7 +124,7 @@ export default function UserTable({
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) {
       return (
-        <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4 text-surface-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
         </svg>
       );
@@ -141,15 +142,15 @@ export default function UserTable({
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
         <div className="animate-pulse">
-          <div className="h-12 bg-gray-100 border-b border-gray-200" />
+          <div className="h-12 bg-surface-100 border-b border-surface-200" />
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-16 border-b border-gray-100 flex items-center px-6">
-              <div className="w-10 h-10 bg-gray-200 rounded-full mr-4" />
+            <div key={i} className="h-16 border-b border-surface-100 flex items-center px-6">
+              <div className="w-10 h-10 bg-surface-200 rounded-full mr-4" />
               <div className="flex-1 space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-1/4" />
-                <div className="h-3 bg-gray-100 rounded w-1/3" />
+                <div className="h-4 bg-surface-200 rounded w-1/4" />
+                <div className="h-3 bg-surface-100 rounded w-1/3" />
               </div>
             </div>
           ))}
@@ -160,67 +161,67 @@ export default function UserTable({
 
   if (users.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-12 text-center">
-        <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="bg-white rounded-xl border border-surface-200 p-12 text-center">
+        <svg className="w-12 h-12 text-surface-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
-        <h3 className="text-lg font-medium text-gray-900 mb-1">No users found</h3>
-        <p className="text-gray-500">Try adjusting your search or filters.</p>
+        <h3 className="text-lg font-medium text-surface-800 mb-1">No users found</h3>
+        <p className="text-surface-500">Try adjusting your search or filters.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
+    <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-surface-200">
+          <thead className="bg-surface-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
                 <button
                   onClick={() => handleSort('name')}
-                  className="flex items-center gap-1 hover:text-gray-700"
+                  className="flex items-center gap-1 hover:text-surface-600"
                 >
                   User
                   <SortIcon field="name" />
                 </button>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
                 <button
                   onClick={() => handleSort('email')}
-                  className="flex items-center gap-1 hover:text-gray-700"
+                  className="flex items-center gap-1 hover:text-surface-600"
                 >
                   Email
                   <SortIcon field="email" />
                 </button>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
                 <button
                   onClick={() => handleSort('role')}
-                  className="flex items-center gap-1 hover:text-gray-700"
+                  className="flex items-center gap-1 hover:text-surface-600"
                 >
                   Role
                   <SortIcon field="role" />
                 </button>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
                 <button
                   onClick={() => handleSort('lastLoginAt')}
-                  className="flex items-center gap-1 hover:text-gray-700"
+                  className="flex items-center gap-1 hover:text-surface-600"
                 >
                   Last Login
                   <SortIcon field="lastLoginAt" />
                 </button>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-right text-xs font-medium text-surface-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white divide-y divide-surface-200">
             {sortedUsers.map((user) => {
               const isCurrentUser = user.id === currentUserId;
               const isLoading = actionLoading === user.id;
@@ -228,7 +229,7 @@ export default function UserTable({
               return (
                 <tr
                   key={user.id}
-                  className={`hover:bg-gray-50 transition-colors ${user.isBanned ? 'bg-red-50' : ''}`}
+                  className={`hover:bg-surface-50 transition-colors ${user.isBanned ? 'bg-danger-50' : ''}`}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -238,7 +239,7 @@ export default function UserTable({
                       <div className="ml-4">
                         <button
                           onClick={() => onView(user)}
-                          className="text-sm font-medium text-gray-900 hover:text-brand-600"
+                          className="text-sm font-medium text-surface-800 hover:text-brand-600"
                         >
                           {user.name || 'No name'}
                         </button>
@@ -249,7 +250,7 @@ export default function UserTable({
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-500">{user.email}</span>
+                    <span className="text-sm text-surface-500">{user.email}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleColors[user.role]}`}>
@@ -257,19 +258,19 @@ export default function UserTable({
                       {user.role}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-surface-500">
                     {formatDate(user.lastLoginAt)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {user.isBanned ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-danger-100 text-danger-800">
                         <svg className="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clipRule="evenodd" />
                         </svg>
                         Banned
                       </span>
                     ) : (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-100 text-green-800">
                         <svg className="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                         </svg>
@@ -281,7 +282,7 @@ export default function UserTable({
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => onView(user)}
-                        className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors"
+                        className="p-1.5 text-surface-400 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors"
                         title="View details"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -292,7 +293,7 @@ export default function UserTable({
                       <button
                         onClick={() => onEdit(user)}
                         disabled={isLoading}
-                        className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors disabled:opacity-50"
+                        className="p-1.5 text-surface-400 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors disabled:opacity-50"
                         title="Edit user"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -304,7 +305,7 @@ export default function UserTable({
                           <button
                             onClick={() => handleAction(() => onUnban(user), user.id)}
                             disabled={isLoading}
-                            className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors disabled:opacity-50"
+                            className="p-1.5 text-surface-400 hover:text-success-600 hover:bg-success-50 rounded transition-colors disabled:opacity-50"
                             title="Unban user"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -315,7 +316,7 @@ export default function UserTable({
                           <button
                             onClick={() => handleAction(() => onBan(user), user.id)}
                             disabled={isLoading}
-                            className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors disabled:opacity-50"
+                            className="p-1.5 text-surface-400 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors disabled:opacity-50"
                             title="Ban user"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -328,7 +329,7 @@ export default function UserTable({
                         <button
                           onClick={() => handleAction(() => onDelete(user), user.id)}
                           disabled={isLoading}
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                          className="p-1.5 text-surface-400 hover:text-danger-600 hover:bg-danger-50 rounded transition-colors disabled:opacity-50"
                           title="Delete user"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

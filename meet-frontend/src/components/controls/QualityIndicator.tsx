@@ -15,6 +15,7 @@ import {
 } from '../../hooks/useAdaptiveQuality';
 import { getQualityLevelInfo } from '../../hooks/useNetworkQuality';
 import { useUIActions, useSelectedQualityMode } from '../../store/roomStore';
+import logger from '../../utils/logger';
 
 interface QualityIndicatorProps {
   className?: string;
@@ -35,7 +36,7 @@ export function QualityIndicator({ className = '' }: QualityIndicatorProps) {
     enabled: true,
     userPreferredMode: userSelectedMode,
     onModeChange: (mode, reason) => {
-      console.log(`[QualityIndicator] Mode changed to ${mode}: ${reason}`);
+      logger.info(`[QualityIndicator] Mode changed to ${mode}: ${reason}`);
     },
   });
 

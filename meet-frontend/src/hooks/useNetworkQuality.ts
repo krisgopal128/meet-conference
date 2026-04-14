@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRoomContext } from '@livekit/components-react';
+import logger from '../utils/logger';
 
 export type NetworkQualityLevel = 'excellent' | 'good' | 'fair' | 'poor';
 
@@ -188,7 +189,7 @@ export function useNetworkQuality(config: Partial<NetworkQualityConfig> = {}) {
           }
         }
       } catch (error) {
-        console.warn('[useNetworkQuality] Failed to get stats:', error);
+        logger.warn('[useNetworkQuality] Failed to get stats:', error);
       } finally {
         isCheckingRef.current = false;
       }

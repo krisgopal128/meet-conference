@@ -105,37 +105,15 @@ export default function RegisterPage() {
         
         <div className="space-y-6">
           <h1 className="font-display text-4xl font-bold text-white leading-tight">
-            Start your journey<br />with Meet
+            Join a meeting<br />with Meet
           </h1>
           <p className="text-brand-100 text-lg max-w-md">
-            Create your account and get instant access to high-quality video meetings 
-            with your team.
+            Create your account to start video meetings.
           </p>
-
-          <ul className="space-y-3 text-brand-100">
-            <li className="flex items-center gap-3">
-              <div className="w-6 h-6 rounded-full bg-brand-500/30 flex items-center justify-center">
-                <Check size={14} className="text-white" />
-              </div>
-              Free unlimited meetings
-            </li>
-            <li className="flex items-center gap-3">
-              <div className="w-6 h-6 rounded-full bg-brand-500/30 flex items-center justify-center">
-                <Check size={14} className="text-white" />
-              </div>
-              HD video and audio
-            </li>
-            <li className="flex items-center gap-3">
-              <div className="w-6 h-6 rounded-full bg-brand-500/30 flex items-center justify-center">
-                <Check size={14} className="text-white" />
-              </div>
-              Screen sharing & recording
-            </li>
-          </ul>
         </div>
 
         <div className="text-brand-200 text-sm">
-          © 2024 Meet. All rights reserved.
+          © 2025 Meet. All rights reserved.
         </div>
       </div>
 
@@ -157,7 +135,7 @@ export default function RegisterPage() {
               Create your account
             </h2>
             <p className="text-surface-500 dark:text-surface-400 mt-1">
-              Get started with your free account
+              Enter your details below
             </p>
           </div>
 
@@ -381,11 +359,7 @@ export default function RegisterPage() {
                 </>
               )}
             </button>
-            {!isFormValid && !loading && (
-              <p id="form-disabled-reason" className="text-xs text-surface-400 text-center">
-                Please fill in all required fields correctly
-              </p>
-            )}
+
           </form>
 
           <p className="text-center text-surface-500 dark:text-surface-400 text-sm mt-6">

@@ -55,21 +55,21 @@ export function DateRangeFilter({ value, onChange, className }: DateRangeFilterP
   return (
     <div className={`flex items-center gap-2 ${className || ''}`}>
       <div>
-        <label className="block text-xs text-gray-500 mb-1">From</label>
+        <label className="block text-xs text-surface-500 mb-1">From</label>
         <input
           type="date"
           value={from}
           onChange={(e) => handleFromChange(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="px-3 py-2 border border-surface-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
         />
       </div>
       <div>
-        <label className="block text-xs text-gray-500 mb-1">To</label>
+        <label className="block text-xs text-surface-500 mb-1">To</label>
         <input
           type="date"
           value={to}
           onChange={(e) => handleToChange(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="px-3 py-2 border border-surface-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
         />
       </div>
     </div>

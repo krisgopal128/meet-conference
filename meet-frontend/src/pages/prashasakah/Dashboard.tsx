@@ -5,6 +5,7 @@ import { StatCard, StatCardSkeleton } from '../../components/prashasakah/StatCar
 import { DateRangeFilter } from '../../components/prashasakah/DateRangeFilter';
 import { BandwidthChart } from '../../components/prashasakah/BandwidthChart';
 import { PeakUsersChart } from '../../components/prashasakah/PeakUsersChart';
+import logger from '../../utils/logger';
 
 /**
  * Dashboard - Admin Dashboard Page
@@ -101,7 +102,7 @@ export function Dashboard() {
       // Backend returns stats directly in response.data
       setStats(response?.data || null);
     } catch (error) {
-      console.error('Failed to fetch stats:', error);
+      logger.error('Failed to fetch stats:', error);
       setStatsError('Failed to load statistics. Please try again.');
     } finally {
       setStatsLoading(false);
@@ -118,7 +119,7 @@ export function Dashboard() {
       const response = await prashasakahApi.getBandwidthStats(days);
       setBandwidthData(response.data);
     } catch (error) {
-      console.error('Failed to fetch bandwidth:', error);
+      logger.error('Failed to fetch bandwidth:', error);
       setBandwidthError('Failed to load bandwidth data.');
     } finally {
       setBandwidthLoading(false);
@@ -135,7 +136,7 @@ export function Dashboard() {
       const response = await prashasakahApi.getPeakUsersStats(days);
       setPeakUsersData(response.data);
     } catch (error) {
-      console.error('Failed to fetch peak users:', error);
+      logger.error('Failed to fetch peak users:', error);
       setPeakUsersError('Failed to load peak users data.');
     } finally {
       setPeakUsersLoading(false);
@@ -172,20 +173,20 @@ export function Dashboard() {
       {/* Header with Date Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold text-surface-800">Dashboard</h1>
+          <p className="text-surface-500 mt-1">
             Welcome back, {user?.name || 'Admin'}! Here's an overview of your conference platform.
           </p>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row flex-wrap items-center gap-3">
           {/* Auto-refresh toggle */}
-          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+          <label className="flex items-center gap-2 text-sm text-surface-500 cursor-pointer">
             <input
               type="checkbox"
               checked={autoRefresh}
               onChange={(e) => setAutoRefresh(e.target.checked)}
-              className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+              className="rounded border-surface-300 text-brand-600 focus:ring-brand-400"
             />
             Auto-refresh
           </label>
@@ -194,7 +195,7 @@ export function Dashboard() {
           <button
             onClick={fetchAllData}
             disabled={statsLoading}
-            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-surface-600 bg-white border border-surface-300 rounded-lg hover:bg-surface-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <RefreshIcon />
             Refresh
@@ -210,14 +211,14 @@ export function Dashboard() {
 
       {/* Error Banner */}
       {(statsError || bandwidthError || peakUsersError) && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="bg-danger-50 border border-danger-200 rounded-xl p-4">
           <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-red-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-danger-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div>
-              <h4 className="text-sm font-medium text-red-800">Error Loading Data</h4>
-              <p className="text-sm text-red-600 mt-1">
+              <h4 className="text-sm font-medium text-danger-800">Error Loading Data</h4>
+              <p className="text-sm text-danger-600 mt-1">
                 {statsError || bandwidthError || peakUsersError}
               </p>
             </div>
@@ -287,16 +288,16 @@ export function Dashboard() {
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Bandwidth Chart */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-xl border border-surface-200 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">Bandwidth Usage</h3>
+            <h3 className="text-lg font-semibold text-surface-700">Bandwidth Usage</h3>
             {bandwidthLoading && (
-              <span className="text-xs text-gray-400 animate-pulse">Loading...</span>
+              <span className="text-xs text-surface-400 animate-pulse">Loading...</span>
             )}
           </div>
           {bandwidthError ? (
-            <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg border border-gray-200">
-              <p className="text-gray-500">{bandwidthError}</p>
+            <div className="h-64 flex items-center justify-center bg-surface-50 rounded-lg border border-surface-200">
+              <p className="text-surface-500">{bandwidthError}</p>
             </div>
           ) : (
             <BandwidthChart
@@ -308,16 +309,16 @@ export function Dashboard() {
         </div>
 
         {/* Peak Users Chart */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-xl border border-surface-200 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">Peak Users Over Time</h3>
+            <h3 className="text-lg font-semibold text-surface-700">Peak Users Over Time</h3>
             {peakUsersLoading && (
-              <span className="text-xs text-gray-400 animate-pulse">Loading...</span>
+              <span className="text-xs text-surface-400 animate-pulse">Loading...</span>
             )}
           </div>
           {peakUsersError ? (
-            <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg border border-gray-200">
-              <p className="text-gray-500">{peakUsersError}</p>
+            <div className="h-64 flex items-center justify-center bg-surface-50 rounded-lg border border-surface-200">
+              <p className="text-surface-500">{peakUsersError}</p>
             </div>
           ) : (
             <PeakUsersChart
@@ -331,7 +332,7 @@ export function Dashboard() {
 
       {/* Quick Stats */}
       {!statsLoading && stats && (
-        <div className="bg-gradient-to-r from-brand-600 to-brand-800 rounded-lg shadow p-6 text-white">
+        <div className="bg-gradient-to-r from-brand-600 to-brand-800 rounded-xl shadow p-6 text-white">
           <h3 className="text-lg font-semibold mb-4">Quick Stats</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>

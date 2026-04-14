@@ -1,15 +1,16 @@
 import { useEffect, useRef } from 'react';
+import logger from '../utils/logger';
 
 // Type declarations for Insertable Streams API (Chrome 94+)
 // Only declare if not already defined in lib.dom.d.ts
 declare global {
-  // @ts-ignore - may already exist in newer TypeScript
+  // @ts-expect-error - may already exist in newer TypeScript
   class MediaStreamTrackProcessor {
     constructor(options: { track: MediaStreamTrack });
     readonly readable: ReadableStream<VideoFrame>;
   }
   
-  // @ts-ignore - may already exist in newer TypeScript
+  // @ts-expect-error - may already exist in newer TypeScript
   class MediaStreamTrackGenerator {
     constructor(options: { kind: 'video' | 'audio' });
     readonly writable: WritableStream<VideoFrame>;
@@ -153,7 +154,7 @@ export function useLightweightPreviewFilter(
 
       // Check if fitMode changed - reset filter state for clean transition
       if (lastFitModeRef.current !== null && lastFitModeRef.current !== fitMode) {
-        console.log('[LightweightFilter] Fit mode changed, resetting filter state');
+        logger.info('[LightweightFilter] Fit mode changed, resetting filter state');
         prevImageDataRef.current = null;
         processCanvasRef.current = null;
         processCtxRef.current = null;
@@ -164,7 +165,7 @@ export function useLightweightPreviewFilter(
       if (lastContainerSizeRef.current && 
           (lastContainerSizeRef.current.width !== containerWidth || 
            lastContainerSizeRef.current.height !== containerHeight)) {
-        console.log('[LightweightFilter] Container size changed, resetting process canvas');
+        logger.info('[LightweightFilter] Container size changed, resetting process canvas');
         processCanvasRef.current = null;
         processCtxRef.current = null;
         prevImageDataRef.current = null;
@@ -174,7 +175,7 @@ export function useLightweightPreviewFilter(
       // Check if srcObject changed (new track attached) - reset state
       if (lastSrcObjectRef.current !== currentSrcObject) {
         if (lastSrcObjectRef.current !== null) {
-          console.log('[LightweightFilter] Video srcObject changed, resetting filter state');
+          logger.info('[LightweightFilter] Video srcObject changed, resetting filter state');
           prevImageDataRef.current = null;
           processCanvasRef.current = null;
           processCtxRef.current = null;
@@ -187,7 +188,7 @@ export function useLightweightPreviewFilter(
       if (lastVideoSizeRef.current && 
           (lastVideoSizeRef.current.width !== videoWidth || 
            lastVideoSizeRef.current.height !== videoHeight)) {
-        console.log('[LightweightFilter] Video dimensions changed, resetting filter state');
+        logger.info('[LightweightFilter] Video dimensions changed, resetting filter state');
         prevImageDataRef.current = null;
         processCanvasRef.current = null;
         processCtxRef.current = null;
@@ -377,14 +378,14 @@ export function createLightweightTrackProcessor(blendFactor: number = 0.3) {
           prevFrame?.close();
           prevFrame = frame;
           controller.enqueue(newFrame);
-        } catch (e) {
+        } catch {
           bitmap.close();
           prevFrame?.close();
           prevFrame = frame;
           controller.enqueue(frame);
         }
       } catch (e) {
-        console.warn('[LightweightFilter] Transform error:', e);
+        logger.warn('[LightweightFilter] Transform error:', e);
         controller.enqueue(frame);
       }
     },

@@ -3,6 +3,7 @@ import { useRoomContext, useLocalParticipant } from '@livekit/components-react';
 import { RoomEvent } from 'livekit-client';
 import { useNavigate, Link } from 'react-router-dom';
 import { Video, Clock, LogOut } from 'lucide-react';
+import logger from '../../utils/logger';
 
 interface LobbyWaitingProps {
   roomName?: string;
@@ -18,11 +19,11 @@ export function LobbyWaiting({ roomName }: LobbyWaitingProps) {
   // Listen for permission changes (moderator admits guest)
   useEffect(() => {
     const handlePermissionChanged = (permissions: unknown) => {
-      console.log('[LobbyWaiting] Permission changed:', permissions);
+      logger.info('[LobbyWaiting] Permission changed:', permissions);
       const perms = permissions as { canPublish?: boolean };
       // Only admit when moderator explicitly grants publish permission
       if (perms?.canPublish === true) {
-        console.log('[LobbyWaiting] Admitted by moderator - setting admitted to true');
+        logger.info('[LobbyWaiting] Admitted by moderator - setting admitted to true');
         setAdmitted(true);
       }
     };

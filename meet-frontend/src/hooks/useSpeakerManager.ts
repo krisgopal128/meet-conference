@@ -6,6 +6,7 @@
 
 import { useEffect } from 'react';
 import { useRoomContext } from '@livekit/components-react';
+import logger from '../utils/logger';
 
 interface UseSpeakerManagerProps {
   selectedSpeaker?: string;
@@ -20,7 +21,7 @@ export function useSpeakerManager({ selectedSpeaker, speakerLevel }: UseSpeakerM
 
     const deviceId = selectedSpeaker || 'default';
     void room.switchActiveDevice('audiooutput', deviceId).catch((error) => {
-      console.error('[RoomPage] Failed to switch speaker device:', error);
+      logger.error('[RoomPage] Failed to switch speaker device:', error);
     });
   }, [room, selectedSpeaker]);
 

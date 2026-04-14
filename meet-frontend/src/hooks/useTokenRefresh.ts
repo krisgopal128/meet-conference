@@ -9,6 +9,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useAuthStore, useAuthActions } from '../store/authStore';
 import { authApi } from '../services/api';
 import { getSecondsUntilExpiry } from '../utils/security';
+import logger from '../utils/logger';
 
 // Refresh token 5 minutes before expiry
 const REFRESH_BUFFER_SECONDS = 5 * 60;
@@ -35,9 +36,9 @@ export function useTokenRefresh() {
       const res = await authApi.refresh();
       login(res.data.user, res.data.token);
       lastRefreshRef.current = now;
-      console.log('[TokenRefresh] Token refreshed successfully');
+      logger.info('[TokenRefresh] Token refreshed successfully');
     } catch (error) {
-      console.error('[TokenRefresh] Failed to refresh token:', error);
+      logger.error('[TokenRefresh] Failed to refresh token:', error);
       // Don't logout on refresh failure - let the next API call handle it
     }
   }, [token, login]);
@@ -78,7 +79,7 @@ export function useTokenRefresh() {
       refreshToken();
     }, refreshIn);
 
-    console.log(`[TokenRefresh] Token refresh scheduled in ${Math.round(refreshIn / 1000 / 60)} minutes`);
+    logger.info(`[TokenRefresh] Token refresh scheduled in ${Math.round(refreshIn / 1000 / 60)} minutes`);
 
     return () => {
       if (refreshTimeoutRef.current) {

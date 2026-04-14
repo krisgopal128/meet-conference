@@ -21,6 +21,7 @@ import {
   Clock4,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import logger from '../utils/logger';
 
 export default function MeetingDetailPage() {
   return (
@@ -146,7 +147,7 @@ function MeetingDetailContent() {
         }
       } catch (err) {
         if (cancelled) return;
-        console.error('Failed to fetch meeting from API, using mock data:', err);
+        logger.error('Failed to fetch meeting from API, using mock data:', err);
         // Only use mock data as fallback when API fails
         const mockMeeting = generateMockMeetingDetail(id);
         setMeeting(mockMeeting);
@@ -539,8 +540,7 @@ function MeetingDetailContent() {
           </h2>
           <a
             href={sanitizeUrl(meeting.recordingUrl) ?? undefined}
-            target="_blank"
-            rel="noopener noreferrer"
+            target="_blank" rel="noreferrer noopener"
             className="flex items-center gap-2 text-brand-500 hover:text-brand-600"
           >
             <ExternalLink size={16} />

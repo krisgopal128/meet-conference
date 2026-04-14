@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useRef, useCallback } from 'react';
+import logger from '../utils/logger';
 
 export type AutoPiPMode = 'always' | 'tab-switch' | 'never';
 
@@ -52,7 +53,7 @@ export function useAutoPiP({
       lastTriggerRef.current = now;
       pipOpenedRef.current = true;
       onTriggerRef.current();
-      console.log('[useAutoPiP] Triggered auto-PiP');
+      logger.info('[useAutoPiP] Triggered auto-PiP');
     }
   }, [cooldown]);
 

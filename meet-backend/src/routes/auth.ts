@@ -13,6 +13,7 @@ import {
   sanitizeUrl, 
   validatePassword 
 } from '../utils/validation.js';
+import logger from '../utils/logger.js';
 
 export const authRouter = Router();
 
@@ -140,7 +141,7 @@ authRouter.post('/register', authLimiter, async (req, res: Response) => {
     if (error instanceof Error && error.message.includes('Invalid')) {
       return res.status(400).json({ error: error.message });
     }
-    console.error('Register error:', error);
+    logger.error('Register error:', error);
     res.status(500).json({ error: 'Registration failed' });
   }
 });
@@ -209,7 +210,7 @@ authRouter.post('/login', authLimiter, async (req, res: Response) => {
     if (error instanceof Error && error.message.includes('Invalid')) {
       return res.status(400).json({ error: error.message });
     }
-    console.error('Login error:', error);
+    logger.error('Login error:', error);
     res.status(500).json({ error: 'Login failed' });
   }
 });
@@ -253,7 +254,7 @@ authRouter.post('/refresh', authenticate, async (req: AuthRequest, res: Response
       token,
     });
   } catch (error) {
-    console.error('Refresh token error:', error);
+    logger.error('Refresh token error:', error);
     res.status(500).json({ error: 'Failed to refresh token' });
   }
 });
@@ -283,7 +284,7 @@ authRouter.patch('/profile', authenticate, async (req: AuthRequest, res: Respons
     if (error instanceof Error && (error.message.includes('Invalid') || error.message.includes('cannot'))) {
       return res.status(400).json({ error: error.message });
     }
-    console.error('Profile update error:', error);
+    logger.error('Profile update error:', error);
     res.status(500).json({ error: 'Profile update failed' });
   }
 });
@@ -311,7 +312,7 @@ authRouter.post('/forgot-password', authLimiter, async (req, res: Response) => {
     }
     
     // Generate reset token (expires in 1 hour)
-    const resetToken = jwt.sign(
+    const _resetToken = jwt.sign(
       { userId: user.id, purpose: 'password-reset' },
       config.jwt.secret,
       { expiresIn: '1h' }
@@ -323,7 +324,7 @@ authRouter.post('/forgot-password', authLimiter, async (req, res: Response) => {
       message: 'If an account with that email exists, a reset link has been sent.' 
     });
   } catch (error) {
-    console.error('Forgot password error:', error);
+    logger.error('Forgot password error:', error);
     // Still return success to prevent email enumeration
     res.json({ message: 'If an account with that email exists, a reset link has been sent.' });
   }
@@ -369,7 +370,7 @@ authRouter.post('/reset-password', authLimiter, async (req, res: Response) => {
     
     res.json({ message: 'Password reset successfully' });
   } catch (error) {
-    console.error('Reset password error:', error);
+    logger.error('Reset password error:', error);
     res.status(500).json({ error: 'Failed to reset password' });
   }
 });
@@ -388,7 +389,7 @@ authRouter.post('/logout', authenticate, async (req: AuthRequest, res: Response)
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
     // Even if blacklisting fails, return success (client should remove token)
-    console.error('Logout blacklist error:', error);
+    logger.error('Logout blacklist error:', error);
     res.json({ message: 'Logged out successfully' });
   }
 });

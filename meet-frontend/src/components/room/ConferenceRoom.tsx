@@ -5,7 +5,7 @@ import {
   RoomAudioRenderer,
   useLocalParticipant,
 } from '@livekit/components-react';
-import { Track, RoomEvent, Participant } from 'livekit-client';
+import { Track, RoomEvent, Participant, type Room } from 'livekit-client';
 import { useNavigate } from 'react-router-dom';
 import {
   useLayout,
@@ -37,6 +37,7 @@ import { PiPContainer } from '../pip/PiPContainer';
 import { Users, Loader2 } from 'lucide-react';
 import { meetingRoomConfig } from '../../config/meetingRoomConfig';
 import toast from 'react-hot-toast';
+import logger from '../../utils/logger';
 
 // Lazy load heavy panels for better initial load performance
 const ChatPanel = lazy(() => import('../panels/ChatPanel').then(m => ({ default: m.ChatPanel })));
@@ -99,7 +100,7 @@ export function ConferenceRoom(_props: ConferenceRoomProps) {
 
   // Handle meeting ended - navigate to ThankYou page
   const handleMeetingEnded = useCallback((reason: string) => {
-    const connectedAt = (room as any).connectedAt || new Date();
+    const connectedAt = (room as Room & { connectedAt?: Date | string }).connectedAt || new Date();
     const duration = Math.round((Date.now() - new Date(connectedAt).getTime()) / 60000);
     navigate('/thank-you', { 
       state: { 
@@ -338,7 +339,7 @@ export function ConferenceRoom(_props: ConferenceRoomProps) {
     }
 
     let mounted = true;
-    const batteryManagerRef = { current: null as any };
+    const batteryManagerRef: { current: ({ level: number; charging: boolean; addEventListener?: (type: string, handler: () => void) => void; removeEventListener?: (type: string, handler: () => void) => void } & Record<string, unknown>) | null } = { current: null };
 
     // Define syncBatteryState before using it
     const syncBatteryState = () => {
@@ -359,7 +360,7 @@ export function ConferenceRoom(_props: ConferenceRoomProps) {
       battery.addEventListener?.('chargingchange', syncBatteryState);
     }).catch((error) => {
       if (!mounted) return;
-      console.warn('Battery status unavailable:', error);
+      logger.warn('Battery status unavailable:', error);
       setCallMetrics({ batteryLevelPercent: null, batteryCharging: null });
     });
 
@@ -393,7 +394,7 @@ export function ConferenceRoom(_props: ConferenceRoomProps) {
     
     // Skip if operation already in progress
     if (isBlurApplying()) {
-      console.log('[ConferenceRoom] Blur operation in progress, skipping');
+      logger.info('[ConferenceRoom] Blur operation in progress, skipping');
       return;
     }
 
@@ -408,9 +409,9 @@ export function ConferenceRoom(_props: ConferenceRoomProps) {
       
       if (!cancelled) {
         if (success) {
-          console.log(`[ConferenceRoom] Blur ${backgroundBlurEnabled ? 'enabled' : 'disabled'} successfully`);
+          logger.info(`[ConferenceRoom] Blur ${backgroundBlurEnabled ? 'enabled' : 'disabled'} successfully`);
         } else {
-          console.warn('[ConferenceRoom] Blur operation was debounced or failed');
+          logger.warn('[ConferenceRoom] Blur operation was debounced or failed');
         }
       }
     };

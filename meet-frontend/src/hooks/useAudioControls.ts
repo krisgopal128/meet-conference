@@ -1,0 +1,99 @@
+/**
+ * useAudioControls - Audio device management and mic/speaker controls
+ *
+ * Extracted from ControlBar to reduce component complexity.
+ * Handles mic/speaker enumeration, toggle, and switching.
+ */
+
+import { useState, useEffect, useCallback } from 'react';
+import type { LocalParticipant, Room } from 'livekit-client';
+import { buildAudioCaptureOptions } from '../config/meetingRoomConfig';
+import toast from 'react-hot-toast';
+import logger from '../utils/logger';
+
+export function useAudioControls(
+  localParticipant: LocalParticipant | undefined,
+  room: Room | undefined,
+) {
+  const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
+  const [speakers, setSpeakers] = useState<MediaDeviceInfo[]>([]);
+  const [activeMicId, setActiveMicId] = useState('');
+  const [activeSpeakerId, setActiveSpeakerId] = useState('');
+
+  // Device enumeration for audio
+  useEffect(() => {
+    if (!room) return;
+
+    const refreshDevices = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        setMics(devices.filter((device) => device.kind === 'audioinput'));
+        setSpeakers(devices.filter((device) => device.kind === 'audiooutput'));
+        setActiveMicId(room.getActiveDevice('audioinput') || '');
+        setActiveSpeakerId(room.getActiveDevice('audiooutput') || '');
+      } catch (error) {
+        logger.error('Failed to refresh audio devices:', error);
+      }
+    };
+
+    const handleActiveDeviceChanged = (kind: string, deviceId: string) => {
+      if (kind === 'audioinput') setActiveMicId(deviceId);
+      if (kind === 'audiooutput') setActiveSpeakerId(deviceId);
+    };
+
+    void refreshDevices();
+    navigator.mediaDevices.addEventListener?.('devicechange', refreshDevices);
+    room.on('activeDeviceChanged', handleActiveDeviceChanged);
+
+    return () => {
+      navigator.mediaDevices.removeEventListener?.('devicechange', refreshDevices);
+      room.off('activeDeviceChanged', handleActiveDeviceChanged);
+    };
+  }, [room]);
+
+  const toggleMic = useCallback(async () => {
+    if (!localParticipant) return;
+    try {
+      const currentlyEnabled = localParticipant.isMicrophoneEnabled;
+      await localParticipant.setMicrophoneEnabled(
+        !currentlyEnabled,
+        !currentlyEnabled ? buildAudioCaptureOptions(activeMicId || undefined) : undefined,
+      );
+    } catch (error) {
+      logger.error('Failed to toggle microphone:', error);
+      toast.error('Failed to toggle microphone');
+    }
+  }, [localParticipant, activeMicId]);
+
+  const switchMic = useCallback(async (deviceId: string) => {
+    if (!room) return;
+    try {
+      await room.switchActiveDevice('audioinput', deviceId || 'default');
+      setActiveMicId(deviceId);
+    } catch (error) {
+      logger.error('Failed to switch microphone:', error);
+      toast.error('Failed to switch microphone');
+    }
+  }, [room]);
+
+  const switchSpeaker = useCallback(async (deviceId: string) => {
+    if (!room) return;
+    try {
+      await room.switchActiveDevice('audiooutput', deviceId || 'default');
+      setActiveSpeakerId(deviceId);
+    } catch (error) {
+      logger.error('Failed to switch speaker:', error);
+      toast.error('Failed to switch speaker');
+    }
+  }, [room]);
+
+  return {
+    mics,
+    speakers,
+    activeMicId,
+    activeSpeakerId,
+    toggleMic,
+    switchMic,
+    switchSpeaker,
+  };
+}

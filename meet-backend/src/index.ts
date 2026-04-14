@@ -18,6 +18,7 @@ import { initRedis, closeRedis } from './services/redis.js';
 import { config } from './config.js';
 import { apiLimiter, webhookLimiter } from './middleware/rateLimiter.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
+import logger from './utils/logger.js';
 
 const app = express();
 const PORT = config.port;
@@ -144,7 +145,7 @@ app.use((_req, res) => {
 
 // Global error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('Unhandled error:', err);
+  logger.error('Unhandled error:', err);
   
   if (err.message === 'Not allowed by CORS') {
     return res.status(403).json({ error: 'CORS policy violation' });
@@ -162,9 +163,9 @@ let server: ReturnType<typeof app.listen> | null = null;
 
 async function start() {
   try {
-    console.log('🚀 Starting Meet Backend...');
-    console.log(`   Environment: ${config.nodeEnv}`);
-    console.log(`   Port: ${PORT}`);
+    logger.info('🚀 Starting Meet Backend...');
+    logger.info(`   Environment: ${config.nodeEnv}`);
+    logger.info(`   Port: ${PORT}`);
 
     // Initialize database connection
     await initDatabase();
@@ -174,11 +175,11 @@ async function start() {
 
     // Start HTTP server
     server = app.listen(PORT, () => {
-      console.log(`✅ Server running on port ${PORT}`);
-      console.log(`   Health: http://localhost:${PORT}/health`);
+      logger.info(`✅ Server running on port ${PORT}`);
+      logger.info(`   Health: http://localhost:${PORT}/health`);
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    logger.error('❌ Failed to start server:', error);
     process.exit(1);
   }
 }
@@ -187,7 +188,7 @@ async function start() {
 // Graceful Shutdown
 // ============================================
 async function gracefulShutdown(signal: string) {
-  console.log(`${signal} received, shutting down gracefully...`);
+  logger.info(`${signal} received, shutting down gracefully...`);
   
   try {
     // Stop accepting new connections
@@ -202,10 +203,10 @@ async function gracefulShutdown(signal: string) {
     await closeRedis();
     await closeDatabase();
     
-    console.log('Cleanup complete');
+    logger.info('Cleanup complete');
     process.exit(0);
   } catch (error) {
-    console.error('Error during shutdown:', error);
+    logger.error('Error during shutdown:', error);
     process.exit(1);
   }
 }

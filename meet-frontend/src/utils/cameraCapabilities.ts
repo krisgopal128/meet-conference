@@ -1,3 +1,4 @@
+import logger from './logger';
 /**
  * Camera Capabilities Utility
  * Detects actual camera hardware capabilities and calculates optimal capture settings
@@ -51,7 +52,7 @@ export async function getCameraCapabilities(deviceId?: string): Promise<CameraCa
     
     return result;
   } catch (err) {
-    console.error('Failed to get camera capabilities:', err);
+    logger.error('Failed to get camera capabilities:', err);
     return null;
   } finally {
     // Always stop ALL tracks to prevent MediaStream leaks
@@ -63,8 +64,8 @@ export async function getCameraCapabilities(deviceId?: string): Promise<CameraCa
  * Log camera capabilities to console for debugging
  */
 export function logCameraInfo(capabilities: CameraCapabilities): void {
-  console.log('📷 Camera:', capabilities.label);
-  console.log('   Native Resolution:', `${capabilities.maxWidth}×${capabilities.maxHeight}`);
-  console.log('   Native Aspect Ratio:', capabilities.nativeAspectRatio.toFixed(3));
-  console.log('   Frame Rates:', `${capabilities.frameRates.min}-${capabilities.frameRates.max} fps`);
+  logger.info('📷 Camera:', capabilities.label);
+  logger.info('   Native Resolution:', `${capabilities.maxWidth}×${capabilities.maxHeight}`);
+  logger.info('   Native Aspect Ratio:', capabilities.nativeAspectRatio.toFixed(3));
+  logger.info('   Frame Rates:', `${capabilities.frameRates.min}-${capabilities.frameRates.max} fps`);
 }

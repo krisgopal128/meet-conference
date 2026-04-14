@@ -1,13 +1,25 @@
-import { Router, Request, Response } from 'express';
-import { WebhookEvent } from 'livekit-server-sdk';
-import { z } from 'zod';
-import { webhookReceiver } from '../services/livekit.js';
-import { query } from '../services/database.js';
-import { addParticipant, removeParticipant, getParticipantCount, cacheDel } from '../services/redis.js';
-import { scheduleHostLeaveCheck } from '../services/webhookService.js';
-import { sendDataMessage } from '../services/livekit.js';
+ import { Router, Request, Response } from 'express';
+ import { WebhookEvent } from 'livekit-server-sdk';
+ import { z } from 'zod';
+ import { webhookReceiver } from '../services/livekit.js';
+ import { query } from '../services/database.js';
+ import { addParticipant, removeParticipant, getParticipantCount, cacheDel } from '../services/redis.js';
+ import { scheduleHostLeaveCheck } from '../services/webhookService.js';
+ import { sendDataMessage } from '../services/livekit.js';
+ import logger from '../utils/logger.js';
 
-export const webhookRouter = Router();
+ // Types for egress events (not fully defined by LiveKit SDK)
+ interface EgressFileResult {
+   downloadUrl?: string | null;
+   filename?: string | null;
+ }
+ interface EgressInfo {
+   egressId?: string;
+   roomName?: string;
+   fileResults?: EgressFileResult[];
+ }
+
+ export const webhookRouter = Router();
 
 // ==================== Validation Schemas ====================
 
@@ -62,7 +74,7 @@ const cleanupInterval = setInterval(() => {
       }
       hostLeaveTimeouts.delete(key);
     }
-    console.warn(`[Webhook] Cleaned ${excess} excess timeouts, remaining: ${hostLeaveTimeouts.size}`);
+    logger.warn(`[Webhook] Cleaned ${excess} excess timeouts, remaining: ${hostLeaveTimeouts.size}`);
   }
 }, 300_000);
 
@@ -82,7 +94,7 @@ webhookRouter.post('/', async (req: Request, res: Response) => {
   try {
     event = await webhookReceiver.receive(rawBody, authHeader);
   } catch (err) {
-    console.error('[Webhook] Signature verification failed:', err);
+    logger.error('[Webhook] Signature verification failed:', err);
     const errorResponse: WebhookErrorResponse = { 
       error: 'Invalid webhook signature',
       details: err instanceof Error ? err.message : 'Unknown error'
@@ -93,7 +105,7 @@ webhookRouter.post('/', async (req: Request, res: Response) => {
   // Validate event structure (additional safety check after SDK parsing)
   const eventValidation = webhookEventSchema.safeParse(event);
   if (!eventValidation.success) {
-    console.warn('[Webhook] Unrecognized event type:', event.event);
+    logger.warn('[Webhook] Unrecognized event type:', event.event);
     // Still return 200 for unknown events - LiveKit shouldn't retry
     const response: WebhookSuccessResponse = { received: true };
     return res.status(200).json(response);
@@ -275,7 +287,7 @@ webhookRouter.post('/', async (req: Request, res: Response) => {
                 }));
                 await sendDataMessage(roomName, message, 'meeting_ended');
               } catch (err) {
-                console.error(`[Webhook] Failed to send meeting_ended to ${roomName}:`, err);
+                logger.error(`[Webhook] Failed to send meeting_ended to ${roomName}:`, err);
               }
 
               // End the meeting in database
@@ -290,7 +302,7 @@ webhookRouter.post('/', async (req: Request, res: Response) => {
                 await query("UPDATE rooms SET status = 'ended' WHERE name = $1", [roomName]);
                 await cacheDel(`room:${roomName}:participants`);
               } catch (err) {
-                console.error(`[Webhook] Failed to end meeting for ${roomName}:`, err);
+                logger.error(`[Webhook] Failed to end meeting for ${roomName}:`, err);
               }
             }
           );
@@ -335,22 +347,22 @@ webhookRouter.post('/', async (req: Request, res: Response) => {
       case 'track_unpublished': {
         // Reduced logging - only log in development
         if (process.env.NODE_ENV === 'development') {
-          console.log(`[Webhook] ${event.event}: ${event.track?.sid} by ${event.participant?.identity}`);
+          logger.info(`[Webhook] ${event.event}: ${event.track?.sid} by ${event.participant?.identity}`);
         }
         break;
       }
 
       case 'egress_started': {
-        console.log(`[Webhook] Recording started: ${event.egressInfo?.egressId} in ${event.egressInfo?.roomName}`);
+        logger.info(`[Webhook] Recording started: ${event.egressInfo?.egressId} in ${event.egressInfo?.roomName}`);
         break;
       }
 
       case 'egress_ended': {
-        const egressInfo = event.egressInfo;
-        if (!egressInfo) break;
+         const egressInfo = event.egressInfo as EgressInfo | undefined;
+         if (!egressInfo) break;
 
-        const recordingUrl = (egressInfo.fileResults?.[0] as any)?.downloadUrl || 
-                            egressInfo.fileResults?.[0]?.filename;
+         const fileResult = egressInfo.fileResults?.[0];
+         const recordingUrl = fileResult?.downloadUrl ?? fileResult?.filename;
 
         if (recordingUrl) {
           await query(
@@ -374,7 +386,7 @@ webhookRouter.post('/', async (req: Request, res: Response) => {
         break;
     }
   } catch (dbError) {
-    console.error('[Webhook] DB error:', dbError);
+    logger.error('[Webhook] DB error:', dbError);
     // Still return 200 so LiveKit doesn't retry
   }
 

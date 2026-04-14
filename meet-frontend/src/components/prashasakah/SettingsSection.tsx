@@ -35,12 +35,12 @@ export default function SettingsSection({
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-lg shadow-sm border border-surface-200 overflow-hidden">
       {/* Header */}
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+        className="w-full px-6 py-4 flex items-center justify-between hover:bg-surface-50 transition-colors"
       >
         <div className="flex items-center gap-3">
           {icon && (
@@ -49,9 +49,9 @@ export default function SettingsSection({
             </div>
           )}
           <div className="text-left">
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+            <h3 className="text-lg font-semibold text-surface-800">{title}</h3>
             {description && (
-              <p className="text-sm text-gray-500 mt-0.5">{description}</p>
+              <p className="text-sm text-surface-500 mt-0.5">{description}</p>
             )}
           </div>
         </div>
@@ -62,7 +62,7 @@ export default function SettingsSection({
             </span>
           )}
           <svg
-            className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            className={`w-5 h-5 text-surface-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -74,12 +74,12 @@ export default function SettingsSection({
 
       {/* Content */}
       {isExpanded && (
-        <div className="border-t border-gray-200">
+        <div className="border-t border-surface-200">
           {isLoading ? (
             <div className="px-6 py-8 flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">
                 <div className="w-8 h-8 border-3 border-brand-500 border-t-transparent rounded-full animate-spin" />
-                <p className="text-sm text-gray-500">Loading settings...</p>
+                <p className="text-sm text-surface-500">Loading settings...</p>
               </div>
             </div>
           ) : (
@@ -90,14 +90,14 @@ export default function SettingsSection({
 
               {/* Action Buttons */}
               {(onSave || onCancel) && (
-                <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-3">
+                <div className="px-6 py-4 bg-surface-50 border-t border-surface-200 flex items-center justify-end gap-3">
                   {isDirty && (
                     <>
                       <button
                         type="button"
                         onClick={onCancel}
                         disabled={isSaving}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="px-4 py-2 text-sm font-medium text-surface-600 bg-white border border-surface-300 rounded-lg hover:bg-surface-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         Cancel
                       </button>

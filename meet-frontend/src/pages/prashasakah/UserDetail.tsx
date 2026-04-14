@@ -5,6 +5,8 @@ import { useUser } from '../../store/authStore';
 import { prashasakahApi, AdminUser } from '../../services/prashasakahApi';
 import UserActivityLog, { ActivityItem } from '../../components/prashasakah/UserActivityLog';
 import UserEditModal from '../../components/prashasakah/UserEditModal';
+import ChangePasswordModal from '../../components/prashasakah/ChangePasswordModal';
+import logger from '../../utils/logger';
 
 /**
  * UserDetail - Individual User Detail Page
@@ -19,9 +21,9 @@ interface UserDetailData extends AdminUser {
 }
 
 const roleColors: Record<string, string> = {
-  admin: 'bg-purple-100 text-purple-800 border-purple-200',
+  admin: 'bg-brand-100 text-purple-800 border-purple-200',
   moderator: 'bg-brand-100 text-brand-800 border-brand-200',
-  participant: 'bg-gray-100 text-gray-800 border-gray-200',
+  participant: 'bg-surface-100 text-surface-700 border-surface-200',
 };
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -62,6 +64,7 @@ export default function UserDetail() {
   
   // Modal states
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
@@ -73,7 +76,7 @@ export default function UserDetail() {
       const response = await prashasakahApi.getUser(id);
       setUser(response?.data?.user as UserDetailData || null);
     } catch (error) {
-      console.error('Failed to fetch user:', error);
+      logger.error('Failed to fetch user:', error);
       toast.error('Failed to load user details');
       navigate('/prashasakah/users');
     } finally {
@@ -82,7 +85,11 @@ export default function UserDetail() {
   }, [id, navigate]);
 
   useEffect(() => {
+    const controller = new AbortController();
     fetchUser();
+    return () => {
+      controller.abort();
+    };
   }, [fetchUser]);
 
   const handleSaveUser = async (userId: string, data: { name?: string; role?: 'admin' | 'moderator' | 'participant' }) => {
@@ -99,7 +106,7 @@ export default function UserDetail() {
       toast.success('User has been banned');
       fetchUser();
     } catch (error) {
-      console.error('Failed to ban user:', error);
+      logger.error('Failed to ban user:', error);
       toast.error('Failed to ban user');
     } finally {
       setActionLoading(null);
@@ -114,7 +121,7 @@ export default function UserDetail() {
       toast.success('User has been unbanned');
       fetchUser();
     } catch (error) {
-      console.error('Failed to unban user:', error);
+      logger.error('Failed to unban user:', error);
       toast.error('Failed to unban user');
     } finally {
       setActionLoading(null);
@@ -129,7 +136,7 @@ export default function UserDetail() {
       toast.success('User has been deleted');
       navigate('/prashasakah/users');
     } catch (error) {
-      console.error('Failed to delete user:', error);
+      logger.error('Failed to delete user:', error);
       toast.error('Failed to delete user');
     } finally {
       setActionLoading(null);
@@ -150,7 +157,7 @@ export default function UserDetail() {
         toast.success('Reset link copied to clipboard');
       }
     } catch (error) {
-      console.error('Failed to reset password:', error);
+      logger.error('Failed to reset password:', error);
       toast.error('Failed to reset password');
     } finally {
       setActionLoading(null);
@@ -165,20 +172,20 @@ export default function UserDetail() {
     return (
       <div className="space-y-6">
         <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-2" />
-          <div className="h-4 bg-gray-100 rounded w-1/3" />
+          <div className="h-8 bg-surface-200 rounded w-1/4 mb-2" />
+          <div className="h-4 bg-surface-100 rounded w-1/3" />
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1 bg-white rounded-lg shadow p-6 animate-pulse">
-            <div className="w-24 h-24 bg-gray-200 rounded-full mx-auto mb-4" />
-            <div className="h-6 bg-gray-200 rounded w-3/4 mx-auto mb-2" />
-            <div className="h-4 bg-gray-100 rounded w-1/2 mx-auto" />
+          <div className="lg:col-span-1 bg-white rounded-xl border border-surface-200 p-5 animate-pulse">
+            <div className="w-24 h-24 bg-surface-200 rounded-full mx-auto mb-4" />
+            <div className="h-6 bg-surface-200 rounded w-3/4 mx-auto mb-2" />
+            <div className="h-4 bg-surface-100 rounded w-1/2 mx-auto" />
           </div>
-          <div className="lg:col-span-2 bg-white rounded-lg shadow p-6 animate-pulse">
-            <div className="h-6 bg-gray-200 rounded w-1/4 mb-4" />
+          <div className="lg:col-span-2 bg-white rounded-xl border border-surface-200 p-5 animate-pulse">
+            <div className="h-6 bg-surface-200 rounded w-1/4 mb-4" />
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-4 bg-gray-100 rounded" />
+                <div key={i} className="h-4 bg-surface-100 rounded" />
               ))}
             </div>
           </div>
@@ -190,7 +197,7 @@ export default function UserDetail() {
   if (!user) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">User not found</h2>
+        <h2 className="text-xl font-semibold text-surface-800 mb-2">User not found</h2>
         <Link to="/prashasakah/users" className="text-brand-600 hover:underline">
           Return to users list
         </Link>
@@ -201,28 +208,28 @@ export default function UserDetail() {
   return (
     <div className="space-y-6">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-gray-500">
-        <Link to="/prashasakah" className="hover:text-gray-700">Dashboard</Link>
+      <nav className="flex items-center gap-2 text-sm text-surface-500">
+        <Link to="/prashasakah" className="hover:text-surface-600">Dashboard</Link>
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
-        <Link to="/prashasakah/users" className="hover:text-gray-700">Users</Link>
+        <Link to="/prashasakah/users" className="hover:text-surface-600">Users</Link>
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
-        <span className="text-gray-900 font-medium">{user.name || user.email}</span>
+        <span className="text-surface-800 font-medium">{user.name || user.email}</span>
       </nav>
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-surface-800">
             {user.name || 'No name'}
             {isCurrentUser && (
               <span className="ml-2 text-sm font-normal text-brand-600">(You)</span>
             )}
           </h1>
-          <p className="text-gray-500 mt-1">{user.email}</p>
+          <p className="text-surface-500 mt-1">{user.email}</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -233,8 +240,16 @@ export default function UserDetail() {
           </button>
           {isAdmin && !isCurrentUser && (
             <button
+              onClick={() => setIsChangePasswordOpen(true)}
+              className="px-4 py-2 text-sm font-medium text-warning-700 bg-warning-100 rounded-lg hover:bg-warning-200 transition-colors"
+            >
+              Change Password
+            </button>
+          )}
+          {isAdmin && !isCurrentUser && (
+            <button
               onClick={() => setShowDeleteConfirm(true)}
-              className="px-4 py-2 text-sm font-medium text-red-700 bg-red-100 rounded-lg hover:bg-red-200 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-red-700 bg-danger-100 rounded-lg hover:bg-red-200 transition-colors"
             >
               Delete User
             </button>
@@ -247,7 +262,7 @@ export default function UserDetail() {
         {/* Left Column - User Card */}
         <div className="lg:col-span-1 space-y-6">
           {/* Profile Card */}
-          <div className={`bg-white rounded-lg shadow p-6 ${user.isBanned ? 'border-2 border-red-200' : ''}`}>
+          <div className={`bg-white rounded-xl border border-surface-200 p-5 ${user.isBanned ? 'border-2 border-danger-200' : ''}`}>
             <div className="text-center">
               <div className={`w-24 h-24 rounded-full mx-auto mb-4 flex items-center justify-center text-white text-3xl font-bold ${
                 user.isBanned 
@@ -257,8 +272,8 @@ export default function UserDetail() {
                 {user.name?.charAt(0).toUpperCase() || user.email.charAt(0).toUpperCase()}
               </div>
               
-              <h2 className="text-xl font-semibold text-gray-900">{user.name || 'No name'}</h2>
-              <p className="text-gray-500">{user.email}</p>
+              <h2 className="text-xl font-semibold text-surface-800">{user.name || 'No name'}</h2>
+              <p className="text-surface-500">{user.email}</p>
               
               {/* Role Badge */}
               <div className="mt-3">
@@ -270,19 +285,19 @@ export default function UserDetail() {
               {/* Status Badge */}
               {user.isBanned ? (
                 <div className="mt-3">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 border border-red-200">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-danger-100 text-danger-800 border border-danger-200">
                     <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clipRule="evenodd" />
                     </svg>
                     Banned
                   </span>
                   {user.banned_at && (
-                    <p className="text-xs text-gray-500 mt-1">Since {formatDate(user.banned_at)}</p>
+                    <p className="text-xs text-surface-500 mt-1">Since {formatDate(user.banned_at)}</p>
                   )}
                 </div>
               ) : (
                 <div className="mt-3">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 border border-green-200">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-success-100 text-green-800 border border-green-200">
                     <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
@@ -299,7 +314,7 @@ export default function UserDetail() {
                   <button
                     onClick={handleUnban}
                     disabled={actionLoading !== null}
-                    className="w-full px-4 py-2 text-sm font-medium text-green-700 bg-green-100 rounded-lg hover:bg-green-200 disabled:opacity-50 transition-colors"
+                    className="w-full px-4 py-2 text-sm font-medium text-green-700 bg-success-100 rounded-lg hover:bg-green-200 disabled:opacity-50 transition-colors"
                   >
                     {actionLoading === 'unban' ? 'Unbanning...' : 'Unban User'}
                   </button>
@@ -327,24 +342,24 @@ export default function UserDetail() {
           </div>
 
           {/* Stats Card */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+          <div className="bg-white rounded-xl border border-surface-200 p-5">
+            <h3 className="text-sm font-semibold text-surface-500 uppercase tracking-wider mb-4">
               Statistics
             </h3>
             <dl className="space-y-4">
               <div className="flex justify-between">
-                <dt className="text-gray-600">Meetings Joined</dt>
-                <dd className="font-semibold text-gray-900">{user.meetingCount || 0}</dd>
+                <dt className="text-surface-500">Meetings Joined</dt>
+                <dd className="font-semibold text-surface-800">{user.meetingCount || 0}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-gray-600">Account Age</dt>
-                <dd className="font-semibold text-gray-900">
+                <dt className="text-surface-500">Account Age</dt>
+                <dd className="font-semibold text-surface-800">
                   {Math.floor((Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24))} days
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-gray-600">Last Login</dt>
-                <dd className="font-semibold text-gray-900 text-right">
+                <dt className="text-surface-500">Last Login</dt>
+                <dd className="font-semibold text-surface-800 text-right">
                   {formatRelativeTime(user.lastLoginAt)}
                 </dd>
               </div>
@@ -354,8 +369,8 @@ export default function UserDetail() {
 
         {/* Right Column - Activity */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+          <div className="bg-white rounded-xl border border-surface-200 p-5">
+            <h3 className="text-lg font-semibold text-surface-800 mb-4">Recent Activity</h3>
             <UserActivityLog 
               activities={user.recentActivity || []} 
               loading={loading}
@@ -374,6 +389,13 @@ export default function UserDetail() {
         currentUserRole={currentUser?.role}
       />
 
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        user={user}
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+      />
+
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -384,18 +406,18 @@ export default function UserDetail() {
           <div className="flex min-h-full items-center justify-center p-4">
             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-12 h-12 rounded-full bg-danger-100 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-danger-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Delete User</h3>
-                  <p className="text-sm text-gray-500">This action cannot be undone.</p>
+                  <h3 className="text-lg font-semibold text-surface-800">Delete User</h3>
+                  <p className="text-sm text-surface-500">This action cannot be undone.</p>
                 </div>
               </div>
 
-              <p className="text-gray-700 mb-6">
+              <p className="text-surface-600 mb-6">
                 Are you sure you want to delete <span className="font-medium">{user.name || user.email}</span>? 
                 All their data will be permanently removed.
               </p>
@@ -404,7 +426,7 @@ export default function UserDetail() {
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
                   disabled={actionLoading !== null}
-                  className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                  className="flex-1 px-4 py-2 text-sm font-medium text-surface-600 bg-surface-100 rounded-lg hover:bg-surface-200 disabled:opacity-50 transition-colors"
                 >
                   Cancel
                 </button>
@@ -437,12 +459,12 @@ export default function UserDetail() {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Reset Password</h3>
-                  <p className="text-sm text-gray-500">Generate a password reset link</p>
+                  <h3 className="text-lg font-semibold text-surface-800">Reset Password</h3>
+                  <p className="text-sm text-surface-500">Generate a password reset link</p>
                 </div>
               </div>
 
-              <p className="text-gray-700 mb-6">
+              <p className="text-surface-600 mb-6">
                 This will generate a password reset link for <span className="font-medium">{user.name || user.email}</span>. 
                 The link will be copied to your clipboard and can be shared with the user.
               </p>
@@ -451,7 +473,7 @@ export default function UserDetail() {
                 <button
                   onClick={() => setShowResetConfirm(false)}
                   disabled={actionLoading !== null}
-                  className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                  className="flex-1 px-4 py-2 text-sm font-medium text-surface-600 bg-surface-100 rounded-lg hover:bg-surface-200 disabled:opacity-50 transition-colors"
                 >
                   Cancel
                 </button>

@@ -12,6 +12,7 @@ import type { Room, ScheduledMeeting } from '../types';
 import { Plus, Link2 as Link, ArrowRight, X, Trash2, Calendar, Clock, AlertCircle, Check, Zap, Video, Users, Share2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format, parseISO } from 'date-fns';
+import logger from '../utils/logger';
 
 export default function HomePage() {
   return (
@@ -88,7 +89,7 @@ function HomePageContent() {
       const response = await getMyRooms();
       setRooms(response?.data?.rooms || []);
     } catch (err) {
-      console.error('Failed to reload rooms:', err);
+      logger.error('Failed to reload rooms:', err);
     }
   };
 
@@ -99,7 +100,7 @@ function HomePageContent() {
       const response = await getMyRooms();
       setRooms(response?.data?.rooms || []);
     } catch (err) {
-      console.error('Failed to load rooms:', err);
+      logger.error('Failed to load rooms:', err);
     } finally {
       setLoadingRooms(false);
     }
@@ -166,7 +167,7 @@ function HomePageContent() {
       setUpcomingLoaded(true);
     } catch (err) {
       if (mountedRef.current) {
-        console.error('Failed to load deferred data:', err);
+        logger.error('Failed to load deferred data:', err);
         setLoadingStats(false);
         setLoadingUpcoming(false);
       }

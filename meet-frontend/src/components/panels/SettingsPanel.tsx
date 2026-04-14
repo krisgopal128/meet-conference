@@ -26,6 +26,7 @@ import { X, Video, Volume2, Activity, Sparkles, FlipHorizontal, Users, Grid3X3, 
 import toast from 'react-hot-toast';
 import { meetingRoomConfig, type QualityModeName, type ScreenShareModeName } from '../../config/meetingRoomConfig';
 import { meetingsApi, updateRoomSettings } from '../../services/api';
+import logger from '../../utils/logger';
 
 export function SettingsPanel() {
   const room = useRoomContext();
@@ -94,7 +95,7 @@ export function SettingsPanel() {
         await updateRoomSettings(roomName, { gridAspectRatio: ratio });
         toast.success('Aspect ratio saved');
       } catch (error) {
-        console.error('Failed to save aspect ratio:', error);
+        logger.error('Failed to save aspect ratio:', error);
         toast.error('Failed to save aspect ratio');
       }
     }, 500);
@@ -119,7 +120,7 @@ export function SettingsPanel() {
       
       // Broadcast to all participants
       room.localParticipant.publishData(data, { reliable: true });
-      console.log('[SettingsPanel] Broadcasting videoFitMode:', mode);
+      logger.info('[SettingsPanel] Broadcasting videoFitMode:', mode);
     }
     
     // Moderators can save to backend (debounced)
@@ -132,7 +133,7 @@ export function SettingsPanel() {
         updateRoomSettings(roomName, { videoFitMode: mode })
           .then(() => toast.success('Video fit mode saved'))
           .catch((error) => {
-            console.error('Failed to save video fit mode:', error);
+            logger.error('Failed to save video fit mode:', error);
             toast.error('Failed to save video fit mode');
           });
       }, 500);
@@ -146,7 +147,7 @@ export function SettingsPanel() {
       setMics(devices.filter(d => d.kind === 'audioinput'));
       setSelectedCamera(room.getActiveDevice('videoinput') || '');
       setSelectedMic(room.getActiveDevice('audioinput') || '');
-    }).catch(console.error);
+    }).catch((err) => logger.error('Failed to enumerate devices:', err));
     const handleDeviceChange = async () => {
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
@@ -155,7 +156,7 @@ export function SettingsPanel() {
         setSelectedCamera(room.getActiveDevice('videoinput') || '');
         setSelectedMic(room.getActiveDevice('audioinput') || '');
       } catch (error) {
-        console.error('Failed to refresh devices:', error);
+        logger.error('Failed to refresh devices:', error);
       }
     };
 
@@ -182,7 +183,7 @@ export function SettingsPanel() {
     try {
       await room.switchActiveDevice('videoinput', deviceId || 'default');
     } catch (error) {
-      console.error('Failed to switch camera:', error);
+      logger.error('Failed to switch camera:', error);
       toast.error('Failed to switch camera');
     }
   }
@@ -192,7 +193,7 @@ export function SettingsPanel() {
     try {
       await room.switchActiveDevice('audioinput', deviceId || 'default');
     } catch (error) {
-      console.error('Failed to switch microphone:', error);
+      logger.error('Failed to switch microphone:', error);
       toast.error('Failed to switch microphone');
     }
   }
@@ -248,7 +249,7 @@ export function SettingsPanel() {
       const response = await meetingsApi.uploadDiagnostics(diagnosticsSnapshot);
       toast.success(`Diagnostics uploaded: ${response.data.file}`);
     } catch (error) {
-      console.error('Failed to upload diagnostics:', error);
+      logger.error('Failed to upload diagnostics:', error);
       toast.error('Failed to upload diagnostics');
     } finally {
       setUploadingDiagnostics(false);

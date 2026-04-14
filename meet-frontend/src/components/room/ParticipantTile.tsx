@@ -28,6 +28,8 @@ import {
   resolveVideoQuality,
 } from '../../config/meetingRoomConfig';
 import { useParticipantVisibility } from '../../contexts/ParticipantVisibilityContext';
+import logger from '../../utils/logger';
+import toast from 'react-hot-toast';
 
 interface ParticipantTileProps {
   participant: Participant;
@@ -144,7 +146,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
     for (const publication of cameraPublications) {
       const remotePub = publication as RemoteTrackPublication | undefined;
       if (remotePub && !remotePub.isSubscribed) {
-        console.log(`[ParticipantTile] Force subscribing to ${participant.identity} (trackSid: ${remotePub.trackSid})`);
+        logger.info(`[ParticipantTile] Force subscribing to ${participant.identity} (trackSid: ${remotePub.trackSid})`);
         remotePub.setSubscribed(true);
       }
     }
@@ -155,7 +157,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
   // ========================================
   useEffect(() => {
     const handleTrackEvent = () => {
-      console.log(`[ParticipantTile] Track event for ${participant.identity}, forcing re-render`);
+      logger.info(`[ParticipantTile] Track event for ${participant.identity}, forcing re-render`);
       forceRender(v => v + 1);
     };
     
@@ -176,7 +178,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
     
     const handleTrackPublished = (publication: RemoteTrackPublication, pubParticipant: Participant) => {
       if (pubParticipant.identity === participant.identity && publication.source === Track.Source.Camera) {
-        console.log(`[ParticipantTile] Camera published by ${participant.identity}, forcing subscription`);
+        logger.info(`[ParticipantTile] Camera published by ${participant.identity}, forcing subscription`);
         // Force subscription immediately
         if (!publication.isSubscribed) {
           publication.setSubscribed(true);
@@ -201,14 +203,14 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
     
     const handleParticipantConnected = (connectedParticipant: Participant) => {
       if (connectedParticipant.identity === participant.identity) {
-        console.log(`[ParticipantTile] Participant connected: ${participant.identity}, checking for existing tracks`);
+        logger.info(`[ParticipantTile] Participant connected: ${participant.identity}, checking for existing tracks`);
         // Check for any already-published camera tracks
         const cameraPubs = Array.from(connectedParticipant.trackPublications.values())
           .filter(pub => pub.source === Track.Source.Camera);
         for (const pub of cameraPubs) {
           const remotePub = pub as RemoteTrackPublication;
           if (!remotePub.isSubscribed) {
-            console.log(`[ParticipantTile] Subscribing to existing track for ${participant.identity}`);
+            logger.info(`[ParticipantTile] Subscribing to existing track for ${participant.identity}`);
             remotePub.setSubscribed(true);
           }
         }
@@ -219,7 +221,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
     // Listen for participant metadata changes (permission updates)
     const handleParticipantMetadataChanged = (_metadata: string | undefined, changedParticipant: Participant) => {
       if (changedParticipant.identity === participant.identity) {
-        console.log(`[ParticipantTile] Metadata changed for ${participant.identity}`);
+        logger.info(`[ParticipantTile] Metadata changed for ${participant.identity}`);
         forceRender(v => v + 1);
       }
     };
@@ -240,7 +242,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
     const logTrackState = () => {
       const pub = cameraTrackRef?.publication;
       if (pub) {
-        console.log(`[ParticipantTile] Track state for ${participant.identity}:`, {
+        logger.info(`[ParticipantTile] Track state for ${participant.identity}:`, {
           trackSid: pub.trackSid,
           isSubscribed: pub.isSubscribed,
           hasTrack: !!pub.track,
@@ -255,7 +257,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
     
     // Log when track changes
     const handleChange = () => {
-      console.log(`[ParticipantTile] Track changed for ${participant.identity}`);
+      logger.info(`[ParticipantTile] Track changed for ${participant.identity}`);
       logTrackState();
     };
     
@@ -336,7 +338,8 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
         await tileRef.current.requestFullscreen();
       }
     } catch (error) {
-      console.error('Failed to toggle fullscreen:', error);
+      logger.error('Failed to toggle fullscreen:', error);
+      toast.error('Failed to toggle fullscreen');
     }
   };
 
@@ -568,7 +571,7 @@ class TileErrorBoundary extends Component<TileErrorBoundaryProps, TileErrorBound
 
   componentDidCatch(error: Error) {
     if (import.meta.env.DEV) {
-      console.error('[ParticipantTile] Error rendering tile:', error);
+      logger.error('[ParticipantTile] Error rendering tile:', error);
     }
   }
 

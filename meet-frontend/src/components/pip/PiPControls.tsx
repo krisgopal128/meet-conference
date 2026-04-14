@@ -22,6 +22,8 @@ import {
   PhoneOff,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import logger from '../../utils/logger';
+import toast from 'react-hot-toast';
 
 interface PiPControlsProps {
   onReturnToTab: () => void;
@@ -138,7 +140,8 @@ export function PiPControls({ onReturnToTab, localParticipant }: PiPControlsProp
     try {
       await localParticipant.setMicrophoneEnabled(!localParticipant.isMicrophoneEnabled);
     } catch (error) {
-      console.error('[PiPControls] Failed to toggle microphone:', error);
+      logger.error('[PiPControls] Failed to toggle microphone:', error);
+      toast.error('Failed to toggle microphone');
     }
   }, [localParticipant]);
 
@@ -147,7 +150,8 @@ export function PiPControls({ onReturnToTab, localParticipant }: PiPControlsProp
     try {
       await localParticipant.setCameraEnabled(!localParticipant.isCameraEnabled);
     } catch (error) {
-      console.error('[PiPControls] Failed to toggle camera:', error);
+      logger.error('[PiPControls] Failed to toggle camera:', error);
+      toast.error('Failed to toggle camera');
     }
   }, [localParticipant]);
 
@@ -156,7 +160,8 @@ export function PiPControls({ onReturnToTab, localParticipant }: PiPControlsProp
     try {
       await localParticipant.setScreenShareEnabled(!localParticipant.isScreenShareEnabled);
     } catch (error) {
-      console.error('[PiPControls] Failed to toggle screen share:', error);
+      logger.error('[PiPControls] Failed to toggle screen share:', error);
+      toast.error('Failed to toggle screen share');
     }
   }, [localParticipant]);
 
@@ -176,7 +181,8 @@ export function PiPControls({ onReturnToTab, localParticipant }: PiPControlsProp
         await localParticipant.setMicrophoneEnabled(false);
       }
     } catch (error) {
-      console.error('[PiPControls] Failed to stop tracks:', error);
+      logger.error('[PiPControls] Failed to stop tracks:', error);
+      toast.error('Failed to stop tracks');
     }
 
     // Return to main tab (which will handle disconnect)

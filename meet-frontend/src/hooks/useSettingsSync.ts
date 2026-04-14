@@ -4,6 +4,7 @@
 
 import { useCallback } from 'react';
 import { useLocalParticipant, useRoomContext } from '@livekit/components-react';
+import logger from '../utils/logger';
 
 interface SettingsSyncMessage {
   type: 'settings_sync';
@@ -29,7 +30,7 @@ export function useSettingsSync() {
       const data = encoder.encode(JSON.stringify(message));
 
       room.localParticipant.publishData(data, { reliable: true });
-      console.log('[useSettingsSync] Broadcasted videoFitMode:', mode);
+      logger.info('[useSettingsSync] Broadcasted videoFitMode:', mode);
     },
     [room, localParticipant]
   );

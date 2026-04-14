@@ -7,6 +7,7 @@ import { requireUser } from '../middleware/requireUser.js';
 import { query, queryOne } from '../services/database.js';
 import { verifyMeetingAccess } from '../services/meetingService.js';
 import { scheduleMeetingSchema, diagnosticsPayloadSchema } from '../schemas/meetings.js';
+import logger from '../utils/logger.js';
 
 export const meetingsRouter = Router();
 
@@ -57,7 +58,7 @@ meetingsRouter.get('/', authenticate, async (req: AuthRequest, res: Response) =>
 
     res.json({ meetings });
   } catch (error) {
-    console.error('List meetings error:', error);
+    logger.error('List meetings error:', error);
     res.status(500).json({ error: 'Failed to list meetings' });
   }
 });
@@ -88,7 +89,7 @@ meetingsRouter.get('/history', authenticate, async (req: AuthRequest, res: Respo
 
     res.json({ meetings });
   } catch (error) {
-    console.error('Get meeting history error:', error);
+    logger.error('Get meeting history error:', error);
     res.status(500).json({ error: 'Failed to get meeting history' });
   }
 });
@@ -123,7 +124,7 @@ meetingsRouter.post('/diagnostics', optionalAuth, async (req: AuthRequest, res: 
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Upload diagnostics error:', error);
+    logger.error('Upload diagnostics error:', error);
     res.status(500).json({ error: 'Failed to upload diagnostics' });
   }
 });
@@ -144,7 +145,7 @@ meetingsRouter.get('/scheduled', authenticate, async (req: AuthRequest, res: Res
 
     res.json({ meetings });
   } catch (error) {
-    console.error('Get scheduled meetings error:', error);
+    logger.error('Get scheduled meetings error:', error);
     res.status(500).json({ error: 'Failed to get scheduled meetings' });
   }
 });
@@ -201,7 +202,7 @@ meetingsRouter.post('/schedule', authenticate, async (req: AuthRequest, res: Res
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Schedule meeting error:', error);
+    logger.error('Schedule meeting error:', error);
     res.status(500).json({ error: 'Failed to schedule meeting' });
   }
 });
@@ -235,7 +236,7 @@ meetingsRouter.get('/:id', authenticate, async (req: AuthRequest, res: Response)
 
     res.json({ meeting, participants });
   } catch (error) {
-    console.error('Get meeting error:', error);
+    logger.error('Get meeting error:', error);
     res.status(500).json({ error: 'Failed to get meeting' });
   }
 });
@@ -346,7 +347,7 @@ meetingsRouter.patch('/scheduled/:id', authenticate, async (req: AuthRequest, re
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update scheduled meeting error:', error);
+    logger.error('Update scheduled meeting error:', error);
     res.status(500).json({ error: 'Failed to update scheduled meeting' });
   }
 });
@@ -381,7 +382,7 @@ meetingsRouter.delete('/scheduled/:id', authenticate, async (req: AuthRequest, r
 
     res.json({ message: 'Meeting cancelled' });
   } catch (error) {
-    console.error('Cancel meeting error:', error);
+    logger.error('Cancel meeting error:', error);
     res.status(500).json({ error: 'Failed to cancel meeting' });
   }
 });
@@ -427,7 +428,7 @@ meetingsRouter.get('/:id/chat', authenticate, async (req: AuthRequest, res: Resp
       hasMore: messages.length === parsedLimit
     });
   } catch (error) {
-    console.error('Get meeting chat error:', error);
+    logger.error('Get meeting chat error:', error);
     res.status(500).json({ error: 'Failed to get chat messages' });
   }
 });
@@ -481,7 +482,7 @@ meetingsRouter.post('/:id/chat', authenticate, async (req: AuthRequest, res: Res
       }
     });
   } catch (error) {
-    console.error('Send chat message error:', error);
+    logger.error('Send chat message error:', error);
     res.status(500).json({ error: 'Failed to send message' });
   }
 });

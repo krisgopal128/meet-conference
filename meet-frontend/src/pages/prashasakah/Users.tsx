@@ -5,6 +5,7 @@ import { useUser } from '../../store/authStore';
 import { prashasakahApi, AdminUser } from '../../services/prashasakahApi';
 import UserTable from '../../components/prashasakah/UserTable';
 import UserEditModal from '../../components/prashasakah/UserEditModal';
+import logger from '../../utils/logger';
 
 /**
  * Users - User Management Page
@@ -72,7 +73,7 @@ export default function Users() {
       setUsers(response?.data?.users || []);
       setTotal(response?.data?.total || 0);
     } catch (error) {
-      console.error('Failed to fetch users:', error);
+      logger.error('Failed to fetch users:', error);
       toast.error('Failed to load users');
     } finally {
       setLoading(false);
@@ -105,7 +106,7 @@ export default function Users() {
       toast.success(`User ${user.name || user.email} has been banned`);
       fetchUsers();
     } catch (error) {
-      console.error('Failed to ban user:', error);
+      logger.error('Failed to ban user:', error);
       toast.error('Failed to ban user');
     }
   };
@@ -116,7 +117,7 @@ export default function Users() {
       toast.success(`User ${user.name || user.email} has been unbanned`);
       fetchUsers();
     } catch (error) {
-      console.error('Failed to unban user:', error);
+      logger.error('Failed to unban user:', error);
       toast.error('Failed to unban user');
     }
   };
@@ -137,7 +138,7 @@ export default function Users() {
       setDeleteUser(null);
       fetchUsers();
     } catch (error) {
-      console.error('Failed to delete user:', error);
+      logger.error('Failed to delete user:', error);
       toast.error('Failed to delete user');
     } finally {
       setIsDeleting(false);
@@ -152,24 +153,24 @@ export default function Users() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Users</h1>
-          <p className="text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold text-surface-800">Users</h1>
+          <p className="text-surface-500 mt-1">
             Manage user accounts, roles, and permissions.
           </p>
         </div>
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-surface-500">
           {total.toLocaleString()} total users
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-white rounded-xl border border-surface-200 p-4">
         <div className="flex flex-col md:flex-row gap-4">
           {/* Search */}
           <div className="flex-1">
             <div className="relative">
               <svg 
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" 
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400" 
                 fill="none" 
                 stroke="currentColor" 
                 viewBox="0 0 24 24"
@@ -181,7 +182,7 @@ export default function Users() {
                 placeholder="Search by name or email..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
+                className="w-full pl-10 pr-4 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-brand-400 focus:border-brand-400 outline-none"
               />
             </div>
           </div>
@@ -194,7 +195,7 @@ export default function Users() {
                 setRoleFilter(e.target.value);
                 setPage(1);
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
+              className="w-full px-3 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-brand-400 focus:border-brand-400 outline-none"
             >
               <option value="">All Roles</option>
               <option value="admin">Admin</option>
@@ -211,7 +212,7 @@ export default function Users() {
                 setStatusFilter(e.target.value);
                 setPage(1);
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
+              className="w-full px-3 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-brand-400 focus:border-brand-400 outline-none"
             >
               <option value="">All Status</option>
               <option value="active">Active</option>
@@ -236,44 +237,44 @@ export default function Users() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between bg-white rounded-lg shadow px-4 py-3">
+        <div className="flex items-center justify-between bg-white rounded-xl border border-surface-200 px-4 py-3">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">Show</span>
+            <span className="text-sm text-surface-500">Show</span>
             <select
               value={limit}
               onChange={(e) => {
                 setLimit(Number(e.target.value));
                 setPage(1);
               }}
-              className="px-2 py-1 border border-gray-300 rounded text-sm"
+              className="px-2 py-1 border border-surface-300 rounded-lg text-sm"
             >
               <option value="10">10</option>
               <option value="20">20</option>
               <option value="50">50</option>
               <option value="100">100</option>
             </select>
-            <span className="text-sm text-gray-500">per page</span>
+            <span className="text-sm text-surface-500">per page</span>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 text-surface-500 hover:text-surface-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
             
-            <span className="text-sm text-gray-700">
+            <span className="text-sm text-surface-600">
               Page {page} of {totalPages}
             </span>
             
             <button
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              className="p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 text-surface-500 hover:text-surface-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -306,18 +307,18 @@ export default function Users() {
           <div className="flex min-h-full items-center justify-center p-4">
             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-12 h-12 rounded-full bg-danger-100 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-danger-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Delete User</h3>
-                  <p className="text-sm text-gray-500">This action cannot be undone.</p>
+                  <h3 className="text-lg font-semibold text-surface-800">Delete User</h3>
+                  <p className="text-sm text-surface-500">This action cannot be undone.</p>
                 </div>
               </div>
 
-              <p className="text-gray-700 mb-6">
+              <p className="text-surface-600 mb-6">
                 Are you sure you want to delete <span className="font-medium">{deleteUser.name || deleteUser.email}</span>? 
                 All their data will be permanently removed.
               </p>
@@ -326,7 +327,7 @@ export default function Users() {
                 <button
                   onClick={() => setIsDeleteModalOpen(false)}
                   disabled={isDeleting}
-                  className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                  className="flex-1 px-4 py-2 text-sm font-medium text-surface-600 bg-surface-100 rounded-lg hover:bg-surface-200 disabled:opacity-50 transition-colors"
                 >
                   Cancel
                 </button>

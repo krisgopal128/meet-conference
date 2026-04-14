@@ -2,11 +2,12 @@
  * Meetings Page - Admin Meeting Management
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { prashasakahApi, AdminMeeting } from '../../services/prashasakahApi';
 import DateRangeFilter from '../../components/prashasakah/DateRangeFilter';
+import logger from '../../utils/logger';
 
 export default function Meetings() {
   const [meetings, setMeetings] = useState<AdminMeeting[]>([]);
@@ -17,12 +18,9 @@ export default function Meetings() {
   const [totalPages, setTotalPages] = useState(1);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const cancelledRef = useRef(false);
 
-  useEffect(() => {
-    fetchMeetings();
-  }, [page, status]);
-
-  const fetchMeetings = async () => {
+  const fetchMeetings = useCallback(async () => {
     setLoading(true);
     try {
       const response = await prashasakahApi.getMeetings({
@@ -32,15 +30,29 @@ export default function Meetings() {
         fromDate: dateFrom,
         toDate: dateTo,
       });
-      setMeetings(response?.data?.meetings || []);
-      setTotalPages(Math.ceil((response?.data?.total || 0) / 20));
+      if (!cancelledRef.current) {
+        setMeetings(response?.data?.meetings || []);
+        setTotalPages(Math.ceil((response?.data?.total || 0) / 20));
+      }
     } catch (err) {
-      console.error('Failed to load meetings:', err);
-      toast.error('Failed to load meetings');
+      if (!cancelledRef.current) {
+        logger.error('Failed to load meetings:', err);
+        toast.error('Failed to load meetings');
+      }
     } finally {
-      setLoading(false);
+      if (!cancelledRef.current) {
+        setLoading(false);
+      }
     }
-  };
+  }, [page, search, dateFrom, dateTo]);
+
+  useEffect(() => {
+    cancelledRef.current = false;
+    fetchMeetings();
+    return () => {
+      cancelledRef.current = true;
+    };
+  }, [fetchMeetings]);
 
   const handleSearch = () => {
     setPage(1);
@@ -62,40 +74,40 @@ export default function Meetings() {
 
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
-      active: 'bg-green-100 text-green-800',
-      ended: 'bg-gray-100 text-gray-800',
+      active: 'bg-success-100 text-green-800',
+      ended: 'bg-surface-100 text-surface-700',
       scheduled: 'bg-brand-100 text-brand-800',
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return colors[status] || 'bg-surface-100 text-surface-700';
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Meeting History</h1>
-          <p className="text-sm text-gray-500 mt-1">View and manage all meetings</p>
+          <h1 className="text-2xl font-bold text-surface-800">Meeting History</h1>
+          <p className="text-sm text-surface-500 mt-1">View and manage all meetings</p>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex-1 min-w-64">
+      <div className="bg-white rounded-xl border border-surface-200 p-4">
+        <div className="flex flex-col sm:flex-row flex-wrap items-center gap-3">
+          <div className="flex-1 min-w-64 w-full sm:w-auto">
             <input
               type="text"
               placeholder="Search by room name..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full px-3 py-2 border border-surface-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400"
             />
           </div>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="px-3 py-2 border border-surface-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             <option value="">All Status</option>
             <option value="active">Active</option>
@@ -105,7 +117,7 @@ export default function Meetings() {
           <DateRangeFilter onChange={handleDateChange} />
           <button
             onClick={handleSearch}
-            className="px-4 py-2 bg-brand-600 text-white rounded-md hover:bg-brand-700"
+            className="px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-50 transition-colors"
           >
             Search
           </button>
@@ -113,48 +125,49 @@ export default function Meetings() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-gray-500">Loading...</div>
+          <div className="p-8 text-center text-surface-500">Loading...</div>
         ) : !meetings || meetings.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">No meetings found</div>
+          <div className="p-8 text-center text-surface-500">No meetings found</div>
         ) : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-surface-200">
+            <thead className="bg-surface-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
                   Room
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
                   Started
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
                   Duration
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
                   Participants
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-surface-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-surface-200">
               {meetings.map((meeting) => (
-                <tr key={meeting.id} className="hover:bg-gray-50">
+                <tr key={meeting.id} className="hover:bg-surface-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{meeting.roomName}</div>
+                    <div className="text-sm font-medium text-surface-800">{meeting.roomName}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-surface-500">
                     {meeting.startedAt ? new Date(meeting.startedAt).toLocaleString() : '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-surface-500">
                     {formatDuration(meeting.duration || 0)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-surface-500">
                     {meeting.participantCount || 0}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -174,47 +187,48 @@ export default function Meetings() {
               ))}
             </tbody>
           </table>
+        </div>
         )}
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-surface-200 sm:px-6">
             <div className="flex-1 flex justify-between sm:hidden">
               <button
                 onClick={() => setPage(page - 1)}
                 disabled={page === 1}
-                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                className="relative inline-flex items-center px-4 py-2 border border-surface-300 text-sm font-medium rounded-lg text-surface-600 bg-white hover:bg-surface-50 disabled:opacity-50 transition-colors"
               >
                 Previous
               </button>
               <button
                 onClick={() => setPage(page + 1)}
                 disabled={page === totalPages}
-                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                className="ml-3 relative inline-flex items-center px-4 py-2 border border-surface-300 text-sm font-medium rounded-lg text-surface-600 bg-white hover:bg-surface-50 disabled:opacity-50 transition-colors"
               >
                 Next
               </button>
             </div>
             <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-surface-600">
                   Page <span className="font-medium">{page}</span> of{' '}
                   <span className="font-medium">{totalPages}</span>
                 </p>
               </div>
               <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                <nav className="relative z-0 inline-flex rounded-lg -space-x-px">
                   <button
                     onClick={() => setPage(page - 1)}
                     disabled={page === 1}
-                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-lg border border-surface-300 bg-white text-sm font-medium text-surface-500 hover:bg-surface-50 disabled:opacity-50 transition-colors"
                   >
                     Previous
                   </button>
                   <button
                     onClick={() => setPage(page + 1)}
                     disabled={page === totalPages}
-                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-lg border border-surface-300 bg-white text-sm font-medium text-surface-500 hover:bg-surface-50 disabled:opacity-50 transition-colors"
                   >
                     Next
                   </button>

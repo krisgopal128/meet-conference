@@ -1,7 +1,7 @@
 /**
  * ControlBar - Main meeting controls
  * 
- * Refactored to use memoized sub-components for better performance.
+ * Refactored to use memoized sub-components and extracted hooks for better performance.
  * Each button only re-renders when its specific state changes.
  */
 
@@ -43,21 +43,18 @@ import {
   useMeetingControlsActions,
   useGridAspectRatio,
   useIsPiPOpen,
-  // useRoomName, // Disabled for recording feature
 } from '../../store/roomStore';
 import { roomsApi } from '../../services/api';
-import {
-  buildAudioCaptureOptions,
-  buildCameraCaptureOptions,
-  getScreenShareOptions,
-  isAudioOnlyMode,
-  meetingRoomConfig,
-} from '../../config/meetingRoomConfig';
+import { meetingRoomConfig } from '../../config/meetingRoomConfig';
 import toast from 'react-hot-toast';
-import { useEffect, useState, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { cn } from '../../utils/cn';
 import { usePictureInPicture } from '../../hooks/usePictureInPicture';
+import { useAudioControls } from '../../hooks/useAudioControls';
+import { useVideoControls } from '../../hooks/useVideoControls';
+import { useScreenShareControls } from '../../hooks/useScreenShareControls';
+import { useMeetingActions } from '../../hooks/useMeetingActions';
+import logger from '../../utils/logger';
 
 // Import memoized button components
 import {
@@ -78,13 +75,9 @@ import {
   MoreIcon,
   ControlsIcon,
   ControlsIconUnlocked,
-  // RecordingButton,
-  // MobileRecordingButton,
-  // RecordingBadge,
 } from './ControlBarButtons';
 
 export function ControlBar() {
-  const navigate = useNavigate();
   const { localParticipant } = useLocalParticipant();
   const room = useMaybeRoomContext();
 
@@ -118,8 +111,8 @@ export function ControlBar() {
 
   // Action hooks (stable references)
   const { setLayout, toggleChat, toggleParticipants, openSettingsView, setLobbyCount, toggleJoinLeaveSounds, toggleMirrorLocalVideo } = useUIActions();
-  const { reset, togglePiP } = useConnectionActions();
-  const { raiseHand, lowerHand, setRecording: _setRecording } = useFeatureActions();
+  const { togglePiP } = useConnectionActions();
+  const { raiseHand, lowerHand } = useFeatureActions();
   const {
     setMeetingLocked,
     setLobbyEnabled,
@@ -129,27 +122,21 @@ export function ControlBar() {
     setParticipantsCanTurnOnCamera,
   } = useMeetingControlsActions();
 
+  // Extracted hooks
+  const audioControls = useAudioControls(localParticipant, room ?? undefined);
+  const videoControls = useVideoControls(localParticipant, room ?? undefined, qualityMode, gridAspectRatio);
+  const { toggleScreenShare } = useScreenShareControls(localParticipant, qualityMode, screenShareMode);
+  const { leaveRoom, endMeeting, hasOtherParticipants } = useMeetingActions();
+
   // PiP support detection
   const { isDocumentPiPSupported: isPiPSupported } = usePictureInPicture();
   const isPiPOpen = useIsPiPOpen();
 
-  
-  // Debug logging
-  console.log('[ControlBar] PiP state:', { isPiPSupported, isPiPOpen });
+  logger.info('[ControlBar] PiP state:', { isPiPSupported, isPiPOpen });
 
   // Local state for menus
   const [showMore, setShowMore] = useState(false);
   const [showControls, setShowControls] = useState(false);
-  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
-  const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
-  const [speakers, setSpeakers] = useState<MediaDeviceInfo[]>([]);
-  const [activeCameraId, setActiveCameraId] = useState('');
-  const [activeMicId, setActiveMicId] = useState('');
-  const [activeSpeakerId, setActiveSpeakerId] = useState('');
-
-  // Recording state - Disabled for now
-  const [_recordingLoading, _setRecordingLoading] = useState(false);
-  const [_showRecordingConfirm, _setShowRecordingConfirm] = useState(false);
 
   const moreButtonRef = useRef<HTMLButtonElement>(null);
   const controlsButtonRef = useRef<HTMLButtonElement>(null);
@@ -160,157 +147,30 @@ export function ControlBar() {
   const isScreenSharing = localParticipant?.isScreenShareEnabled;
   const handRaised = useHasRaisedHand(localParticipant?.identity || '');
 
-  // Check if there are other participants in the room
-  const hasOtherParticipants = room ? room.remoteParticipants.size > 0 : false;
-
-  // Get room name for API calls - used for recording (disabled)
-  // const _roomName = useRoomName();
-
-  // Lobby count - poll periodically for moderators to keep badge updated
+  // Lobby count - poll periodically for moderators
   useEffect(() => {
     if (!room || !isModerator) {
       setLobbyCount(0);
       return;
     }
 
-    // Fetch lobby count from API
     const fetchLobbyCount = async () => {
       try {
         const res = await roomsApi.getLobby(room.name);
         const lobby = res.data.lobby || [];
         setLobbyCount(lobby.length);
-      } catch (error) {
+      } catch {
         // Silently ignore errors (e.g., when lobby is disabled)
       }
     };
 
-    // Fetch immediately
-    fetchLobbyCount();
+    void fetchLobbyCount();
+    const pollInterval = setInterval(() => { void fetchLobbyCount(); }, 5000);
 
-    // Poll every 5 seconds for real-time updates
-    const pollInterval = setInterval(fetchLobbyCount, 5000);
-
-    return () => {
-      clearInterval(pollInterval);
-    };
+    return () => { clearInterval(pollInterval); };
   }, [room, isModerator, setLobbyCount]);
 
-  // Device enumeration
-  useEffect(() => {
-    if (!room) return;
-
-    const refreshDevices = async () => {
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        setCameras(devices.filter((device) => device.kind === 'videoinput'));
-        setMics(devices.filter((device) => device.kind === 'audioinput'));
-        setSpeakers(devices.filter((device) => device.kind === 'audiooutput'));
-        setActiveCameraId(room.getActiveDevice('videoinput') || '');
-        setActiveMicId(room.getActiveDevice('audioinput') || '');
-        setActiveSpeakerId(room.getActiveDevice('audiooutput') || '');
-      } catch (error) {
-        console.error('Failed to refresh media devices:', error);
-      }
-    };
-
-    const handleActiveDeviceChanged = (kind: 'audioinput' | 'videoinput' | 'audiooutput', deviceId: string) => {
-      if (kind === 'videoinput') setActiveCameraId(deviceId);
-      if (kind === 'audioinput') setActiveMicId(deviceId);
-      if (kind === 'audiooutput') setActiveSpeakerId(deviceId);
-    };
-
-    void refreshDevices();
-    navigator.mediaDevices.addEventListener?.('devicechange', refreshDevices);
-    room.on('activeDeviceChanged', handleActiveDeviceChanged);
-
-    return () => {
-      navigator.mediaDevices.removeEventListener?.('devicechange', refreshDevices);
-      room.off('activeDeviceChanged', handleActiveDeviceChanged);
-    };
-  }, [room]);
-
-  // Action handlers - useCallback for stable references
-  const toggleMic = useCallback(async () => {
-    if (!localParticipant) return;
-    try {
-      const currentlyEnabled = localParticipant.isMicrophoneEnabled;
-      await localParticipant.setMicrophoneEnabled(
-        !currentlyEnabled,
-        !currentlyEnabled ? buildAudioCaptureOptions(activeMicId || undefined) : undefined,
-      );
-    } catch (error) {
-      console.error('Failed to toggle microphone:', error);
-      toast.error('Failed to toggle microphone');
-    }
-  }, [localParticipant, activeMicId]);
-
-  const switchMic = useCallback(async (deviceId: string) => {
-    if (!room) return;
-    try {
-      await room.switchActiveDevice('audioinput', deviceId || 'default');
-      setActiveMicId(deviceId);
-    } catch (error) {
-      console.error('Failed to switch microphone:', error);
-      toast.error('Failed to switch microphone');
-    }
-  }, [room]);
-
-  const switchSpeaker = useCallback(async (deviceId: string) => {
-    if (!room) return;
-    try {
-      await room.switchActiveDevice('audiooutput', deviceId || 'default');
-      setActiveSpeakerId(deviceId);
-    } catch (error) {
-      console.error('Failed to switch speaker:', error);
-      toast.error('Failed to switch speaker');
-    }
-  }, [room]);
-
-  const toggleCamera = useCallback(async () => {
-    if (!localParticipant) return;
-    try {
-      if (isAudioOnlyMode(qualityMode)) {
-        toast.error(meetingRoomConfig.feedback.audioOnlyMessage);
-        return;
-      }
-      const currentlyEnabled = localParticipant.isCameraEnabled;
-      await localParticipant.setCameraEnabled(
-        !currentlyEnabled,
-        !currentlyEnabled ? buildCameraCaptureOptions(activeCameraId || undefined, qualityMode, gridAspectRatio) : undefined,
-      );
-    } catch (error) {
-      console.error('Failed to toggle camera:', error);
-      toast.error('Failed to toggle camera');
-    }
-  }, [localParticipant, qualityMode, gridAspectRatio, activeCameraId]);
-
-  const switchCamera = useCallback(async (deviceId: string) => {
-    if (!room) return;
-    try {
-      await room.switchActiveDevice('videoinput', deviceId || 'default');
-      setActiveCameraId(deviceId);
-    } catch (error) {
-      console.error('Failed to switch camera:', error);
-      toast.error('Failed to switch camera');
-    }
-  }, [room]);
-
-  const toggleScreenShare = useCallback(async () => {
-    if (!localParticipant) return;
-    try {
-      const currentlyEnabled = localParticipant.isScreenShareEnabled;
-      const options = getScreenShareOptions(qualityMode, screenShareMode);
-      await localParticipant.setScreenShareEnabled(
-        !currentlyEnabled,
-        currentlyEnabled ? { audio: false } : { audio: options.audio },
-        currentlyEnabled ? undefined : { screenShareEncoding: options.encoding },
-      );
-    } catch (error) {
-      console.error('Screen share error:', error);
-      toast.error('Screen share was cancelled or not supported.');
-    }
-  }, [localParticipant, qualityMode, screenShareMode]);
-
+  // Hand raise
   const toggleHandRaise = useCallback(async () => {
     if (!room || !localParticipant) return;
     const payload = {
@@ -328,111 +188,7 @@ export function ControlBar() {
     }
   }, [room, localParticipant, handRaised, raiseHand, lowerHand]);
 
-  // Recording - Disabled for now
-  // const handleRecordingClick = useCallback(() => {
-  //   if (!isModerator || !roomName) return;
-  //   setShowRecordingConfirm(true);
-  // }, [isModerator, roomName]);
-
-  // const confirmStartRecording = useCallback(async () => {
-  //   if (!roomName) return;
-  //   setShowRecordingConfirm(false);
-  //   setRecordingLoading(true);
-  //   try {
-  //     const response = await roomsApi.startRecording(roomName);
-  //     setRecording(true, response.data.egressId || undefined);
-  //     toast.success('Recording started');
-  //   } catch (error) {
-  //     console.error('Failed to start recording:', error);
-  //     toast.error('Failed to start recording');
-  //   } finally {
-  //     setRecordingLoading(false);
-  //   }
-  // }, [roomName, setRecording]);
-
-  // const confirmStopRecording = useCallback(async () => {
-  //   if (!roomName) return;
-  //   setShowRecordingConfirm(false);
-  //   setRecordingLoading(true);
-  //   try {
-  //     await roomsApi.stopRecording(roomName);
-  //     setRecording(false);
-  //     toast.success('Recording stopped');
-  //   } catch (error) {
-  //     console.error('Failed to stop recording:', error);
-  //     toast.error('Failed to stop recording');
-  //   } finally {
-  //     setRecordingLoading(false);
-  //   }
-  // }, [roomName, setRecording]);
-
-  // const cancelRecordingAction = useCallback(() => {
-  //   setShowRecordingConfirm(false);
-  // }, []);
-
-  // Just leave the meeting (doesn't end it for everyone)
-  const leaveRoom = useCallback(async () => {
-    if (!room || !localParticipant) return;
-
-    const roomName = room.name;
-    const connectedAt = (room as any).connectedAt || new Date();
-    const duration = Math.round((Date.now() - new Date(connectedAt).getTime()) / 60000);
-
-    // Stop local tracks
-    try {
-      if (localParticipant.isScreenShareEnabled) await localParticipant.setScreenShareEnabled(false);
-      if (localParticipant.isCameraEnabled) await localParticipant.setCameraEnabled(false);
-      if (localParticipant.isMicrophoneEnabled) await localParticipant.setMicrophoneEnabled(false);
-    } catch (error) {
-      console.error('Failed to stop local media before disconnect:', error);
-    } finally {
-      await room.disconnect();
-      reset();
-      navigate('/thank-you', { state: { roomName, duration: duration > 0 ? duration : undefined } });
-    }
-  }, [room, localParticipant, navigate, reset]);
-
-  // End meeting for everyone (moderators only)
-  const endMeeting = useCallback(async () => {
-    if (!room || !localParticipant) return;
-
-    const roomName = room.name;
-    const connectedAt = (room as any).connectedAt || new Date();
-    const duration = Math.round((Date.now() - new Date(connectedAt).getTime()) / 60000);
-
-    // Notify all participants that meeting is ending
-    try {
-      const message = new TextEncoder().encode(JSON.stringify({
-        type: 'meeting_ended',
-        message: 'Host ended the meeting',
-        reason: 'host_left',
-      }));
-      await room.localParticipant.publishData(message, { reliable: true, topic: 'meeting_ended' });
-    } catch (error) {
-      console.error('Failed to send meeting_ended message:', error);
-    }
-
-    // End meeting on backend
-    try {
-      await roomsApi.endMeeting(roomName);
-    } catch (error) {
-      console.error('Failed to end meeting on backend:', error);
-    }
-
-    // Stop local tracks
-    try {
-      if (localParticipant.isScreenShareEnabled) await localParticipant.setScreenShareEnabled(false);
-      if (localParticipant.isCameraEnabled) await localParticipant.setCameraEnabled(false);
-      if (localParticipant.isMicrophoneEnabled) await localParticipant.setMicrophoneEnabled(false);
-    } catch (error) {
-      console.error('Failed to stop local media before disconnect:', error);
-    } finally {
-      await room.disconnect();
-      reset();
-      navigate('/thank-you', { state: { roomName, duration: duration > 0 ? duration : undefined } });
-    }
-  }, [room, localParticipant, navigate, reset]);
-
+  // Copy link
   const copyRoomLink = useCallback(async () => {
     if (!room?.name) return;
     const joinUrl = `${window.location.origin}/join/${room.name}`;
@@ -440,7 +196,7 @@ export function ControlBar() {
       await navigator.clipboard.writeText(joinUrl);
       toast.success('Meeting link copied');
     } catch (error) {
-      console.error('Failed to copy meeting link:', error);
+      logger.error('Failed to copy meeting link:', error);
       toast.error('Failed to copy meeting link');
     }
   }, [room]);
@@ -503,9 +259,6 @@ export function ControlBar() {
       label: 'People',
       onClick: () => {
         toggleParticipants();
-        if (isModerator && lobbyCount > 0) {
-          // Badge handled by ParticipantsButton
-        }
       },
     },
     { icon: <Link2 size={16} />, label: 'Copy Link', onClick: copyRoomLink },
@@ -540,22 +293,22 @@ export function ControlBar() {
         <div className="flex items-center gap-2">
           <MicButton
             isMuted={isMicMuted}
-            onToggle={toggleMic}
+            onToggle={audioControls.toggleMic}
             showDeviceMenu={meetingRoomConfig.features.micDropdownDeviceMenu}
-            mics={mics}
-            speakers={speakers}
-            activeMicId={activeMicId}
-            activeSpeakerId={activeSpeakerId}
-            onSwitchMic={switchMic}
-            onSwitchSpeaker={switchSpeaker}
+            mics={audioControls.mics}
+            speakers={audioControls.speakers}
+            activeMicId={audioControls.activeMicId}
+            activeSpeakerId={audioControls.activeSpeakerId}
+            onSwitchMic={audioControls.switchMic}
+            onSwitchSpeaker={audioControls.switchSpeaker}
           />
           <CameraButton
             isOff={isCameraOff}
-            onToggle={toggleCamera}
+            onToggle={videoControls.toggleCamera}
             showDeviceMenu={meetingRoomConfig.features.cameraDropdownDeviceMenu}
-            cameras={cameras}
-            activeCameraId={activeCameraId}
-            onSwitchCamera={switchCamera}
+            cameras={videoControls.cameras}
+            activeCameraId={videoControls.activeCameraId}
+            onSwitchCamera={videoControls.switchCamera}
           />
           <ScreenShareButton isSharing={isScreenSharing} onToggle={toggleScreenShare} />
         </div>
@@ -564,14 +317,6 @@ export function ControlBar() {
 
         {/* Secondary Controls Group */}
         <div className="flex items-center gap-2">
-          {/* Recording - Disabled for now */}
-          {/* {isModerator && (
-            <RecordingButton
-              isRecording={isRecording}
-              isLoading={recordingLoading}
-              onToggle={handleRecordingClick}
-            />
-          )} */}
           <HandButton isRaised={handRaised} onToggle={toggleHandRaise} />
           <LayoutButton layout={layout} onToggle={toggleLayout} />
         </div>
@@ -654,69 +399,12 @@ export function ControlBar() {
         />
       </div>
 
-      {/* Recording Confirmation Modal - Disabled for now */}
-      {/* {showRecordingConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-surface-800 rounded-2xl p-6 max-w-sm w-full mx-4 border border-surface-700 shadow-xl">
-            <div className="flex items-center gap-3 mb-4">
-              <div className={cn(
-                'w-10 h-10 rounded-full flex items-center justify-center',
-                isRecording ? 'bg-surface-700' : 'bg-danger-500/20'
-              )}>
-                <div className={cn(
-                  'rounded-full',
-                  isRecording ? 'w-4 h-4 bg-surface-400' : 'w-3 h-3 bg-danger-500 animate-pulse'
-                )} />
-              </div>
-              <h3 className="text-lg font-semibold text-surface-100">
-                {isRecording ? 'Stop Recording?' : 'Start Recording?'}
-              </h3>
-            </div>
-            <p className="text-surface-400 text-sm mb-6">
-              {isRecording
-                ? 'The recording will be stopped and saved. Participants will be notified.'
-                : 'The meeting will be recorded. All participants will be notified that recording is in progress.'}
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={cancelRecordingAction}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-surface-700 hover:bg-surface-600 text-surface-200 font-medium transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={isRecording ? confirmStopRecording : confirmStartRecording}
-                disabled={recordingLoading}
-                className={cn(
-                  'flex-1 py-2.5 px-4 rounded-xl font-medium transition-colors flex items-center justify-center gap-2',
-                  isRecording
-                    ? 'bg-surface-700 hover:bg-surface-600 text-surface-200'
-                    : 'bg-danger-500 hover:bg-danger-600 text-white'
-                )}
-              >
-                {recordingLoading ? (
-                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <div className={cn('w-2 h-2 rounded-full', isRecording ? 'bg-surface-400' : 'bg-white')} />
-                    {isRecording ? 'Stop' : 'Start'}
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )} */}
-
-      {/* Recording Badge - Disabled for now */}
-      {/* {isRecording && <RecordingBadge isRecording={isRecording} />} */}
-
       {/* Mobile Layout */}
       <div className="md:hidden flex items-center justify-between bg-surface-800/95 backdrop-blur-sm border-t border-surface-700 py-2 px-4 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         {/* Left: Primary Controls */}
         <div className="flex items-center gap-1.5">
-          <MobileMicButton isMuted={isMicMuted} onToggle={toggleMic} />
-          <MobileCameraButton isOff={isCameraOff} onToggle={toggleCamera} />
+          <MobileMicButton isMuted={isMicMuted} onToggle={audioControls.toggleMic} />
+          <MobileCameraButton isOff={isCameraOff} onToggle={videoControls.toggleCamera} />
         </div>
 
         {/* Center: Leave */}
@@ -729,14 +417,6 @@ export function ControlBar() {
 
         {/* Right: Secondary Controls */}
         <div className="flex items-center gap-1.5">
-          {/* Mobile Recording - Disabled for now */}
-          {/* {isModerator && (
-            <MobileRecordingButton
-              isRecording={isRecording}
-              isLoading={recordingLoading}
-              onToggle={handleRecordingClick}
-            />
-          )} */}
           <MobileChatButton isOpen={chatOpen} unreadCount={unreadCount} mentionCount={mentionCount} onToggle={toggleChat} />
           <div className="relative">
             <button

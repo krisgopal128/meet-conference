@@ -2,9 +2,10 @@
  * AuditLogs Page - Admin Audit Log Viewer
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { prashasakahApi, AdminAuditLog } from '../../services/prashasakahApi';
+import logger from '../../utils/logger';
 
 export default function AuditLogs() {
   const [logs, setLogs] = useState<AdminAuditLog[]>([]);
@@ -12,12 +13,9 @@ export default function AuditLogs() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [actionFilter, setActionFilter] = useState('');
+  const cancelledRef = useRef(false);
 
-  useEffect(() => {
-    fetchLogs();
-  }, [page, actionFilter]);
-
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
       const response = await prashasakahApi.getAuditLogs({
@@ -25,15 +23,29 @@ export default function AuditLogs() {
         offset: (page - 1) * 20,
         action: actionFilter || undefined,
       });
-      setLogs(response?.data?.logs || []);
-      setTotalPages(Math.ceil((response?.data?.total || 0) / 20));
+      if (!cancelledRef.current) {
+        setLogs(response?.data?.logs || []);
+        setTotalPages(Math.ceil((response?.data?.total || 0) / 20));
+      }
     } catch (err) {
-      console.error('Failed to load audit logs:', err);
-      toast.error('Failed to load audit logs');
+      if (!cancelledRef.current) {
+        logger.error('Failed to load audit logs:', err);
+        toast.error('Failed to load audit logs');
+      }
     } finally {
-      setLoading(false);
+      if (!cancelledRef.current) {
+        setLoading(false);
+      }
     }
-  };
+  }, [page, actionFilter]);
+
+  useEffect(() => {
+    cancelledRef.current = false;
+    fetchLogs();
+    return () => {
+      cancelledRef.current = true;
+    };
+  }, [fetchLogs]);
 
   const getActionIcon = (action: string) => {
     const icons: Record<string, string> = {
@@ -52,23 +64,23 @@ export default function AuditLogs() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Audit Logs</h1>
-          <p className="text-sm text-gray-500 mt-1">View all admin actions</p>
+          <h1 className="text-2xl font-bold text-surface-800">Audit Logs</h1>
+          <p className="text-sm text-surface-500 mt-1">View all admin actions</p>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex items-center gap-4">
+      <div className="bg-white rounded-xl border border-surface-200 p-4">
+        <div className="flex flex-col sm:flex-row flex-wrap items-center gap-3">
           <select
             value={actionFilter}
             onChange={(e) => {
               setActionFilter(e.target.value);
               setPage(1);
             }}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="px-3 py-2 border border-surface-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             <option value="">All Actions</option>
             <option value="user_ban">User Ban</option>
@@ -83,77 +95,79 @@ export default function AuditLogs() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-gray-500">Loading...</div>
+          <div className="p-8 text-center text-surface-500">Loading...</div>
         ) : !logs || logs.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">No audit logs found</div>
+          <div className="p-8 text-center text-surface-500">No audit logs found</div>
         ) : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-surface-200">
+            <thead className="bg-surface-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
                   Action
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
                   Actor
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
                   Target
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
                   IP Address
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
                   Timestamp
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-surface-200">
               {logs.map((log) => (
-                <tr key={log.id} className="hover:bg-gray-50">
+                <tr key={log.id} className="hover:bg-surface-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="flex items-center gap-2">
                       <span>{getActionIcon(log.action)}</span>
-                      <span className="text-sm font-medium text-gray-900">{log.action}</span>
+                      <span className="text-sm font-medium text-surface-800">{log.action}</span>
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-surface-500">
                     {log.actorEmail}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-surface-500">
                     {log.targetType}: {log.targetId || '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-surface-500">
                     {log.ipAddress || '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-surface-500">
                     {new Date(log.createdAt).toLocaleString()}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
         )}
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200">
-            <div className="text-sm text-gray-700">
+          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-surface-200">
+            <div className="text-sm text-surface-600">
               Page {page} of {totalPages}
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => setPage(page - 1)}
                 disabled={page === 1}
-                className="px-3 py-1 border rounded disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-surface-600 bg-white border border-surface-300 rounded-lg hover:bg-surface-50 disabled:opacity-50 transition-colors"
               >
                 Previous
               </button>
               <button
                 onClick={() => setPage(page + 1)}
                 disabled={page === totalPages}
-                className="px-3 py-1 border rounded disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-surface-600 bg-white border border-surface-300 rounded-lg hover:bg-surface-50 disabled:opacity-50 transition-colors"
               >
                 Next
               </button>

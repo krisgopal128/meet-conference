@@ -383,6 +383,9 @@ export const prashasakahApi = {
   resetPassword: (id: string): Promise<AxiosResponse<{ message: string; resetToken?: string; resetUrl?: string }>> =>
     api.post(`/prashasakah/users/${id}/reset-password`),
 
+  changePassword: (id: string, password: string): Promise<AxiosResponse<{ message: string }>> =>
+    api.put(`/prashasakah/users/${id}/change-password`, { password }),
+
   getUserActivity: (id: string, params?: {
     limit?: number;
     offset?: number;

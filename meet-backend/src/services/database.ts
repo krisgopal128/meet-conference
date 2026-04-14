@@ -2,6 +2,7 @@ import pkg from 'pg';
 const { Pool } = pkg;
 import { config } from '../config.js';
 import os from 'os';
+import logger from '../utils/logger.js';
 
 // Compute pool size based on CPU cores
 function getPoolSize(): number {
@@ -27,7 +28,7 @@ const pool = new Pool({
 export async function initDatabase(): Promise<void> {
   try {
     const client = await pool.connect();
-    console.log('✅ Database connected');
+    logger.info('✅ Database connected');
     
     // Set default timeouts on connection
     await client.query('SET statement_timeout = 30000');
@@ -36,9 +37,9 @@ export async function initDatabase(): Promise<void> {
     client.release();
     
     // Log pool stats
-    console.log(`📊 Database pool: max=${pool.totalCount}, min=2`);
+    logger.info(`📊 Database pool: max=${pool.totalCount}, min=2`);
   } catch (error) {
-    console.error('❌ Database connection failed:', error);
+    logger.error('❌ Database connection failed:', error);
     throw error;
   }
 }
@@ -61,31 +62,34 @@ export async function query<T = unknown>(
       throw lastError || new Error(`Query timed out after ${timeoutMs}ms`);
     }
     
-    try {
-      const result = await pool.query(sql, params);
-      return result.rows as T[];
-    } catch (error: any) {
-      lastError = error;
-      
-      // Retry on connection errors
-      const isTransientError = 
-        error.code === 'ECONNRESET' ||
-        error.code === '57P01' ||      // Admin shutdown
-        error.code === '57P02' ||      // Crash shutdown
-        error.code === '08006' ||      // Connection failure
-        error.code === '08003' ||      // Connection does not exist
-        error.errno === 'ECONNRESET';
-      
-      if (isTransientError && attempt < retries - 1) {
-        const delay = Math.min(100 * Math.pow(2, attempt), timeoutMs - (Date.now() - startTime));
-        if (delay <= 0) break; // No time left for retry
-        console.warn(`⚠️ Database query failed (attempt ${attempt + 1}/${retries}), retrying in ${delay}ms...`, error.code);
-        await new Promise(r => setTimeout(r, delay));
-        continue;
-      }
-      
-      throw error;
-    }
+     try {
+       const result = await pool.query(sql, params);
+       return result.rows as T[];
+     } catch (error) {
+       lastError = error;
+       
+       // Treat error as possibly a Postgres error with code/errno
+       const pgError = error as { code?: string; errno?: string } | null;
+       
+       // Retry on connection errors
+       const isTransientError = 
+         pgError?.code === 'ECONNRESET' ||
+         pgError?.code === '57P01' ||      // Admin shutdown
+         pgError?.code === '57P02' ||      // Crash shutdown
+         pgError?.code === '08006' ||      // Connection failure
+         pgError?.code === '08003' ||      // Connection does not exist
+         pgError?.errno === 'ECONNRESET';
+       
+       if (isTransientError && attempt < retries - 1) {
+         const delay = Math.min(100 * Math.pow(2, attempt), timeoutMs - (Date.now() - startTime));
+         if (delay <= 0) break; // No time left for retry
+         logger.warn(`⚠️ Database query failed (attempt ${attempt + 1}/${retries}), retrying in ${delay}ms...`, pgError?.code);
+         await new Promise(r => setTimeout(r, delay));
+         continue;
+       }
+       
+       throw error;
+     }
   }
   
   throw lastError || new Error('Query failed after retries');
@@ -102,5 +106,5 @@ export async function queryOne<T = unknown>(sql: string, params?: unknown[]): Pr
 // Graceful shutdown
 export async function closeDatabase(): Promise<void> {
   await pool.end();
-  console.log('Database pool closed');
+  logger.info('Database pool closed');
 }

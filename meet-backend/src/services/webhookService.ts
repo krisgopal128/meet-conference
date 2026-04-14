@@ -1,5 +1,6 @@
 import { query } from './database.js';
 import { getParticipants } from './redis.js';
+import logger from '../utils/logger.js';
 
 /**
  * Schedule a host leave check that transitions room to 'waiting' if host
@@ -22,7 +23,7 @@ export function scheduleHostLeaveCheck(
         );
       }
     } catch (err) {
-      console.error(`[HostLeave] Error in timeout for room ${roomName}:`, err);
+      logger.error(`[HostLeave] Error in timeout for room ${roomName}:`, err);
     } finally {
       onComplete();
     }
