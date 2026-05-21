@@ -4,12 +4,11 @@ import { createRoom, getMyRooms, meetingsApi, roomsApi } from '../services/api';
 import { useUser } from '../store/authStore';
 import { PageErrorBoundary } from '../components/shared/PageErrorBoundary';
 import { MeetingCardSkeleton } from '../components/shared/Skeletons';
-import { DashboardStats } from '../components/shared/DashboardStats';
 import type { StatItem } from '../components/shared/DashboardStats';
 import { cn } from '../utils/cn';
 import { generateRoomName } from '../utils/roomName';
 import type { Room, ScheduledMeeting } from '../types';
-import { Plus, Link2 as Link, ArrowRight, X, Trash2, Calendar, Clock, AlertCircle, Check, Zap, Video, Users, Share2 } from 'lucide-react';
+import { Plus, Link2 as Link, ArrowRight, X, Trash2, Calendar, Clock, AlertCircle, Check, Video, Users, Share2, ChevronRight, LayoutGrid } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format, parseISO } from 'date-fns';
 import logger from '../utils/logger';
@@ -33,11 +32,11 @@ function HomePageContent() {
   // Stats state
   const [stats, setStats] = useState<StatItem[]>([]);
   const [loadingStats, setLoadingStats] = useState(true);
-  const [statsLoaded, setStatsLoaded] = useState(false);
+  const [_statsLoaded, setStatsLoaded] = useState(false);
   
   // Scheduled meetings state
   const [upcomingMeetings, setUpcomingMeetings] = useState<ScheduledMeeting[]>([]);
-  const [loadingUpcoming, setLoadingUpcoming] = useState(true);
+  const [_loadingUpcoming, setLoadingUpcoming] = useState(true);
   const [upcomingLoaded, setUpcomingLoaded] = useState(false);
   
   // Form state
@@ -58,9 +57,7 @@ function HomePageContent() {
 
   useEffect(() => {
     mountedRef.current = true;
-    // Load critical data immediately
     loadCriticalData();
-    // Defer non-critical data by 1 second
     const deferredTimer = setTimeout(loadDeferredData, 1000);
     return () => {
       mountedRef.current = false;
@@ -93,7 +90,7 @@ function HomePageContent() {
     }
   };
 
-  // Critical data - loads immediately (rooms for user's primary need)
+  // Critical data - loads immediately
   const loadCriticalData = async () => {
     setLoadingRooms(true);
     try {
@@ -106,7 +103,7 @@ function HomePageContent() {
     }
   };
 
-  // Deferred data - loads after 1s delay (stats, upcoming meetings)
+  // Deferred data - loads after 1s delay
   const loadDeferredData = async () => {
     if (!mountedRef.current) return;
     setLoadingStats(true);
@@ -139,310 +136,396 @@ function HomePageContent() {
       const now = new Date();
       const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
       const upcomingThisWeek = scheduled.filter(m => {
-        const date = parseISO(m.scheduled_start || m.scheduledStart);
-        return date >= now && date <= weekFromNow;
-      }).length;
-      
-      if (!mountedRef.current) return;
-      setStats([
-        { label: 'Total Meetings', value: totalMeetings, icon: Video, color: 'brand', primary: true },
-        { label: 'This Week', value: upcomingThisWeek, icon: Calendar, color: 'success' },
-        { label: 'Total Participants', value: totalParticipants, icon: Users, color: 'info' },
-        { label: 'Total Hours', value: Math.max(0, Math.round(totalMinutes / 60)), icon: Clock, color: 'warning' },
-      ]);
-      setLoadingStats(false);
-      setStatsLoaded(true);
+        const start = m.scheduledStart || m.scheduled_start;
+        if (!start) return false;
+        try {
+          const d = parseISO(start);
+          return d >= now && d <= weekFromNow;
+        } catch {
+          return false;
+        }
+      });
 
-      const upcoming = scheduled
-        .filter(m => new Date(m.scheduled_start || m.scheduledStart) >= now)
-        .sort((a, b) => 
-          new Date(a.scheduled_start || a.scheduledStart).getTime() - 
-          new Date(b.scheduled_start || b.scheduledStart).getTime()
-        )
-        .slice(0, 5);
-      
-      if (!mountedRef.current) return;
-      setUpcomingMeetings(upcoming);
-      setLoadingUpcoming(false);
-      setUpcomingLoaded(true);
-    } catch (err) {
+      const newStats: StatItem[] = [
+        {
+          label: 'Total Meetings',
+          value: totalMeetings,
+          icon: Video,
+          color: 'brand',
+          primary: true,
+        },
+        {
+          label: 'Participants',
+          value: totalParticipants,
+          icon: Users,
+          color: 'info',
+        },
+        {
+          label: 'Minutes',
+          value: totalMinutes,
+          icon: Clock,
+          color: 'success',
+        },
+        {
+          label: 'This Week',
+          value: upcomingThisWeek.length,
+          icon: Calendar,
+          color: 'warning',
+        },
+      ];
+
       if (mountedRef.current) {
-        logger.error('Failed to load deferred data:', err);
+        setStats(newStats);
+        setStatsLoaded(true);
+        setUpcomingMeetings(scheduled);
+        setUpcomingLoaded(true);
+      }
+    } catch (err) {
+      logger.error('Failed to load deferred data:', err);
+    } finally {
+      if (mountedRef.current) {
         setLoadingStats(false);
         setLoadingUpcoming(false);
       }
     }
   };
 
-  const handleCreateRoom = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    setRoomNameTouched(true);
-    
-    if (roomNameError || !roomName.trim()) {
-      return;
+  // Start instant meeting
+  const handleStartMeeting = useCallback(async () => {
+    try {
+      const name = generateRoomName();
+      const response = await createRoom({
+        name,
+        title: `Instant Meeting`,
+      });
+      if (response?.data?.room) {
+        navigate(`/join/${response.data.room.name}`);
+      }
+    } catch (err) {
+      logger.error('Failed to start meeting:', err);
+      toast.error('Failed to start meeting');
     }
+  }, [navigate]);
+
+  // Create room
+  const handleCreateRoom = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (creating || roomNameError || !roomName.trim()) return;
     
     setCreating(true);
-    
     try {
-      await createRoom({ name: roomName, title: roomTitle || undefined });
-      toast.success('Room created!');
-      setShowCreateModal(false);
-      setRoomName('');
-      setRoomTitle('');
-      setRoomNameTouched(false);
-      reloadRooms();
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { error?: string } } };
-      toast.error(axiosErr.response?.data?.error || 'Failed to create room');
+      const response = await createRoom({
+        name: roomName,
+        title: roomTitle || undefined,
+      });
+      
+      if (response?.data?.room) {
+        toast.success(`Room "${roomTitle || roomName}" created!`);
+        setShowCreateModal(false);
+        setRoomName('');
+        setRoomTitle('');
+        setRoomNameTouched(false);
+        reloadRooms();
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.message || 'Failed to create room';
+      toast.error(msg);
     } finally {
       setCreating(false);
     }
-  };
+  }, [creating, roomName, roomTitle, roomNameError, reloadRooms]);
 
-  const handleCopyLink = async (roomName: string) => {
-    const link = `${window.location.origin}/join/${roomName}`;
-    await navigator.clipboard.writeText(link);
-    setCopied(roomName);
-    toast.success('Link copied!');
-    setTimeout(() => setCopied(null), 2000);
-  };
-
-  const handleDeleteRoom = async (roomId: string) => {
-    if (!confirm('Delete this room?')) return;
+  // Delete room
+  const handleDeleteRoom = useCallback(async (roomName: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!window.confirm('Delete this room? This cannot be undone.')) return;
     
     try {
-      // Optimistic update
-      setRooms(prev => prev.filter(r => r.id !== roomId));
-      await roomsApi.delete(roomId);
+      await roomsApi.delete(roomName);
       toast.success('Room deleted');
-    } catch {
+      reloadRooms();
+    } catch (err) {
+      logger.error('Failed to delete room:', err);
       toast.error('Failed to delete room');
-      reloadRooms(); // Reload on error
     }
-  };
+  }, [reloadRooms]);
 
-  const handleModalKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      setShowCreateModal(false);
-      setRoomName('');
-      setRoomTitle('');
-      setRoomNameTouched(false);
+  // Copy room link
+  const handleCopyLink = useCallback(async (name: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const url = `${window.location.origin}/join/${name}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
     }
+    
+    setCopied(name);
+    toast.success('Link copied!');
+    setTimeout(() => setCopied(null), 2000);
   }, []);
 
-  // Focus modal on open
+  // Calendar meeting click
+  const handleMeetingClick = useCallback((meeting: ScheduledMeeting) => {
+    const name = meeting.roomName || meeting.room_name;
+    if (name) navigate(`/join/${name}`);
+  }, [navigate]);
+
+  // Close modal on escape
   useEffect(() => {
-    if (showCreateModal && closeButtonRef.current) {
-      closeButtonRef.current.focus();
-    }
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showCreateModal) {
+        setShowCreateModal(false);
+        setRoomName('');
+        setRoomTitle('');
+        setRoomNameTouched(false);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
   }, [showCreateModal]);
 
+  // Greeting
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    return 'Good evening';
+  })();
+  const firstName = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'there';
+  const todayFormatted = format(new Date(), 'EEEE, MMMM d, yyyy');
+
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="font-display text-2xl font-bold text-surface-800 dark:text-white">
-              Welcome{user?.name ? `, ${user.name}` : ''}
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+      {/* Hero: Greeting + Primary Actions */}
+      <section className="rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 dark:from-brand-700 dark:to-brand-800 p-6 sm:p-8 text-white">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold">
+              {greeting}, {firstName}
             </h1>
-            {upcomingMeetings.length > 0 && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400">
-                <Calendar size={12} />
-                {upcomingMeetings.length} today
-              </span>
-            )}
+            <p className="mt-1 text-brand-100 text-sm">
+              {todayFormatted}
+            </p>
           </div>
-          <p className="text-surface-500 dark:text-surface-400 mt-1">
-            Start or join a meeting
-          </p>
-        </div>
-        <button
-          onClick={() => {
-            setRoomName(generateRoomName());
-            setShowCreateModal(true);
-          }}
-          className="btn-primary"
-        >
-          <Plus size={18} aria-hidden="true" />
-          <span>New Meeting</span>
-        </button>
-      </div>
-
-      {/* Stats Dashboard */}
-      <div className={cn(statsLoaded && 'animate-fade-in')}>
-        <DashboardStats stats={stats} loading={loadingStats} />
-      </div>
-
-      {/* Quick Start */}
-      <div className="card p-4 sm:p-6">
-        <h2 className="font-display font-semibold text-lg text-surface-800 dark:text-white mb-4 flex items-center gap-2">
-          <Zap size={18} className="text-brand-500" aria-hidden="true" />
-          Quick Start
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <button
-            onClick={() => {
-              setRoomName(generateRoomName());
-              setShowCreateModal(true);
-            }}
-            className="flex items-center gap-4 p-4 rounded-xl border-2 border-dashed border-surface-200 dark:border-surface-700 hover:border-brand-500 dark:hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-900/10 transition group"
-          >
-            <div className="w-12 h-12 rounded-xl bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center group-hover:bg-brand-200 dark:group-hover:bg-brand-900/50 transition">
-              <Video size={24} className="text-brand-500" />
-            </div>
-            <div className="text-left">
-              <p className="font-medium text-surface-800 dark:text-white">Instant Meeting</p>
-              <p className="text-sm text-surface-500">Start a new meeting now</p>
-            </div>
-          </button>
-          <button
-            onClick={() => navigate('/schedule')}
-            className="flex items-center gap-4 p-4 rounded-xl border-2 border-dashed border-surface-200 dark:border-surface-700 hover:border-brand-500 dark:hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-900/10 transition group"
-          >
-            <div className="w-12 h-12 rounded-xl bg-success-100 dark:bg-success-900/30 flex items-center justify-center group-hover:bg-success-200 dark:group-hover:bg-success-900/50 transition">
-              <Calendar size={24} className="text-success-500" />
-            </div>
-            <div className="text-left">
-              <p className="font-medium text-surface-800 dark:text-white">Schedule Meeting</p>
-              <p className="text-sm text-surface-500">Plan for later</p>
-            </div>
-          </button>
-        </div>
-      </div>
-
-      {/* Two-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Upcoming Meetings */}
-        <div className={cn('card p-4 sm:p-6', upcomingLoaded && 'animate-fade-in')}>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display font-semibold text-lg text-surface-800 dark:text-white flex items-center gap-2">
-              <Calendar size={18} className="text-success-500" aria-hidden="true" />
-              Upcoming
-            </h2>
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate('/schedule')}
-              className="text-sm text-brand-500 hover:text-brand-600 flex items-center gap-1"
+              onClick={handleStartMeeting}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white text-brand-600 font-semibold hover:bg-brand-50 transition shadow-sm"
             >
-              View all
-              <ArrowRight size={14} />
+              <Video size={18} aria-hidden="true" />
+              <span>Start Meeting</span>
+            </button>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white/15 text-white font-medium hover:bg-white/25 transition border border-white/20"
+            >
+              <Plus size={18} aria-hidden="true" />
+              <span>Create Room</span>
             </button>
           </div>
-          
-          {loadingUpcoming ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map(i => (
-                <MeetingCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : upcomingMeetings.length === 0 ? (
-            <div className="text-center py-8">
-              <Calendar size={32} className="mx-auto text-surface-300 mb-2" />
-              <p className="text-surface-500 dark:text-surface-400">No upcoming meetings</p>
-              <button
-                onClick={() => navigate('/schedule')}
-                className="text-sm text-brand-500 hover:text-brand-600 mt-2"
-              >
-                Schedule one →
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {upcomingMeetings.map(meeting => (
-                <UpcomingMeetingCard key={meeting.id} meeting={meeting} />
-              ))}
-            </div>
-          )}
         </div>
 
-        {/* Recent Rooms */}
-        <div className="card p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display font-semibold text-lg text-surface-800 dark:text-white flex items-center gap-2">
-              <Video size={18} className="text-brand-500" aria-hidden="true" />
-              Recent Rooms
-            </h2>
-            {rooms.length > 0 && (
-              <button
-                onClick={() => navigate('/history')}
-                className="text-sm text-brand-500 hover:text-brand-600 flex items-center gap-1"
-              >
-                View history
-                <ArrowRight size={14} />
-              </button>
+        {/* Compact inline stats */}
+        {!loadingStats && stats.length > 0 && (
+          <div className="mt-5 pt-4 border-t border-white/20 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+            {stats.map((stat, i) => {
+              const Icon = stat.icon;
+              return (
+                <div key={i} className="flex items-center gap-1.5 text-brand-100">
+                  <Icon size={14} />
+                  <span className="font-semibold text-white">{typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}</span>
+                  <span>{stat.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Main content: Upcoming + Rooms side by side */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* Upcoming Meetings */}
+        <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800">
+          <div className="flex items-center justify-between p-4 pb-0">
+            <div className="flex items-center gap-2">
+              <Calendar size={18} className="text-brand-500" />
+              <h2 className="text-base font-semibold text-surface-800 dark:text-white">
+                Upcoming
+              </h2>
+            </div>
+            <button
+              onClick={() => navigate('/schedule')}
+              className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 dark:text-brand-400 transition"
+            >
+              Schedule
+              <ChevronRight size={14} />
+            </button>
+          </div>
+
+          <div className="p-4">
+            {!upcomingLoaded ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <MeetingCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : upcomingMeetings.length === 0 ? (
+              <div className="text-center py-6">
+                <Calendar size={28} className="mx-auto text-surface-300 dark:text-surface-600 mb-2" />
+                <p className="text-sm text-surface-500 dark:text-surface-400">No upcoming meetings</p>
+                <button
+                  onClick={() => navigate('/schedule')}
+                  className="mt-2 text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400 transition"
+                >
+                  Schedule one →
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {upcomingMeetings
+                  .sort((a, b) => {
+                    const aDate = new Date(a.scheduledStart || a.scheduled_start || 0).getTime();
+                    const bDate = new Date(b.scheduledStart || b.scheduled_start || 0).getTime();
+                    return aDate - bDate;
+                  })
+                  .slice(0, 5)
+                  .map((meeting) => (
+                    <UpcomingMeetingCard key={meeting.id} meeting={meeting} />
+                  ))}
+              </div>
             )}
           </div>
-          
-          {loadingRooms ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map(i => (
-                <MeetingCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : rooms.length === 0 ? (
-            <div className="text-center py-8">
-              <Video size={32} className="mx-auto text-surface-300 mb-2" />
-              <p className="text-surface-500 dark:text-surface-400">No recent rooms</p>
-              <p className="text-sm text-surface-400 mt-1">Start a meeting to see it here</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {rooms.slice(0, 5).map(room => (
-                <div 
-                  key={room.id} 
-                  className="flex items-center justify-between p-3 rounded-lg border border-surface-200 dark:border-surface-700 hover:bg-surface-50 dark:hover:bg-surface-800/50 transition group"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-surface-800 dark:text-white truncate">
-                      {room.title || room.name}
-                    </p>
-                    <p className="text-xs text-surface-400 font-mono">{room.name}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleCopyLink(room.name)}
-                      className={cn(
-                        "p-2.5 rounded-lg transition",
-                        copied === room.name
-                          ? "text-success-500 bg-success-50 dark:bg-success-900/20"
-                          : "text-surface-400 hover:text-surface-600 hover:bg-surface-100 dark:hover:bg-surface-700"
-                      )}
-                      aria-label="Copy link"
-                    >
-                      {copied === room.name ? <Check size={16} /> : <Link size={16} />}
-                    </button>
-                    <a
-                      href={`/join/${room.name}`}
-                      className="p-2.5 rounded-lg text-surface-400 hover:text-brand-500 hover:bg-surface-100 dark:hover:bg-surface-700 transition"
-                      aria-label="Join room"
-                    >
-                      <ArrowRight size={16} />
-                    </a>
-                    <button
-                      onClick={() => handleDeleteRoom(room.id)}
-                      className="p-2.5 rounded-lg text-surface-400 hover:text-error-500 hover:bg-surface-100 dark:hover:bg-surface-700 transition"
-                      aria-label="Delete room"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
-      </div>
+
+        {/* Your Rooms */}
+        <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800">
+          <div className="flex items-center justify-between p-4 pb-0">
+            <div className="flex items-center gap-2">
+              <LayoutGrid size={18} className="text-brand-500" />
+              <h2 className="text-base font-semibold text-surface-800 dark:text-white">
+                Your Rooms
+              </h2>
+              {!loadingRooms && rooms.length > 0 && (
+                <span className="badge badge-default">{rooms.length}</span>
+              )}
+            </div>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 dark:text-brand-400 transition"
+            >
+              <Plus size={14} />
+              New
+            </button>
+          </div>
+
+          <div className="p-4">
+            {loadingRooms ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <MeetingCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : rooms.length === 0 ? (
+              <div className="text-center py-6">
+                <Video size={28} className="mx-auto text-surface-300 dark:text-surface-600 mb-2" />
+                <p className="text-sm text-surface-500 dark:text-surface-400">No rooms yet</p>
+                <p className="text-xs text-surface-400 dark:text-surface-500 mt-1">
+                  Create a room to get started
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {rooms.map((room) => (
+                  <div
+                    key={room.id}
+                    onClick={() => navigate(`/join/${room.name}`)}
+                    className="group flex items-center gap-3 p-3 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700/50 transition cursor-pointer"
+                  >
+                    <div className={cn(
+                      'w-9 h-9 rounded-lg flex items-center justify-center shrink-0',
+                      room.status === 'active'
+                        ? 'bg-success-100 dark:bg-success-900/30 text-success-500'
+                        : 'bg-surface-100 dark:bg-surface-700 text-surface-400'
+                    )}>
+                      <Video size={16} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-medium text-surface-800 dark:text-white truncate">
+                        {room.title || room.name}
+                      </h3>
+                      <div className="flex items-center gap-2 text-xs text-surface-400 mt-0.5">
+                        <span className={cn(
+                          'inline-flex items-center gap-1',
+                          room.status === 'active' ? 'text-success-500' : ''
+                        )}>
+                          <span className={cn(
+                            'w-1.5 h-1.5 rounded-full',
+                            room.status === 'active' ? 'bg-success-500' : 'bg-surface-300 dark:bg-surface-600'
+                          )} />
+                          {room.status}
+                        </span>
+                        {room.maxParticipants && (
+                          <>
+                            <span>·</span>
+                            <span className="flex items-center gap-0.5">
+                              <Users size={10} />
+                              {room.maxParticipants}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={(e) => handleCopyLink(room.name, e)}
+                        className={cn(
+                          'p-1.5 rounded-lg transition',
+                          copied === room.name
+                            ? 'text-success-500 bg-success-50 dark:bg-success-900/20'
+                            : 'text-surface-400 hover:text-surface-600 hover:bg-surface-100 dark:hover:bg-surface-700 opacity-0 group-hover:opacity-100'
+                        )}
+                        aria-label="Copy room link"
+                        title="Copy link"
+                      >
+                        {copied === room.name ? <Check size={14} /> : <Link size={14} />}
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteRoom(room.name, e)}
+                        className="p-1.5 rounded-lg text-surface-400 hover:text-error-500 hover:bg-error-50 dark:hover:bg-error-900/20 transition opacity-0 group-hover:opacity-100"
+                        aria-label="Delete room"
+                        title="Delete room"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                      <ArrowRight
+                        size={14}
+                        className="text-surface-300 dark:text-surface-600 group-hover:text-brand-500 transition"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
 
       {/* Create Room Modal */}
       {showCreateModal && (
-        <div 
-          className="modal-overlay" 
-          role="dialog" 
-          aria-modal="true" 
-          aria-labelledby="create-modal-title"
-          onKeyDown={handleModalKeyDown}
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setShowCreateModal(false);
@@ -452,14 +535,16 @@ function HomePageContent() {
             }
           }}
         >
-          <div 
+          <div
             ref={modalRef}
-            className="modal-content max-h-[90vh] overflow-y-auto"
-            tabIndex={-1}
+            className="bg-white dark:bg-surface-800 rounded-xl shadow-xl max-w-md w-full"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Create new room"
           >
-            <div className="modal-header">
-              <h2 id="create-modal-title" className="font-display font-semibold text-lg text-surface-800 dark:text-white">
-                Create New Room
+            <div className="flex items-center justify-between p-4 border-b border-surface-200 dark:border-surface-700">
+              <h2 className="text-lg font-semibold text-surface-900 dark:text-white">
+                Create Room
               </h2>
               <button
                 ref={closeButtonRef}
@@ -469,29 +554,30 @@ function HomePageContent() {
                   setRoomTitle('');
                   setRoomNameTouched(false);
                 }}
-                className="modal-close"
-                aria-label="Close modal"
+                className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 transition"
+                aria-label="Close"
               >
-                <X size={20} aria-hidden="true" />
+                <X size={18} className="text-surface-500" />
               </button>
             </div>
-            
-            <form onSubmit={handleCreateRoom} noValidate>
-              <div className="modal-body space-y-4">
+
+            <form onSubmit={handleCreateRoom} className="p-4 space-y-4">
+              <div className="space-y-4">
                 <div className="form-group">
-                  <label htmlFor="roomName">Room Code *</label>
+                  <label htmlFor="roomName">
+                    Room Name <span className="text-error-500">*</span>
+                  </label>
                   <input
                     id="roomName"
                     type="text"
                     value={roomName}
-                    onChange={(e) => setRoomName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                    onChange={(e) => {
+                      setRoomName(e.target.value);
+                      if (!roomNameTouched) setRoomNameTouched(true);
+                    }}
                     onBlur={() => setRoomNameTouched(true)}
-                    placeholder="my-meeting-123"
-                    className={cn(
-                      roomNameError && 'input-error',
-                      roomNameTouched && !roomNameError && 'input-success'
-                    )}
-                    aria-invalid={!!roomNameError}
+                    placeholder="team-standup"
+                    className={roomNameError}
                     aria-describedby={roomNameError ? 'room-name-error' : undefined}
                     autoFocus
                   />
@@ -564,8 +650,8 @@ function HomePageContent() {
 function UpcomingMeetingCard({ meeting }: { meeting: ScheduledMeeting }) {
   const [copied, setCopied] = useState(false);
   
-  const scheduledStart = meeting.scheduled_start || meeting.scheduledStart;
-  const roomName = meeting.room_name || meeting.roomName;
+  const scheduledStart = meeting.scheduledStart || meeting.scheduled_start;
+  const roomName = meeting.roomName || meeting.room_name;
 
   const handleShare = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -579,7 +665,6 @@ function UpcomingMeetingCard({ meeting }: { meeting: ScheduledMeeting }) {
       toast.success('Meeting link copied!');
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback for older browsers
       const textArea = document.createElement('textarea');
       textArea.value = meetingUrl;
       document.body.appendChild(textArea);

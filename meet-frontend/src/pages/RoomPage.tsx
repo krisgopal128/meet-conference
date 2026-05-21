@@ -3,6 +3,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { LiveKitRoom, useLocalParticipant, useRoomContext, useConnectionState } from '@livekit/components-react';
 import { VideoPreset, Track } from 'livekit-client';
 import { ConferenceRoom } from '../components/room/ConferenceRoom';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { LobbyWaiting } from '../components/room/LobbyWaiting';
 import { useConnectionActions, useQualityMode, useScreenShareMode, useUIActions, useRoomStore, useGridAspectRatio } from '../store/roomStore';
 import { enableBlur } from '../utils/blurProcessorManager';
@@ -629,19 +630,21 @@ export default function RoomPage() {
   }
 
   return (
-    <LiveKitRoom
-      token={state.token}
-      serverUrl={import.meta.env.VITE_LIVEKIT_URL}
-      video={videoOptions}
-      audio={audioOptions}
-      onConnected={handleConnected}
-      onDisconnected={handleDisconnected}
-      onError={handleError}
-      connect={true}
-      options={livekitOptions}
-      style={{ height: '100dvh' }}
-    >
-      <RoomContent roomName={roomName} state={state} qualityMode={effectiveQualityMode} />
-    </LiveKitRoom>
+    <ErrorBoundary>
+      <LiveKitRoom
+        token={state.token}
+        serverUrl={import.meta.env.VITE_LIVEKIT_URL}
+        video={videoOptions}
+        audio={audioOptions}
+        onConnected={handleConnected}
+        onDisconnected={handleDisconnected}
+        onError={handleError}
+        connect={true}
+        options={livekitOptions}
+        style={{ height: '100dvh' }}
+      >
+        <RoomContent roomName={roomName} state={state} qualityMode={effectiveQualityMode} />
+      </LiveKitRoom>
+    </ErrorBoundary>
   );
 }

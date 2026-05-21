@@ -18,14 +18,10 @@ export default defineConfig(({ mode }) => ({
       '.phuket-tourist.com',
     ],
     proxy: {
-      '/api': {
+      '/api/': {
         target: 'http://localhost:4000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
-      },
-      '/api-keys': {
-        target: 'http://localhost:4000',
-        changeOrigin: true,
       },
     },
   },
@@ -34,9 +30,10 @@ export default defineConfig(({ mode }) => ({
     sourcemap: mode === 'development',
     rollupOptions: {
       output: {
-        manualChunks: {
-          livekit: ['livekit-client', '@livekit/components-react'],
-          vendor: ['react', 'react-dom', 'react-router-dom'],
+        manualChunks(id: string) {
+          if (id.includes('livekit-client') || id.includes('@livekit/components-react')) return 'livekit';
+          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react-router-dom')) return 'vendor';
+          if (id.includes('node_modules/react/')) return 'vendor';
         },
       },
     },

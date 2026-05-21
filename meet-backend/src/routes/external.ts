@@ -76,7 +76,8 @@ const externalApiLimiter = rateLimit({
       return crypto.createHash('sha256').update(apiKey).digest('hex').substring(0, 16);
     }
     // Fallback to IP if no API key (will be rejected by auth anyway)
-    return req.ip || 'unknown';
+    // Use x-forwarded-for to avoid IPv6 keyGenerator warning
+    return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
   },
 });
 
@@ -144,7 +145,22 @@ async function verifyAPIKey(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-// Apply rate limiting and API key verification to all routes
+// ==================== Health Check (NO AUTH - must be before middleware) ====================
+
+/**
+ * Health check endpoint (no auth required)
+ */
+router.get('/health', (req: Request, res: Response) => {
+  res.json({
+    status: 'ok',
+    service: 'meet-conference-external-api',
+    livekit: LIVEKIT_URL,
+    timestamp: new Date().toISOString(),
+    version: require('../../package.json').version,
+  });
+});
+
+// Apply rate limiting and API key verification to all routes below
 router.use(externalApiLimiter);
 router.use(verifyAPIKey);
 
@@ -485,20 +501,6 @@ router.get('/rooms/:name/links', async (req: Request, res: Response) => {
     logger.error('[External API] Error generating join links:', error);
     res.status(500).json({ error: 'Failed to generate join links' });
   }
-});
-
-// ==================== Health Check ====================
-
-/**
- * Health check endpoint (no auth required)
- */
-router.get('/health', (req: Request, res: Response) => {
-  res.json({ 
-    status: 'ok', 
-    service: 'meet-conference-external-api',
-    livekit: LIVEKIT_URL,
-    timestamp: new Date().toISOString()
-  });
 });
 
 export default router;

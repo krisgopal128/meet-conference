@@ -68,62 +68,72 @@ api.interceptors.request.use(async (config) => {
     config.headers['X-CSRF-Token'] = getCsrfToken();
   }
 
-  // Try to get token from multiple sources (defensive)
+  // Try to get token from Zustand store (primary source of truth)
   let token: string | null = null;
+  try {
+    const storeState = _authStoreGetState?.();
+    token = storeState?.token || null;
+  } catch {
+    // Store not available yet
+  }
 
-  // Source 1: Zustand persisted storage (primary)
-  const authStorage = localStorage.getItem('auth-storage');
-  if (authStorage) {
-    try {
-      const parsed = JSON.parse(authStorage);
-      token = parsed?.state?.token || null;
-    } catch {
-      // Ignore parse errors
+  // Fallback: Zustand persisted storage in localStorage
+  if (!token) {
+    const authStorage = localStorage.getItem('auth-storage');
+    if (authStorage) {
+      try {
+        const parsed = JSON.parse(authStorage);
+        token = parsed?.state?.token || null;
+      } catch {
+        // Ignore parse errors
+      }
     }
   }
 
-  // Source 2: Direct localStorage keys (fallback)
+  // Legacy fallback: Direct localStorage keys
   if (!token) {
     token = localStorage.getItem('auth_token') || localStorage.getItem('token');
-  }
-
-  // Source 3: Zustand store directly (handles rehydration timing)
-  if (!token) {
-    try {
-      const storeState = _authStoreGetState?.();
-      if (storeState?.token) {
-        token = storeState.token;
-      }
-    } catch {
-      // Store not available yet
-    }
   }
 
   if (token) {
     const expired = isTokenExpired(token);
     if (expired === true) {
-      // Token is expired - try to refresh first before redirecting
-      try {
-        const refreshRes = await api.post<LoginResponse>('/auth/refresh');
-        if (refreshRes.data?.token) {
-          // Update stored token
-          const authStorage = localStorage.getItem('auth-storage');
-          if (authStorage) {
-            try {
-              const parsed = JSON.parse(authStorage);
-              parsed.state.token = refreshRes.data.token;
-              parsed.state.user = refreshRes.data.user;
-              parsed.state.isAuthenticated = true;
-              localStorage.setItem('auth-storage', JSON.stringify(parsed));
-            } catch {
-              // Ignore parse errors
+      // Token is expired — deduplicate refresh attempts to avoid race
+      if (!isRefreshing) {
+        isRefreshing = true;
+        try {
+          const refreshRes = await api.post<LoginResponse>('/auth/refresh');
+          if (refreshRes.data?.token) {
+            // Update stored token
+            const authStorage = localStorage.getItem('auth-storage');
+            if (authStorage) {
+              try {
+                const parsed = JSON.parse(authStorage);
+                parsed.state.token = refreshRes.data.token;
+                parsed.state.user = refreshRes.data.user;
+                parsed.state.isAuthenticated = true;
+                localStorage.setItem('auth-storage', JSON.stringify(parsed));
+              } catch {
+                // Ignore parse errors
+              }
             }
+            processQueue(null, refreshRes.data.token);
+            config.headers.Authorization = `Bearer ${refreshRes.data.token}`;
+            return config;
           }
-          config.headers.Authorization = `Bearer ${refreshRes.data.token}`;
-          return config;
+        } catch {
+          // Refresh failed - fall through to clear auth
+          processQueue(new Error('Refresh failed'), null);
+        } finally {
+          isRefreshing = false;
         }
-      } catch {
-        // Refresh failed - fall through to clear auth
+      } else {
+        // Another refresh is in progress — wait for it
+        const newToken = await new Promise<string>((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        });
+        config.headers.Authorization = `Bearer ${newToken}`;
+        return config;
       }
       // Refresh also failed - clear auth
       localStorage.removeItem('auth-storage');
@@ -239,6 +249,30 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
+  }
+);
+
+// Retry interceptor for transient 5xx errors
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const config = error.config;
+    if (!config) return Promise.reject(error);
+
+    const retryCount = config.__retryCount || 0;
+    const maxRetries = 2;
+
+    // Only retry on 5xx errors (not 4xx) and not on auth/refresh routes
+    const is5xx = error.response?.status >= 500;
+    const isAuthRoute = config.url?.includes('/auth/');
+    if (!is5xx || isAuthRoute || retryCount >= maxRetries) {
+      return Promise.reject(error);
+    }
+
+    config.__retryCount = retryCount + 1;
+    const delay = 1000 * Math.pow(2, retryCount); // 1s, 2s
+    await new Promise((r) => setTimeout(r, delay));
+    return api(config);
   }
 );
 

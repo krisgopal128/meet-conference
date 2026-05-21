@@ -1,22 +1,16 @@
 import pkg from 'pg';
 const { Pool } = pkg;
 import { config } from '../config.js';
-import os from 'os';
 import logger from '../utils/logger.js';
-
-// Compute pool size based on CPU cores
-function getPoolSize(): number {
-  return Math.min(25, os.cpus().length * 2 + 2);
-}
 
 const pool = new Pool({
   connectionString: config.database.url,
   ssl: config.database.ssl,
-  // Connection pool limits (optimized)
-  max: getPoolSize(),
-  min: 2,                                        // Keep minimum connections ready
-  idleTimeoutMillis: 10000,                      // Faster cleanup of idle connections
-  connectionTimeoutMillis: 5000,                 // Allow more time for connection
+  // Connection pool limits
+  max: 20,
+  min: 2,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
   // Query timeouts
   statement_timeout: 30000,                      // 30s max query time
   query_timeout: 30000,                          // 30s query timeout
@@ -37,7 +31,7 @@ export async function initDatabase(): Promise<void> {
     client.release();
     
     // Log pool stats
-    logger.info(`📊 Database pool: max=${pool.totalCount}, min=2`);
+    logger.info(`📊 Database pool initialized (configured max=20, min=2)`);
   } catch (error) {
     logger.error('❌ Database connection failed:', error);
     throw error;

@@ -370,7 +370,7 @@ authRouter.post('/reset-password', authLimiter, async (req, res: Response) => {
     
     // Update user password
     await query(
-      'UPDATE users SET password = $1 WHERE id = $2',
+      'UPDATE users SET password_hash = $1 WHERE id = $2',
       [hashedPassword, decoded.userId]
     );
     

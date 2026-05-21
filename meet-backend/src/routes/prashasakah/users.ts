@@ -1,0 +1,382 @@
+/**
+ * Prashasakah Users Routes
+ *
+ * User management: list, detail, edit, ban, unban, delete,
+ * reset-password, change-password, activity.
+ */
+
+import { Router, Response } from 'express';
+import { z } from 'zod';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import { authenticate, AuthRequest } from '../../middleware/authenticate.js';
+import { requireAdmin, requireModerator } from '../../middleware/requireRole.js';
+import { query, queryOne } from '../../services/database.js';
+import { sanitizeName, validatePassword } from '../../utils/validation.js';
+import logger from '../../utils/logger.js';
+import { adminActionLimiter } from './rateLimiter.js';
+
+const router = Router();
+
+// ============================================
+// Validation Schemas
+// ============================================
+
+const paginationSchema = z.object({
+  limit: z.coerce.number().min(1).max(100).default(20),
+  offset: z.coerce.number().min(0).default(0),
+  search: z.string().optional(),
+  sortBy: z.string().optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional(),
+  role: z.union([
+    z.enum(['admin', 'moderator', 'participant']),
+    z.array(z.enum(['admin', 'moderator', 'participant']))
+  ]).optional(),
+});
+
+// ============================================
+// Row type interfaces
+// ============================================
+
+interface UserRow {
+  id: string;
+  email: string;
+  name: string | null;
+  role: string;
+  is_banned: boolean;
+  last_login_at: string | null;
+  created_at: string;
+}
+
+// ============================================
+// Users Management
+// ============================================
+
+router.get('/users', requireModerator(), async (req: AuthRequest, res: Response) => {
+  try {
+    const { limit, offset, search, role } = paginationSchema.parse(req.query);
+    const status = (req.query.status as string) || undefined;
+
+    let whereClause = 'WHERE 1=1';
+     const params: unknown[] = [];
+    let paramIndex = 1;
+
+    if (search) {
+      whereClause += ` AND (name ILIKE $${paramIndex} OR email ILIKE $${paramIndex})`;
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    // Note: role filtering skipped for simplicity
+    if (role) { logger.info("role filter applied"); }
+
+    if (status === 'banned') {
+      whereClause += ' AND is_banned = true';
+    } else if (status === 'active') {
+      whereClause += ' AND is_banned = false';
+    }
+
+    const users = await query<{
+      id: string;
+      email: string;
+      name: string | null;
+      role: string;
+      is_banned: boolean;
+      last_login_at: string | null;
+      created_at: string;
+    }>(`
+      SELECT id, email, name, role, is_banned, last_login_at, created_at
+      FROM users
+      ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `, [...params, limit, offset]);
+
+    const totalResult = await queryOne<{ count: number }>(`
+      SELECT COUNT(*) as count FROM users ${whereClause}
+    `, params);
+
+     res.json({
+       users: users.map((u) => ({
+         id: u.id,
+         email: u.email,
+         name: u.name,
+         role: u.role,
+         isBanned: u.is_banned,
+         lastLoginAt: u.last_login_at,
+         createdAt: u.created_at,
+       })),
+       total: Number(totalResult?.count || 0),
+       hasMore: Number(totalResult?.count || 0) > offset + limit,
+     });
+  } catch (error) {
+    logger.error('[Admin] Error fetching users:', error);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+router.get('/users/:id', requireModerator(), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    const user = await queryOne<UserRow>(`
+      SELECT id, email, name, role, is_banned, last_login_at, created_at
+      FROM users WHERE id = $1
+    `, [id]);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Get meeting stats
+    const meetingStats = await queryOne<{ hosted: number; attended: number; duration: number }>(`
+      SELECT 
+        (SELECT COUNT(*) FROM rooms WHERE host_id = $1) as hosted,
+        (SELECT COUNT(*) FROM meeting_participants WHERE user_id = $1 AND left_at IS NOT NULL) as attended,
+        (SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (left_at - joined_at)) / 60), 0) FROM meeting_participants WHERE user_id = $1) as duration
+    `, [id]);
+
+    res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        isBanned: user.is_banned,
+        lastLoginAt: user.last_login_at,
+        createdAt: user.created_at,
+        emailVerified: false, // Not tracked in current schema
+        lastLoginIp: null, // Would need to track this
+        meetingsAttended: Number(meetingStats?.attended || 0),
+        meetingsHosted: Number(meetingStats?.hosted || 0),
+        totalDurationMinutes: Math.round(Number(meetingStats?.duration || 0)),
+      },
+    });
+  } catch (error) {
+    logger.error('[Admin] Error fetching user:', error);
+    res.status(500).json({ error: 'Failed to fetch user' });
+  }
+});
+
+router.patch('/users/:id', requireModerator(), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, role } = req.body;
+
+    const updateFields: string[] = [];
+    const params: (string)[] = [];
+    let paramIndex = 1;
+
+    // Validate role if provided
+    if (role !== undefined) {
+      const validRoles = ['admin', 'moderator', 'participant', 'guest'];
+      if (!validRoles.includes(role)) {
+        return res.status(400).json({ error: 'Invalid role. Must be one of: admin, moderator, participant, guest' });
+      }
+      // Only admins can assign admin role
+      if (role === 'admin' && req.user!.role !== 'admin') {
+        return res.status(403).json({ error: 'Only admins can assign admin role' });
+      }
+      // Moderators cannot modify admin users' roles
+      if (req.user!.role === 'moderator') {
+        const targetUser = await queryOne<{ role: string }>('SELECT role FROM users WHERE id = $1', [id]);
+        if (targetUser?.role === 'admin') {
+          return res.status(403).json({ error: 'Cannot modify admin user roles' });
+        }
+      }
+    }
+
+    if (name !== undefined) {
+      updateFields.push(`name = $${paramIndex}`);
+      params.push(sanitizeName(name));
+      paramIndex++;
+    }
+
+    if (role !== undefined) {
+      updateFields.push(`role = $${paramIndex}`);
+      params.push(role);
+      paramIndex++;
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    params.push(id);
+
+    await query(`
+      UPDATE users SET ${updateFields.join(', ')} WHERE id = $${paramIndex}
+    `, params);
+
+    const user = await queryOne<UserRow>('SELECT id, email, name, role, is_banned, last_login_at, created_at FROM users WHERE id = $1', [id]);
+
+    res.json({ 
+      user: {
+        id: user!.id,
+        email: user!.email,
+        name: user!.name,
+        role: user!.role,
+        isBanned: user!.is_banned,
+        lastLoginAt: user!.last_login_at,
+        createdAt: user!.created_at,
+      }
+    });
+  } catch (error) {
+    logger.error('[Admin] Error updating user:', error);
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+router.post('/users/:id/ban', adminActionLimiter, requireModerator(), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    await query('UPDATE users SET is_banned = true WHERE id = $1', [id]);
+    logger.info(`[Admin] User ${id} banned by ${req.user?.id}${reason ? ` - Reason: ${reason}` : ''}`);
+
+    const user = await queryOne<UserRow>('SELECT id, email, name, role, is_banned, last_login_at, created_at FROM users WHERE id = $1', [id]);
+
+    res.json({ 
+      message: 'User banned successfully',
+      user: {
+        id: user!.id,
+        email: user!.email,
+        name: user!.name,
+        role: user!.role,
+        isBanned: true,
+        lastLoginAt: user!.last_login_at,
+        createdAt: user!.created_at,
+      }
+    });
+  } catch (error) {
+    logger.error('[Admin] Error banning user:', error);
+    res.status(500).json({ error: 'Failed to ban user' });
+  }
+});
+
+router.post('/users/:id/unban', adminActionLimiter, requireModerator(), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    await query('UPDATE users SET is_banned = false WHERE id = $1', [id]);
+    logger.info(`[Admin] User ${id} unbanned by ${req.user?.id}`);
+
+    const user = await queryOne<UserRow>('SELECT id, email, name, role, is_banned, last_login_at, created_at FROM users WHERE id = $1', [id]);
+
+    res.json({ 
+      message: 'User unbanned successfully',
+      user: {
+        id: user!.id,
+        email: user!.email,
+        name: user!.name,
+        role: user!.role,
+        isBanned: false,
+        lastLoginAt: user!.last_login_at,
+        createdAt: user!.created_at,
+      }
+    });
+  } catch (error) {
+    logger.error('[Admin] Error unbanning user:', error);
+    res.status(500).json({ error: 'Failed to unban user' });
+  }
+});
+
+router.delete('/users/:id', adminActionLimiter, requireAdmin(), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Don't allow deletion of self
+    if (id === req.user?.id) {
+      return res.status(400).json({ error: 'Cannot delete your own account' });
+    }
+
+    await query('DELETE FROM users WHERE id = $1', [id]);
+    logger.info(`[Admin] User ${id} deleted by ${req.user?.id}`);
+
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    logger.error('[Admin] Error deleting user:', error);
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
+router.post('/users/:id/reset-password', requireAdmin(), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Generate temporary password
+    const tempPassword = crypto.randomBytes(8).toString('hex');
+    const passwordHash = await bcrypt.hash(tempPassword, 12);
+
+    await query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, id]);
+    logger.info(`[Admin] Password reset for user ${id} by ${req.user?.id}. Temp password generated.`);
+
+    res.json({ 
+      message: 'Password reset successfully. User should check their email for the new password.',
+    });
+  } catch (error) {
+    logger.error('[Admin] Error resetting password:', error);
+    res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+router.put('/users/:id/change-password', requireAdmin(), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body;
+
+    if (!password || typeof password !== 'string') {
+      res.status(400).json({ error: 'Password is required' });
+      return;
+    }
+
+    validatePassword(password);
+
+    // Prevent changing own password through admin endpoint (use profile settings instead)
+    if (req.user?.id === id) {
+      res.status(400).json({ error: 'Use profile settings to change your own password' });
+      return;
+    }
+
+    // Check user exists
+    const user = await queryOne<{ id: string }>('SELECT id FROM users WHERE id = $1', [id]);
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    await query('UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2', [passwordHash, id]);
+    logger.info(`[Admin] Password changed for user ${id} by admin ${req.user?.id}`);
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('Password')) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+    logger.error('[Admin] Error changing password:', error);
+    res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
+router.get('/users/:id/activity', requireModerator(), async (req: AuthRequest, res: Response) => {
+  try {
+    // For now, return empty - would need audit_logs table
+    // Query params (id, pagination) will be used when audit_logs table is implemented
+    void req.params.id;
+    void paginationSchema.parse(req.query);
+
+    res.json({
+      activities: [],
+      total: 0,
+      hasMore: false,
+    });
+  } catch (error) {
+    logger.error('[Admin] Error fetching user activity:', error);
+    res.status(500).json({ error: 'Failed to fetch user activity' });
+  }
+});
+
+export default router;

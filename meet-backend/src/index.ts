@@ -10,7 +10,7 @@ import { roomsRouter } from './routes/rooms.js';
 import { meetingsRouter } from './routes/meetings.js';
 import { egressRouter } from './routes/egress.js';
 import { webhookRouter, clearAllHostLeaveTimeouts } from './routes/webhook.js';
-import { prashasakahRouter } from './routes/prashasakah.js';
+import { prashasakahRouter } from './routes/prashasakah/index.js';
 import { apiKeysRouter } from './routes/apiKeys.js';
 import externalRouter from './routes/external.js';
 import { initDatabase, closeDatabase, query } from './services/database.js';
@@ -119,7 +119,7 @@ app.get('/health', async (_req, res) => {
       status: 'ok',
       time: new Date().toISOString(),
       env: config.nodeEnv,
-      version: '1.0.0',
+      version: JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../package.json'), 'utf-8')).version,
     });
   } catch {
     res.status(503).json({
@@ -190,11 +190,17 @@ async function start() {
 // ============================================
 async function gracefulShutdown(signal: string) {
   logger.info(`${signal} received, shutting down gracefully...`);
-  
+
+  // Force-exit after 10 seconds if cleanup hangs
+  const forceExitTimer = setTimeout(() => {
+    logger.error('Forcing exit after 10s timeout');
+    process.exit(1);
+  }, 10_000);
+
   try {
     // Stop accepting new connections
     if (server) {
-      server.close();
+      await new Promise<void>((resolve) => server!.close(() => resolve()));
     }
 
     // Clear webhook timeouts to prevent memory leaks during shutdown
@@ -203,11 +209,13 @@ async function gracefulShutdown(signal: string) {
     // Close services
     await closeRedis();
     await closeDatabase();
-    
+
     logger.info('Cleanup complete');
+    clearTimeout(forceExitTimer);
     process.exit(0);
   } catch (error) {
     logger.error('Error during shutdown:', error);
+    clearTimeout(forceExitTimer);
     process.exit(1);
   }
 }

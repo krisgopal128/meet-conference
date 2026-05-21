@@ -1,22 +1,20 @@
-import { Component, ReactNode } from 'react';
+import React from 'react';
 import logger from '../utils/logger';
 
 interface Props {
-  children: ReactNode;
-  fallback?: ReactNode;
-  fallbackMessage?: string;
-  onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
 }
 
 interface State {
   hasError: boolean;
-  error?: Error;
+  error: Error | null;
 }
 
-export class ErrorBoundary extends Component<Props, State> {
+export class ErrorBoundary extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error: Error): State {
@@ -24,51 +22,42 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    this.props.onError?.(error, errorInfo);
-    if (import.meta.env.DEV) {
-      logger.error('ErrorBoundary caught an error:', error, errorInfo);
-    }
+    logger.error('ErrorBoundary caught:', error, errorInfo);
   }
-
-  handleRetry = () => {
-    this.setState({ hasError: false, error: undefined });
-  };
 
   render() {
     if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback;
-      }
-
+      if (this.props.fallback) return this.props.fallback;
       return (
-        <div className="min-h-screen bg-surface-50 dark:bg-surface-900 flex items-center justify-center p-4">
-          <div className="card p-8 max-w-md w-full text-center">
-            <div className="w-16 h-16 bg-danger-100 dark:bg-danger-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-3xl">⚠️</span>
-            </div>
-            <h1 className="text-xl font-bold text-surface-800 dark:text-surface-100 mb-2">Something went wrong</h1>
-            <p className="text-surface-500 dark:text-surface-400 mb-6 text-sm">
-              {this.props.fallbackMessage || (import.meta.env.DEV
-                ? (this.state.error?.message || 'An unexpected error occurred')
-                : 'An unexpected error occurred. Please try again.')}
+        <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
+          <div className="text-center max-w-md">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">
+              Something went wrong
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              An unexpected error occurred in the video call.
             </p>
-            <button
-              onClick={() => window.location.href = '/'}
-              className="btn-primary w-full"
-            >
-              Go Home
-            </button>
-            <button
-              onClick={this.handleRetry}
-              className="btn-secondary w-full mt-3"
-            >
-              Try Again
-            </button>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Reload Page
+              </button>
+              <button
+                onClick={() => {
+                  this.setState({ hasError: false, error: null });
+                }}
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
           </div>
         </div>
       );
     }
-
     return this.props.children;
   }
 }
