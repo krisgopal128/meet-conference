@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { prashasakahApi, AdminApiKey } from '../../services/prashasakahApi';
-import { useAuthStore } from '../../store/authStore';
+import { useUser } from '../../store/authStore';
 import { 
   Key, 
   Search, 
@@ -28,7 +28,7 @@ import { format, formatDistanceToNow } from 'date-fns';
  }
 
  export default function AdminApiKeyManager() {
-  const { user } = useAuthStore();
+  const user = useUser();
   const [keys, setKeys] = useState<AdminApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');

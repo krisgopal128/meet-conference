@@ -26,6 +26,7 @@ import type {
 } from '../types/api';
 import type { TokenResponse, Meeting, MeetingParticipant } from '../types';
 import { isTokenExpired } from '../utils/security';
+import { useAuthStore } from '../store/authStore';
 
 // Module-level reference to auth store getState — set by authStore after creation
 // This avoids circular dependency while allowing the interceptor to read the store
@@ -47,17 +48,12 @@ const api = axios.create({
 });
 
 /**
- * Generate a per-session CSRF token and store it.
- * Sent via custom header for double-submit cookie pattern.
+ * Read CSRF token from server-issued cookie (double-submit pattern).
+ * Server sets csrf_token cookie on login; we read it and send as header.
  */
-let csrfToken: string | null = null;
 function getCsrfToken(): string {
-  if (!csrfToken) {
-    const array = new Uint8Array(32);
-    crypto.getRandomValues(array);
-    csrfToken = Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('');
-  }
-  return csrfToken;
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : '';
 }
 
 // Add auth token and CSRF token to requests
@@ -113,6 +109,10 @@ api.interceptors.request.use(async (config) => {
                 parsed.state.user = refreshRes.data.user;
                 parsed.state.isAuthenticated = true;
                 localStorage.setItem('auth-storage', JSON.stringify(parsed));
+                // Sync Zustand store with refreshed token
+                try {
+                  useAuthStore.setState({ token: refreshRes.data.token, user: refreshRes.data.user, isAuthenticated: true });
+                } catch { /* store may not be initialized yet */ }
               } catch {
                 // Ignore parse errors
               }
@@ -222,6 +222,10 @@ api.interceptors.response.use(
               parsed.state.user = refreshRes.data.user;
               parsed.state.isAuthenticated = true;
               localStorage.setItem('auth-storage', JSON.stringify(parsed));
+              // Sync Zustand store with refreshed token
+              try {
+                useAuthStore.setState({ token: newToken, user: refreshRes.data.user, isAuthenticated: true });
+              } catch { /* store may not be initialized yet */ }
             } catch {
               // Ignore parse errors
             }

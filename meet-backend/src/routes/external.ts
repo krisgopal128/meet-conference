@@ -48,9 +48,14 @@ const externalTokenSchema = z.object({
 
 // Configuration
 const LIVEKIT_URL = process.env.LIVEKIT_URL || 'ws://localhost:7880';
-const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY || 'devkey';
-const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET || 'secret';
+const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY || '';
+const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET || '';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+// Validate required LiveKit configuration
+if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
+  logger.warn('[External API] LIVEKIT_API_KEY or LIVEKIT_API_SECRET not set. External API will not function correctly.');
+}
 
 // LiveKit room client
 const roomClient = new RoomServiceClient(LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
@@ -114,15 +119,15 @@ async function verifyAPIKey(req: Request, res: Response, next: NextFunction) {
     );
     
     if (!dbKey) {
-      return res.status(403).json({ error: 'Invalid API key' });
+      return res.status(403).json({ error: 'Invalid or expired API key' });
     }
     
     if (!dbKey.is_active) {
-      return res.status(403).json({ error: 'API key is disabled' });
+      return res.status(403).json({ error: 'Invalid or expired API key' });
     }
     
     if (dbKey.expires_at && new Date(dbKey.expires_at) < new Date()) {
-      return res.status(403).json({ error: 'API key has expired' });
+      return res.status(403).json({ error: 'Invalid or expired API key' });
     }
     
     // Update last_used_at
@@ -156,7 +161,7 @@ router.get('/health', (req: Request, res: Response) => {
     service: 'meet-conference-external-api',
     livekit: LIVEKIT_URL,
     timestamp: new Date().toISOString(),
-    version: require('../../package.json').version,
+    version: 'unknown', // package.json version resolved at build time
   });
 });
 
@@ -308,6 +313,11 @@ router.post('/token', async (req: Request, res: Response) => {
     // If no token.generate permission, default to attendee
     const effectiveRole = canGenerateToken ? requestedRole : 'attendee';
     
+    // Verify LiveKit credentials are configured
+    if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
+      return res.status(503).json({ error: 'LiveKit service not configured' });
+    }
+
     // Create access token
     const token = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
       identity,
@@ -343,7 +353,7 @@ router.post('/token', async (req: Request, res: Response) => {
       livekit_url: LIVEKIT_URL,
       identity,
       role,
-      join_url: `${FRONTEND_URL}/join/${room}?token=${jwt}`
+      join_url: `${FRONTEND_URL}/join/${room}#token=${jwt}`
     });
     
   } catch (error) {
@@ -488,7 +498,7 @@ router.get('/rooms/:name/links', async (req: Request, res: Response) => {
     
     const response: JoinLinksResponse = {
       room: name,
-      teacher_url: `${FRONTEND_URL}/join/${name}?t=${teacherJwt}&role=moderator`,
+      teacher_url: `${FRONTEND_URL}/join/${name}#t=${teacherJwt}&role=moderator`,
       student_url: `${FRONTEND_URL}/join/${name}`,
       expires_at: expiresAt.toISOString(),
     };

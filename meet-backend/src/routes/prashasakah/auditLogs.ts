@@ -2,6 +2,7 @@
  * Prashasakah Audit Logs Routes
  *
  * Audit log retrieval for admin oversight.
+ * Lightweight — no caching needed since it returns empty data.
  */
 
 import { Router, Response } from 'express';
@@ -11,12 +12,9 @@ import logger from '../../utils/logger.js';
 
 const router = Router();
 
-router.get('/audit-logs', requireAdmin(), async (req: AuthRequest, res: Response) => {
+router.get('/audit-logs', requireAdmin(), async (_req: AuthRequest, res: Response) => {
   try {
-    // Query params will be used when audit_logs table is implemented
-    void req.query;
-
-    // For now, return empty - would need dedicated audit_logs table
+    // For now, return empty — would need dedicated audit_logs table
     res.json({
       logs: [],
       total: 0,

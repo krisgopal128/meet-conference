@@ -275,11 +275,6 @@ function HomePageContent() {
   }, []);
 
   // Calendar meeting click
-  const handleMeetingClick = useCallback((meeting: ScheduledMeeting) => {
-    const name = meeting.roomName || meeting.room_name;
-    if (name) navigate(`/join/${name}`);
-  }, [navigate]);
-
   // Close modal on escape
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {

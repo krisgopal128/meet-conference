@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParticipants, useLocalParticipant, useRoomContext } from '@livekit/components-react';
 import type { RemoteParticipant, LocalParticipant } from 'livekit-client';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   useRaisedHands,
   useIsModerator,
@@ -114,8 +115,22 @@ export function ParticipantsPanel() {
     };
 
     fetchLobby();
-    const interval = setInterval(fetchLobby, 10000); // Poll every 10 seconds
-    return () => clearInterval(interval);
+    let pollTimeout: ReturnType<typeof setTimeout>;
+    let consecutiveErrors = 0;
+    const scheduleNext = () => {
+      const delay = consecutiveErrors > 2 ? 60000 : 10000; // Back off to 60s after 3 errors
+      pollTimeout = setTimeout(async () => {
+        try {
+          await fetchLobby();
+          consecutiveErrors = 0;
+        } catch {
+          consecutiveErrors++;
+        }
+        scheduleNext();
+      }, delay);
+    };
+    scheduleNext();
+    return () => clearTimeout(pollTimeout);
   }, [isModerator, room.name, setLobbyCount]);
 
   // Listen for new participants joining
@@ -331,35 +346,97 @@ export function ParticipantsPanel() {
       )}
       
       {/* Active participants list */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+      <div className="flex-1 overflow-y-auto p-2">
         <div className="flex items-center gap-2 px-3 py-2 text-surface-500 text-xs">
           <Users size={12} />
           <span>In Meeting</span>
         </div>
-        {sortedParticipants.map((p) => {
-          const isRemote = p.identity !== localParticipant?.identity;
-          return (
-            <ParticipantListItem
-              key={p.identity}
-              participant={p}
-              isRemote={isRemote}
-              localIdentity={localParticipant?.identity}
-              isModerator={isModerator}
-              raisedHands={raisedHands}
-              pendingActions={pendingParticipantActions}
-              onMute={handleMute}
-              onDisableCamera={handleDisableCamera}
-              onDisableScreenShare={handleDisableScreenShare}
-              onKick={handleKick}
-            />
-          );
-        })}
-        {sortedParticipants.length === 0 && sortedLobbyParticipants.length === 0 && (
+        {sortedParticipants.length === 0 && sortedLobbyParticipants.length === 0 ? (
           <div className="px-3 py-6 text-sm text-surface-500 text-center">
             No participants match your search.
           </div>
+        ) : (
+          <ActiveParticipantsList
+            sortedParticipants={sortedParticipants}
+            localParticipantIdentity={localParticipant?.identity}
+            isModerator={isModerator}
+            raisedHands={raisedHands}
+            pendingParticipantActions={pendingParticipantActions}
+            onMute={handleMute}
+            onDisableCamera={handleDisableCamera}
+            onDisableScreenShare={handleDisableScreenShare}
+            onKick={handleKick}
+          />
         )}
       </div>
+    </div>
+  );
+}
+
+// Virtualized active participants list
+interface ActiveParticipantsListProps {
+  sortedParticipants: (RemoteParticipant | LocalParticipant)[];
+  localParticipantIdentity: string | undefined;
+  isModerator: boolean;
+  raisedHands: string[];
+  pendingParticipantActions: Set<string>;
+  onMute: (identity: string) => void;
+  onDisableCamera: (identity: string) => void;
+  onDisableScreenShare: (identity: string) => void;
+  onKick: (identity: string) => void;
+}
+
+function ActiveParticipantsList({
+  sortedParticipants,
+  localParticipantIdentity,
+  isModerator,
+  raisedHands,
+  pendingParticipantActions,
+  onMute,
+  onDisableCamera,
+  onDisableScreenShare,
+  onKick,
+}: ActiveParticipantsListProps) {
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: sortedParticipants.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 48,
+    overscan: 5,
+  });
+
+  return (
+    <div ref={parentRef} style={{ height: virtualizer.getTotalSize(), width: '100%', position: 'relative' }}>
+      {virtualizer.getVirtualItems().map((virtualItem) => {
+        const p = sortedParticipants[virtualItem.index];
+        const isRemote = p.identity !== localParticipantIdentity;
+        return (
+          <div
+            key={p.identity}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              transform: `translateY(${virtualItem.start}px)`,
+            }}
+          >
+            <ParticipantListItem
+              participant={p}
+              isRemote={isRemote}
+              localIdentity={localParticipantIdentity}
+              isModerator={isModerator}
+              raisedHands={raisedHands}
+              pendingActions={pendingParticipantActions}
+              onMute={onMute}
+              onDisableCamera={onDisableCamera}
+              onDisableScreenShare={onDisableScreenShare}
+              onKick={onKick}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }

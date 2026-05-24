@@ -8,6 +8,7 @@ import { Router, Response } from 'express';
 import { requireAdmin } from '../../middleware/requireRole.js';
 import type { AuthRequest } from '../../middleware/authenticate.js';
 import { query, queryOne } from '../../services/database.js';
+import { getCached, invalidatePattern, buildListKey, TTL_LONG } from '../../services/cache.js';
 import logger from '../../utils/logger.js';
 import { adminActionLimiter } from './rateLimiter.js';
 
@@ -33,55 +34,67 @@ router.get('/api-keys/admin', requireAdmin(), async (req: AuthRequest, res: Resp
   try {
     const search = req.query.search as string | undefined;
     const isActive = req.query.is_active as string | undefined;
-    // role filter will be used when implementing role-based API key filtering
     void req.query.role;
 
-    let whereClause = 'WHERE 1=1';
-     const params: unknown[] = [];
-    let paramIndex = 1;
+    const cacheKey = buildListKey('apikeys', { search, isActive });
 
-    if (search) {
-      whereClause += ` AND ak.name ILIKE $${paramIndex}`;
-      params.push(`%${search}%`);
-      paramIndex++;
-    }
+    const result = await getCached<{
+      keys: unknown[];
+      total: number;
+    }>(
+      cacheKey,
+      TTL_LONG,
+      async () => {
+        let whereClause = 'WHERE 1=1';
+        const params: unknown[] = [];
+        let paramIndex = 1;
 
-    if (isActive !== undefined) {
-      whereClause += ` AND ak.is_active = $${paramIndex}`;
-      params.push(isActive === 'true');
-      paramIndex++;
-    }
+        if (search) {
+          whereClause += ` AND ak.name ILIKE $${paramIndex}`;
+          params.push(`%${search}%`);
+          paramIndex++;
+        }
 
-    const apiKeys = await query<ApiKeyRow>(`
-      SELECT ak.id, ak.name, ak.prefix, ak.permissions, ak.last_used_at, ak.expires_at,
-        ak.is_active, ak.created_at, ak.updated_at, ak.user_id,
-        u.name as user_name, u.email as user_email, u.role as user_role
-      FROM api_keys ak
-      LEFT JOIN users u ON u.id = ak.user_id
-      ${whereClause}
-      ORDER BY ak.created_at DESC
-    `, params);
+        if (isActive !== undefined) {
+          whereClause += ` AND ak.is_active = $${paramIndex}`;
+          params.push(isActive === 'true');
+          paramIndex++;
+        }
 
-     res.json({
-       keys: apiKeys.map((ak) => ({
-         id: ak.id,
-         name: ak.name,
-         prefix: ak.prefix,
-         permissions: ak.permissions,
-         lastUsedAt: ak.last_used_at,
-         expiresAt: ak.expires_at,
-         isActive: ak.is_active,
-         createdAt: ak.created_at,
-         updatedAt: ak.updated_at,
-         user: {
-           id: ak.user_id,
-           name: ak.user_name,
-           email: ak.user_email,
-           role: ak.user_role,
-         },
-       })),
-      total: apiKeys.length,
-    });
+        const apiKeys = await query<ApiKeyRow>(`
+          SELECT ak.id, ak.name, ak.prefix, ak.permissions, ak.last_used_at, ak.expires_at,
+            ak.is_active, ak.created_at, ak.updated_at, ak.user_id,
+            u.name as user_name, u.email as user_email, u.role as user_role
+          FROM api_keys ak
+          LEFT JOIN users u ON u.id = ak.user_id
+          ${whereClause}
+          ORDER BY ak.created_at DESC
+        `, params);
+
+        return {
+          keys: apiKeys.map((ak) => ({
+            id: ak.id,
+            name: ak.name,
+            prefix: ak.prefix,
+            permissions: ak.permissions,
+            lastUsedAt: ak.last_used_at,
+            expiresAt: ak.expires_at,
+            isActive: ak.is_active,
+            createdAt: ak.created_at,
+            updatedAt: ak.updated_at,
+            user: {
+              id: ak.user_id,
+              name: ak.user_name,
+              email: ak.user_email,
+              role: ak.user_role,
+            },
+          })),
+          total: apiKeys.length,
+        };
+      },
+    );
+
+    res.json(result);
   } catch (error) {
     logger.error('[Admin API Keys] Error fetching keys:', error);
     res.status(500).json({ error: 'Failed to fetch API keys' });
@@ -118,7 +131,10 @@ router.patch('/api-keys/admin/:id', adminActionLimiter, requireAdmin(), async (r
     
     logger.info(`[Admin API Keys] Admin ${req.user?.id} updated key ${id}: is_active=${isActive}${reason ? `, reason: ${reason}` : ''}`);
 
-    res.json({ 
+    // Invalidate API key caches
+    await invalidatePattern('cache:apikeys:*');
+
+    res.json({
       success: true, 
       message: 'API key updated',
       key: { id, isActive: isActive ?? true }
@@ -140,9 +156,12 @@ router.delete('/api-keys/admin/:id', adminActionLimiter, requireAdmin(), async (
     }
 
     await query('DELETE FROM api_keys WHERE id = $1', [id]);
-    
+
     logger.info(`[Admin API Keys] Admin ${adminId} deleted API key ${id} (owner: ${existing.user_id})`);
-    
+
+    // Invalidate API key caches
+    await invalidatePattern('cache:apikeys:*');
+
     res.json({ success: true, message: 'API key deleted' });
     
   } catch (error) {

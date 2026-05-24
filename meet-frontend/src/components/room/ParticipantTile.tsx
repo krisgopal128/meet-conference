@@ -146,7 +146,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
     for (const publication of cameraPublications) {
       const remotePub = publication as RemoteTrackPublication | undefined;
       if (remotePub && !remotePub.isSubscribed) {
-        logger.info(`[ParticipantTile] Force subscribing to ${participant.identity} (trackSid: ${remotePub.trackSid})`);
+        logger.debug(`[ParticipantTile] Force subscribing to ${participant.identity} (trackSid: ${remotePub.trackSid})`);
         remotePub.setSubscribed(true);
       }
     }
@@ -157,7 +157,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
   // ========================================
   useEffect(() => {
     const handleTrackEvent = () => {
-      logger.info(`[ParticipantTile] Track event for ${participant.identity}, forcing re-render`);
+      logger.debug(`[ParticipantTile] Track event for ${participant.identity}, forcing re-render`);
       forceRender(v => v + 1);
     };
     
@@ -178,7 +178,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
     
     const handleTrackPublished = (publication: RemoteTrackPublication, pubParticipant: Participant) => {
       if (pubParticipant.identity === participant.identity && publication.source === Track.Source.Camera) {
-        logger.info(`[ParticipantTile] Camera published by ${participant.identity}, forcing subscription`);
+        logger.debug(`[ParticipantTile] Camera published by ${participant.identity}, forcing subscription`);
         // Force subscription immediately
         if (!publication.isSubscribed) {
           publication.setSubscribed(true);
@@ -203,14 +203,14 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
     
     const handleParticipantConnected = (connectedParticipant: Participant) => {
       if (connectedParticipant.identity === participant.identity) {
-        logger.info(`[ParticipantTile] Participant connected: ${participant.identity}, checking for existing tracks`);
+        logger.debug(`[ParticipantTile] Participant connected: ${participant.identity}, checking for existing tracks`);
         // Check for any already-published camera tracks
         const cameraPubs = Array.from(connectedParticipant.trackPublications.values())
           .filter(pub => pub.source === Track.Source.Camera);
         for (const pub of cameraPubs) {
           const remotePub = pub as RemoteTrackPublication;
           if (!remotePub.isSubscribed) {
-            logger.info(`[ParticipantTile] Subscribing to existing track for ${participant.identity}`);
+            logger.debug(`[ParticipantTile] Subscribing to existing track for ${participant.identity}`);
             remotePub.setSubscribed(true);
           }
         }
@@ -221,7 +221,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
     // Listen for participant metadata changes (permission updates)
     const handleParticipantMetadataChanged = (_metadata: string | undefined, changedParticipant: Participant) => {
       if (changedParticipant.identity === participant.identity) {
-        logger.info(`[ParticipantTile] Metadata changed for ${participant.identity}`);
+        logger.debug(`[ParticipantTile] Metadata changed for ${participant.identity}`);
         forceRender(v => v + 1);
       }
     };
@@ -242,7 +242,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
     const logTrackState = () => {
       const pub = cameraTrackRef?.publication;
       if (pub) {
-        logger.info(`[ParticipantTile] Track state for ${participant.identity}:`, {
+        logger.debug(`[ParticipantTile] Track state for ${participant.identity}:`, {
           trackSid: pub.trackSid,
           isSubscribed: pub.isSubscribed,
           hasTrack: !!pub.track,
@@ -257,7 +257,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
     
     // Log when track changes
     const handleChange = () => {
-      logger.info(`[ParticipantTile] Track changed for ${participant.identity}`);
+      logger.debug(`[ParticipantTile] Track changed for ${participant.identity}`);
       logTrackState();
     };
     

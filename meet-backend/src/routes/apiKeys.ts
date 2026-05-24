@@ -11,6 +11,7 @@
  import { authenticate, AuthRequest } from '../middleware/authenticate.js';
  import { requireRole } from '../middleware/requireRole.js';
  import logger from '../utils/logger.js';
+ import { getCached, invalidatePattern, TTL_MEDIUM } from '../services/cache.js';
 
 const router = Router();
 
@@ -73,25 +74,29 @@ function generateApiKey(): { key: string; hash: string; prefix: string } {
 router.get('/', async (req: Request, res: Response) => {
   try {
     const userId = (req as AuthRequest).user?.id;
-    
-     const keys = await query<{
-       id: string;
-       name: string;
-       prefix: string;
-       permissions: Record<string, unknown>;
-       last_used_at: Date | null;
-       expires_at: Date | null;
-       is_active: boolean;
-       created_at: Date;
-     }>(
-      `SELECT id, name, prefix, permissions, last_used_at, expires_at, is_active, created_at 
-       FROM api_keys 
-       WHERE user_id = $1 
-       ORDER BY created_at DESC`,
-      [userId]
-    );
-    
-    res.json({ keys });
+    const cacheKey = `cache:apikeys:user:${userId}`;
+
+    const result = await getCached<{ keys: unknown[] }>(cacheKey, TTL_MEDIUM, async () => {
+      const keys = await query<{
+        id: string;
+        name: string;
+        prefix: string;
+        permissions: Record<string, unknown>;
+        last_used_at: Date | null;
+        expires_at: Date | null;
+        is_active: boolean;
+        created_at: Date;
+      }>(
+        `SELECT id, name, prefix, permissions, last_used_at, expires_at, is_active, created_at
+         FROM api_keys
+         WHERE user_id = $1
+         ORDER BY created_at DESC`,
+        [userId]
+      );
+      return { keys };
+    });
+
+    res.json(result);
     
   } catch (error) {
     logger.error('[API Keys] Error listing keys:', error);
@@ -154,6 +159,8 @@ router.post('/', async (req: Request, res: Response) => {
     );
     
     logger.info(`[API Keys] User ${userId} created API key: ${name}`);
+
+    await invalidatePattern('cache:apikeys:*').catch(() => {});
     
     // Return the key ONLY on creation (can't be retrieved later)
     res.status(201).json({
@@ -270,6 +277,8 @@ router.patch('/:id', async (req: Request, res: Response) => {
     );
     
     logger.info(`[API Keys] User ${userId} updated API key: ${id}`);
+
+    await invalidatePattern('cache:apikeys:*').catch(() => {});
     
     res.json({ success: true, message: 'API key updated' });
     
@@ -302,6 +311,8 @@ router.delete('/:id', async (req: Request, res: Response) => {
     await query('DELETE FROM api_keys WHERE id = $1 AND user_id = $2', [id, userId]);
     
     logger.info(`[API Keys] User ${userId} deleted API key: ${existing.name}`);
+
+    await invalidatePattern('cache:apikeys:*').catch(() => {});
     
     res.json({ success: true, message: 'API key deleted' });
     
@@ -341,6 +352,8 @@ router.post('/:id/regenerate', async (req: Request, res: Response) => {
     );
     
     logger.info(`[API Keys] User ${userId} regenerated API key: ${existing.name}`);
+
+    await invalidatePattern('cache:apikeys:*').catch(() => {});
     
     // Return the new key (only shown once!)
     res.json({

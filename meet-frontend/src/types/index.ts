@@ -135,7 +135,7 @@ export interface PollData {
   isClosed: boolean;
 }
 
-export type LayoutMode = 'speaker' | 'grid' | 'spotlight' | 'screenshare';
+export type LayoutMode = 'speaker' | 'grid' | 'spotlight' | 'screenshare' | 'whiteboard';
 
 export type ParticipantRole = 'host' | 'cohost' | 'presenter' | 'attendee' | 'viewer';
 

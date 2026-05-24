@@ -9,6 +9,7 @@
 
 import { useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Participant } from 'livekit-client';
+import { VideoQuality } from 'livekit-client';
 
 interface UseVisibleParticipantsOptions {
   /** Maximum number of participants to render video for */
@@ -19,6 +20,8 @@ interface UseVisibleParticipantsOptions {
   enabled?: boolean;
   /** Minimum number of participants before culling kicks in */
   cullingThreshold?: number;
+  /** Identity of the currently active speaker */
+  activeSpeakerIdentity?: string | null;
 }
 
 interface UseVisibleParticipantsReturn {
@@ -38,6 +41,8 @@ interface UseVisibleParticipantsReturn {
   culledCount: number;
   /** Whether culling is active */
   isCullingActive: boolean;
+  /** Ref tracking the currently active speaker identity */
+  activeSpeakerId: React.RefObject<string | null>;
 }
 
 const DEFAULT_MAX_VISIBLE = 12;
@@ -53,6 +58,7 @@ export function useVisibleParticipants(
     cullingDelay = DEFAULT_CULLING_DELAY,
     enabled = true,
     cullingThreshold = DEFAULT_CULLING_THRESHOLD,
+    activeSpeakerIdentity,
   } = options;
 
   // Use refs instead of state to prevent re-render loops
@@ -66,6 +72,12 @@ export function useVisibleParticipants(
   const updateScheduledRef = useRef<number | null>(null);
   const participantsRef = useRef(participants);
   participantsRef.current = participants;
+
+  // Active speaker tracking
+  const activeSpeakerId = useRef<string | null>(activeSpeakerIdentity ?? null);
+  useEffect(() => {
+    activeSpeakerId.current = activeSpeakerIdentity ?? null;
+  }, [activeSpeakerIdentity]);
 
   const isCullingActive = useMemo(() => {
     return enabled && participants.length > cullingThreshold;
@@ -209,5 +221,38 @@ export function useVisibleParticipants(
     visibleCount: visibleIdentitiesRef.current.size,
     culledCount: cullableIdentitiesRef.current.size,
     isCullingActive,
+    activeSpeakerId,
   };
+}
+
+/**
+ * Determine the desired video quality for a participant based on call context.
+ *
+ * - Active speaker or pinned participant: HIGH quality
+ * - 1-4 participants: HIGH for all
+ * - 5-8 participants: MEDIUM for non-speakers
+ * - 9+ participants: LOW for non-speakers
+ */
+export function getDesiredQuality(
+  identity: string,
+  activeSpeakerIdentity: string | null,
+  participantCount: number
+): VideoQuality {
+  // Active speaker always gets HIGH
+  if (activeSpeakerIdentity && identity === activeSpeakerIdentity) {
+    return VideoQuality.HIGH;
+  }
+
+  // Small calls: HIGH for everyone
+  if (participantCount <= 4) {
+    return VideoQuality.HIGH;
+  }
+
+  // Medium calls: MEDIUM for non-speakers
+  if (participantCount <= 8) {
+    return VideoQuality.MEDIUM;
+  }
+
+  // Large calls: LOW for non-speakers
+  return VideoQuality.LOW;
 }

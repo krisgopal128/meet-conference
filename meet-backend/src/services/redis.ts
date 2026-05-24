@@ -144,8 +144,9 @@ export async function getPooledConnection(): Promise<RedisClientType> {
     }
   }
 
-  // All pool connections busy - fall back to main client
+  // All pool connections busy - fall back to main client (single-connection bottleneck)
   if (mainClient) {
+    logger.warn('[Redis] All pool connections busy, falling back to main client');
     return mainClient;
   }
 
@@ -189,10 +190,27 @@ export async function initRedis(): Promise<void> {
 
 // Ensure connection before operations
 async function ensureConnected(): Promise<void> {
-  if (!isConnected && mainClient) {
-    await mainClient.connect().catch(() => {
+  if (!mainClient) throw new Error('Redis not initialized');
+  // If already open/ready, nothing to do
+  if (mainClient.isOpen && mainClient.isReady) return;
+  // If the client is open but not ready, wait briefly
+  if (mainClient.isOpen && !mainClient.isReady) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+    return;
+  }
+  // If not open at all, try reconnecting (only if not already connecting)
+  if (!mainClient.isOpen) {
+    try {
+      await mainClient.connect();
+    } catch (err: unknown) {
+      // If it's already connecting/connecting, just wait
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.includes('already') || msg.includes('connecting')) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        return;
+      }
       throw new Error('Redis not connected');
-    });
+    }
   }
 }
 

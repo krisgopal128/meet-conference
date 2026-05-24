@@ -1,3 +1,4 @@
+import React from 'react';
 import { Send, Lock, BarChart3, AtSign } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import type { MentionableParticipant } from './chatUtils';
@@ -24,7 +25,7 @@ interface ChatInputProps {
   onInsertAtSign: () => void;
 }
 
-export function ChatInput({
+export const ChatInput = React.memo(function ChatInput({
   input,
   onInputChange,
   onKeyDown,
@@ -117,7 +118,7 @@ export function ChatInput({
       </div>
     </div>
   );
-}
+});
 
 // Sub-component for mention dropdown
 interface MentionDropdownProps {

@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import logger from './utils/logger.js';
+import fs from 'fs';
 dotenv.config();
 
 function getSSLConfig(): false | { rejectUnauthorized: boolean; ca?: string } {
@@ -20,8 +21,6 @@ function getSSLConfig(): false | { rejectUnauthorized: boolean; ca?: string } {
     const caPath = process.env.DATABASE_CA_PATH;
     if (caPath) {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const fs = require('fs');
         if (fs.existsSync(caPath)) {
           return {
             ca: fs.readFileSync(caPath).toString(),

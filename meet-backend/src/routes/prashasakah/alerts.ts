@@ -8,6 +8,7 @@ import { Router, Response } from 'express';
 import { authenticate, AuthRequest } from '../../middleware/authenticate.js';
 import { requireModerator } from '../../middleware/requireRole.js';
 import { query, queryOne } from '../../services/database.js';
+import { getCached, invalidatePattern, buildListKey, TTL_SHORT, TTL_MEDIUM } from '../../services/cache.js';
 import logger from '../../utils/logger.js';
 
 const router = Router();
@@ -41,48 +42,62 @@ router.get('/alerts', requireModerator(), async (req: AuthRequest, res: Response
     const severity = req.query.severity as string | undefined;
     const unreadOnly = req.query.unreadOnly === 'true';
 
-    let whereClause = 'WHERE resolved_at IS NULL';
-     const params: unknown[] = [];
-    let paramIndex = 1;
+    const cacheKey = buildListKey('alerts', { limit, offset, severity, unreadOnly });
 
-    if (severity) {
-      whereClause += ` AND severity = $${paramIndex}`;
-      params.push(severity);
-      paramIndex++;
-    }
+    const result = await getCached<{
+      alerts: unknown[];
+      total: number;
+      hasMore: boolean;
+    }>(
+      cacheKey,
+      TTL_SHORT,
+      async () => {
+        let whereClause = 'WHERE resolved_at IS NULL';
+        const params: unknown[] = [];
+        let paramIndex = 1;
 
-    if (unreadOnly) {
-      whereClause += ' AND read_at IS NULL';
-    }
+        if (severity) {
+          whereClause += ` AND severity = $${paramIndex}`;
+          params.push(severity);
+          paramIndex++;
+        }
 
-    const alerts = await query<AlertRow>(`
-      SELECT * FROM admin_alerts
-      ${whereClause}
-      ORDER BY created_at DESC
-      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-    `, [...params, limit, offset]);
+        if (unreadOnly) {
+          whereClause += ' AND read_at IS NULL';
+        }
 
-    const totalResult = await queryOne<{ count: number }>(`
-      SELECT COUNT(*) as count FROM admin_alerts ${whereClause}
-    `, params);
+        const alerts = await query<AlertRow>(`
+          SELECT * FROM admin_alerts
+          ${whereClause}
+          ORDER BY created_at DESC
+          LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+        `, [...params, limit, offset]);
 
-     res.json({
-       alerts: alerts.map((a) => ({
-         id: a.id,
-         type: a.type,
-         severity: a.severity,
-         title: a.title,
-         message: a.message,
-         data: a.data,
-         readAt: a.read_at,
-         readBy: a.read_by,
-         resolvedAt: a.resolved_at,
-         resolvedBy: a.resolved_by,
-         createdAt: a.created_at,
-       })),
-      total: Number(totalResult?.count || 0),
-      hasMore: Number(totalResult?.count || 0) > offset + limit,
-    });
+        const totalResult = await queryOne<{ count: number }>(`
+          SELECT COUNT(*) as count FROM admin_alerts ${whereClause}
+        `, params);
+
+        return {
+          alerts: alerts.map((a) => ({
+            id: a.id,
+            type: a.type,
+            severity: a.severity,
+            title: a.title,
+            message: a.message,
+            data: a.data,
+            readAt: a.read_at,
+            readBy: a.read_by,
+            resolvedAt: a.resolved_at,
+            resolvedBy: a.resolved_by,
+            createdAt: a.created_at,
+          })),
+          total: Number(totalResult?.count || 0),
+          hasMore: Number(totalResult?.count || 0) > offset + limit,
+        };
+      },
+    );
+
+    res.json(result);
   } catch (error) {
     logger.error('[Admin] Error fetching alerts:', error);
     res.status(500).json({ error: 'Failed to fetch alerts' });
@@ -96,6 +111,8 @@ router.post('/alerts/:id/read', requireModerator(), async (req: AuthRequest, res
     await query(`
       UPDATE admin_alerts SET read_at = NOW(), read_by = $1 WHERE id = $2
     `, [req.user!.id, id]);
+
+    await invalidatePattern('cache:alerts:*');
 
     res.json({ message: 'Alert marked as read' });
   } catch (error) {
@@ -112,6 +129,9 @@ router.post('/alerts/:id/resolve', requireModerator(), async (req: AuthRequest, 
       UPDATE admin_alerts SET resolved_at = NOW(), resolved_by = $1 WHERE id = $2
     `, [req.user!.id, id]);
 
+    await invalidatePattern('cache:alerts:*');
+    await invalidatePattern('cache:stats:*');
+
     res.json({ message: 'Alert resolved' });
   } catch (error) {
     logger.error('[Admin] Error resolving alert:', error);
@@ -122,9 +142,11 @@ router.post('/alerts/:id/resolve', requireModerator(), async (req: AuthRequest, 
 router.post('/alerts/read-all', requireModerator(), async (req: AuthRequest, res: Response) => {
   try {
     const result = await query(`
-      UPDATE admin_alerts SET read_at = NOW(), read_by = $1 
+      UPDATE admin_alerts SET read_at = NOW(), read_by = $1
       WHERE read_at IS NULL AND resolved_at IS NULL
     `, [req.user!.id]);
+
+    await invalidatePattern('cache:alerts:*');
 
     res.json({ message: 'All alerts marked as read', updated: result.length });
   } catch (error) {

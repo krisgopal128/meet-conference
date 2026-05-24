@@ -34,6 +34,8 @@ interface LightweightFilterOptions {
   enabled: boolean;
   blendFactor?: number; // 0-1, default 0.3
   fitMode?: 'cover' | 'contain'; // default 'cover'
+  targetFps?: number; // default 30, throttled for large calls
+  participantCount?: number; // auto-reduce for large calls
 }
 
 /**
@@ -54,6 +56,7 @@ export function useLightweightPreviewFilter(
   const lastSrcObjectRef = useRef<MediaStream | null>(null);
   const lastFitModeRef = useRef<'cover' | 'contain' | null>(null);
   const lastContainerSizeRef = useRef<{ width: number; height: number } | null>(null);
+  const lastFrameTimeRef = useRef<number>(0);
   
   // Use refs for options to avoid re-creating the effect when they change
   const optionsRef = useRef(options);
@@ -117,8 +120,21 @@ export function useLightweightPreviewFilter(
 
     const processFrame = () => {
       const currentOptions = optionsRef.current;
-      const blendFactor = currentOptions.blendFactor ?? 0.3;
+      const pc = currentOptions.participantCount ?? 0;
+
+      // Auto-reduce for large calls
+      const effectiveTargetFps = pc >= 9 ? 15 : (currentOptions.targetFps ?? 30);
+      const blendFactor = pc >= 9 ? 0 : (currentOptions.blendFactor ?? 0.3);
       const fitMode = currentOptions.fitMode ?? 'cover';
+
+      // FPS throttling: skip frame if not enough time has elapsed
+      const now = performance.now();
+      const minInterval = 1000 / effectiveTargetFps;
+      if (now - lastFrameTimeRef.current < minInterval) {
+        animationRef.current = requestAnimationFrame(processFrame);
+        return;
+      }
+      lastFrameTimeRef.current = now;
 
       // Check if video has valid data
       if (!videoElement.videoWidth || !videoElement.videoHeight) {

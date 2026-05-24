@@ -61,11 +61,11 @@ tokenRouter.post('/', authenticate, tokenLimiter, async (req: AuthRequest, res: 
       isHost = true;
     } else if (room && room.host_id !== req.user!.id) {
       // Check if user is co-host (stored permissions)
-      const participant = await queryOne<{ isModerator: boolean }>(
-        'SELECT is_moderator as isModerator FROM meeting_participants WHERE room_id = $1 AND user_id = $2',
+      const participant = await queryOne<{ role: string }>(
+        'SELECT role FROM meeting_participants WHERE meeting_id = (SELECT id FROM meetings WHERE room_id = $1 AND ended_at IS NULL LIMIT 1) AND user_id = $2',
         [room.id, req.user!.id]
       );
-      isModerator = participant?.isModerator === true;
+      isModerator = participant?.role === 'host' || participant?.role === 'moderator';
     }
 
     // If user claims host role, verify they are the host

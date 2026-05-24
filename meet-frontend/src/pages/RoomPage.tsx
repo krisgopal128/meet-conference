@@ -5,7 +5,7 @@ import { VideoPreset, Track } from 'livekit-client';
 import { ConferenceRoom } from '../components/room/ConferenceRoom';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { LobbyWaiting } from '../components/room/LobbyWaiting';
-import { useConnectionActions, useQualityMode, useScreenShareMode, useUIActions, useRoomStore, useGridAspectRatio } from '../store/roomStore';
+import { useConnectionActions, useQualityMode, useScreenShareMode, useUIActions, useGridAspectRatio } from '../store/roomStore';
 import { enableBlur } from '../utils/blurProcessorManager';
 import { getRoomSettings, roomsApi } from '../services/api';
 import {
@@ -253,14 +253,27 @@ function RoomContent({
     applyVolume();
   }, [state.speakerLevel]);
 
-  useEffect(() => {
-    if (!isAudioOnlyMode(qualityMode) || !localParticipant.isCameraEnabled) {
-      return;
-    }
+  // Track whether camera was on before audioOnly kicked in
+  const cameraWasOnBeforeAudioOnly = useRef(false);
 
-    void localParticipant.setCameraEnabled(false).catch((error) => {
-      logger.error('[RoomPage] Failed to disable camera for audio-only mode:', error);
-    });
+  useEffect(() => {
+    const audioOnly = isAudioOnlyMode(qualityMode);
+
+    if (audioOnly) {
+      // Remember if camera was on so we can restore it later
+      if (localParticipant.isCameraEnabled) {
+        cameraWasOnBeforeAudioOnly.current = true;
+      }
+      void localParticipant.setCameraEnabled(false).catch((error) => {
+        logger.error('[RoomPage] Failed to disable camera for audio-only mode:', error);
+      });
+    } else if (cameraWasOnBeforeAudioOnly.current) {
+      // Recovering from audioOnly — re-enable camera if it was on before
+      cameraWasOnBeforeAudioOnly.current = false;
+      void localParticipant.setCameraEnabled(true).catch((error) => {
+        logger.error('[RoomPage] Failed to re-enable camera after audio-only recovery:', error);
+      });
+    }
   }, [qualityMode, localParticipant]);
 
   // Reconfigure camera when quality mode changes (e.g., highQuality -> dataSaver)
@@ -423,10 +436,10 @@ export default function RoomPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { setConnected } = useConnectionActions();
-  const { setQualityMode, setScreenShareMode } = useUIActions();
+  const { setQualityMode, setScreenShareMode, setGridAspectRatio, setVideoFitMode } = useUIActions();
   const qualityMode = useQualityMode();
   const screenShareMode = useScreenShareMode();
-  
+
   // Check for token in location state OR in sessionStorage (for teacher links from external apps)
   const stateFromLocation = location.state as LocationState | null;
   const tokenFromSession = roomName ? sessionStorage.getItem(`token_${roomName}`) : null;
@@ -439,9 +452,8 @@ export default function RoomPage() {
     }
     return stateFromLocation;
   }, [tokenFromSession, roleFromSession, stateFromLocation]);
-  
+
   // Grid aspect ratio & video fit mode - get from store for camera options
-  const { setGridAspectRatio, setVideoFitMode } = useRoomStore();
   const currentGridAspectRatio = useGridAspectRatio();
   const hasNavigatedRef = useRef(false);
 

@@ -92,10 +92,12 @@ export function useQualityMonitoring({ room, localParticipant, selectedQualityMo
         }
       } else if (nextQuality === 'lost') {
         if (shouldAutoAdjust) {
-          setQualityOverrideRef.current('audioOnly', 'network');
+          // Use dataSaver instead of audioOnly — audioOnly kills camera entirely
+          // which users can't recover from. dataSaver degrades video without disabling it.
+          setQualityOverrideRef.current('dataSaver', 'network');
           addDiagnosticsEventRef.current({
             type: 'network',
-            message: `Connection quality dropped to lost; forcing audioOnly`,
+            message: `Connection quality dropped to lost; forcing dataSaver`,
           });
           if (meetingRoomConfig.features.networkRecoveryToasts) {
             toast(meetingRoomConfig.feedback.networkDegradedMessage, { id: 'network-quality' });

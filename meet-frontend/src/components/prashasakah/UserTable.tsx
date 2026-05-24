@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { AdminUser } from '../../services/prashasakahApi';
 
 /**
@@ -77,6 +78,7 @@ export default function UserTable({
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -110,6 +112,13 @@ export default function UserTable({
       }
     }
     return sortOrder === 'asc' ? comparison : -comparison;
+  });
+
+  const rowVirtualizer = useVirtualizer({
+    count: sortedUsers.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 65,
+    overscan: 5,
   });
 
   const handleAction = async (action: () => void, userId: string) => {
@@ -173,9 +182,9 @@ export default function UserTable({
 
   return (
     <div className="bg-white rounded-xl border border-surface-200 overflow-hidden">
-      <div className="overflow-x-auto">
+      <div ref={parentRef} className="overflow-auto max-h-[600px]">
         <table className="min-w-full divide-y divide-surface-200">
-          <thead className="bg-surface-50">
+          <thead className="bg-surface-50 sticky top-0 z-10">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
                 <button
@@ -222,7 +231,8 @@ export default function UserTable({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-surface-200">
-            {sortedUsers.map((user) => {
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const user = sortedUsers[virtualRow.index];
               const isCurrentUser = user.id === currentUserId;
               const isLoading = actionLoading === user.id;
 

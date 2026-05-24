@@ -28,8 +28,12 @@ export function usePreJoinAuth({ roomName, isCreateMode, searchParams }: UsePreJ
 
   useEffect(() => {
     // Check for token parameter - teacher one-click join
-    const tokenParam = searchParams.get('t');
-    const roleParam = searchParams.get('role');
+    // Read token from hash fragment (not sent to server) with query param fallback
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const tokenParam = hashParams.get('t') || searchParams.get('t');
+    const roleParam = hashParams.get('role') || searchParams.get('role');
+    // Clear hash to prevent token from persisting in browser history
+    if (hashParams.get('t')) window.history.replaceState(null, '', window.location.pathname + window.location.search);
     if (tokenParam && roomName) {
       logger.info('[PreJoin] Token found in URL, redirecting to room...');
       // Store token in sessionStorage for RoomPage to use
@@ -68,7 +72,7 @@ export function usePreJoinAuth({ roomName, isCreateMode, searchParams }: UsePreJ
           navigate('/404', { replace: true });
         });
     }
-  }, [roomName, isCreateMode, searchParams, requestedRole, isAuthenticatedFromStore, navigate]);
+  }, [roomName, isCreateMode, requestedRole, isAuthenticatedFromStore, navigate]);
 
   return {
     room,

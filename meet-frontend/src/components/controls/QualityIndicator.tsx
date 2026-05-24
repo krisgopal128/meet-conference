@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   WifiOff, 
   Signal, 
@@ -21,7 +21,7 @@ interface QualityIndicatorProps {
   className?: string;
 }
 
-export function QualityIndicator({ className = '' }: QualityIndicatorProps) {
+export const QualityIndicator = React.memo(function QualityIndicator({ className = '' }: QualityIndicatorProps) {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
@@ -210,10 +210,10 @@ export function QualityIndicator({ className = '' }: QualityIndicatorProps) {
       )}
     </div>
   );
-}
+});
 
 // Compact version for participant tiles
-export function NetworkBadge({ 
+export const NetworkBadge = React.memo(function NetworkBadge({
   level, 
   showLabel = false,
   className = '' 
@@ -243,4 +243,4 @@ export function NetworkBadge({
       {showLabel && <span>{info.label}</span>}
     </div>
   );
-}
+});

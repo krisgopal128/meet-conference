@@ -1,11 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useAuthStore } from '../../store/authStore';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import { useUser } from '../../store/authStore';
 import { prashasakahApi, AdminStats, BandwidthStats, PeakUsersStats } from '../../services/prashasakahApi';
 import { StatCard, StatCardSkeleton } from '../../components/prashasakah/StatCard';
 import { DateRangeFilter } from '../../components/prashasakah/DateRangeFilter';
-import { BandwidthChart } from '../../components/prashasakah/BandwidthChart';
-import { PeakUsersChart } from '../../components/prashasakah/PeakUsersChart';
+import { BandwidthChartSkeleton } from '../../components/prashasakah/BandwidthChart';
+import { PeakUsersChartSkeleton } from '../../components/prashasakah/PeakUsersChart';
 import logger from '../../utils/logger';
+
+/** Lazy-loaded chart components — heavy chart code is not included in the initial bundle */
+const BandwidthChart = lazy(() => import('../../components/prashasakah/BandwidthChart').then(m => ({ default: m.BandwidthChart })));
+const PeakUsersChart = lazy(() => import('../../components/prashasakah/PeakUsersChart').then(m => ({ default: m.PeakUsersChart })));
 
 /**
  * Dashboard - Admin Dashboard Page
@@ -62,13 +66,31 @@ const RefreshIcon = () => (
 );
 
 export function Dashboard() {
-  const { user } = useAuthStore();
+  const user = useUser();
   
   // State for date range
   const [dateRange, setDateRange] = useState<DateRange>({
     from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     to: new Date(),
   });
+
+  /** Debounced date range — only updates 400ms after the user stops changing dates,
+   *  preventing rapid API calls while picking dates. */
+  const [debouncedRange, setDebouncedRange] = useState<DateRange>(dateRange);
+  const dateDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const handleDateRangeChange = useCallback((range: DateRange) => {
+    setDateRange(range);
+    if (dateDebounceRef.current) clearTimeout(dateDebounceRef.current);
+    dateDebounceRef.current = setTimeout(() => setDebouncedRange(range), 400);
+  }, []);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (dateDebounceRef.current) clearTimeout(dateDebounceRef.current);
+    };
+  }, []);
 
   // State for stats data
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -92,11 +114,11 @@ export function Dashboard() {
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
     setStatsError(null);
-    
+
     try {
       const params = {
-        from: dateRange.from.toISOString(),
-        to: dateRange.to.toISOString(),
+        from: debouncedRange.from.toISOString(),
+        to: debouncedRange.to.toISOString(),
       };
       const response = await prashasakahApi.getStatsDetailed(params);
       // Backend returns stats directly in response.data
@@ -107,15 +129,15 @@ export function Dashboard() {
     } finally {
       setStatsLoading(false);
     }
-  }, [dateRange]);
+  }, [debouncedRange]);
 
   // Fetch bandwidth data
   const fetchBandwidth = useCallback(async () => {
     setBandwidthLoading(true);
     setBandwidthError(null);
-    
+
     try {
-      const days = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24));
+      const days = Math.ceil((debouncedRange.to.getTime() - debouncedRange.from.getTime()) / (1000 * 60 * 60 * 24));
       const response = await prashasakahApi.getBandwidthStats(days);
       setBandwidthData(response.data);
     } catch (error) {
@@ -124,15 +146,15 @@ export function Dashboard() {
     } finally {
       setBandwidthLoading(false);
     }
-  }, [dateRange]);
+  }, [debouncedRange]);
 
   // Fetch peak users data
   const fetchPeakUsers = useCallback(async () => {
     setPeakUsersLoading(true);
     setPeakUsersError(null);
-    
+
     try {
-      const days = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24));
+      const days = Math.ceil((debouncedRange.to.getTime() - debouncedRange.from.getTime()) / (1000 * 60 * 60 * 24));
       const response = await prashasakahApi.getPeakUsersStats(days);
       setPeakUsersData(response.data);
     } catch (error) {
@@ -141,7 +163,7 @@ export function Dashboard() {
     } finally {
       setPeakUsersLoading(false);
     }
-  }, [dateRange]);
+  }, [debouncedRange]);
 
   // Fetch all data
   const fetchAllData = useCallback(() => {
@@ -204,7 +226,7 @@ export function Dashboard() {
           {/* Date range filter */}
           <DateRangeFilter
             value={dateRange}
-            onChange={setDateRange}
+            onChange={handleDateRangeChange}
           />
         </div>
       </div>
@@ -300,11 +322,13 @@ export function Dashboard() {
               <p className="text-surface-500 dark:text-surface-400">{bandwidthError}</p>
             </div>
           ) : (
-            <BandwidthChart
-              data={bandwidthData?.data}
-              loading={bandwidthLoading}
-              height={256}
-            />
+            <Suspense fallback={<BandwidthChartSkeleton height={256} />}>
+              <BandwidthChart
+                data={bandwidthData?.data}
+                loading={bandwidthLoading}
+                height={256}
+              />
+            </Suspense>
           )}
         </div>
 
@@ -321,11 +345,13 @@ export function Dashboard() {
               <p className="text-surface-500 dark:text-surface-400">{peakUsersError}</p>
             </div>
           ) : (
-            <PeakUsersChart
-              data={peakUsersData?.data}
-              loading={peakUsersLoading}
-              height={256}
-            />
+            <Suspense fallback={<PeakUsersChartSkeleton height={256} />}>
+              <PeakUsersChart
+                data={peakUsersData?.data}
+                loading={peakUsersLoading}
+                height={256}
+              />
+            </Suspense>
           )}
         </div>
       </div>

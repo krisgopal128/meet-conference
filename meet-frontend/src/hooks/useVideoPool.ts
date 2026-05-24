@@ -8,6 +8,7 @@
  */
 
 import { useRef, useCallback, useEffect, useMemo } from 'react';
+import type { RemoteVideoTrack } from 'livekit-client';
 import logger from '../utils/logger';
 
 interface PooledVideo {
@@ -38,6 +39,12 @@ interface UseVideoPoolReturn {
   prewarm: (count: number) => void;
   /** Clear all pooled elements */
   clear: () => void;
+  /** Pause an off-screen participant's video track to save resources */
+  pauseOffscreenTrack: (identity: string, track: RemoteVideoTrack) => void;
+  /** Resume an on-screen participant's video track */
+  resumeOnscreenTrack: (identity: string, track: RemoteVideoTrack) => void;
+  /** Track element visibility and auto pause/resume the video track */
+  trackVisibility: (element: HTMLElement, identity: string, track: RemoteVideoTrack | null) => () => void;
 }
 
 const DEFAULT_POOL_SIZE = 16;
@@ -58,6 +65,11 @@ export function useVideoPool(
   const participantToVideoRef = useRef<Map<string, string>>(new Map());
   const availableVideosRef = useRef<Set<string>>(new Set());
   const idCounterRef = useRef(0);
+
+  // Identity-based MediaStream caching per participant
+  const streamCacheRef = useRef<Map<string, MediaStream>>(new Map());
+  // IntersectionObserver instances for visibility tracking
+  const visibilityObserversRef = useRef<Map<string, IntersectionObserver>>(new Map());
 
   // Create a new video element
   const createVideoElement = useCallback((): HTMLVideoElement => {
@@ -156,6 +168,19 @@ export function useVideoPool(
     return createVideoElement();
   }, [enabled, poolSize, createVideoElement]);
 
+  /**
+   * Release a cached MediaStream for a participant identity.
+   * Stops all tracks in the cached stream and removes it from the cache.
+   */
+  const releaseStream = useCallback((identity: string) => {
+    const stream = streamCacheRef.current.get(identity);
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      streamCacheRef.current.delete(identity);
+      logger.debug(`[useVideoPool] Released cached stream for ${identity}`);
+    }
+  }, []);
+
   // Release a video element back to the pool
   const releaseVideo = useCallback((participantIdentity: string) => {
     if (!enabled) {
@@ -188,7 +213,10 @@ export function useVideoPool(
     }, recycleDelay);
 
     recycleTimersRef.current.set(videoId, timer);
-  }, [enabled, recycleDelay]);
+
+    // Release cached MediaStream for this participant
+    releaseStream(participantIdentity);
+  }, [enabled, recycleDelay, releaseStream]);
 
   // Get pool stats
   const getPoolStats = useCallback(() => {
@@ -239,7 +267,90 @@ export function useVideoPool(
     poolRef.current.clear();
     participantToVideoRef.current.clear();
     availableVideosRef.current.clear();
+
+    // Clear stream cache
+    streamCacheRef.current.forEach(stream => {
+      stream.getTracks().forEach(track => track.stop());
+    });
+    streamCacheRef.current.clear();
+
+    // Clear visibility observers
+    visibilityObserversRef.current.forEach(observer => observer.disconnect());
+    visibilityObserversRef.current.clear();
   }, []);
+
+  /**
+   * Pause an off-screen participant's video track to save CPU/bandwidth.
+   * Disables the underlying MediaStreamTrack to stop frame decoding.
+   * Safe to call with null/undefined track (no-op).
+   */
+  const pauseOffscreenTrack = useCallback((identity: string, track: RemoteVideoTrack): void => {
+    if (!track) return;
+    try {
+      track.mediaStreamTrack.enabled = false;
+      logger.debug(`[useVideoPool] Paused offscreen track for ${identity}`);
+    } catch (err) {
+      logger.warn(`[useVideoPool] Failed to pause track for ${identity}:`, err);
+    }
+  }, []);
+
+  /**
+   * Resume an on-screen participant's video track.
+   * Re-enables the underlying MediaStreamTrack to resume frame decoding.
+   * Safe to call with null/undefined track (no-op).
+   */
+  const resumeOnscreenTrack = useCallback((identity: string, track: RemoteVideoTrack): void => {
+    if (!track) return;
+    try {
+      track.mediaStreamTrack.enabled = true;
+      logger.debug(`[useVideoPool] Resumed onscreen track for ${identity}`);
+    } catch (err) {
+      logger.warn(`[useVideoPool] Failed to resume track for ${identity}:`, err);
+    }
+  }, []);
+
+  /**
+   * Set up IntersectionObserver-based visibility tracking for a video element.
+   * Automatically pauses the track when the element is off-screen and resumes when on-screen.
+   * Returns a cleanup function to disconnect the observer.
+   */
+  const trackVisibility = useCallback((
+    element: HTMLElement,
+    identity: string,
+    track: RemoteVideoTrack | null
+  ): () => void => {
+    // Clean up any existing observer for this identity
+    const existingObserver = visibilityObserversRef.current.get(identity);
+    if (existingObserver) {
+      existingObserver.disconnect();
+      visibilityObserversRef.current.delete(identity);
+    }
+
+    if (!track) {
+      return () => {};
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!track) return;
+        if (entry.isIntersecting) {
+          resumeOnscreenTrack(identity, track);
+        } else {
+          pauseOffscreenTrack(identity, track);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(element);
+    visibilityObserversRef.current.set(identity, observer);
+
+    // Return cleanup function
+    return () => {
+      observer.disconnect();
+      visibilityObserversRef.current.delete(identity);
+    };
+  }, [pauseOffscreenTrack, resumeOnscreenTrack]);
 
   // Cleanup on unmount - clear timers AND video elements to prevent memory leaks
   useEffect(() => {
@@ -257,6 +368,16 @@ export function useVideoPool(
       poolRef.current.clear();
       participantToVideoRef.current.clear();
       availableVideosRef.current.clear();
+
+      // Clean up stream cache
+      streamCacheRef.current.forEach(stream => {
+        stream.getTracks().forEach(track => track.stop());
+      });
+      streamCacheRef.current.clear();
+
+      // Clean up visibility observers
+      visibilityObserversRef.current.forEach(observer => observer.disconnect());
+      visibilityObserversRef.current.clear();
     };
   }, []);
 
@@ -266,5 +387,8 @@ export function useVideoPool(
     getPoolStats,
     prewarm,
     clear,
-  }), [acquireVideo, releaseVideo, getPoolStats, prewarm, clear]);
+    pauseOffscreenTrack,
+    resumeOnscreenTrack,
+    trackVisibility,
+  }), [acquireVideo, releaseVideo, getPoolStats, prewarm, clear, pauseOffscreenTrack, resumeOnscreenTrack, trackVisibility]);
 }

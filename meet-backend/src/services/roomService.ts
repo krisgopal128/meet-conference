@@ -82,11 +82,11 @@ export async function getRoomHostId(name: string): Promise<string | null> {
  * Get room existence check by name
  */
 export async function roomExists(name: string): Promise<boolean> {
-  const result = await queryOne<{ exists: boolean }>(
-    'SELECT EXISTS(SELECT 1 FROM rooms WHERE name = $1) as exists',
+  const result = await queryOne<{ exists_check: boolean }>(
+    'SELECT EXISTS(SELECT 1 FROM rooms WHERE name = $1) as exists_check',
     [name]
   );
-  return result?.exists ?? false;
+  return result?.exists_check ?? false;
 }
 
 /**
@@ -294,11 +294,11 @@ export async function getLatestMeetingId(roomId: string): Promise<string | null>
  * Check if there's an active meeting for a room
  */
 export async function hasActiveMeeting(roomId: string): Promise<boolean> {
-  const result = await queryOne<{ exists: boolean }>(
-    `SELECT EXISTS(SELECT 1 FROM meetings WHERE room_id = $1 AND ended_at IS NULL) as exists`,
+  const result = await queryOne<{ exists_check: boolean }>(
+    `SELECT EXISTS(SELECT 1 FROM meetings WHERE room_id = $1 AND ended_at IS NULL) as exists_check`,
     [roomId]
   );
-  return result?.exists ?? false;
+  return result?.exists_check ?? false;
 }
 
 /**

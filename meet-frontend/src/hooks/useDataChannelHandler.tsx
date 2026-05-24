@@ -9,7 +9,7 @@ import { useEffect } from 'react';
 import { RoomEvent } from 'livekit-client';
 import type { Room, LocalParticipant } from 'livekit-client';
 import toast from 'react-hot-toast';
-import { useChatActions, useFeatureActions } from '../store/roomStore';
+import { useChatActions, useFeatureActions, useUIActions } from '../store/roomStore';
 import type { ChatMessage } from '../types';
 
 interface UseDataChannelHandlerProps {
@@ -22,6 +22,7 @@ interface UseDataChannelHandlerProps {
 export function useDataChannelHandler({ room, localParticipant, isModerator, onMeetingEnded }: UseDataChannelHandlerProps) {
   const { addMessage, setTypingParticipant, votePoll, closePoll, incrementMentionCount } = useChatActions();
   const { raiseHand, lowerHand } = useFeatureActions();
+  const { toggleWhiteboard } = useUIActions();
 
   useEffect(() => {
     const handleData = async (data: Uint8Array) => {
@@ -92,6 +93,11 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
           raiseHand(payload.identity);
         } else if (payload.type === 'lower_hand') {
           lowerHand(payload.identity);
+        } else if (payload.type === 'whiteboard-activate') {
+          // Only non-moderators react — moderator already toggled locally
+          if (!isModerator) {
+            toggleWhiteboard();
+          }
         } else if (payload.type === 'moderation_control' && payload.targetIdentity === localParticipant.identity) {
           if (payload.action === 'disable_camera' && localParticipant.isCameraEnabled) {
             await localParticipant.setCameraEnabled(false);
@@ -105,5 +111,5 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
     };
     room.on(RoomEvent.DataReceived, handleData);
     return () => { room.off(RoomEvent.DataReceived, handleData); };
-  }, [room, addMessage, raiseHand, lowerHand, setTypingParticipant, isModerator, votePoll, closePoll, localParticipant]);
+  }, [room, addMessage, raiseHand, lowerHand, setTypingParticipant, isModerator, votePoll, closePoll, localParticipant, toggleWhiteboard]);
 }

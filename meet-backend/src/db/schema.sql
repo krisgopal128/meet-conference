@@ -13,7 +13,10 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     name VARCHAR(255),
     avatar_url TEXT,
-    role VARCHAR(50) DEFAULT 'user',
+    role VARCHAR(50) DEFAULT 'participant',
+    is_banned BOOLEAN DEFAULT false,
+    banned_at TIMESTAMPTZ,
+    last_login_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -33,6 +36,8 @@ CREATE TABLE IF NOT EXISTS rooms (
     max_participants INTEGER DEFAULT 50,
     empty_timeout INTEGER DEFAULT 300,
     metadata JSONB DEFAULT '{}'::jsonb,
+    waiting_room_enabled BOOLEAN DEFAULT true,
+    room_password VARCHAR(255),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     starts_at TIMESTAMPTZ,
@@ -54,6 +59,7 @@ CREATE TABLE IF NOT EXISTS meetings (
     recording_url TEXT,
     started_at TIMESTAMPTZ DEFAULT NOW(),
     ended_at TIMESTAMPTZ
+    status VARCHAR(50) DEFAULT 'ongoing', -- ongoing, ended
 );
 
 CREATE INDEX idx_meetings_room_id ON meetings(room_id);
@@ -72,7 +78,7 @@ CREATE TABLE IF NOT EXISTS meeting_participants (
     left_at TIMESTAMPTZ
 );
 
-CREATE INDEX idx_meeting_participants_meeting_id ON meeting_participants(meeting_id);
+CREATE INDEX IF NOT EXISTS idx_meeting_participants_meeting_id ON meeting_participants(meeting_id);
 CREATE INDEX idx_meeting_participants_identity ON meeting_participants(identity);
 
 -- ============================================
@@ -139,3 +145,124 @@ CREATE TRIGGER update_scheduled_meetings_updated_at BEFORE UPDATE ON scheduled_m
 -- ============================================
 -- ALTER TABLE rooms ENABLE ROW LEVEL SECURITY;
 -- CREATE POLICY "Users can view their own rooms" ON rooms FOR SELECT USING (host_id = current_user_id());
+
+
+-- ============================================
+-- CHAT MESSAGES TABLE (from migration 001)
+-- ============================================
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    meeting_id UUID NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    content TEXT NOT NULL CHECK (char_length(content) <= 5000),
+    message_type VARCHAR(20) DEFAULT 'text' CHECK (message_type IN ('text', 'system', 'file', 'emoji')),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_messages_meeting_id ON chat_messages(meeting_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created_at);
+
+-- ============================================
+-- ADMIN TABLES (from migration 002)
+-- ============================================
+CREATE TABLE IF NOT EXISTS admin_audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    admin_id UUID REFERENCES users(id),
+    action_type VARCHAR(100) NOT NULL,
+    target_type VARCHAR(100),
+    target_id VARCHAR(255),
+    details JSONB,
+    ip_address INET,
+    user_agent TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_audit_logs_admin_id ON admin_audit_logs(admin_id);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_logs_action_type ON admin_audit_logs(action_type);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_logs_created_at ON admin_audit_logs(created_at);
+
+CREATE TABLE IF NOT EXISTS admin_alerts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    type VARCHAR(100) NOT NULL,
+    severity VARCHAR(20) DEFAULT 'warning' CHECK (severity IN ('info', 'warning', 'critical')),
+    title VARCHAR(255),
+    message TEXT NOT NULL,
+    data JSONB,
+    read_at TIMESTAMPTZ,
+    read_by UUID REFERENCES users(id),
+    resolved_at TIMESTAMPTZ,
+    resolved_by UUID REFERENCES users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_alerts_is_read ON admin_alerts(is_read);
+CREATE INDEX IF NOT EXISTS idx_admin_alerts_created_at ON admin_alerts(created_at);
+
+CREATE TABLE IF NOT EXISTS user_activity (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    activity_type VARCHAR(100) NOT NULL,
+    metadata JSONB,
+    ip_address INET,
+    user_agent TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_activity_user_id ON user_activity(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_activity_activity_type ON user_activity(activity_type);
+CREATE INDEX IF NOT EXISTS idx_user_activity_created_at ON user_activity(created_at);
+
+CREATE TABLE IF NOT EXISTS system_settings (
+    key VARCHAR(100) PRIMARY KEY,
+    value JSONB NOT NULL,
+    description TEXT,
+    updated_at TIMESTAMP DEFAULT NOW(),
+    updated_by UUID REFERENCES users(id)
+);
+
+-- ============================================
+-- API KEYS TABLE (from migration 003)
+-- ============================================
+CREATE TABLE IF NOT EXISTS api_keys (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    prefix VARCHAR(10) NOT NULL,
+    key_hash VARCHAR(255) NOT NULL UNIQUE,
+    permissions JSONB DEFAULT '{}'::jsonb,
+    is_active BOOLEAN DEFAULT true,
+    expires_at TIMESTAMPTZ,
+    last_used_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_api_keys_user_id ON api_keys(user_id);
+CREATE INDEX IF NOT EXISTS idx_api_keys_key_hash ON api_keys(key_hash);
+CREATE INDEX IF NOT EXISTS idx_api_keys_is_active ON api_keys(is_active);
+
+CREATE TABLE IF NOT EXISTS whiteboards (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_name VARCHAR(255) NOT NULL,
+    scene JSONB DEFAULT '{}'::jsonb,
+    locked BOOLEAN DEFAULT false,
+    locked_by VARCHAR(255),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_whiteboards_room_name ON whiteboards(room_name);
+
+CREATE TABLE IF NOT EXISTS meeting_diagnostics (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    meeting_id UUID REFERENCES meetings(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    bytes_sent BIGINT DEFAULT 0,
+    bytes_received BIGINT DEFAULT 0,
+    packets_lost INTEGER DEFAULT 0,
+    rtt_ms INTEGER,
+    codec VARCHAR(50),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_meeting_diagnostics_meeting_id ON meeting_diagnostics(meeting_id);
+CREATE INDEX IF NOT EXISTS idx_meeting_diagnostics_created_at ON meeting_diagnostics(created_at);

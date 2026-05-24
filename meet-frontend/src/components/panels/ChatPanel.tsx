@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useLocalParticipant, useParticipants } from '@livekit/components-react';
 import {
   useMessages,
@@ -15,10 +15,14 @@ import type { PollData } from '../../types';
 import { ChatHeader } from '../chat/ChatHeader';
 import { ChatMessageList } from '../chat/ChatMessageList';
 import { ChatInput } from '../chat/ChatInput';
-import { PollCreator } from '../chat/PollCreator';
 import { parseMentions, type MentionableParticipant } from '../chat/chatUtils';
 import logger from '../../utils/logger';
 import toast from 'react-hot-toast';
+
+/** Lazy-loaded poll creator — only loaded when user opens it */
+const PollCreator = lazy(() =>
+  import('../chat/PollCreator').then((mod) => ({ default: mod.PollCreator }))
+);
 
 // API response type for chat history messages
 interface ChatHistoryMessage {
@@ -470,19 +474,23 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
         bottomRef={bottomRef}
       />
 
-      <PollCreator
-        visible={showPollCreator}
-        pollQuestion={pollQuestion}
-        pollOptions={pollOptions}
-        allowMultiple={allowMultiple}
-        onQuestionChange={setPollQuestion}
-        onOptionChange={updatePollOption}
-        onAddOption={addPollOption}
-        onRemoveOption={removePollOption}
-        onAllowMultipleChange={setAllowMultiple}
-        onCreatePoll={createPoll}
-        onClose={() => setShowPollCreator(false)}
-      />
+      {showPollCreator && (
+        <Suspense fallback={null}>
+          <PollCreator
+            visible={showPollCreator}
+            pollQuestion={pollQuestion}
+            pollOptions={pollOptions}
+            allowMultiple={allowMultiple}
+            onQuestionChange={setPollQuestion}
+            onOptionChange={updatePollOption}
+            onAddOption={addPollOption}
+            onRemoveOption={removePollOption}
+            onAllowMultipleChange={setAllowMultiple}
+            onCreatePoll={createPoll}
+            onClose={() => setShowPollCreator(false)}
+          />
+        </Suspense>
+      )}
 
       <ChatInput
         input={input}

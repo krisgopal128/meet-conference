@@ -13,10 +13,10 @@
       http-equiv="Content-Security-Policy"
       content="
         default-src 'self';
-        script-src 'self';
+        script-src 'self' 'unsafe-eval';
         style-src 'self' 'unsafe-inline';
         img-src 'self' data: blob: https:;
-        font-src 'self' data:;
+        font-src 'self' data: https://esm.sh;
         connect-src 'self' https: wss: ws:;
         media-src 'self' blob:;
         worker-src 'self' blob:;

@@ -8,6 +8,7 @@ import { query, queryOne } from '../services/database.js';
 import { verifyMeetingAccess } from '../services/meetingService.js';
 import { scheduleMeetingSchema, diagnosticsPayloadSchema } from '../schemas/meetings.js';
 import { sanitizeChatMessage } from '../utils/validation.js';
+import { getCached, invalidateCache, invalidatePattern, TTL_MEDIUM, TTL_SHORT } from '../services/cache.js';
 import logger from '../utils/logger.js';
 
 export const meetingsRouter = Router();
@@ -43,21 +44,28 @@ function parsePaginationParams(query: Record<string, unknown>): MeetingQueryPara
 meetingsRouter.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { limit, offset } = parsePaginationParams(req.query);
 
-    // Show meetings where user is host OR participated in
-    const meetings = await query<MeetingWithParticipants>(
-      `SELECT DISTINCT m.*, r.name as room_name, r.title as room_title
-       FROM meetings m
-       JOIN rooms r ON m.room_id = r.id
-       LEFT JOIN meeting_participants mp ON mp.meeting_id = m.id AND mp.user_id = $1
-       WHERE r.host_id = $1 OR mp.id IS NOT NULL
-       ORDER BY m.started_at DESC
-       LIMIT $2 OFFSET $3`,
-      [user.id, limit, offset]
+    const result = await getCached<{ meetings: MeetingWithParticipants[] }>(
+      `cache:meetings:user:${user.id}:${limit}:${offset}`,
+      TTL_MEDIUM,
+      async () => {
+        const meetings = await query<MeetingWithParticipants>(
+          `SELECT DISTINCT m.*, r.name as room_name, r.title as room_title
+           FROM meetings m
+           JOIN rooms r ON m.room_id = r.id
+           LEFT JOIN meeting_participants mp ON mp.meeting_id = m.id AND mp.user_id = $1
+           WHERE r.host_id = $1 OR mp.id IS NOT NULL
+           ORDER BY m.started_at DESC
+           LIMIT $2 OFFSET $3`,
+          [user.id, limit, offset]
+        );
+        return { meetings };
+      },
     );
 
-    res.json({ meetings });
+    res.json(result);
   } catch (error) {
     logger.error('List meetings error:', error);
     res.status(500).json({ error: 'Failed to list meetings' });
@@ -68,27 +76,34 @@ meetingsRouter.get('/', authenticate, async (req: AuthRequest, res: Response) =>
 meetingsRouter.get('/history', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { limit, offset } = parsePaginationParams(req.query);
 
-    // Show meetings where user is host OR participated in, with participant counts in single query
-    const meetings = await query<MeetingWithParticipants>(
-      `SELECT DISTINCT m.*, r.name as room_name, r.title as room_title,
-              COALESCE(mp_counts.unique_participants, 0)::integer as "uniqueParticipants"
-       FROM meetings m
-       JOIN rooms r ON m.room_id = r.id
-       LEFT JOIN meeting_participants mp ON mp.meeting_id = m.id AND mp.user_id = $1
-       LEFT JOIN (
-         SELECT meeting_id, COUNT(*) as unique_participants
-         FROM meeting_participants
-         GROUP BY meeting_id
-       ) mp_counts ON mp_counts.meeting_id = m.id
-       WHERE r.host_id = $1 OR mp.id IS NOT NULL
-       ORDER BY m.started_at DESC
-       LIMIT $2 OFFSET $3`,
-      [user.id, limit, offset]
+    const result = await getCached<{ meetings: MeetingWithParticipants[] }>(
+      `cache:meetings:history:${user.id}:${limit}:${offset}`,
+      TTL_MEDIUM,
+      async () => {
+        const meetings = await query<MeetingWithParticipants>(
+          `SELECT DISTINCT m.*, r.name as room_name, r.title as room_title,
+                  COALESCE(mp_counts.unique_participants, 0)::integer as "uniqueParticipants"
+           FROM meetings m
+           JOIN rooms r ON m.room_id = r.id
+           LEFT JOIN meeting_participants mp ON mp.meeting_id = m.id AND mp.user_id = $1
+           LEFT JOIN (
+             SELECT meeting_id, COUNT(*) as unique_participants
+             FROM meeting_participants
+             GROUP BY meeting_id
+           ) mp_counts ON mp_counts.meeting_id = m.id
+           WHERE r.host_id = $1 OR mp.id IS NOT NULL
+           ORDER BY m.started_at DESC
+           LIMIT $2 OFFSET $3`,
+          [user.id, limit, offset]
+        );
+        return { meetings };
+      },
     );
 
-    res.json({ meetings });
+    res.json(result);
   } catch (error) {
     logger.error('Get meeting history error:', error);
     res.status(500).json({ error: 'Failed to get meeting history' });
@@ -134,17 +149,26 @@ meetingsRouter.post('/diagnostics', optionalAuth, async (req: AuthRequest, res: 
 meetingsRouter.get('/scheduled', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const user = requireUser(req);
-    const meetings = await query(
-      `SELECT sm.*, u.name as host_name, u.email as host_email
-       FROM scheduled_meetings sm
-       JOIN users u ON sm.host_id = u.id
-       WHERE sm.host_id = $1 AND sm.status = 'scheduled' AND sm.scheduled_start > NOW()
-       ORDER BY sm.scheduled_start ASC
-       LIMIT 50`,
-      [user.id]
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
+
+    const result = await getCached<{ meetings: unknown[] }>(
+      `cache:meetings:scheduled:${user.id}`,
+      TTL_SHORT,
+      async () => {
+        const meetings = await query(
+          `SELECT sm.*, u.name as host_name, u.email as host_email
+           FROM scheduled_meetings sm
+           JOIN users u ON sm.host_id = u.id
+           WHERE sm.host_id = $1 AND sm.status = 'scheduled' AND sm.scheduled_start > NOW()
+           ORDER BY sm.scheduled_start ASC
+           LIMIT 50`,
+          [user.id]
+        );
+        return { meetings };
+      },
     );
 
-    res.json({ meetings });
+    res.json(result);
   } catch (error) {
     logger.error('Get scheduled meetings error:', error);
     res.status(500).json({ error: 'Failed to get scheduled meetings' });
@@ -155,7 +179,13 @@ meetingsRouter.get('/scheduled', authenticate, async (req: AuthRequest, res: Res
 meetingsRouter.post('/schedule', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
     const data = scheduleMeetingSchema.parse(req.body);
+
+    // Validate scheduled start is in the future
+    if (new Date(data.scheduledStart) <= new Date()) {
+      return res.status(400).json({ error: 'Scheduled start time must be in the future' });
+    }
 
     // Generate room name from title
     const baseRoomName = data.title
@@ -163,12 +193,12 @@ meetingsRouter.post('/schedule', authenticate, async (req: AuthRequest, res: Res
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '')
       .substring(0, 50);
-    
+
     const roomName = `${baseRoomName}-${Date.now().toString(36)}`;
 
     // Create scheduled meeting
     const [meeting] = await query(
-      `INSERT INTO scheduled_meetings 
+      `INSERT INTO scheduled_meetings
         (room_name, title, description, host_id, scheduled_start, scheduled_end, participant_emails, timezone)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
@@ -198,6 +228,11 @@ meetingsRouter.post('/schedule', authenticate, async (req: AuthRequest, res: Res
       ]
     );
 
+    // Invalidate meeting caches for this user and general caches
+    await invalidatePattern(`cache:meetings:*`);
+    await invalidatePattern('cache:rooms:*');
+    await invalidatePattern('cache:stats:*');
+
     res.status(201).json({ meeting, roomName });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -211,31 +246,48 @@ meetingsRouter.post('/schedule', authenticate, async (req: AuthRequest, res: Res
 // GET /meetings/:id - Get meeting details
 meetingsRouter.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
+    const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { id } = req.params;
 
-    const meeting = await queryOne(
-      `SELECT m.*, r.name as room_name, r.title as room_title, r.description as room_description
-       FROM meetings m
-       JOIN rooms r ON m.room_id = r.id
-       WHERE m.id = $1`,
-      [id]
+    // Verify user has access to this meeting (host or participant)
+    const meeting = await verifyMeetingAccess(id, user.id);
+    if (!meeting) {
+      return res.status(404).json({ error: 'Meeting not found or access denied' });
+    }
+
+    const result = await getCached<{ meeting: unknown; participants: unknown[] } | null>(
+      `cache:meetings:detail:${id}`,
+      TTL_SHORT,
+      async () => {
+        const meeting = await queryOne(
+          `SELECT m.*, r.name as room_name, r.title as room_title, r.description as room_description
+           FROM meetings m
+           JOIN rooms r ON m.room_id = r.id
+           WHERE m.id = $1`,
+          [id]
+        );
+
+        if (!meeting) return null;
+
+        const participants = await query(
+          `SELECT mp.*, u.name as user_name, u.email as user_email
+           FROM meeting_participants mp
+           LEFT JOIN users u ON mp.user_id = u.id
+           WHERE mp.meeting_id = $1
+           ORDER BY mp.joined_at`,
+          [id]
+        );
+
+        return { meeting, participants };
+      },
     );
 
-    if (!meeting) {
+    if (!result) {
       return res.status(404).json({ error: 'Meeting not found' });
     }
 
-    // Get participants
-    const participants = await query(
-      `SELECT mp.*, u.name as user_name, u.email as user_email
-       FROM meeting_participants mp
-       LEFT JOIN users u ON mp.user_id = u.id
-       WHERE mp.meeting_id = $1
-       ORDER BY mp.joined_at`,
-      [id]
-    );
-
-    res.json({ meeting, participants });
+    res.json(result);
   } catch (error) {
     logger.error('Get meeting error:', error);
     res.status(500).json({ error: 'Failed to get meeting' });
@@ -246,6 +298,7 @@ meetingsRouter.get('/:id', authenticate, async (req: AuthRequest, res: Response)
 meetingsRouter.patch('/scheduled/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { id } = req.params;
     
     // Validate update data (partial schema)
@@ -344,6 +397,10 @@ meetingsRouter.patch('/scheduled/:id', authenticate, async (req: AuthRequest, re
     }
     
     res.json({ meeting: updatedMeeting });
+
+    // Invalidate meeting caches
+    invalidatePattern('cache:meetings:*').catch(() => {});
+    invalidatePattern('cache:rooms:*').catch(() => {});
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
@@ -357,6 +414,7 @@ meetingsRouter.patch('/scheduled/:id', authenticate, async (req: AuthRequest, re
 meetingsRouter.delete('/scheduled/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { id } = req.params;
 
     const meeting = await queryOne<{ id: string; host_id: string; room_name: string }>(
@@ -381,6 +439,10 @@ meetingsRouter.delete('/scheduled/:id', authenticate, async (req: AuthRequest, r
     // Delete the room
     await query('DELETE FROM rooms WHERE name = $1', [meeting.room_name]);
 
+    // Invalidate meeting caches
+    invalidatePattern('cache:meetings:*').catch(() => {});
+    invalidatePattern('cache:rooms:*').catch(() => {});
+
     res.json({ message: 'Meeting cancelled' });
   } catch (error) {
     logger.error('Cancel meeting error:', error);
@@ -392,6 +454,7 @@ meetingsRouter.delete('/scheduled/:id', authenticate, async (req: AuthRequest, r
 meetingsRouter.get('/:id/chat', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { id } = req.params;
     const { limit = 100, before } = req.query;
 
@@ -438,6 +501,7 @@ meetingsRouter.get('/:id/chat', authenticate, async (req: AuthRequest, res: Resp
 meetingsRouter.post('/:id/chat', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { id } = req.params;
     const { content, messageType = 'text' } = req.body;
 

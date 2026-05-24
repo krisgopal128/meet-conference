@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { useAuthStore } from '../store/authStore';
+import { useUser, useAuthActions } from '../store/authStore';
 import { useTokenRefresh } from '../hooks/useTokenRefresh';
 import { 
   Video, 
@@ -15,7 +15,8 @@ import {
 } from 'lucide-react';
 
 export default function Layout() {
-  const { user, logout } = useAuthStore();
+  const user = useUser();
+  const { logout } = useAuthActions();
   const navigate = useNavigate();
   const location = useLocation();
   const prevLocationRef = useRef(location.pathname);

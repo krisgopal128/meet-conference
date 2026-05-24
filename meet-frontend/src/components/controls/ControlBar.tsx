@@ -10,13 +10,14 @@ import {
   Mic, Monitor, Users,
   Hand, LayoutGrid, MoreVertical,
   Link2, Bell, BellOff, FlipHorizontal, Activity, Sparkles,
-  SquarePlay, Lock, Unlock, DoorOpen, PictureInPicture2
+  SquarePlay, Lock, Unlock, DoorOpen, PictureInPicture2, Pencil
 } from 'lucide-react';
 import {
   useLayout,
   useChatOpen,
   useParticipantsOpen,
   useSettingsOpen,
+  useWhiteboardOpen,
   useUnreadCount,
   useMentionCount,
   useHasRaisedHand,
@@ -65,6 +66,7 @@ import {
   LayoutButton,
   ChatButton,
   ParticipantsButton,
+  WhiteboardButton,
   LeaveButton,
   MobileMicButton,
   MobileCameraButton,
@@ -86,6 +88,7 @@ export function ControlBar() {
   const chatOpen = useChatOpen();
   const participantsOpen = useParticipantsOpen();
   const settingsOpen = useSettingsOpen();
+  const whiteboardOpen = useWhiteboardOpen();
   const unreadCount = useUnreadCount();
   const mentionCount = useMentionCount();
   const isRecording = useIsRecording();
@@ -110,7 +113,7 @@ export function ControlBar() {
   const participantsCanTurnOnCamera = useParticipantsCanTurnOnCamera();
 
   // Action hooks (stable references)
-  const { setLayout, toggleChat, toggleParticipants, openSettingsView, setLobbyCount, toggleJoinLeaveSounds, toggleMirrorLocalVideo } = useUIActions();
+  const { setLayout, toggleChat, toggleParticipants, toggleWhiteboard, openSettingsView, setLobbyCount, toggleJoinLeaveSounds, toggleMirrorLocalVideo } = useUIActions();
   const { togglePiP } = useConnectionActions();
   const { raiseHand, lowerHand } = useFeatureActions();
   const {
@@ -132,7 +135,7 @@ export function ControlBar() {
   const { isDocumentPiPSupported: isPiPSupported } = usePictureInPicture();
   const isPiPOpen = useIsPiPOpen();
 
-  logger.info('[ControlBar] PiP state:', { isPiPSupported, isPiPOpen });
+  logger.debug('[ControlBar] PiP state:', { isPiPSupported, isPiPOpen });
 
   // Local state for menus
   const [showMore, setShowMore] = useState(false);
@@ -202,7 +205,9 @@ export function ControlBar() {
   }, [room]);
 
   const toggleLayout = useCallback(() => {
-    setLayout(layout === 'grid' ? 'speaker' : 'grid');
+    // Don't cycle through whiteboard mode here — that's toggled by its own button
+    const effectiveLayout = layout === 'whiteboard' ? 'speaker' : layout;
+    setLayout(effectiveLayout === 'grid' ? 'speaker' : 'grid');
   }, [layout, setLayout]);
 
   // More menu items
@@ -262,6 +267,14 @@ export function ControlBar() {
       },
     },
     { icon: <Link2 size={16} />, label: 'Copy Link', onClick: copyRoomLink },
+    { icon: <Pencil size={16} />, label: whiteboardOpen ? 'Close Whiteboard' : 'Whiteboard', onClick: () => {
+      toggleWhiteboard();
+      // Broadcast to other participants so they also switch layout
+      if (room) {
+        const msg = JSON.stringify({ type: 'whiteboard-activate', active: !whiteboardOpen });
+        room.localParticipant.publishData(new TextEncoder().encode(msg), { reliable: true, topic: 'whiteboard' }).catch(() => {});
+      }
+    }},
     ...(isModerator ? [
       { icon: meetingLocked ? <Lock size={16} className="text-warning-400" /> : <Unlock size={16} />, label: meetingLocked ? 'Unlock Meeting' : 'Lock Meeting', onClick: () => setMeetingLocked(!meetingLocked) },
       { icon: <DoorOpen size={16} />, label: lobbyEnabled ? 'Disable Lobby' : 'Enable Lobby', onClick: () => setLobbyEnabled(!lobbyEnabled) },
@@ -327,6 +340,13 @@ export function ControlBar() {
         <div className="flex items-center gap-2">
           <ChatButton isOpen={chatOpen} unreadCount={unreadCount} mentionCount={mentionCount} onToggle={toggleChat} />
           <ParticipantsButton isOpen={participantsOpen} lobbyCount={lobbyCount} isModerator={isModerator} onToggle={toggleParticipants} />
+          <WhiteboardButton isOpen={whiteboardOpen} onToggle={() => {
+            toggleWhiteboard();
+            if (room) {
+              const msg = JSON.stringify({ type: 'whiteboard-activate', active: !whiteboardOpen });
+              room.localParticipant.publishData(new TextEncoder().encode(msg), { reliable: true, topic: 'whiteboard' }).catch(() => {});
+            }
+          }} />
 
           {/* Controls - Moderators only */}
           {isModerator && (

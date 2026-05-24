@@ -1,4 +1,7 @@
 import dotenv from 'dotenv';
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 dotenv.config(); // MUST be before other imports that read process.env
 
 import express from 'express';
@@ -13,12 +16,15 @@ import { webhookRouter, clearAllHostLeaveTimeouts } from './routes/webhook.js';
 import { prashasakahRouter } from './routes/prashasakah/index.js';
 import { apiKeysRouter } from './routes/apiKeys.js';
 import externalRouter from './routes/external.js';
+import { whiteboardRouter } from './routes/whiteboard.js';
 import { initDatabase, closeDatabase, query } from './services/database.js';
 import { initRedis, closeRedis } from './services/redis.js';
 import { config } from './config.js';
 import { apiLimiter } from './middleware/rateLimiter.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
 import logger from './utils/logger.js';
+import cookieParser from 'cookie-parser';
+import { csrfProtection } from './middleware/csrf.js';
 
 const app = express();
 const PORT = config.port;
@@ -47,7 +53,7 @@ app.use(helmet({
 
 // Additional security headers
 app.use((req, res, next) => {
-  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  res.setHeader('Permissions-Policy', 'geolocation=()');  // microphone=(), camera=() intentionally omitted — video conferencing requires them
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.removeHeader('X-Powered-By');
   next();
@@ -103,10 +109,10 @@ app.use('/token', tokenRouter);
 app.use('/rooms', roomsRouter);
 app.use('/meetings', meetingsRouter);
 app.use('/egress', egressRouter);
-app.use('/webhook/livekit', express.raw({ type: '*/*', limit: '1mb' }), webhookRouter);
 app.use('/prashasakah', prashasakahRouter);
 app.use('/api-keys', apiKeysRouter);
 app.use('/external', externalRouter);
+app.use('/whiteboard', whiteboardRouter);
 
 // ============================================
 // Health Check
@@ -152,7 +158,8 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
     return res.status(403).json({ error: 'CORS policy violation' });
   }
   
-  res.status(500).json({
+  const statusCode = (err as any).statusCode || 500;
+  res.status(statusCode).json({
     error: config.nodeEnv === 'production' ? 'Internal server error' : err.message,
   });
 });

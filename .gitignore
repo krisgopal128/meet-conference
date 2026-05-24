@@ -91,3 +91,11 @@ scorecard.png
 # DEPLOYMENT CONFIG (server-specific)
 # ============================================
 Caddyfile.new
+
+# ============================================
+# TOOL / WORKSPACE ARTIFACTS
+# ============================================
+.understand-anything/
+test-screenshots/
+build_tree.py
+meet-conference-tree.md

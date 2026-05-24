@@ -110,8 +110,10 @@ function canToggle(): boolean {
 
 /**
  * Enable background blur on a video track
+ * @param track - the video track to apply blur to
+ * @param participantCount - optional participant count for adaptive blur radius
  */
-export async function enableBlur(track: VideoTrack): Promise<boolean> {
+export async function enableBlur(track: VideoTrack, participantCount?: number): Promise<boolean> {
   // Debounce check
   if (!canToggle()) {
     return false;
@@ -133,9 +135,12 @@ export async function enableBlur(track: VideoTrack): Promise<boolean> {
     // If processor exists and is already on this track, just switch mode
     if (state.processor && state.currentTrack === track) {
       logger.info('[BlurManager] ♻️ Reusing existing processor');
-      await state.processor.switchTo({ 
-        mode: 'background-blur', 
-        blurRadius: 10
+      const blurRadius = participantCount !== undefined
+        ? getAdaptiveBlurRadius(participantCount) || 10
+        : 10;
+      await state.processor.switchTo({
+        mode: 'background-blur',
+        blurRadius,
       });
       state.isEnabled = true;
       logger.info('[BlurManager] ✅ Blur enabled successfully (reused processor)');
@@ -166,9 +171,12 @@ export async function enableBlur(track: VideoTrack): Promise<boolean> {
     state.currentTrack = track;
     
     // Now switch to blur mode
-    await state.processor.switchTo({ 
-      mode: 'background-blur', 
-      blurRadius: 10
+    const blurRadius = participantCount !== undefined
+      ? getAdaptiveBlurRadius(participantCount) || 10
+      : 10;
+    await state.processor.switchTo({
+      mode: 'background-blur',
+      blurRadius,
     });
     
     state.isEnabled = true;
@@ -235,10 +243,11 @@ export async function disableBlur(_track: VideoTrack): Promise<boolean> {
  */
 export function toggleBlur(
   track: VideoTrack,
-  enabled: boolean
+  enabled: boolean,
+  participantCount?: number
 ): Promise<boolean> {
   if (enabled) {
-    return enableBlur(track);
+    return enableBlur(track, participantCount);
   } else {
     return disableBlur(track);
   }
@@ -297,4 +306,56 @@ export async function resetForNewTrack(): Promise<void> {
   state.currentTrack = null;
   state.isEnabled = false;
   state.isApplying = false;
+}
+
+/** Threshold above which blur is auto-disabled to save CPU */
+const BLUR_AUTO_DISABLE_THRESHOLD = 9;
+
+/**
+ * Check if blur should be auto-disabled based on participant count.
+ * Blur is expensive — disable for large calls to save CPU.
+ * @param participantCount - current number of participants in the room
+ * @returns whether blur should be disabled
+ */
+export function shouldAutoDisableBlur(participantCount: number): boolean {
+  return participantCount >= BLUR_AUTO_DISABLE_THRESHOLD;
+}
+
+/**
+ * Detect if the device is low-end and blur should be avoided.
+ * Uses navigator.hardwareConcurrency and deviceMemory as proxies.
+ * @returns true if device appears to be low-end
+ */
+export function isLowEndDevice(): boolean {
+  try {
+    const nav = navigator as Navigator & { deviceMemory?: number };
+    const cores = nav.hardwareConcurrency ?? 4;
+    const memory = nav.deviceMemory ?? 4;
+
+    // Low-end: 2 or fewer CPU cores, or 2GB or less RAM
+    if (cores <= 2) return true;
+    if (memory <= 2) return true;
+
+    // No WebGL2 support indicates very old/weak GPU
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl2');
+    canvas.remove();
+    if (!gl) return true;
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get recommended blur radius based on participant count.
+ * Higher participant counts get lower blur radius to save CPU.
+ * @param participantCount - current participant count
+ * @returns blur radius (0 means caller should check shouldAutoDisableBlur instead)
+ */
+export function getAdaptiveBlurRadius(participantCount: number): number {
+  if (participantCount <= 4) return 10;
+  if (participantCount <= 8) return 7;
+  return 0;
 }

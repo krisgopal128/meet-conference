@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import { AuthRequest, authenticate, optionalAuth } from '../middleware/authenticate.js';
-import { requireUser } from '../middleware/requireUser.js';
+import { requireUser, AuthenticationError } from '../middleware/requireUser.js';
 import {
   createRoom as createLiveKitRoom,
   listRooms,
@@ -16,6 +16,7 @@ import {
   disableScreenShareTrack,
 } from '../services/livekit.js';
 import { addKickedParticipant } from '../services/redis.js';
+import { getCached, invalidatePattern, TTL_SHORT } from '../services/cache.js';
 import { processLobbyParticipants } from '../services/lobbyService.js';
 import { sanitizeRoomName, sanitizeDescription, sanitizeChatMessage } from '../utils/validation.js';
 import logger from '../utils/logger.js';
@@ -110,6 +111,7 @@ const updateRoomSchema = z.object({
  roomsRouter.post('/', authenticate, async (req: AuthRequest, res: Response) => {
    try {
      const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
      const data = createRoomSchema.parse(req.body);
      
      // Sanitize room name
@@ -157,47 +159,58 @@ const updateRoomSchema = z.object({
        logger.warn('LiveKit room creation failed (may already exist):', lkError);
      }
 
-     res.status(201).json({ room });
-   } catch (error) {
-     if (error instanceof z.ZodError) {
-       return res.status(400).json({ error: 'Validation error', details: error.errors });
-     }
-     logger.error('Create room error:', error);
-     res.status(500).json({ error: 'Failed to create room' });
-   }
- });
+      res.status(201).json({ room });
 
- // GET /rooms - List all rooms (user's rooms or all active)
- roomsRouter.get('/', authenticate, async (req: AuthRequest, res: Response) => {
-   try {
-     const user = requireUser(req);
-     const { all } = req.query;
+      // Invalidate room list caches
+      invalidatePattern('cache:rooms:*').catch(() => {});
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: 'Validation error', details: error.errors });
+      }
+      logger.error('Create room error:', error);
+      res.status(500).json({ error: 'Failed to create room' });
+    }
+  });
 
-     let rooms: RoomRow[];
-     if (all === 'true') {
-       // Get all rooms
-       rooms = await roomService.getAllRooms();
-     } else {
-       // Get user's rooms
-       rooms = await roomService.getUserRooms(user.id);
-     }
+  // GET /rooms - List all rooms (user's rooms or all active)
+  roomsRouter.get('/', authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+      const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
+      const { all } = req.query;
+      const allFlag = all === 'true' ? 'true' : 'false';
 
-     // Get active rooms from LiveKit
-     const activeRooms = await listRooms();
-     const activeRoomNames = new Set(activeRooms.map(r => r.name));
+      const result = await getCached<{ rooms: unknown[] }>(
+        `cache:rooms:list:${user.id}:${allFlag}`,
+        TTL_SHORT,
+        async () => {
+          let rooms: RoomRow[];
+          if (all === 'true') {
+            rooms = await roomService.getAllRooms();
+          } else {
+            rooms = await roomService.getUserRooms(user.id);
+          }
 
-     // Merge with database rooms
-     const enrichedRooms: EnrichedRoom[] = rooms.map((room) => ({
-       ...room,
-       isActive: activeRoomNames.has(room.name),
-     }));
+          // Get active rooms from LiveKit
+          const activeRooms = await listRooms();
+          const activeRoomNames = new Set(activeRooms.map(r => r.name));
 
-     res.json({ rooms: enrichedRooms });
-   } catch (error) {
-     logger.error('List rooms error:', error);
-     res.status(500).json({ error: 'Failed to list rooms' });
-   }
- });
+          // Merge with database rooms
+          const enrichedRooms: EnrichedRoom[] = rooms.map((room) => ({
+            ...room,
+            isActive: activeRoomNames.has(room.name),
+          }));
+
+          return { rooms: enrichedRooms };
+        },
+      );
+
+      res.json(result);
+    } catch (error) {
+      logger.error('List rooms error:', error);
+      res.status(500).json({ error: 'Failed to list rooms' });
+    }
+  });
 
  // GET /rooms/:name - Get room details (authenticated - protects room metadata)
  roomsRouter.get('/:name', optionalAuth, async (req: AuthRequest, res: Response) => {
@@ -267,6 +280,7 @@ const updateRoomSchema = z.object({
  roomsRouter.patch('/:name', authenticate, async (req: AuthRequest, res: Response) => {
    try {
      const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
      const { name } = req.params;
      const data = updateRoomSchema.parse(req.body);
 
@@ -280,14 +294,17 @@ const updateRoomSchema = z.object({
        return res.status(403).json({ error: 'Only the host can update this room' });
      }
 
-     const updated = await roomService.updateRoom(name, {
-       title: data.title,
-       description: data.description,
-       maxParticipants: data.maxParticipants,
-       status: data.status,
-     });
+      const updated = await roomService.updateRoom(name, {
+        title: data.title,
+        description: data.description,
+        maxParticipants: data.maxParticipants,
+        status: data.status,
+      });
 
-     res.json({ room: updated });
+      // Invalidate room caches
+      await invalidatePattern('cache:rooms:*');
+
+      res.json({ room: updated });
    } catch (error) {
      if (error instanceof z.ZodError) {
        return res.status(400).json({ error: 'Validation error', details: error.errors });
@@ -301,6 +318,7 @@ const updateRoomSchema = z.object({
  roomsRouter.delete('/:name', authenticate, async (req: AuthRequest, res: Response) => {
    try {
      const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
      const { name } = req.params;
 
      const room = await roomService.getRoomByName(name);
@@ -320,10 +338,14 @@ const updateRoomSchema = z.object({
        // Room may not exist
      }
 
-     // Delete from database
-     await roomService.deleteRoomByName(name);
+      // Delete from database
+      await roomService.deleteRoomByName(name);
 
-     res.json({ message: 'Room deleted' });
+      // Invalidate room caches
+      await invalidatePattern('cache:rooms:*');
+      await invalidatePattern('cache:meetings:*');
+
+      res.json({ message: 'Room deleted' });
    } catch (error) {
      logger.error('Delete room error:', error);
      res.status(500).json({ error: 'Failed to delete room' });
@@ -334,6 +356,7 @@ const updateRoomSchema = z.object({
 roomsRouter.delete('/:name/participants/:identity', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { name, identity } = req.params;
 
     const { room, allowed } = await requireModeratorRoomAccess(name, user.id);
@@ -358,6 +381,7 @@ roomsRouter.delete('/:name/participants/:identity', authenticate, async (req: Au
 roomsRouter.post('/:name/mute/:identity', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { name, identity } = req.params;
 
     const { room, allowed } = await requireModeratorRoomAccess(name, user.id);
@@ -382,6 +406,7 @@ roomsRouter.post('/:name/mute/:identity', authenticate, async (req: AuthRequest,
 roomsRouter.post('/:name/mute-video/:identity', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { name, identity } = req.params;
 
     const { room, allowed } = await requireModeratorRoomAccess(name, user.id);
@@ -406,6 +431,7 @@ roomsRouter.post('/:name/mute-video/:identity', authenticate, async (req: AuthRe
 roomsRouter.post('/:name/mute-all', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { name } = req.params;
 
     const { room, allowed } = await requireModeratorRoomAccess(name, user.id);
@@ -442,6 +468,7 @@ roomsRouter.post('/:name/mute-all', authenticate, async (req: AuthRequest, res: 
 roomsRouter.post('/:name/kick/:identity', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { name, identity } = req.params;
 
     const { room, allowed } = await requireModeratorRoomAccess(name, user.id);
@@ -480,6 +507,7 @@ roomsRouter.post('/:name/kick/:identity', authenticate, async (req: AuthRequest,
  roomsRouter.post('/:name/admit/:identity', authenticate, async (req: AuthRequest, res: Response) => {
    try {
      const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
      const { name, identity } = req.params;
 
      const room = await roomService.getRoomByName(name);
@@ -505,6 +533,7 @@ roomsRouter.post('/:name/kick/:identity', authenticate, async (req: AuthRequest,
  roomsRouter.post('/:name/admit-all', authenticate, async (req: AuthRequest, res: Response) => {
    try {
      const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
      const { name } = req.params;
 
      const room = await roomService.getRoomByName(name);
@@ -532,6 +561,7 @@ roomsRouter.post('/:name/kick/:identity', authenticate, async (req: AuthRequest,
  roomsRouter.post('/:name/deny-all', authenticate, async (req: AuthRequest, res: Response) => {
    try {
      const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
      const { name } = req.params;
 
      const room = await roomService.getRoomByName(name);
@@ -559,6 +589,7 @@ roomsRouter.post('/:name/kick/:identity', authenticate, async (req: AuthRequest,
 roomsRouter.post('/:name/disable-screen/:identity', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { name, identity } = req.params;
 
     const { room, allowed } = await requireModeratorRoomAccess(name, user.id);
@@ -582,6 +613,7 @@ roomsRouter.post('/:name/disable-screen/:identity', authenticate, async (req: Au
 roomsRouter.post('/:name/disable-all-cameras', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { name } = req.params;
 
     const { room, allowed } = await requireModeratorRoomAccess(name, user.id);
@@ -613,6 +645,7 @@ roomsRouter.post('/:name/disable-all-cameras', authenticate, async (req: AuthReq
  roomsRouter.post('/:name/start', authenticate, async (req: AuthRequest, res: Response) => {
    try {
      const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
      const { name } = req.params;
 
      const room = await roomService.getRoomByName(name);
@@ -637,10 +670,15 @@ roomsRouter.post('/:name/disable-all-cameras', authenticate, async (req: AuthReq
      // Update room status to active
      await roomService.setRoomActive(room.id);
 
-     // Create a new meeting record
-     const meetingId = await roomService.createMeeting(room.id);
+      // Create a new meeting record
+      const meetingId = await roomService.createMeeting(room.id);
 
-     res.json({ message: 'Meeting started', status: 'active', meetingId });
+      // Invalidate caches on meeting start
+      invalidatePattern('cache:rooms:*').catch(() => {});
+      invalidatePattern('cache:meetings:*').catch(() => {});
+      invalidatePattern('cache:stats:*').catch(() => {});
+
+      res.json({ message: 'Meeting started', status: 'active', meetingId });
    } catch (error) {
      logger.error('Start meeting error:', error);
      res.status(500).json({ error: 'Failed to start meeting' });
@@ -651,6 +689,7 @@ roomsRouter.post('/:name/disable-all-cameras', authenticate, async (req: AuthReq
  roomsRouter.post('/:name/end', authenticate, async (req: AuthRequest, res: Response) => {
    try {
      const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
      const { name } = req.params;
 
      const room = await roomService.getRoomByName(name);
@@ -680,7 +719,12 @@ roomsRouter.post('/:name/disable-all-cameras', authenticate, async (req: AuthReq
        // Room may not exist
      }
 
-     res.json({ message: 'Meeting ended', status: 'ended' });
+      res.json({ message: 'Meeting ended', status: 'ended' });
+
+      // Invalidate caches on meeting end
+      invalidatePattern('cache:rooms:*').catch(() => {});
+      invalidatePattern('cache:meetings:*').catch(() => {});
+      invalidatePattern('cache:stats:*').catch(() => {});
    } catch (error) {
      logger.error('End meeting error:', error);
      res.status(500).json({ error: 'Failed to end meeting' });
@@ -691,6 +735,7 @@ roomsRouter.post('/:name/disable-all-cameras', authenticate, async (req: AuthReq
  roomsRouter.get('/:name/lobby', authenticate, async (req: AuthRequest, res: Response) => {
    try {
      const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
      const { name } = req.params;
 
      const room = await roomService.getRoomByName(name);
@@ -719,6 +764,7 @@ roomsRouter.post('/:name/disable-all-cameras', authenticate, async (req: AuthReq
 roomsRouter.get('/:name/chat', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { name } = req.params;
     const { limit = 200 } = req.query;
     const parsedLimit = Math.min(parseInt(limit as string, 10) || 200, 500);
@@ -760,6 +806,7 @@ roomsRouter.get('/:name/chat', authenticate, async (req: AuthRequest, res: Respo
 roomsRouter.post('/:name/chat', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { name } = req.params;
     const { content, messageType = 'text' } = req.body;
 
@@ -824,6 +871,7 @@ roomsRouter.post('/:name/chat', authenticate, async (req: AuthRequest, res: Resp
  roomsRouter.get('/:name/participants', authenticate, async (req: AuthRequest, res: Response) => {
    try {
      const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
      const { name } = req.params;
 
      // Check if room exists in database
@@ -872,7 +920,7 @@ const roomSettingsSchema = z.object({
 });
 
  // GET /rooms/:name/settings - Get room settings (public)
- roomsRouter.get('/:name/settings', async (req, res: Response) => {
+ roomsRouter.get('/:name/settings', authenticate, async (req, res: Response) => {
    try {
      const { name } = req.params;
 
@@ -904,6 +952,7 @@ const roomSettingsSchema = z.object({
  roomsRouter.put('/:name/settings', authenticate, async (req: AuthRequest, res: Response) => {
    try {
      const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
      const { name } = req.params;
      const data = roomSettingsSchema.parse(req.body);
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRoomContext } from '@livekit/components-react';
 import { meetingRoomConfig } from '../config/meetingRoomConfig';
 
@@ -20,15 +20,21 @@ const VERY_LARGE_CALL_THRESHOLD = 16;
 export function useCallSizeConfig(): CallSizeConfig {
   const room = useRoomContext();
   const [participantCount, setParticipantCount] = useState(0);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!room) return;
 
     const updateCount = () => {
-      // Count all participants (remote + local)
-      const remoteCount = room.remoteParticipants.size;
-      const localCount = 1; // Local participant
-      setParticipantCount(remoteCount + localCount);
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      debounceTimerRef.current = setTimeout(() => {
+        // Count all participants (remote + local)
+        const remoteCount = room.remoteParticipants.size;
+        const localCount = 1; // Local participant
+        setParticipantCount(remoteCount + localCount);
+      }, 300);
     };
 
     // Initial count
@@ -41,6 +47,9 @@ export function useCallSizeConfig(): CallSizeConfig {
     return () => {
       room.off('participantConnected', updateCount);
       room.off('participantDisconnected', updateCount);
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
     };
   }, [room]);
 

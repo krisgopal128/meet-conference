@@ -321,6 +321,13 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
       stopPreview();
       // Clean up permission stream (skip video - already stopped above)
       stopPermissionStream(true);
+      // Ensure any remaining permission stream tracks are fully stopped
+      if (permissionStreamRef.current) {
+        permissionStreamRef.current.getTracks().forEach((track) => track.stop());
+        permissionStreamRef.current = null;
+      }
+      // Null out permission video track reference
+      permissionVideoTrackRef.current = null;
       // Clean up blur processor via manager
       void forceCleanup();
     };

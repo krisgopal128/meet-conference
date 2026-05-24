@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react';
+import { useEffect, useRef, useState, useCallback, lazy, Suspense, memo } from 'react';
 import {
   useTracks,
   useRoomContext,
@@ -33,7 +33,6 @@ import { ParticipantVisibilityProvider } from '../../contexts/ParticipantVisibil
 import { useDataChannelHandler } from '../../hooks/useDataChannelHandler';
 import { useJoinLeaveSounds } from '../../hooks/useJoinLeaveSounds';
 import { useQualityMonitoring } from '../../hooks/useQualityMonitoring';
-import { PiPContainer } from '../pip/PiPContainer';
 import { Users, Loader2 } from 'lucide-react';
 import { meetingRoomConfig } from '../../config/meetingRoomConfig';
 import toast from 'react-hot-toast';
@@ -43,6 +42,8 @@ import logger from '../../utils/logger';
 const ChatPanel = lazy(() => import('../panels/ChatPanel').then(m => ({ default: m.ChatPanel })));
 const ParticipantsPanel = lazy(() => import('../panels/ParticipantsPanel').then(m => ({ default: m.ParticipantsPanel })));
 const SettingsPanel = lazy(() => import('../panels/SettingsPanel').then(m => ({ default: m.SettingsPanel })));
+const WhiteboardLayout = lazy(() => import('./WhiteboardLayout').then(m => ({ default: m.WhiteboardLayout })));
+const PiPContainer = lazy(() => import('../pip/PiPContainer').then(m => ({ default: m.PiPContainer })));
 
 // Loading fallback for panels
 function PanelLoader() {
@@ -57,7 +58,7 @@ interface ConferenceRoomProps {
   roomName?: string;
 }
 
-export function ConferenceRoom(_props: ConferenceRoomProps) {
+function ConferenceRoomInner(_props: ConferenceRoomProps) {
   const room = useRoomContext();
   const { localParticipant } = useLocalParticipant();
   const navigate = useNavigate();
@@ -436,6 +437,7 @@ export function ConferenceRoom(_props: ConferenceRoomProps) {
     switch (layout) {
       case 'grid': return <GridLayout />;
       case 'screenshare': return <ScreenShareLayout />;
+      case 'whiteboard': return <WhiteboardLayout room={room} roomName={_props.roomName} />;
       default: return <SpeakerLayout activeSpeakers={activeSpeakers} />;
     }
   };
@@ -505,7 +507,11 @@ export function ConferenceRoom(_props: ConferenceRoomProps) {
         <ControlBar />
         
         {/* Picture-in-Picture */}
-        {isPiPOpen && <PiPContainer />}
+        {isPiPOpen && (
+          <Suspense fallback={null}>
+            <PiPContainer />
+          </Suspense>
+        )}
         
         {/* Audio renderer for remote participants */}
         <RoomAudioRenderer />
@@ -513,3 +519,5 @@ export function ConferenceRoom(_props: ConferenceRoomProps) {
     </ParticipantVisibilityProvider>
   );
 }
+
+export const ConferenceRoom = memo(ConferenceRoomInner);

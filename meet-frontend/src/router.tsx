@@ -162,7 +162,7 @@ const routes: RouteObject[] = [
   // Prashasakah Admin Panel routes (admin only, desktop only)
   {
     path: '/prashasakah',
-    element: withSuspense(PrashasakahLayout),
+    element: <ProtectedRoute requiredRole="admin">{withSuspense(PrashasakahLayout)}</ProtectedRoute>,
     children: [
       {
         index: true,

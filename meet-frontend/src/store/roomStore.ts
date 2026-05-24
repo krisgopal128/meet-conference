@@ -59,6 +59,10 @@ interface UIState {
   chatOpen: boolean;
   participantsOpen: boolean;
   settingsOpen: boolean;
+  whiteboardOpen: boolean;
+  whiteboardFullscreen: boolean;
+  /** Remembers the layout mode before whiteboard was opened */
+  _prevLayout?: LayoutMode;
   settingsView: SettingsView;
   lobbyCount: number;
   joinLeaveSoundsEnabled: boolean;
@@ -92,6 +96,9 @@ interface UIActions {
   toggleChat: () => void;
   toggleParticipants: () => void;
   toggleSettings: () => void;
+  toggleWhiteboard: () => void;
+  toggleWhiteboardFullscreen: () => void;
+  setWhiteboardFullscreen: (fullscreen: boolean) => void;
   openSettingsView: (view: SettingsView) => void;
   setLobbyCount: (count: number) => void;
   incrementLobbyCount: () => void;
@@ -117,6 +124,8 @@ const initialUIState: UIState = {
   chatOpen: false,
   participantsOpen: false,
   settingsOpen: false,
+  whiteboardOpen: false,
+  whiteboardFullscreen: false,
   settingsView: 'devices',
   lobbyCount: 0,
   joinLeaveSoundsEnabled: meetingRoomConfig.room.joinLeaveSoundsEnabled,
@@ -284,6 +293,18 @@ export const useRoomStore = create<RoomStore>()(
           toggleSettings: () => set((state) => ({
             settingsOpen: !state.settingsOpen,
           }), false, 'toggleSettings'),
+          toggleWhiteboard: () => set((state) => {
+            const closing = state.whiteboardOpen;
+            const prev = closing ? (state._prevLayout ?? 'speaker') : state.layout;
+            const validPrev = prev === 'screenshare' && !state.screenShareMode ? 'speaker' : prev;
+            return closing
+              ? { whiteboardOpen: false, whiteboardFullscreen: false, layout: validPrev as LayoutMode, _prevLayout: undefined }
+              : { whiteboardOpen: true, layout: 'whiteboard' as LayoutMode, _prevLayout: state.layout };
+          }, false, 'toggleWhiteboard'),
+          toggleWhiteboardFullscreen: () => set((state) => ({
+            whiteboardFullscreen: !state.whiteboardFullscreen,
+          }), false, 'toggleWhiteboardFullscreen'),
+          setWhiteboardFullscreen: (whiteboardFullscreen) => set({ whiteboardFullscreen }, false, 'setWhiteboardFullscreen'),
           openSettingsView: (settingsView) => set({ settingsOpen: true, settingsView }, false, 'openSettingsView'),
           setLobbyCount: (lobbyCount) => set({ lobbyCount }, false, 'setLobbyCount'),
           incrementLobbyCount: () => set((state) => ({
@@ -559,6 +580,8 @@ export const useLayout = () => useRoomStore((state) => state.layout);
 export const useChatOpen = () => useRoomStore((state) => state.chatOpen);
 export const useParticipantsOpen = () => useRoomStore((state) => state.participantsOpen);
 export const useSettingsOpen = () => useRoomStore((state) => state.settingsOpen);
+export const useWhiteboardOpen = () => useRoomStore((state) => state.whiteboardOpen);
+export const useWhiteboardFullscreen = () => useRoomStore((state) => state.whiteboardFullscreen);
 export const useSettingsView = () => useRoomStore((state) => state.settingsView);
 export const useLobbyCount = () => useRoomStore((state) => state.lobbyCount);
 export const useJoinLeaveSoundsEnabled = () => useRoomStore((state) => state.joinLeaveSoundsEnabled);
@@ -636,6 +659,9 @@ export const useUIActions = () => useRoomStore(
     toggleChat: state.toggleChat,
     toggleParticipants: state.toggleParticipants,
     toggleSettings: state.toggleSettings,
+    toggleWhiteboard: state.toggleWhiteboard,
+    toggleWhiteboardFullscreen: state.toggleWhiteboardFullscreen,
+    setWhiteboardFullscreen: state.setWhiteboardFullscreen,
     openSettingsView: state.openSettingsView,
     setLobbyCount: state.setLobbyCount,
     incrementLobbyCount: state.incrementLobbyCount,

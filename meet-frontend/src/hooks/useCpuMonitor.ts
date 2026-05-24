@@ -28,6 +28,10 @@ export interface CpuMonitorState {
   isActive: boolean;
   /** FPS from fallback monitor (null if using LongTask API) */
   fps: number | null;
+  /** Computed CPU level: 'normal', 'high', or 'critical' */
+  cpuLevel: 'normal' | 'high' | 'critical';
+  /** Whether quality should be reduced (true when elevated or critical) */
+  shouldReduceQuality: boolean;
 }
 
 export interface CpuMonitorOptions {
@@ -77,13 +81,30 @@ export function useCpuMonitor(options: CpuMonitorOptions = {}): CpuMonitorState 
     onRecoveryRef.current = onRecovery;
   }, [onDegradation, onRecovery]);
 
-  const [state, setState] = useState<CpuMonitorState>({
-    cpuPercent: null,
-    status: 'unknown',
-    shouldDegrade: false,
-    shouldRecover: false,
-    isActive: enabled,
-    fps: null,
+  // Helper: compute cpuLevel and shouldReduceQuality from status
+  const computeDerivedState = useCallback((status: CpuStatus): Pick<CpuMonitorState, 'cpuLevel' | 'shouldReduceQuality'> => {
+    const cpuLevel: 'normal' | 'high' | 'critical' =
+      status === 'normal' ? 'normal' :
+      status === 'elevated' ? 'high' :
+      status === 'critical' ? 'critical' :
+      'normal'; // 'unknown' → 'normal'
+    return {
+      cpuLevel,
+      shouldReduceQuality: status === 'elevated' || status === 'critical',
+    };
+  }, []);
+
+  const [state, setState] = useState<CpuMonitorState>(() => {
+    const derived = computeDerivedState('unknown');
+    return {
+      cpuPercent: null,
+      status: 'unknown',
+      shouldDegrade: false,
+      shouldRecover: false,
+      isActive: enabled,
+      fps: null,
+      ...derived,
+    };
   });
 
   // Refs for tracking
@@ -129,7 +150,7 @@ export function useCpuMonitor(options: CpuMonitorOptions = {}): CpuMonitorState 
   // Main monitoring logic
   useEffect(() => {
     if (!enabled) {
-      setState(prev => ({ ...prev, isActive: false, cpuPercent: null, status: 'unknown', fps: null }));
+      setState(prev => ({ ...prev, isActive: false, cpuPercent: null, status: 'unknown', fps: null, ...computeDerivedState('unknown') }));
       return;
     }
 
@@ -211,6 +232,7 @@ export function useCpuMonitor(options: CpuMonitorOptions = {}): CpuMonitorState 
             shouldRecover: false,
             isActive: true,
             fps,
+            ...computeDerivedState(status),
           });
             onDegradationRef.current?.();
           } else {
@@ -220,6 +242,7 @@ export function useCpuMonitor(options: CpuMonitorOptions = {}): CpuMonitorState 
               status,
               shouldDegrade: false,
               fps,
+              ...computeDerivedState(status),
             }));
           }
         } else {
@@ -234,6 +257,7 @@ export function useCpuMonitor(options: CpuMonitorOptions = {}): CpuMonitorState 
               shouldRecover: true,
               isActive: true,
               fps,
+              ...computeDerivedState(status),
             });
             onRecoveryRef.current?.();
         } else {
@@ -243,12 +267,13 @@ export function useCpuMonitor(options: CpuMonitorOptions = {}): CpuMonitorState 
             status,
             shouldRecover: false,
             fps,
+            ...computeDerivedState(status),
           }));
         }
       }
     }, checkIntervalMs);
 
-    setState(prev => ({ ...prev, isActive: true }));
+    setState(prev => ({ ...prev, isActive: true, ...computeDerivedState(prev.status) }));
 
     return () => {
       if (observerRef.current) {
@@ -264,7 +289,7 @@ export function useCpuMonitor(options: CpuMonitorOptions = {}): CpuMonitorState 
         rafRef.current = null;
       }
     };
-  }, [enabled, checkIntervalMs, highThreshold, criticalThreshold, thresholdDurationMs, recoveryThreshold, calculateStatus, estimateCpuFromFps]);
+  }, [enabled, checkIntervalMs, highThreshold, criticalThreshold, thresholdDurationMs, recoveryThreshold, calculateStatus, estimateCpuFromFps, computeDerivedState]);
 
   return state;
 }

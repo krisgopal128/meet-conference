@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { AdminAlert } from '../../services/prashasakahApi';
 
 /**
@@ -145,6 +146,14 @@ export default function AlertList({
   processingId 
 }: AlertListProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: alerts.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 80,
+    overscan: 5,
+  });
 
   if (loading) {
     return (
@@ -177,135 +186,150 @@ export default function AlertList({
   }
 
   return (
-    <div className="space-y-3">
-      {alerts.map((alert) => {
-        const severity = getSeverityConfig(alert.severity);
-        const typeIcon = getTypeIcon(alert.type);
-        const isExpanded = expandedId === alert.id;
-        const isRead = !!alert.readAt;
-        const isResolved = !!alert.resolvedAt;
-        const isProcessing = processingId === alert.id;
+    <div ref={parentRef} className="max-h-[600px] overflow-y-auto">
+      <div style={{ height: virtualizer.getTotalSize(), width: '100%', position: 'relative' }}>
+        {virtualizer.getVirtualItems().map((virtualItem) => {
+          const alert = alerts[virtualItem.index];
+          const severity = getSeverityConfig(alert.severity);
+          const typeIcon = getTypeIcon(alert.type);
+          const isExpanded = expandedId === alert.id;
+          const isRead = !!alert.readAt;
+          const isResolved = !!alert.resolvedAt;
+          const isProcessing = processingId === alert.id;
 
-        return (
-          <div 
-            key={alert.id}
-            className={`bg-white rounded-lg shadow border-l-4 ${severity.borderColor} ${
-              isRead ? 'opacity-75' : ''
-            } transition-opacity`}
-          >
-            {/* Main Content */}
-            <div className="p-4">
-              <div className="flex items-start gap-3">
-                {/* Severity Icon */}
-                <div className={`p-2 rounded-full ${severity.bgColor} ${severity.color}`}>
-                  {severity.icon}
-                </div>
+          return (
+            <div
+              key={alert.id}
+              data-index={virtualItem.index}
+              ref={virtualizer.measureElement}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${virtualItem.start}px)`,
+              }}
+            >
+              <div
+                className={`bg-white rounded-lg shadow border-l-4 ${severity.borderColor} ${
+                  isRead ? 'opacity-75' : ''
+                } transition-opacity mb-3`}
+              >
+                {/* Main Content */}
+                <div className="p-4">
+                  <div className="flex items-start gap-3">
+                    {/* Severity Icon */}
+                    <div className={`p-2 rounded-full ${severity.bgColor} ${severity.color}`}>
+                      {severity.icon}
+                    </div>
 
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {/* Type Badge */}
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${severity.bgColor} ${severity.color}`}>
-                      {typeIcon}
-                      <span className="capitalize">{alert.type.replace('_', ' ')}</span>
-                    </span>
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {/* Type Badge */}
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${severity.bgColor} ${severity.color}`}>
+                          {typeIcon}
+                          <span className="capitalize">{alert.type.replace('_', ' ')}</span>
+                        </span>
 
-                    {/* Status Badges */}
-                    {isResolved && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success-100 text-green-700">
-                        Resolved
-                      </span>
-                    )}
-                    {!isRead && !isResolved && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-brand-100 text-brand-700">
-                        New
-                      </span>
-                    )}
+                        {/* Status Badges */}
+                        {isResolved && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success-100 text-green-700">
+                            Resolved
+                          </span>
+                        )}
+                        {!isRead && !isResolved && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-brand-100 text-brand-700">
+                            New
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Title */}
+                      <h4 className={`mt-1 font-medium ${isRead ? 'text-surface-500' : 'text-surface-800'}`}>
+                        {alert.title}
+                      </h4>
+
+                      {/* Message */}
+                      {alert.message && (
+                        <p className={`mt-1 text-sm ${isRead ? 'text-surface-500' : 'text-surface-500'}`}>
+                          {alert.message}
+                        </p>
+                      )}
+
+                      {/* Timestamp */}
+                      <p className="mt-2 text-xs text-surface-400" title={formatFullDate(alert.createdAt)}>
+                        {formatTimestamp(alert.createdAt)}
+                      </p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2">
+                      {/* Expand Button */}
+                      {alert.data && Object.keys(alert.data).length > 0 && (
+                        <button
+                          onClick={() => setExpandedId(isExpanded ? null : alert.id)}
+                          className="p-1.5 text-surface-400 hover:text-surface-500 transition-colors"
+                          title="View details"
+                        >
+                          <svg
+                            className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                      )}
+
+                      {/* Mark as Read Button */}
+                      {!isRead && (
+                        <button
+                          onClick={() => onMarkAsRead(alert.id)}
+                          disabled={isProcessing}
+                          className="p-1.5 text-surface-400 hover:text-brand-600 transition-colors disabled:opacity-50"
+                          title="Mark as read"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76" />
+                          </svg>
+                        </button>
+                      )}
+
+                      {/* Resolve Button */}
+                      {!isResolved && (
+                        <button
+                          onClick={() => onResolve(alert.id)}
+                          disabled={isProcessing}
+                          className="p-1.5 text-surface-400 hover:text-success-600 transition-colors disabled:opacity-50"
+                          title="Resolve"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   </div>
-
-                  {/* Title */}
-                  <h4 className={`mt-1 font-medium ${isRead ? 'text-surface-500' : 'text-surface-800'}`}>
-                    {alert.title}
-                  </h4>
-
-                  {/* Message */}
-                  {alert.message && (
-                    <p className={`mt-1 text-sm ${isRead ? 'text-surface-500' : 'text-surface-500'}`}>
-                      {alert.message}
-                    </p>
-                  )}
-
-                  {/* Timestamp */}
-                  <p className="mt-2 text-xs text-surface-400" title={formatFullDate(alert.createdAt)}>
-                    {formatTimestamp(alert.createdAt)}
-                  </p>
                 </div>
 
-                {/* Actions */}
-                <div className="flex items-center gap-2">
-                  {/* Expand Button */}
-                  {alert.data && Object.keys(alert.data).length > 0 && (
-                    <button
-                      onClick={() => setExpandedId(isExpanded ? null : alert.id)}
-                      className="p-1.5 text-surface-400 hover:text-surface-500 transition-colors"
-                      title="View details"
-                    >
-                      <svg 
-                        className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  )}
-
-                  {/* Mark as Read Button */}
-                  {!isRead && (
-                    <button
-                      onClick={() => onMarkAsRead(alert.id)}
-                      disabled={isProcessing}
-                      className="p-1.5 text-surface-400 hover:text-brand-600 transition-colors disabled:opacity-50"
-                      title="Mark as read"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76" />
-                      </svg>
-                    </button>
-                  )}
-
-                  {/* Resolve Button */}
-                  {!isResolved && (
-                    <button
-                      onClick={() => onResolve(alert.id)}
-                      disabled={isProcessing}
-                      className="p-1.5 text-surface-400 hover:text-success-600 transition-colors disabled:opacity-50"
-                      title="Resolve"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
+                {/* Expanded Details */}
+                {isExpanded && alert.data && Object.keys(alert.data).length > 0 && (
+                  <div className="px-4 pb-4 pt-0">
+                    <div className="bg-surface-50 rounded-lg p-3">
+                      <p className="text-xs font-medium text-surface-500 mb-2">Alert Details</p>
+                      <pre className="text-sm text-surface-800 overflow-x-auto">
+                        {JSON.stringify(alert.data, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-
-            {/* Expanded Details */}
-            {isExpanded && alert.data && Object.keys(alert.data).length > 0 && (
-              <div className="px-4 pb-4 pt-0">
-                <div className="bg-surface-50 rounded-lg p-3">
-                  <p className="text-xs font-medium text-surface-500 mb-2">Alert Details</p>
-                  <pre className="text-sm text-surface-800 overflow-x-auto">
-                    {JSON.stringify(alert.data, null, 2)}
-                  </pre>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }

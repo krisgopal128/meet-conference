@@ -2,7 +2,7 @@ import { AudioPresets, BackupCodecPolicy, VideoPreset, VideoQuality, type AudioC
 import rawConfig from '../../meeting-room.config.example.jsonc?raw';
 import logger from '../utils/logger';
 
-type LayoutMode = 'speaker' | 'grid' | 'spotlight' | 'screenshare';
+type LayoutMode = 'speaker' | 'grid' | 'spotlight' | 'screenshare' | 'whiteboard';
 type VideoCodec = 'vp8' | 'h264' | 'vp9' | 'av1' | 'h265';
 type AudioPresetName = 'telephone' | 'speech' | 'music' | 'musicStereo' | 'musicHighQuality' | 'musicHighQualityStereo';
 type BackupCodecPolicyName = 'prefer_regression' | 'simulcast' | 'regression';
@@ -1016,3 +1016,59 @@ export const ADAPTIVE_CONFIG = {
     veryLarge: { max: { width: 1280, height: 720 }, simulcastLayers: 2, framerate: 24 },
   },
 } as const;
+
+/**
+ * Get adaptive settings based on participant count.
+ * Used by video rendering pipeline to adjust quality dynamically.
+ *
+ * - 1-4 participants: 720p, 30fps for all; speaker same; thumbnails enabled
+ * - 5-8 participants: 540p, 24fps for non-speakers; 720p, 30fps for speaker; thumbnails enabled
+ * - 9-16 participants: 360p, 15fps for non-speakers; 540p, 24fps for speaker; thumbnails enabled
+ * - 17+ participants: 360p, 15fps for all; speaker same; thumbnails disabled
+ */
+export function getParticipantAdaptiveSettings(participantCount: number): {
+  resolution: { width: number; height: number };
+  fps: number;
+  speakerResolution: { width: number; height: number };
+  speakerFps: number;
+  disableThumbnails: boolean;
+} {
+  if (participantCount <= 4) {
+    return {
+      resolution: { width: 1280, height: 720 },
+      fps: 30,
+      speakerResolution: { width: 1280, height: 720 },
+      speakerFps: 30,
+      disableThumbnails: false,
+    };
+  }
+
+  if (participantCount <= 8) {
+    return {
+      resolution: { width: 960, height: 540 },
+      fps: 24,
+      speakerResolution: { width: 1280, height: 720 },
+      speakerFps: 30,
+      disableThumbnails: false,
+    };
+  }
+
+  if (participantCount <= 16) {
+    return {
+      resolution: { width: 640, height: 360 },
+      fps: 15,
+      speakerResolution: { width: 960, height: 540 },
+      speakerFps: 24,
+      disableThumbnails: false,
+    };
+  }
+
+  // 17+ participants
+  return {
+    resolution: { width: 640, height: 360 },
+    fps: 15,
+    speakerResolution: { width: 640, height: 360 },
+    speakerFps: 15,
+    disableThumbnails: true,
+  };
+}

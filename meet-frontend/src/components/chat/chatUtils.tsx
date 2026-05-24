@@ -1,6 +1,10 @@
 import React from 'react';
 import { sanitizeDisplayText } from '../../utils/security';
 
+/** Cache for pre-formatted message content to avoid re-sanitizing on every render */
+const formattedCache = new Map<string, { raw: string; formatted: React.ReactNode }>();
+const MAX_CACHE_SIZE = 200;
+
 // Mention parsing utilities
 export function parseMentions(text: string): string[] {
   const mentionRegex = /@([a-zA-Z0-9_\-.\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\s]+?)(?=\s|$|@|[.,!?;:])/g;
@@ -12,10 +16,17 @@ export function parseMentions(text: string): string[] {
   return mentions;
 }
 
+/**
+ * Build React nodes from a message string, sanitizing XSS and highlighting @mentions.
+ * Results are cached by raw text so repeated renders of the same message skip work.
+ */
 export function renderMessageWithMentions(text: string): React.ReactNode {
+  const cached = formattedCache.get(text);
+  if (cached) return cached.formatted;
+
   // Security: Sanitize text to prevent XSS (defense in depth with React's escaping)
   const sanitized = sanitizeDisplayText(text, 5000);
-  
+
   const mentionRegex = /@([a-zA-Z0-9_\-.\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\s]+?)(?=\s|$|@|[.,!?;:])/g;
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
@@ -41,7 +52,16 @@ export function renderMessageWithMentions(text: string): React.ReactNode {
     parts.push(sanitized.slice(lastIndex));
   }
 
-  return parts.length > 0 ? parts : sanitized;
+  const formatted = parts.length > 0 ? parts : sanitized;
+
+  // Evict oldest entries when cache is full (simple FIFO eviction)
+  if (formattedCache.size >= MAX_CACHE_SIZE) {
+    const firstKey = formattedCache.keys().next().value;
+    if (firstKey !== undefined) formattedCache.delete(firstKey);
+  }
+  formattedCache.set(text, { raw: text, formatted });
+
+  return formatted;
 }
 
 // Type for mentionable participants

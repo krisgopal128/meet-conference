@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { apiKeysApi, ApiKey, ApiKeyWithSecret } from '../../services/apiKeysApi';
-import { useAuthStore } from '../../store/authStore';
+import { useUser } from '../../store/authStore';
 import { Copy, Key, Plus, RefreshCw, Trash2, Eye, EyeOff, Check, X, AlertTriangle } from 'lucide-react';
 import logger from '../../utils/logger';
 
@@ -22,7 +22,7 @@ interface ApiKeyManagerProps {
 }
 
 export default function ApiKeyManager({ className = '' }: ApiKeyManagerProps) {
-  const { user } = useAuthStore();
+  const user = useUser();
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);

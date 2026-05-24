@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { AdminAuditLog } from '../../services/prashasakahApi';
 
 /**
@@ -146,10 +147,18 @@ function formatFullDate(timestamp: string): string {
 
 export default function AuditLogTable({ logs, loading }: AuditLogTableProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
   };
+
+  const virtualizer = useVirtualizer({
+    count: logs.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 60,
+    overscan: 5,
+  });
 
   if (loading) {
     return (
@@ -193,113 +202,128 @@ export default function AuditLogTable({ logs, loading }: AuditLogTableProps) {
         <div className="col-span-2">Details</div>
       </div>
 
-      {/* Table Body */}
-      <div className="divide-y divide-surface-100">
-        {logs.map((log) => {
-          const config = getActionConfig(log.action);
-          const isExpanded = expandedId === log.id;
+      {/* Table Body - Virtualized */}
+      <div ref={parentRef} className="max-h-[600px] overflow-y-auto">
+        <div style={{ height: virtualizer.getTotalSize(), width: '100%', position: 'relative' }}>
+          {virtualizer.getVirtualItems().map((virtualItem) => {
+            const log = logs[virtualItem.index];
+            const config = getActionConfig(log.action);
+            const isExpanded = expandedId === log.id;
 
-          return (
-            <div key={log.id}>
-              {/* Main Row */}
-              <div 
-                className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 px-4 py-3 hover:bg-surface-50 cursor-pointer items-center"
-                onClick={() => toggleExpand(log.id)}
+            return (
+              <div
+                key={log.id}
+                data-index={virtualItem.index}
+                ref={virtualizer.measureElement}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${virtualItem.start}px)`,
+                }}
+                className="border-b border-surface-100"
               >
-                {/* Action Type Icon */}
-                <div className="col-span-1 flex items-center">
-                  <div className={`p-2 rounded-full ${config.color}`}>
-                    {config.icon}
+                {/* Main Row */}
+                <div
+                  className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 px-4 py-3 hover:bg-surface-50 cursor-pointer items-center"
+                  onClick={() => toggleExpand(log.id)}
+                >
+                  {/* Action Type Icon */}
+                  <div className="col-span-1 flex items-center">
+                    <div className={`p-2 rounded-full ${config.color}`}>
+                      {config.icon}
+                    </div>
                   </div>
-                </div>
 
-                {/* Action */}
-                <div className="col-span-3">
-                  <p className="font-medium text-surface-800">{config.label}</p>
-                  <p className="text-sm text-surface-500 md:hidden">{log.actorEmail}</p>
-                </div>
+                  {/* Action */}
+                  <div className="col-span-3">
+                    <p className="font-medium text-surface-800">{config.label}</p>
+                    <p className="text-sm text-surface-500 md:hidden">{log.actorEmail}</p>
+                  </div>
 
-                {/* Admin */}
-                <div className="col-span-2 hidden md:block">
-                  <p className="text-sm text-surface-800 truncate">{log.actorEmail}</p>
-                </div>
+                  {/* Admin */}
+                  <div className="col-span-2 hidden md:block">
+                    <p className="text-sm text-surface-800 truncate">{log.actorEmail}</p>
+                  </div>
 
-                {/* Target */}
-                <div className="col-span-2 hidden md:block">
-                  {log.targetId ? (
-                    <div>
-                      <p className="text-sm text-surface-800 capitalize">{log.targetType}</p>
-                      <p className="text-xs text-surface-500 font-mono truncate">{log.targetId.slice(0, 8)}...</p>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-surface-400">—</span>
-                  )}
-                </div>
-
-                {/* Time */}
-                <div className="col-span-2">
-                  <p className="text-sm text-surface-500" title={formatFullDate(log.createdAt)}>
-                    {formatTimestamp(log.createdAt)}
-                  </p>
-                </div>
-
-                {/* Expand Button */}
-                <div className="col-span-2 flex justify-end">
-                  <button
-                    className="p-1 text-surface-400 hover:text-surface-500 transition-colors"
-                    aria-label={isExpanded ? 'Collapse details' : 'Expand details'}
-                  >
-                    <svg 
-                      className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              {/* Expanded Details */}
-              {isExpanded && (
-                <div className="px-4 py-3 bg-surface-50 border-t border-surface-100">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Full Timestamp */}
-                    <div>
-                      <p className="text-xs font-medium text-surface-500 mb-1">Full Timestamp</p>
-                      <p className="text-sm text-surface-800">{formatFullDate(log.createdAt)}</p>
-                    </div>
-
-                    {/* IP Address */}
-                    <div>
-                      <p className="text-xs font-medium text-surface-500 mb-1">IP Address</p>
-                      <p className="text-sm text-surface-800 font-mono">{log.ipAddress || 'Not recorded'}</p>
-                    </div>
-
-                    {/* Target ID */}
-                    {log.targetId && (
+                  {/* Target */}
+                  <div className="col-span-2 hidden md:block">
+                    {log.targetId ? (
                       <div>
-                        <p className="text-xs font-medium text-surface-500 mb-1">Target ID</p>
-                        <p className="text-sm text-surface-800 font-mono break-all">{log.targetId}</p>
+                        <p className="text-sm text-surface-800 capitalize">{log.targetType}</p>
+                        <p className="text-xs text-surface-500 font-mono truncate">{log.targetId.slice(0, 8)}...</p>
                       </div>
-                    )}
-
-                    {/* Action Details */}
-                    {log.details && Object.keys(log.details).length > 0 && (
-                      <div className="md:col-span-2">
-                        <p className="text-xs font-medium text-surface-500 mb-1">Details</p>
-                        <pre className="text-sm text-surface-800 bg-white p-3 rounded border border-surface-200 overflow-x-auto">
-                          {JSON.stringify(log.details, null, 2)}
-                        </pre>
-                      </div>
+                    ) : (
+                      <span className="text-sm text-surface-400">—</span>
                     )}
                   </div>
+
+                  {/* Time */}
+                  <div className="col-span-2">
+                    <p className="text-sm text-surface-500" title={formatFullDate(log.createdAt)}>
+                      {formatTimestamp(log.createdAt)}
+                    </p>
+                  </div>
+
+                  {/* Expand Button */}
+                  <div className="col-span-2 flex justify-end">
+                    <button
+                      className="p-1 text-surface-400 hover:text-surface-500 transition-colors"
+                      aria-label={isExpanded ? 'Collapse details' : 'Expand details'}
+                    >
+                      <svg
+                        className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-              )}
-            </div>
-          );
-        })}
+
+                {/* Expanded Details */}
+                {isExpanded && (
+                  <div className="px-4 py-3 bg-surface-50 border-t border-surface-100">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Full Timestamp */}
+                      <div>
+                        <p className="text-xs font-medium text-surface-500 mb-1">Full Timestamp</p>
+                        <p className="text-sm text-surface-800">{formatFullDate(log.createdAt)}</p>
+                      </div>
+
+                      {/* IP Address */}
+                      <div>
+                        <p className="text-xs font-medium text-surface-500 mb-1">IP Address</p>
+                        <p className="text-sm text-surface-800 font-mono">{log.ipAddress || 'Not recorded'}</p>
+                      </div>
+
+                      {/* Target ID */}
+                      {log.targetId && (
+                        <div>
+                          <p className="text-xs font-medium text-surface-500 mb-1">Target ID</p>
+                          <p className="text-sm text-surface-800 font-mono break-all">{log.targetId}</p>
+                        </div>
+                      )}
+
+                      {/* Action Details */}
+                      {log.details && Object.keys(log.details).length > 0 && (
+                        <div className="md:col-span-2">
+                          <p className="text-xs font-medium text-surface-500 mb-1">Details</p>
+                          <pre className="text-sm text-surface-800 bg-white p-3 rounded border border-surface-200 overflow-x-auto">
+                            {JSON.stringify(log.details, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

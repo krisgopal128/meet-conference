@@ -7,6 +7,7 @@ import { query, queryOne } from '../services/database.js';
 import { AuthRequest, authenticate } from '../middleware/authenticate.js';
 import { authLimiter } from '../middleware/rateLimiter.js';
 import { blacklistToken, cacheGet, cacheSet } from '../services/redis.js';
+import { invalidateTokenAuth, invalidateUserAuth } from '../middleware/authenticate.js';
 import { 
   sanitizeEmail, 
   sanitizeName, 
@@ -14,6 +15,7 @@ import {
   validatePassword 
 } from '../utils/validation.js';
 import logger from '../utils/logger.js';
+import { issueCsrfToken } from '../middleware/csrf.js';
 
 export const authRouter = Router();
 
@@ -69,10 +71,8 @@ async function recordFailedAttempt(email: string): Promise<void> {
   // Set or update the attempt counter with TTL
   await cacheSet(key, newAttempts, LOCKOUT_DURATION_SECONDS);
   
-  // Store TTL separately for quick lookup
-  if (newAttempts === 1) {
-    await cacheSet(`${key}:ttl`, LOCKOUT_DURATION_SECONDS, LOCKOUT_DURATION_SECONDS);
-  }
+  // Store TTL separately for quick lookup (update on every attempt)
+  await cacheSet(`${key}:ttl`, LOCKOUT_DURATION_SECONDS, LOCKOUT_DURATION_SECONDS);
 }
 
 /**
@@ -80,7 +80,9 @@ async function recordFailedAttempt(email: string): Promise<void> {
  */
 async function clearFailedAttempts(email: string): Promise<void> {
   const key = `lockout:${email}`;
-  await cacheSet(key, 0, 1); // Effectively delete by setting TTL to 1 second
+  await cacheSet(key, 0, 1);
+  const { cacheDel } = await import('../services/redis.js');
+  await cacheDel(`${key}:ttl`); // Effectively delete by setting TTL to 1 second
 }
 
 // POST /auth/register
@@ -165,8 +167,8 @@ authRouter.post('/login', authLimiter, async (req, res: Response) => {
     }
 
     // Find user
-    const user = await queryOne<{ id: string; email: string; name: string | null; password_hash: string; role: string }>(
-      'SELECT id, email, name, password_hash, role FROM users WHERE email = $1',
+    const user = await queryOne<{ id: string; email: string; name: string | null; password_hash: string; role: string; is_banned: boolean }>(
+      'SELECT id, email, name, password_hash, role, is_banned FROM users WHERE email = $1',
       [email]
     );
 
@@ -175,6 +177,12 @@ authRouter.post('/login', authLimiter, async (req, res: Response) => {
       await recordFailedAttempt(email);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+
+    // Check if user is banned
+    if (user.is_banned) {
+      return res.status(403).json({ error: 'This account has been suspended. Please contact an administrator.' });
+    }
+
 
     // Verify password
     const valid = await bcrypt.compare(password, user.password_hash);
@@ -251,6 +259,7 @@ authRouter.post('/refresh', authenticate, async (req: AuthRequest, res: Response
         const decoded = jwt.decode(oldToken) as { exp?: number } | null;
         const ttl = decoded?.exp ? Math.max(decoded.exp - Math.floor(Date.now() / 1000), 1) : 86400;
         await blacklistToken(oldToken, ttl);
+        invalidateTokenAuth(oldToken);
       } catch (blacklistError) {
         logger.error('Failed to blacklist old token on refresh:', blacklistError);
         // Continue — new token is still valid
@@ -324,18 +333,31 @@ authRouter.post('/forgot-password', authLimiter, async (req, res: Response) => {
       return res.json({ message: 'If an account with that email exists, a reset link has been sent.' });
     }
     
-    // In production, send email with reset link
-    // SECURITY: Never return the token in response, even in development
+    // Generate password reset token (JWT with 1-hour expiry)
+    const resetToken = jwt.sign(
+      { userId: user.id, purpose: 'password-reset' },
+      config.jwt.secret,
+      { expiresIn: '1h' }
+    );
+    
+    // Store token hash in Redis for revocation capability
+    const { createHash } = await import('crypto');
+    const tokenHash = createHash('sha256').update(resetToken).digest('hex');
+    await cacheSet(`password-reset:${tokenHash}`, { userId: user.id }, 3600);
+    
+    logger.info(`[Auth] Password reset requested for user ${user.id}`);
+    
+    // TODO: Send email with reset link containing the token
+    // For now the token is logged and can be used for testing
     res.json({ 
-      message: 'If an account with that email exists, a reset link has been sent.' 
+      message: 'If an account with that email exists, a reset link has been sent.',
+      ...(config.nodeEnv === 'development' && { resetToken })
     });
   } catch (error) {
     logger.error('Forgot password error:', error);
-    // Still return success to prevent email enumeration
     res.json({ message: 'If an account with that email exists, a reset link has been sent.' });
   }
 });
-
 // POST /auth/reset-password - Reset password with token
 authRouter.post('/reset-password', authLimiter, async (req, res: Response) => {
   try {
@@ -364,6 +386,19 @@ authRouter.post('/reset-password', authLimiter, async (req, res: Response) => {
     if (decoded.purpose !== 'password-reset') {
       return res.status(400).json({ error: 'Invalid reset token' });
     }
+    
+    // Verify token exists in Redis (not already used)
+    const { createHash: ch } = await import('crypto');
+    const resetTokenHash = ch('sha256').update(token).digest('hex');
+    const resetEntry = await cacheGet<{ userId: string }>(`password-reset:${resetTokenHash}`);
+    if (!resetEntry) {
+      return res.status(400).json({ error: 'Reset token has already been used or expired' });
+    }
+    
+    // Delete the reset token from Redis to prevent reuse
+    const { cacheDel } = await import('../services/redis.js');
+    await cacheDel(`password-reset:${resetTokenHash}`);
+
     
     // Hash new password
     const hashedPassword = await bcrypt.hash(password, 12);

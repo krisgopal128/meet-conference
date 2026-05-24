@@ -109,16 +109,16 @@ export function useAdaptiveQuality(config: Partial<AdaptiveQualityConfig> = {}) 
   // Build network info
   const networkInfo = getQualityLevelInfo(networkQuality.level);
 
-  const state: AdaptiveQualityState = {
+  const state: AdaptiveQualityState = useMemo((): AdaptiveQualityState => ({
     effectiveMode,
-    networkLevel: networkQuality.level,
-    networkScore: networkQuality.score,
+    networkLevel,
+    networkScore,
     networkInfo,
-    participantCount: callSizeConfig.participantCount,
-    isLargeCall: callSizeConfig.isLargeCall,
+    participantCount,
+    isLargeCall,
     isAutoAdjusted,
     reason,
-  };
+  }), [networkLevel, networkScore, networkInfo, effectiveMode, reason, isAutoAdjusted, participantCount, isLargeCall]);
 
   return state;
 }

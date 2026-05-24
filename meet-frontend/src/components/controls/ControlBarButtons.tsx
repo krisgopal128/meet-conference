@@ -12,7 +12,7 @@ import {
   PhoneOff, LayoutGrid, Hand, Circle, MoreVertical, LogOut,
   StopCircle, ChevronDown,
   SquarePlay, Lock, Unlock, DoorOpen, ScreenShare, MessageCircle, Mic as MicIcon, Camera,
-  CircleDot, Loader2
+  CircleDot, Loader2, Pencil
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
@@ -379,7 +379,7 @@ export const HandButton = memo(function HandButton({
 // Layout Button
 // ============================================
 
-type LayoutMode = 'grid' | 'speaker' | 'spotlight' | 'screenshare';
+type LayoutMode = 'grid' | 'speaker' | 'spotlight' | 'screenshare' | 'whiteboard';
 
 interface LayoutButtonProps {
   layout: LayoutMode;
@@ -442,6 +442,31 @@ export const ChatButton = memo(function ChatButton({
           {unreadCount > MAX_BADGE_COUNT ? `${MAX_BADGE_COUNT}+` : unreadCount}
         </span>
       )}
+    </button>
+  );
+});
+
+// ============================================
+// Whiteboard Button
+// ============================================
+
+interface WhiteboardButtonProps {
+  isOpen: boolean;
+  onToggle: () => void;
+}
+
+export const WhiteboardButton = memo(function WhiteboardButton({
+  isOpen,
+  onToggle,
+}: WhiteboardButtonProps) {
+  return (
+    <button
+      onClick={onToggle}
+      aria-label={isOpen ? 'Close whiteboard' : 'Open whiteboard'}
+      className={cn(btnBase, isOpen ? btnAccent : btnSecondary)}
+    >
+      <Pencil size={18} />
+      <span>Board</span>
     </button>
   );
 });

@@ -33,8 +33,19 @@ const DEFAULT_CONFIG: NetworkQualityConfig = {
   debounceMs: 5000,
 };
 
+/**
+ * Monitors network quality by periodically collecting WebRTC stats and
+ * computing a composite quality score (0–100).
+ *
+ * **Throttling**: React state is only updated when the quality `level` string
+ * changes **or** the numeric `score` drifts by more than 5 points from the
+ * last value that was pushed to state. Internal refs are always refreshed so
+ * the latest stats remain available for programmatic consumers even when the
+ * UI does not re-render.
+ */
 export function useNetworkQuality(config: Partial<NetworkQualityConfig> = {}) {
-  const finalConfig = useMemo(() => ({ ...DEFAULT_CONFIG, ...config }), [config]);
+  const configKey = JSON.stringify(config);
+  const finalConfig = useMemo(() => ({ ...DEFAULT_CONFIG, ...config }), [configKey]);
   const room = useRoomContext();
   
   const [quality, setQuality] = useState<NetworkQualityScore>({
@@ -47,10 +58,14 @@ export function useNetworkQuality(config: Partial<NetworkQualityConfig> = {}) {
   });
   
   const lastLevelRef = useRef<NetworkQualityLevel>('excellent');
+  /** Tracks the last quality state that was actually pushed to React state. */
+  const lastQualityRef = useRef<NetworkQualityScore>(quality);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingQualityRef = useRef<NetworkQualityScore | null>(null);
   const isCheckingRef = useRef(false);
   const isMountedRef = useRef(true);
+  /** Always-updated raw stats for programmatic access (independent of React renders). */
+  const rawStatsRef = useRef<NetworkQualityScore>(quality);
 
   const calculateLevel = useCallback((score: number): NetworkQualityLevel => {
     if (score >= finalConfig.scoreThresholds.excellent) return 'excellent';
@@ -167,20 +182,32 @@ export function useNetworkQuality(config: Partial<NetworkQualityConfig> = {}) {
         // Debounce level changes
         if (level !== lastLevelRef.current) {
           pendingQualityRef.current = newQuality;
-          
+
           if (debounceTimerRef.current) {
             clearTimeout(debounceTimerRef.current);
           }
-          
+
           debounceTimerRef.current = setTimeout(() => {
             if (pendingQualityRef.current && isMountedRef.current) {
               lastLevelRef.current = pendingQualityRef.current.level;
-              setQuality(pendingQualityRef.current);
+              const shouldPush =
+                pendingQualityRef.current.level !== lastQualityRef.current.level ||
+                Math.abs(pendingQualityRef.current.score - lastQualityRef.current.score) > 5;
+              if (shouldPush) {
+                lastQualityRef.current = pendingQualityRef.current;
+                setQuality(pendingQualityRef.current);
+              }
             }
           }, finalConfig.debounceMs);
         } else {
           if (isMountedRef.current) {
-            setQuality(newQuality);
+            const shouldPush =
+              newQuality.level !== lastQualityRef.current.level ||
+              Math.abs(newQuality.score - lastQualityRef.current.score) > 5;
+            if (shouldPush) {
+              lastQualityRef.current = newQuality;
+              setQuality(newQuality);
+            }
           }
           pendingQualityRef.current = null;
           if (debounceTimerRef.current) {
@@ -188,6 +215,8 @@ export function useNetworkQuality(config: Partial<NetworkQualityConfig> = {}) {
             debounceTimerRef.current = null;
           }
         }
+        // Always update raw stats ref so latest data is available programmatically
+        rawStatsRef.current = newQuality;
       } catch (error) {
         logger.warn('[useNetworkQuality] Failed to get stats:', error);
       } finally {
