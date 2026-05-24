@@ -16,13 +16,24 @@ import logger from '../../utils/logger.js';
 const router = Router();
 
 // Default values used when no DB entry exists
+// Keys are prefixed with 'config:' to avoid collision with settings.ts section keys
+const CONFIG_PREFIX = 'config:';
+const CONFIG_KEYS = {
+  maxRoomsPerUser: 'config:maxRoomsPerUser',
+  maxParticipantsPerRoom: 'config:maxParticipantsPerRoom',
+  recordingEnabled: 'config:recordingEnabled',
+  guestAccessEnabled: 'config:guestAccessEnabled',
+  waitingRoomDefault: 'config:waitingRoomDefault',
+  sessionTimeoutMinutes: 'config:sessionTimeoutMinutes',
+} as const;
+
 const DEFAULTS: Record<string, unknown> = {
-  maxRoomsPerUser: 10,
-  maxParticipantsPerRoom: 100,
-  recordingEnabled: true,
-  guestAccessEnabled: true,
-  waitingRoomDefault: true,
-  sessionTimeoutMinutes: 60,
+  [CONFIG_KEYS.maxRoomsPerUser]: 10,
+  [CONFIG_KEYS.maxParticipantsPerRoom]: 100,
+  [CONFIG_KEYS.recordingEnabled]: true,
+  [CONFIG_KEYS.guestAccessEnabled]: true,
+  [CONFIG_KEYS.waitingRoomDefault]: true,
+  [CONFIG_KEYS.sessionTimeoutMinutes]: 60,
 };
 
 // ============================================
@@ -40,13 +51,21 @@ router.get('/config', requireModerator(), async (_req: AuthRequest, res: Respons
           'SELECT key, value FROM system_settings'
         );
 
-        // Start with defaults and override with DB values
-        const result: Record<string, unknown> = { ...DEFAULTS };
+        // Start with defaults and override with DB values (only config: prefixed keys)
+        const result: Record<string, unknown> = {};
+        // Fill defaults with unprefixed keys for client
+        for (const [dbKey, val] of Object.entries(DEFAULTS)) {
+          const clientKey = dbKey.replace(CONFIG_PREFIX, '');
+          result[clientKey] = val;
+        }
         for (const row of rows) {
+          if (!row.key.startsWith(CONFIG_PREFIX)) continue; // skip settings.ts keys
           try {
-            result[row.key] = JSON.parse(row.value);
+            const clientKey = row.key.replace(CONFIG_PREFIX, '');
+            result[clientKey] = JSON.parse(row.value);
           } catch {
-            result[row.key] = row.value;
+            const clientKey = row.key.replace(CONFIG_PREFIX, '');
+            result[clientKey] = row.value;
           }
         }
         return result;
@@ -79,12 +98,13 @@ router.patch('/config', requireAdmin(), async (req: AuthRequest, res: Response) 
       return res.status(400).json({ error: 'No fields to update' });
     }
 
-    // Upsert each key into system_settings
+    // Upsert each key into system_settings (with config: prefix)
     for (const [key, value] of Object.entries(data)) {
+      const dbKey = CONFIG_PREFIX + key;
       await query(
         `INSERT INTO system_settings (key, value) VALUES ($1, $2)
          ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
-        [key, JSON.stringify(value)]
+        [dbKey, JSON.stringify(value)]
       );
     }
 

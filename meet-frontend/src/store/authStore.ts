@@ -33,7 +33,7 @@ export const useAuthStore = create<AuthStoreState>()(
         isAuthenticated: false,
 
         login: (user: User, token: string) => {
-          logger.info('[AuthStore] Login called with user:', user.email, '| Token preview:', token.substring(0, 20) + '...');
+          if (import.meta.env.DEV) { logger.info('[AuthStore] Login called with user:', user.email); }
           set({ user, token, isAuthenticated: true }, false, 'login');
         },
 

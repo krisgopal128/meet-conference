@@ -117,11 +117,15 @@ webhookRouter.post('/', async (req: Request, res: Response) => {
         const roomName = event.room?.name;
         if (!roomName) break;
 
-        // Create meeting record for tracking
+        // Create meeting record for tracking (only if no ongoing meeting exists for this room)
         await query(
           `INSERT INTO meetings (room_id)
            SELECT id FROM rooms WHERE name = $1
-           ON CONFLICT DO NOTHING`,
+           AND NOT EXISTS (
+             SELECT 1 FROM meetings m
+             WHERE m.room_id = (SELECT id FROM rooms WHERE name = $1)
+             AND m.status = 'ongoing'
+           )`,
           [roomName]
         );
         break;

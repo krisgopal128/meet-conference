@@ -266,8 +266,9 @@ router.post('/users/:id/ban', adminActionLimiter, requireModerator(), async (req
     const { id } = req.params;
     const { reason } = req.body;
 
-    await query('UPDATE users SET is_banned = true WHERE id = $1', [id]);
-    logger.info(`[Admin] User ${id} banned by ${req.user?.id}${reason ? ` - Reason: ${reason}` : ''}`);
+    const banReason = typeof reason === 'string' && reason.trim() ? reason.trim().substring(0, 500) : null;
+    await query('UPDATE users SET is_banned = true, ban_reason = $2, banned_at = NOW(), banned_by = $3 WHERE id = $1', [id, banReason, req.user!.id]);
+    logger.info(`[Admin] User ${id} banned by ${req.user?.id}${banReason ? ` - Reason: ${banReason}` : ''}`);
 
     // Invalidate user caches
     await invalidateCache(`cache:users:detail:${id}`);
@@ -298,7 +299,7 @@ router.post('/users/:id/unban', adminActionLimiter, requireModerator(), async (r
   try {
     const { id } = req.params;
 
-    await query('UPDATE users SET is_banned = false WHERE id = $1', [id]);
+    await query('UPDATE users SET is_banned = false, ban_reason = NULL, banned_at = NULL, banned_by = NULL WHERE id = $1', [id]);
     logger.info(`[Admin] User ${id} unbanned by ${req.user?.id}`);
 
     // Invalidate user caches

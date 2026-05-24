@@ -52,25 +52,25 @@ egressRouter.post('/start', authenticate, async (req: AuthRequest, res: Response
     // Determine output location
     const filename = `recordings/${roomName}-${Date.now()}.mp4`;
 
-    // Check if S3 is properly configured
+    // Check if S3 is properly configured — recording requires S3 to avoid filling local disk
     const hasValidS3Config = config.s3.bucket && config.s3.accessKey && config.s3.secretKey;
+    if (!hasValidS3Config) {
+      return res.status(503).json({ error: 'Recording is unavailable — S3 storage is not configured' });
+    }
 
     // Start room composite egress
     const egress = await egressClient.startRoomCompositeEgress(roomName, {
       file: new EncodedFileOutput({
         filepath: filename,
-        // Use S3 if properly configured
-        output: hasValidS3Config
-          ? {
-              case: 's3',
-              value: new S3Upload({
-                bucket: config.s3.bucket!,
-                region: config.s3.region,
-                accessKey: config.s3.accessKey!,
-                secret: config.s3.secretKey!,
-              }),
-            }
-          : undefined,
+        output: {
+          case: 's3',
+          value: new S3Upload({
+            bucket: config.s3.bucket!,
+            region: config.s3.region || 'us-east-1',
+            accessKey: config.s3.accessKey!,
+            secret: config.s3.secretKey!,
+          }),
+        },
       }),
     });
 
@@ -79,9 +79,9 @@ egressRouter.post('/start', authenticate, async (req: AuthRequest, res: Response
       `UPDATE rooms SET metadata = jsonb_set(
         COALESCE(metadata, '{}'::jsonb),
         '{egressId}',
-        $2::jsonb
+        to_jsonb($2::text)
       ) WHERE name = $1`,
-      [roomName, JSON.stringify(egress.egressId)]
+      [roomName, egress.egressId]
     );
 
     res.json({
@@ -105,15 +105,22 @@ egressRouter.post('/stop', authenticate, async (req: AuthRequest, res: Response)
     const { egressId } = stopRecordingSchema.parse(req.body);
 
     // Verify user is the host of the room being recorded
-    const egress = (await egressClient.listEgress({ egressId })).find(e => e.egressId === egressId);
-    if (egress?.roomName) {
+    const egressList = await egressClient.listEgress({ egressId });
+    const egress = egressList.find(e => e.egressId === egressId);
+    if (!egress) {
+      return res.status(404).json({ error: 'Recording not found' });
+    }
+    if (egress.roomName) {
       const room = await queryOne<{ host_id: string }>(
         'SELECT host_id FROM rooms WHERE name = $1',
         [egress.roomName]
       );
-      if (room && room.host_id !== req.user!.id) {
+      if (!room || room.host_id !== req.user!.id) {
         return res.status(403).json({ error: 'Only the room host can stop recording' });
       }
+    } else {
+      // No roomName means we can't verify ownership — deny
+      return res.status(403).json({ error: 'Cannot verify recording ownership' });
     }
 
     await egressClient.stopEgress(egressId);
@@ -127,10 +134,29 @@ egressRouter.post('/stop', authenticate, async (req: AuthRequest, res: Response)
   }
 });
 
-// GET /egress/status/:roomName - Get recording status
+// GET /egress/status/:roomName - Get recording status (host/participants only)
 egressRouter.get('/status/:roomName', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { roomName } = req.params;
+
+    // Verify user is host or participant of this room
+    const [room] = await query<{ host_id: string }>(
+      'SELECT host_id FROM rooms WHERE name = $1',
+      [roomName]
+    );
+    if (!room) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+    const isHost = room.host_id === req.user!.id;
+    if (!isHost) {
+      const participant = await queryOne(
+        'SELECT id FROM meeting_participants mp JOIN meetings m ON mp.meeting_id = m.id JOIN rooms r ON m.room_id = r.id WHERE r.name = $1 AND mp.user_id = $2 LIMIT 1',
+        [roomName, req.user!.id]
+      );
+      if (!participant) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+    }
 
     // Single API call - filter client-side for active
     const allEgress = await egressClient.listEgress({
@@ -152,15 +178,24 @@ egressRouter.get('/status/:roomName', authenticate, async (req: AuthRequest, res
   }
 });
 
-// GET /egress/list - List recordings with pagination
+// GET /egress/list - List recordings for user's rooms only
 egressRouter.get('/list', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string, 10) || 20, 100);
     const offset = Math.max(parseInt(req.query.offset as string, 10) || 0, 0);
 
+    // Get room names where user is host
+    const userRooms = await query<{ name: string }>(
+      'SELECT name FROM rooms WHERE host_id = $1',
+      [req.user!.id]
+    );
+    const userRoomNames = new Set(userRooms.map(r => r.name));
+
     const allEgress = await egressClient.listEgress({});
-    const total = allEgress.length;
-    const recordings = allEgress.slice(offset, offset + limit);
+    // Filter to only recordings from user's rooms
+    const userEgress = allEgress.filter(e => userRoomNames.has(e.roomName || ''));
+    const total = userEgress.length;
+    const recordings = userEgress.slice(offset, offset + limit);
     
     res.json({
       recordings,

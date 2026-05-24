@@ -9,7 +9,21 @@ import { useNavigate } from 'react-router-dom';
 import type { Room } from 'livekit-client';
 import { useLocalParticipant, useMaybeRoomContext } from '@livekit/components-react';
 import { roomsApi } from '../services/api';
-import { useConnectionActions } from '../store/roomStore';
+
+// Module-level registry for whiteboard force-save callbacks
+// Registered by WhiteboardLayout/WhiteboardPanel via useWhiteboardAutoSave
+const whiteboardSaveFns = new Set<() => Promise<void>>();
+
+export function registerWhiteboardSave(fn: () => Promise<void>): () => void {
+  whiteboardSaveFns.add(fn);
+  return () => { whiteboardSaveFns.delete(fn); };
+}
+
+async function saveAllWhiteboards() {
+  const saves = Array.from(whiteboardSaveFns).map(fn => fn().catch(() => {}));
+  await Promise.allSettled(saves);
+}
+import { useConnectionActions, useRoomStore } from '../store/roomStore';
 import toast from 'react-hot-toast';
 import logger from '../utils/logger';
 
@@ -43,8 +57,25 @@ export function useMeetingActions() {
     const roomName = room.name;
     const duration = getDuration(room);
 
-    await stopLocalTracks(localParticipant);
-    await room.disconnect();
+    // Save whiteboard before leaving (best-effort)
+    await saveAllWhiteboards();
+
+    // Stop recording if active
+    const storeState = useRoomStore.getState();
+    if (storeState.isRecording && storeState.egressId) {
+      try { await roomsApi.stopRecording(storeState.egressId); } catch {}
+    }
+
+    try {
+      await stopLocalTracks(localParticipant);
+    } catch (e) {
+      // Best-effort — tracks may already be stopped
+    }
+    try {
+      await room.disconnect();
+    } catch (e) {
+      // Best-effort — may already be disconnected
+    }
     reset();
     navigate('/thank-you', { state: { roomName, duration: duration > 0 ? duration : undefined } });
   }, [room, localParticipant, navigate, reset]);
@@ -76,7 +107,14 @@ export function useMeetingActions() {
       toast.error('Failed to end meeting');
     }
 
-    await stopLocalTracks(localParticipant);
+    // Save whiteboard before disconnecting (best-effort)
+    await saveAllWhiteboards();
+
+    try {
+      await stopLocalTracks(localParticipant);
+    } catch (e) {
+      // Best-effort
+    }
     await room.disconnect();
     reset();
     navigate('/thank-you', { state: { roomName, duration: duration > 0 ? duration : undefined } });

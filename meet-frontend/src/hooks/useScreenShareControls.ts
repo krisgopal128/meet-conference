@@ -4,7 +4,7 @@
  * Extracted from ControlBar to reduce component complexity.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import type { LocalParticipant } from 'livekit-client';
 import type { QualityModeName, ScreenShareModeName } from '../config/meetingRoomConfig';
 import { getScreenShareOptions } from '../config/meetingRoomConfig';
@@ -16,8 +16,12 @@ export function useScreenShareControls(
   qualityMode: QualityModeName,
   screenShareMode: ScreenShareModeName,
 ) {
+  const isTogglingScreen = useRef(false);
+
   const toggleScreenShare = useCallback(async () => {
+    if (isTogglingScreen.current) return;
     if (!localParticipant) return;
+    isTogglingScreen.current = true;
     try {
       const currentlyEnabled = localParticipant.isScreenShareEnabled;
       const options = getScreenShareOptions(qualityMode, screenShareMode);
@@ -29,6 +33,8 @@ export function useScreenShareControls(
     } catch (error) {
       logger.error('Screen share error:', error);
       toast.error('Screen share was cancelled or not supported.');
+    } finally {
+      isTogglingScreen.current = false;
     }
   }, [localParticipant, qualityMode, screenShareMode]);
 

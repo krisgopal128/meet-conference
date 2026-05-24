@@ -213,7 +213,17 @@ export const WhiteboardPanel = React.memo(function WhiteboardPanel({
 
           {/* Close button */}
           <button
-            onClick={toggleWhiteboard}
+            onClick={async () => {
+              // Save whiteboard scene before closing
+              if (roomName && currentSceneRef.current.length > 0) {
+                try {
+                  await whiteboardApi.saveScene(roomName, currentSceneRef.current as object[]);
+                } catch (err) {
+                  logger.warn('[Whiteboard] Failed to save on close', { error: err });
+                }
+              }
+              toggleWhiteboard();
+            }}
             className="p-1.5 rounded-lg text-surface-400 hover:text-surface-200 hover:bg-surface-700 transition-colors"
             aria-label="Close whiteboard"
           >

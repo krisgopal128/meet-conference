@@ -55,11 +55,8 @@ export function useParticipantActions(
     setAdmitting(participantIdentity);
     try {
       await roomsApi.admitParticipant(room.name, participantIdentity);
-      setLobbyParticipants((prev) => {
-        const next = prev.filter((p) => p.identity !== participantIdentity);
-        setLobbyCount(next.length);
-        return next;
-      });
+      setLobbyParticipants((prev) => prev.filter((p) => p.identity !== participantIdentity));
+      setLobbyCount(lobbyParticipants.length - 1);
       logger.info('[ParticipantsPanel] Participant admitted:', participantIdentity);
     } catch (err) {
       logger.error('Failed to admit participant:', err);
@@ -73,11 +70,8 @@ export function useParticipantActions(
   const handleDeny = useCallback(async (participantIdentity: string) => {
     try {
       await roomsApi.kickParticipant(room.name, participantIdentity);
-      setLobbyParticipants((prev) => {
-        const next = prev.filter((p) => p.identity !== participantIdentity);
-        setLobbyCount(next.length);
-        return next;
-      });
+      setLobbyParticipants((prev) => prev.filter((p) => p.identity !== participantIdentity));
+      setLobbyCount(lobbyParticipants.length - 1);
       logger.info('[ParticipantsPanel] Participant denied:', participantIdentity);
     } catch (err) {
       logger.error('Failed to deny participant:', err);
@@ -132,7 +126,7 @@ export function useParticipantActions(
         logger.info('[ParticipantsPanel] Participant removed:', participantIdentity);
       } catch (err) {
         logger.error('Failed to kick participant:', err);
-        logger.error('[ParticipantsPanel]', getErrorMessage(err, 'Failed to remove participant'));
+        toast.error(getErrorMessage(err, 'Failed to remove participant'));
       }
     });
   }, [room.name, withParticipantAction]);

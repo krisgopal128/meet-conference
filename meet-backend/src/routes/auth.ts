@@ -71,8 +71,11 @@ async function recordFailedAttempt(email: string): Promise<void> {
   // Set or update the attempt counter with TTL
   await cacheSet(key, newAttempts, LOCKOUT_DURATION_SECONDS);
   
-  // Store TTL separately for quick lookup (update on every attempt)
-  await cacheSet(`${key}:ttl`, LOCKOUT_DURATION_SECONDS, LOCKOUT_DURATION_SECONDS);
+  // Only store TTL value on the transition to locked (when attempts first reach max)
+  // This prevents overwriting the remaining seconds with the full duration
+  if (newAttempts === MAX_FAILED_ATTEMPTS) {
+    await cacheSet(`${key}:ttl`, LOCKOUT_DURATION_SECONDS, LOCKOUT_DURATION_SECONDS);
+  }
 }
 
 /**
@@ -80,9 +83,9 @@ async function recordFailedAttempt(email: string): Promise<void> {
  */
 async function clearFailedAttempts(email: string): Promise<void> {
   const key = `lockout:${email}`;
-  await cacheSet(key, 0, 1);
   const { cacheDel } = await import('../services/redis.js');
-  await cacheDel(`${key}:ttl`); // Effectively delete by setting TTL to 1 second
+  await cacheDel(key);
+  await cacheDel(`${key}:ttl`);
 }
 
 // POST /auth/register
@@ -126,6 +129,9 @@ authRouter.post('/register', authLimiter, async (req, res: Response) => {
       config.jwt.secret, 
       { expiresIn: rawData.rememberMe ? TOKEN_EXPIRY_LONG : TOKEN_EXPIRY_SHORT }
     );
+
+    // Issue CSRF token cookie for subsequent state-changing requests
+    issueCsrfToken(res);
 
     res.status(201).json({
       user: {
@@ -201,6 +207,9 @@ authRouter.post('/login', authLimiter, async (req, res: Response) => {
       config.jwt.secret, 
       { expiresIn: rawData.rememberMe ? TOKEN_EXPIRY_LONG : TOKEN_EXPIRY_SHORT }
     );
+
+    // Issue CSRF token cookie for subsequent state-changing requests
+    issueCsrfToken(res);
 
     res.json({
       user: {

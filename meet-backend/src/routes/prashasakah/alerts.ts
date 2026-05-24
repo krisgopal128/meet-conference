@@ -144,6 +144,7 @@ router.post('/alerts/read-all', requireModerator(), async (req: AuthRequest, res
     const result = await query(`
       UPDATE admin_alerts SET read_at = NOW(), read_by = $1
       WHERE read_at IS NULL AND resolved_at IS NULL
+      RETURNING id
     `, [req.user!.id]);
 
     await invalidatePattern('cache:alerts:*');

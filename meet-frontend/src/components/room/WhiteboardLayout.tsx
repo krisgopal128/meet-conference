@@ -76,6 +76,8 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
 
   const isViewOnly = !isModerator && isLocked;
   const canEdit = isModerator || !isLocked;
+  const canEditRef = useRef(canEdit);
+  canEditRef.current = canEdit;
 
   // Auto-save via polling — only moderators save
   useWhiteboardAutoSave(
@@ -200,18 +202,27 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
   const handleChange = useCallback(
     (elements: readonly any[]) => {
       currentSceneRef.current = [...elements];
-      if (canEdit) {
+      if (canEditRef.current) {
         broadcastChange(elements);
+        (currentSceneRef as any).__markDirty?.();
       }
     },
-    [canEdit, broadcastChange],
+    [broadcastChange],
   );
 
-  const handleToggleLock = useCallback(() => {
+  const handleToggleLock = useCallback(async () => {
     const next = !isLocked;
     setIsLocked(next);
     broadcastLock(next);
-  }, [isLocked, broadcastLock]);
+    // Persist lock state to backend
+    if (roomName) {
+      try {
+        await whiteboardApi.setLocked(roomName, next);
+      } catch (err) {
+        logger.warn('[Whiteboard] Failed to persist lock state', { error: err });
+      }
+    }
+  }, [isLocked, broadcastLock, roomName]);
 
   // Filter out local participant for PiP overlay
   const remoteAdmitted = useMemo(
@@ -297,7 +308,15 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
             )}
 
             <button
-              onClick={() => {
+              onClick={async () => {
+                // Save whiteboard scene before closing
+                if (roomName && currentSceneRef.current.length > 0) {
+                  try {
+                    await whiteboardApi.saveScene(roomName, currentSceneRef.current as object[]);
+                  } catch (err) {
+                    logger.warn('[Whiteboard] Failed to save on close', { error: err });
+                  }
+                }
                 broadcastActivate(false);
                 toggleWhiteboard();
               }}

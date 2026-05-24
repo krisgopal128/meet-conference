@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { meetingsApi, roomsApi } from '../services/api';
+import { meetingsApi } from '../services/api';
 import { PageErrorBoundary } from '../components/shared/PageErrorBoundary';
 import { MeetingRowSkeleton } from '../components/shared/Skeletons';
 import type { Meeting } from '../types';
@@ -24,7 +24,7 @@ import {
   ExternalLink,
   X,
 } from 'lucide-react';
-// import toast from 'react-hot-toast'; // Not used with mock data fallback
+import toast from 'react-hot-toast';
 
 type SortField = 'date' | 'duration' | 'participants';
 type SortOrder = 'asc' | 'desc';
@@ -60,6 +60,7 @@ function HistoryPageContent() {
   const [showFilters, setShowFilters] = useState(false);
   const [dateFilter, setDateFilter] = useState<{ start?: string; end?: string }>({});
   const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
 
   // Update URL params when state changes
   useEffect(() => {
@@ -88,7 +89,7 @@ function HistoryPageContent() {
   const loadMeetings = async () => {
     try {
       setLoading(true);
-      // Fetch all meetings (backend pagination could be added later)
+      setError(null);
       const response = await meetingsApi.getHistory(1000, 0);
       // Normalize field names
       const normalized = (response?.data?.meetings || []).map(m => ({
@@ -100,65 +101,17 @@ function HistoryPageContent() {
         endedAt: m.endedAt || m.ended_at,
         recordingUrl: m.recordingUrl || m.recording_url,
       }));
-      
-      // If no meetings from API, generate mock data using user's actual rooms
-      if (normalized.length === 0) {
-        const mockMeetings = await generateMockMeetingsFromRooms();
-        setAllMeetings(mockMeetings);
-      } else {
-        setAllMeetings(normalized);
-      }
+      setAllMeetings(normalized);
     } catch (err) {
       logger.error('Failed to load meetings:', err);
-      // Generate mock data using user's actual rooms as fallback
-      const mockMeetings = await generateMockMeetingsFromRooms();
-      setAllMeetings(mockMeetings);
+      setAllMeetings([]);
+      setError('Failed to load meeting history. Please try again later.');
+      toast.error('Failed to load meeting history');
     } finally {
       setLoading(false);
     }
   };
 
-  // Generate mock meetings using the user's actual rooms for demo/fallback
-  const generateMockMeetingsFromRooms = async (): Promise<Meeting[]> => {
-    try {
-      const roomsRes = await roomsApi.list(false);
-      const userRooms = roomsRes?.data?.rooms || [];
-
-      if (userRooms.length === 0) return [];
-
-      const meetings: Meeting[] = [];
-      const now = new Date();
-
-      for (let i = 0; i < Math.min(15, userRooms.length * 3); i++) {
-        const room = userRooms[i % userRooms.length];
-        const daysAgo = i * 2 + Math.floor(Math.random() * 3);
-        const startDate = new Date(now);
-        startDate.setDate(startDate.getDate() - daysAgo);
-        startDate.setHours(9 + Math.floor(Math.random() * 8), Math.floor(Math.random() * 60));
-
-        const durationMinutes = Math.floor(Math.random() * 90 + 15);
-        const endDate = new Date(startDate);
-        endDate.setMinutes(endDate.getMinutes() + durationMinutes);
-
-        meetings.push({
-          id: `mock-meeting-${i}`,
-          roomId: room.id || `room-${i}`,
-          roomName: room.name || `room-${i}`,
-          roomTitle: room.title || room.name || `Meeting ${i + 1}`,
-          participantCount: Math.floor(Math.random() * 8 + 2),
-          uniqueParticipants: Math.floor(Math.random() * 8 + 2),
-          startedAt: startDate.toISOString(),
-          endedAt: endDate.toISOString(),
-          recordingUrl: i % 4 === 0 ? `https://recordings.example.com/meeting-${i}.mp4` : undefined,
-        });
-      }
-
-      return meetings;
-    } catch {
-      // Rooms API also failed — show empty state
-      return [];
-    }
-  };
 
   // Filter meetings
   const filteredMeetings = useMemo(() => {

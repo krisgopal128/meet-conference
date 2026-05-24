@@ -615,6 +615,7 @@ export const useRaisedHands = () => useRoomStore((state) => state.raisedHands);
 export const useHasRaisedHand = (identity: string) =>
   useRoomStore((state) => state.raisedHands.includes(identity));
 export const useIsRecording = () => useRoomStore((state) => state.isRecording);
+export const useEgressId = () => useRoomStore((state) => state.egressId);
 export const usePinnedIdentity = () => useRoomStore((state) => state.pinnedIdentity);
 
 // Meeting Controls selectors

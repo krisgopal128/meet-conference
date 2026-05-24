@@ -5,7 +5,7 @@
  * Handles camera enumeration, toggle, and switching.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { LocalParticipant, Room } from 'livekit-client';
 import type { QualityModeName } from '../config/meetingRoomConfig';
 import type { GridAspectRatio } from '../store/roomStore';
@@ -50,8 +50,12 @@ export function useVideoControls(
     };
   }, [room]);
 
+  const isTogglingCamera = useRef(false);
+
   const toggleCamera = useCallback(async () => {
+    if (isTogglingCamera.current) return;
     if (!localParticipant) return;
+    isTogglingCamera.current = true;
     try {
       if (isAudioOnlyMode(qualityMode)) {
         toast.error(meetingRoomConfig.feedback.audioOnlyMessage);
@@ -65,6 +69,8 @@ export function useVideoControls(
     } catch (error) {
       logger.error('Failed to toggle camera:', error);
       toast.error('Failed to toggle camera');
+    } finally {
+      isTogglingCamera.current = false;
     }
   }, [localParticipant, qualityMode, gridAspectRatio, activeCameraId]);
 

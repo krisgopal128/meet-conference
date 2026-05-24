@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRoomContext, useLocalParticipant } from '@livekit/components-react';
 import {
   useSettingsView,
@@ -59,6 +59,35 @@ export function SettingsPanel() {
   const { toggleSettings, openSettingsView, toggleMirrorLocalVideo, setQualityMode, setScreenShareMode, setGridAspectRatio, setVideoFitMode, clearDiagnosticsLog } = useUIActions();
   
   const [speakerVolume, setSpeakerVolume] = useState(100);
+  const speakerVolumeRef = useRef(100);
+
+  const applyVolumeToAllRemoteParticipants = useCallback((volume: number) => {
+    const normalizedVolume = volume / 100;
+    room.remoteParticipants.forEach((participant) => {
+      participant.audioTrackPublications.forEach((pub) => {
+        if (pub.track) {
+          (pub.track as any).setVolume?.(normalizedVolume);
+        }
+      });
+    });
+  }, [room]);
+
+  const handleSpeakerVolumeChange = (value: number) => {
+    setSpeakerVolume(value);
+    speakerVolumeRef.current = value;
+    applyVolumeToAllRemoteParticipants(value);
+  };
+
+  useEffect(() => {
+    const onTrackSubscribed = () => {
+      applyVolumeToAllRemoteParticipants(speakerVolumeRef.current);
+    };
+    room.on('trackSubscribed', onTrackSubscribed);
+    return () => {
+      room.off('trackSubscribed', onTrackSubscribed);
+    };
+  }, [room, applyVolumeToAllRemoteParticipants]);
+
   const [uploadingDiagnostics, setUploadingDiagnostics] = useState(false);
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
@@ -349,7 +378,7 @@ export function SettingsPanel() {
                       min="0"
                       max="100"
                       value={speakerVolume}
-                      onChange={e => setSpeakerVolume(parseInt(e.target.value))}
+                      onChange={e => handleSpeakerVolumeChange(parseInt(e.target.value))}
                       className="w-full accent-brand-500"
                     />
                   </div>

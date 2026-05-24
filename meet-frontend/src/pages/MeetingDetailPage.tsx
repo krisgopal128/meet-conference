@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { meetingsApi, roomsApi } from '../services/api';
+import { meetingsApi } from '../services/api';
 import { PageErrorBoundary } from '../components/shared/PageErrorBoundary';
 import { Skeleton } from '../components/shared/Skeletons';
 import { format, formatDuration, intervalToDuration, parseISO } from 'date-fns';
@@ -39,62 +39,7 @@ function MeetingDetailContent() {
   const [copied, setCopied] = useState(false);
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [chatMessages, setChatMessages] = useState<Array<{ id: string; content: string; userName: string; createdAt: string }>>([]);
-
-  // Mock data generator - only used as fallback when API fails
-  const generateMockMeetingDetail = useCallback(async (meetingId: string): Promise<Meeting> => {
-    // Try to get user's actual rooms for realistic mock data
-    let roomName = `room-${Math.random().toString(36).substring(2, 8)}`;
-    let roomTitle = 'Meeting';
-    try {
-      const roomsRes = await roomsApi.list(false);
-      const userRooms = roomsRes?.data?.rooms || [];
-      if (userRooms.length > 0) {
-        const room = userRooms[Math.floor(Math.random() * userRooms.length)];
-        roomName = room.name || roomName;
-        roomTitle = room.title || room.name || roomTitle;
-      }
-    } catch {
-      // Rooms API failed, use defaults
-    }
-
-    const names = ['John Smith', 'Sarah Johnson', 'Mike Williams', 'Emily Davis', 'Chris Brown'];
-
-    const now = new Date();
-    const startDate = new Date(now);
-    startDate.setDate(startDate.getDate() - Math.floor(Math.random() * 7));
-    startDate.setHours(9 + Math.floor(Math.random() * 8), Math.floor(Math.random() * 60));
-
-    const durationMinutes = Math.floor(Math.random() * 60 + 30);
-    const endDate = new Date(startDate);
-    endDate.setMinutes(endDate.getMinutes() + durationMinutes);
-
-    const mockParticipants: MeetingParticipant[] = names.slice(0, Math.floor(Math.random() * 3 + 2)).map((name, idx) => {
-      const joinDelay = idx * 60000 * Math.floor(Math.random() * 3 + 1);
-      const leaveDelay = durationMinutes * 60000 - idx * 60000 * Math.floor(Math.random() * 2 + 1);
-      return {
-        id: `participant-${idx}`,
-        identity: `user-${idx}`,
-        name,
-        joinedAt: new Date(startDate.getTime() + joinDelay).toISOString(),
-        leftAt: idx < 3 ? new Date(startDate.getTime() + leaveDelay).toISOString() : undefined,
-        isModerator: idx === 0,
-        duration: Math.max(5, durationMinutes - idx * Math.floor(Math.random() * 5)),
-      };
-    });
-
-    return {
-      id: meetingId,
-      roomId: `room-${meetingId}`,
-      roomName,
-      roomTitle,
-      participantCount: mockParticipants.length,
-      uniqueParticipants: mockParticipants.length,
-      startedAt: startDate.toISOString(),
-      endedAt: endDate.toISOString(),
-      participants: mockParticipants,
-      recordingUrl: Math.random() > 0.5 ? `https://recordings.example.com/meeting-${meetingId}.mp4` : undefined,
-    };
-  }, []);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,6 +52,7 @@ function MeetingDetailContent() {
 
       try {
         setLoading(true);
+        setError(null);
         const response = await meetingsApi.getMeetingDetails(id);
         if (cancelled) return;
 
@@ -151,47 +97,19 @@ function MeetingDetailContent() {
               userName: String(m.user_name || m.userName || 'Unknown'),
               createdAt: String(m.created_at || m.createdAt || ''),
             })));
-          } else {
-            // Generate mock chat only if API returns empty
-            generateMockChat(normalized);
           }
         } catch {
-          // Chat API failed, generate mock chat as fallback
-          generateMockChat(normalized);
+          // Chat API failed, leave chat messages empty
         }
       } catch (err) {
         if (cancelled) return;
-        logger.error('Failed to fetch meeting from API, using mock data:', err);
-        // Only use mock data as fallback when API fails
-        const mockMeeting = await generateMockMeetingDetail(id);
-        if (!cancelled) setMeeting(mockMeeting);
+        logger.error('Failed to fetch meeting details:', err);
+        setMeeting(null);
+        setError('Failed to load meeting details. Please try again later.');
+        toast.error('Failed to load meeting details');
       } finally {
         if (!cancelled) setLoading(false);
       }
-    }
-
-    function generateMockChat(normalizedMeeting: Meeting) {
-      if (!normalizedMeeting.startedAt || !normalizedMeeting.endedAt) return;
-      
-      const names = normalizedMeeting.participants?.map((p) => p.name || 'Unknown') || ['John', 'Sarah', 'Mike', 'Emily'];
-      const sampleMessages = [
-        'Thanks for joining everyone!',
-        'Can everyone see my screen?',
-        'Yes, looks good',
-        'Let me share the agenda',
-        'Great meeting, thanks!',
-      ];
-      const mockMessages: Array<{ id: string; content: string; userName: string; createdAt: string }> = [];
-      for (let i = 0; i < Math.min(5, normalizedMeeting.participantCount || 3); i++) {
-        const msgTime = new Date(parseISO(normalizedMeeting.startedAt).getTime() + (i + 1) * 5 * 60000);
-        mockMessages.push({
-          id: `msg-${i}`,
-          content: sampleMessages[i % sampleMessages.length],
-          userName: names[i % names.length] || 'Unknown',
-          createdAt: msgTime.toISOString(),
-        });
-      }
-      setChatMessages(mockMessages);
     }
 
     fetchMeeting();
@@ -357,6 +275,39 @@ function MeetingDetailContent() {
 
   if (loading) {
     return <MeetingDetailSkeleton />;
+  }
+
+  if (error || !meeting) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <Link
+            to="/history"
+            className="p-2 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 transition shrink-0"
+          >
+            <ArrowLeft className="h-5 w-5 text-surface-500" />
+          </Link>
+          <h1 className="text-xl font-semibold text-surface-900 dark:text-surface-100">
+            Meeting Not Found
+          </h1>
+        </div>
+        <div className="card p-8 text-center">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+            <VideoIcon size={28} className="text-red-500" />
+          </div>
+          <h2 className="text-lg font-semibold text-surface-800 dark:text-white mb-2">
+            {error || 'Meeting not found'}
+          </h2>
+          <p className="text-surface-500 dark:text-surface-400 mb-6 max-w-sm mx-auto">
+            The meeting you are looking for could not be loaded. It may have been removed or the server may be temporarily unavailable.
+          </p>
+          <Link to="/history" className="btn-primary">
+            <ArrowLeft size={18} className="mr-2" />
+            Back to History
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   const isActive = !meeting?.endedAt;

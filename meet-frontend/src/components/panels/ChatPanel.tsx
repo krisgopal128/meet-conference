@@ -59,7 +59,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
   const [sendPrivateToModerators, setSendPrivateToModerators] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<number | null>(null);
-  const isModerator = role === 'host' || role === 'cohost';
+  const isModerator = role === 'host' || role === 'cohost' || localParticipant?.identity === hostId;
 
   // Mention autocomplete state
   const [showMentionList, setShowMentionList] = useState(false);
@@ -67,6 +67,8 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
   const [mentionStartPos, setMentionStartPos] = useState(0);
   const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const inputValueRef = useRef(input);
+  inputValueRef.current = input;
   const mentionListRef = useRef<HTMLDivElement>(null);
 
   // Poll creation state
@@ -292,14 +294,15 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
   }
 
   async function sendMessage() {
-    if (!input.trim() || !localParticipant) {
+    if (!inputValueRef.current.trim() || !localParticipant) {
       return;
     }
 
-    const trimmed = input.trim();
+    const trimmed = inputValueRef.current.trim();
     const isPrivate = meetingRoomConfig.chat.privateModeratorChatEnabled && sendPrivateToModerators && !isModerator;
     let persistedId = `${Date.now()}`;
     let sentAt = new Date().toISOString();
+    let wasPersisted = false;
 
     // Parse mentions from the message
     const mentionedNames = parseMentions(trimmed);
@@ -316,6 +319,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
         if (response.data.message) {
           persistedId = response.data.message.id;
           sentAt = response.data.message.created_at || response.data.message.createdAt || sentAt;
+          wasPersisted = true;
         }
       } catch (error) {
         logger.error('Failed to persist room chat message:', error);
@@ -335,10 +339,15 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
       mentions: mentionedIdentities.length > 0 ? mentionedIdentities : undefined,
     };
 
-    await localParticipant.publishData(
-      new TextEncoder().encode(JSON.stringify(payload)),
-      { reliable: true }
-    );
+    try {
+      await localParticipant.publishData(
+        new TextEncoder().encode(JSON.stringify(payload)),
+        { reliable: true }
+      );
+    } catch (err) {
+      logger.error('Failed to send chat message:', err);
+      toast.error(wasPersisted ? 'Message saved but not delivered to all participants' : 'Failed to send message');
+    }
 
     addMessage({
       ...payload,
@@ -401,10 +410,15 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
       poll: pollData,
     };
 
-    await localParticipant.publishData(
-      new TextEncoder().encode(JSON.stringify(payload)),
-      { reliable: true }
-    );
+    try {
+      await localParticipant.publishData(
+        new TextEncoder().encode(JSON.stringify(payload)),
+        { reliable: true }
+      );
+    } catch (err) {
+      logger.error('Failed to send poll:', err);
+      toast.error('Failed to send poll');
+    }
 
     addMessage({
       ...payload,
@@ -424,15 +438,20 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
     votePoll(pollId, optionId, localParticipant.identity);
 
     // Broadcast vote to other participants
-    await localParticipant.publishData(
-      new TextEncoder().encode(JSON.stringify({
-        type: 'poll_vote',
-        pollId,
-        optionId,
-        voterIdentity: localParticipant.identity,
-      })),
-      { reliable: true }
-    );
+    try {
+      await localParticipant.publishData(
+        new TextEncoder().encode(JSON.stringify({
+          type: 'poll_vote',
+          pollId,
+          optionId,
+          voterIdentity: localParticipant.identity,
+        })),
+        { reliable: true }
+      );
+    } catch (err) {
+      logger.error('Failed to send vote:', err);
+      toast.error('Failed to send vote');
+    }
   }
 
   async function handleClosePoll(pollId: string) {
@@ -441,13 +460,18 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
     closePoll(pollId);
 
     // Broadcast poll close
-    await localParticipant.publishData(
-      new TextEncoder().encode(JSON.stringify({
-        type: 'poll_close',
-        pollId,
-      })),
-      { reliable: true }
-    );
+    try {
+      await localParticipant.publishData(
+        new TextEncoder().encode(JSON.stringify({
+          type: 'poll_close',
+          pollId,
+        })),
+        { reliable: true }
+      );
+    } catch (err) {
+      logger.error('Failed to close poll:', err);
+      toast.error('Failed to close poll');
+    }
   }
 
   const typingLabel = activeTypers.length === 0

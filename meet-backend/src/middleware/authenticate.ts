@@ -138,6 +138,11 @@ export async function authenticate(
     try {
       const cached = await cacheGet<AuthUser>(tokenCacheKey(token));
       if (cached) {
+        // Re-check ban status even on cache hit — prevents 60s bypass window
+        if (cached.is_banned) {
+          res.status(403).json({ error: 'Account suspended' });
+          return;
+        }
         (req as AuthRequest).user = cached;
         next();
         return;
@@ -212,6 +217,10 @@ export async function optionalAuth(
     try {
       const cached = await cacheGet<AuthUser>(tokenCacheKey(token));
       if (cached) {
+        if (cached.is_banned) {
+          next();
+          return;
+        }
         (req as AuthRequest).user = cached;
         next();
         return;
@@ -232,6 +241,11 @@ export async function optionalAuth(
     const user = await getUserById(payload.userId);
 
     if (user) {
+      // Don't set user on request if banned
+      if (user.is_banned) {
+        next();
+        return;
+      }
       (req as AuthRequest).user = user;
       // Cache the token → user mapping (non-blocking)
       cacheTokenAuth(token, user);

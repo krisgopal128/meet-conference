@@ -8,7 +8,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { z } from 'zod';
-import { RoomServiceClient, AccessToken } from 'livekit-server-sdk';
+import { AccessToken } from 'livekit-server-sdk';
+import { roomService as livekitRoomService, deleteRoom as deleteLiveKitRoom } from '../services/livekit.js';
+import { config } from '../config.js';
 import rateLimit from 'express-rate-limit';
 import { query, queryOne } from '../services/database.js';
 import logger from '../utils/logger.js';
@@ -46,19 +48,16 @@ const externalTokenSchema = z.object({
 
 // API Key verification middleware
 
-// Configuration
-const LIVEKIT_URL = process.env.LIVEKIT_URL || 'ws://localhost:7880';
-const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY || '';
-const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET || '';
+// Configuration (centralized from config module)
+const LIVEKIT_URL = config.livekit.url;
+const LIVEKIT_API_KEY = config.livekit.apiKey;
+const LIVEKIT_API_SECRET = config.livekit.apiSecret;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 // Validate required LiveKit configuration
 if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
   logger.warn('[External API] LIVEKIT_API_KEY or LIVEKIT_API_SECRET not set. External API will not function correctly.');
 }
-
-// LiveKit room client
-const roomClient = new RoomServiceClient(LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
 
 // ==================== Rate Limiting ====================
 
@@ -211,7 +210,7 @@ router.post('/rooms', async (req: Request, res: Response) => {
     // Create room in database with host_id from API key owner
     await query(
       `INSERT INTO rooms (name, title, host_id, status, waiting_room_enabled, settings) 
-       VALUES ($1, $2, $3, 'idle', $4, $5) 
+       VALUES ($1, $2, $3, 'waiting', $4, $5) 
        RETURNING id`,
       [sanitized, title || sanitized, userId, waitingRoomEnabled, JSON.stringify(metadata)]
     );
@@ -379,7 +378,9 @@ router.post('/rooms/:name/end', async (req: Request, res: Response) => {
     
     // End room via LiveKit
     try {
-      await roomClient.deleteRoom(name);
+      const { RoomServiceClient } = await import('livekit-server-sdk');
+      const endClient = new RoomServiceClient(process.env.LIVEKIT_URL!, process.env.LIVEKIT_API_KEY!, process.env.LIVEKIT_API_SECRET!);
+      await endClient.deleteRoom(name);
     } catch {
       // Room might not exist in LiveKit
       logger.info(`[External API] Room ${name} not active in LiveKit`);
@@ -417,6 +418,15 @@ router.delete('/rooms/:name', async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Not authorized to modify this room' });
     }
     
+    // Delete from LiveKit first (best-effort)
+    try {
+      const { RoomServiceClient } = await import('livekit-server-sdk');
+      const lkClient = new RoomServiceClient(process.env.LIVEKIT_URL!, process.env.LIVEKIT_API_KEY!, process.env.LIVEKIT_API_SECRET!);
+      await lkClient.deleteRoom(name);
+    } catch (lkErr) {
+      logger.warn('[External API] Failed to delete room from LiveKit:', lkErr);
+    }
+
     // Delete from database
     await query('DELETE FROM rooms WHERE name = $1', [name]);
     

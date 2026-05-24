@@ -47,8 +47,12 @@ export function LobbyWaiting({ roomName }: LobbyWaitingProps) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleLeave = () => {
-    room.disconnect();
+  const handleLeave = async () => {
+    try {
+      await room.disconnect();
+    } catch (e) {
+      // Best-effort — may already be disconnected
+    }
     navigate('/');
   };
 

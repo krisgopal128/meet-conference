@@ -15,7 +15,9 @@ CREATE TABLE IF NOT EXISTS users (
     avatar_url TEXT,
     role VARCHAR(50) DEFAULT 'participant',
     is_banned BOOLEAN DEFAULT false,
+    ban_reason TEXT,
     banned_at TIMESTAMPTZ,
+    banned_by UUID REFERENCES users(id),
     last_login_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -58,7 +60,7 @@ CREATE TABLE IF NOT EXISTS meetings (
     max_participants INTEGER DEFAULT 0,
     recording_url TEXT,
     started_at TIMESTAMPTZ DEFAULT NOW(),
-    ended_at TIMESTAMPTZ
+    ended_at TIMESTAMPTZ,
     status VARCHAR(50) DEFAULT 'ongoing', -- ongoing, ended
 );
 
@@ -195,7 +197,7 @@ CREATE TABLE IF NOT EXISTS admin_alerts (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_admin_alerts_is_read ON admin_alerts(is_read);
+CREATE INDEX IF NOT EXISTS idx_admin_alerts_read_at ON admin_alerts(read_at);
 CREATE INDEX IF NOT EXISTS idx_admin_alerts_created_at ON admin_alerts(created_at);
 
 CREATE TABLE IF NOT EXISTS user_activity (
@@ -227,7 +229,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
-    prefix VARCHAR(10) NOT NULL,
+    prefix VARCHAR(16) NOT NULL,
     key_hash VARCHAR(255) NOT NULL UNIQUE,
     permissions JSONB DEFAULT '{}'::jsonb,
     is_active BOOLEAN DEFAULT true,
@@ -250,7 +252,7 @@ CREATE TABLE IF NOT EXISTS whiteboards (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_whiteboards_room_name ON whiteboards(room_name);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_whiteboards_room_name ON whiteboards(room_name);
 
 CREATE TABLE IF NOT EXISTS meeting_diagnostics (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -266,3 +268,5 @@ CREATE TABLE IF NOT EXISTS meeting_diagnostics (
 
 CREATE INDEX IF NOT EXISTS idx_meeting_diagnostics_meeting_id ON meeting_diagnostics(meeting_id);
 CREATE INDEX IF NOT EXISTS idx_meeting_diagnostics_created_at ON meeting_diagnostics(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_meeting_participants_user_id ON meeting_participants(user_id);

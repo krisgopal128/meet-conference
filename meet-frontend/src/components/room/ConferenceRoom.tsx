@@ -37,6 +37,7 @@ import { Users, Loader2 } from 'lucide-react';
 import { meetingRoomConfig } from '../../config/meetingRoomConfig';
 import toast from 'react-hot-toast';
 import logger from '../../utils/logger';
+import type { LayoutMode } from '../../types';
 
 // Lazy load heavy panels for better initial load performance
 const ChatPanel = lazy(() => import('../panels/ChatPanel').then(m => ({ default: m.ChatPanel })));
@@ -91,6 +92,7 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
   const isModerator = role === 'host' || role === 'cohost' || identity === hostId;
   const activeSpeakerPromoteTimerRef = useRef<number | null>(null);
   const activeSpeakerDemoteTimerRef = useRef<number | null>(null);
+  const layoutBeforeScreenshare = useRef<LayoutMode>('grid');
 
   // Use extracted hooks
   const { scheduleRecovery, qualityOverrideReasonRef } = useQualityMonitoring({
@@ -171,10 +173,11 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
   // Auto-switch to screenshare layout
   useEffect(() => {
     const hasScreenShare = screenShareTracks.length > 0 && screenShareTracks[0].publication?.isSubscribed;
-    if (hasScreenShare) {
+    if (hasScreenShare && layout !== 'screenshare') {
+      layoutBeforeScreenshare.current = layout;
       setLayout('screenshare');
-    } else if (layout === 'screenshare') {
-      setLayout('speaker');
+    } else if (!hasScreenShare && layout === 'screenshare') {
+      setLayout(layoutBeforeScreenshare.current);
     }
   }, [screenShareTracks.length, setLayout, layout]);
 
@@ -496,7 +499,7 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
               <ParticipantsPanel />
             </Suspense>
           )}
-          {meetingRoomConfig.features.settingsPanelDeviceFallback && settingsOpen && (
+          {settingsOpen && (
             <Suspense fallback={<PanelLoader />}>
               <SettingsPanel />
             </Suspense>

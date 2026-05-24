@@ -22,6 +22,7 @@ import {
   useMentionCount,
   useHasRaisedHand,
   useIsRecording,
+  useEgressId,
   useIsModerator,
   useLobbyCount,
   useJoinLeaveSoundsEnabled,
@@ -77,6 +78,8 @@ import {
   MoreIcon,
   ControlsIcon,
   ControlsIconUnlocked,
+  RecordingButton,
+  MobileRecordingButton,
 } from './ControlBarButtons';
 
 export function ControlBar() {
@@ -92,6 +95,7 @@ export function ControlBar() {
   const unreadCount = useUnreadCount();
   const mentionCount = useMentionCount();
   const isRecording = useIsRecording();
+  const egressId = useEgressId();
   const isModerator = useIsModerator();
   const lobbyCount = useLobbyCount();
   const joinLeaveSoundsEnabled = useJoinLeaveSoundsEnabled();
@@ -115,7 +119,7 @@ export function ControlBar() {
   // Action hooks (stable references)
   const { setLayout, toggleChat, toggleParticipants, toggleWhiteboard, openSettingsView, setLobbyCount, toggleJoinLeaveSounds, toggleMirrorLocalVideo } = useUIActions();
   const { togglePiP } = useConnectionActions();
-  const { raiseHand, lowerHand } = useFeatureActions();
+  const { raiseHand, lowerHand, setRecording } = useFeatureActions();
   const {
     setMeetingLocked,
     setLobbyEnabled,
@@ -135,11 +139,12 @@ export function ControlBar() {
   const { isDocumentPiPSupported: isPiPSupported } = usePictureInPicture();
   const isPiPOpen = useIsPiPOpen();
 
-  logger.debug('[ControlBar] PiP state:', { isPiPSupported, isPiPOpen });
+  if (import.meta.env.DEV) logger.debug('[ControlBar] PiP state:', { isPiPSupported, isPiPOpen });
 
   // Local state for menus
   const [showMore, setShowMore] = useState(false);
   const [showControls, setShowControls] = useState(false);
+  const [isRecordingLoading, setIsRecordingLoading] = useState(false);
 
   const moreButtonRef = useRef<HTMLButtonElement>(null);
   const controlsButtonRef = useRef<HTMLButtonElement>(null);
@@ -180,14 +185,19 @@ export function ControlBar() {
       type: handRaised ? 'lower_hand' : 'raise_hand',
       identity: localParticipant.identity,
     };
-    await localParticipant.publishData(
-      new TextEncoder().encode(JSON.stringify(payload)),
-      { reliable: true }
-    );
-    if (handRaised) {
-      lowerHand(localParticipant.identity);
-    } else {
-      raiseHand(localParticipant.identity);
+    try {
+      await localParticipant.publishData(
+        new TextEncoder().encode(JSON.stringify(payload)),
+        { reliable: true }
+      );
+      if (handRaised) {
+        lowerHand(localParticipant.identity);
+      } else {
+        raiseHand(localParticipant.identity);
+      }
+    } catch (err) {
+      logger.error('Failed to toggle hand raise:', err);
+      toast.error('Failed to toggle hand raise');
     }
   }, [room, localParticipant, handRaised, raiseHand, lowerHand]);
 
@@ -204,11 +214,110 @@ export function ControlBar() {
     }
   }, [room]);
 
+  // Recording toggle
+  const toggleRecording = useCallback(async () => {
+    if (!room?.name) return;
+    setIsRecordingLoading(true);
+    try {
+      if (isRecording && egressId) {
+        await roomsApi.stopRecording(egressId);
+        setRecording(false);
+      } else {
+        const res = await roomsApi.startRecording(room.name);
+        const newEgressId = res.data.egressId;
+        setRecording(true, newEgressId ?? undefined);
+        toast.success('Recording started');
+      }
+    } catch (error) {
+      logger.error('Failed to toggle recording:', error);
+      toast.error(isRecording ? 'Failed to stop recording' : 'Failed to start recording');
+    } finally {
+      setIsRecordingLoading(false);
+    }
+  }, [room, isRecording, egressId, setRecording]);
+
   const toggleLayout = useCallback(() => {
     // Don't cycle through whiteboard mode here — that's toggled by its own button
     const effectiveLayout = layout === 'whiteboard' ? 'speaker' : layout;
     setLayout(effectiveLayout === 'grid' ? 'speaker' : 'grid');
   }, [layout, setLayout]);
+
+  const broadcastMeetingSettings = useCallback(async (settings: {
+    meetingLocked: boolean;
+    lobbyEnabled: boolean;
+    participantsCanShareScreen: boolean;
+    participantsCanChat: boolean;
+    participantsCanUnmute: boolean;
+    participantsCanTurnOnCamera: boolean;
+  }) => {
+    if (!localParticipant) return;
+    try {
+      await localParticipant.publishData(
+        new TextEncoder().encode(JSON.stringify({
+          type: 'meeting_settings_update',
+          ...settings,
+          senderIdentity: localParticipant.identity,
+        })),
+        { reliable: true }
+      );
+    } catch (err) {
+      logger.warn('[ControlBar] Failed to broadcast meeting settings:', err);
+    }
+  }, [localParticipant]);
+
+  const handleToggleLock = useCallback(async () => {
+    const newVal = !meetingLocked;
+    setMeetingLocked(newVal);
+    await broadcastMeetingSettings({
+      meetingLocked: newVal, lobbyEnabled, participantsCanShareScreen,
+      participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera,
+    });
+  }, [meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setMeetingLocked, broadcastMeetingSettings]);
+
+  const handleToggleLobby = useCallback(async () => {
+    const newVal = !lobbyEnabled;
+    setLobbyEnabled(newVal);
+    await broadcastMeetingSettings({
+      meetingLocked, lobbyEnabled: newVal, participantsCanShareScreen,
+      participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera,
+    });
+  }, [meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setLobbyEnabled, broadcastMeetingSettings]);
+
+  const handleToggleParticipantScreenShare = useCallback(async () => {
+    const newVal = !participantsCanShareScreen;
+    setParticipantsCanShareScreen(newVal);
+    await broadcastMeetingSettings({
+      meetingLocked, lobbyEnabled, participantsCanShareScreen: newVal,
+      participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera,
+    });
+  }, [meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setParticipantsCanShareScreen, broadcastMeetingSettings]);
+
+  const handleToggleParticipantChat = useCallback(async () => {
+    const newVal = !participantsCanChat;
+    setParticipantsCanChat(newVal);
+    await broadcastMeetingSettings({
+      meetingLocked, lobbyEnabled, participantsCanShareScreen,
+      participantsCanChat: newVal, participantsCanUnmute, participantsCanTurnOnCamera,
+    });
+  }, [meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setParticipantsCanChat, broadcastMeetingSettings]);
+
+  const handleToggleParticipantUnmute = useCallback(async () => {
+    const newVal = !participantsCanUnmute;
+    setParticipantsCanUnmute(newVal);
+    await broadcastMeetingSettings({
+      meetingLocked, lobbyEnabled, participantsCanShareScreen,
+      participantsCanChat, participantsCanUnmute: newVal, participantsCanTurnOnCamera,
+    });
+  }, [meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setParticipantsCanUnmute, broadcastMeetingSettings]);
+
+  const handleToggleParticipantCamera = useCallback(async () => {
+    const newVal = !participantsCanTurnOnCamera;
+    setParticipantsCanTurnOnCamera(newVal);
+    await broadcastMeetingSettings({
+      meetingLocked, lobbyEnabled, participantsCanShareScreen,
+      participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera: newVal,
+    });
+  }, [meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setParticipantsCanTurnOnCamera, broadcastMeetingSettings]);
 
   // More menu items
   const moreMenuItems = [
@@ -276,8 +385,8 @@ export function ControlBar() {
       }
     }},
     ...(isModerator ? [
-      { icon: meetingLocked ? <Lock size={16} className="text-warning-400" /> : <Unlock size={16} />, label: meetingLocked ? 'Unlock Meeting' : 'Lock Meeting', onClick: () => setMeetingLocked(!meetingLocked) },
-      { icon: <DoorOpen size={16} />, label: lobbyEnabled ? 'Disable Lobby' : 'Enable Lobby', onClick: () => setLobbyEnabled(!lobbyEnabled) },
+      { icon: meetingLocked ? <Lock size={16} className="text-warning-400" /> : <Unlock size={16} />, label: meetingLocked ? 'Unlock Meeting' : 'Lock Meeting', onClick: handleToggleLock },
+      { icon: <DoorOpen size={16} />, label: lobbyEnabled ? 'Disable Lobby' : 'Enable Lobby', onClick: handleToggleLobby },
     ] : []),
   ];
 
@@ -324,6 +433,9 @@ export function ControlBar() {
             onSwitchCamera={videoControls.switchCamera}
           />
           <ScreenShareButton isSharing={isScreenSharing} onToggle={toggleScreenShare} />
+          {isModerator && (
+            <RecordingButton isRecording={isRecording} isLoading={isRecordingLoading} onToggle={toggleRecording} />
+          )}
         </div>
 
         <div className="w-px h-10 bg-surface-600 mx-2" />
@@ -381,12 +493,12 @@ export function ControlBar() {
                 participantsCanChat={participantsCanChat}
                 participantsCanUnmute={participantsCanUnmute}
                 participantsCanTurnOnCamera={participantsCanTurnOnCamera}
-                onToggleLock={() => setMeetingLocked(!meetingLocked)}
-                onToggleLobby={() => setLobbyEnabled(!lobbyEnabled)}
-                onToggleScreenShare={() => setParticipantsCanShareScreen(!participantsCanShareScreen)}
-                onToggleChat={() => setParticipantsCanChat(!participantsCanChat)}
-                onToggleUnmute={() => setParticipantsCanUnmute(!participantsCanUnmute)}
-                onToggleCamera={() => setParticipantsCanTurnOnCamera(!participantsCanTurnOnCamera)}
+                onToggleLock={handleToggleLock}
+                onToggleLobby={handleToggleLobby}
+                onToggleScreenShare={handleToggleParticipantScreenShare}
+                onToggleChat={handleToggleParticipantChat}
+                onToggleUnmute={handleToggleParticipantUnmute}
+                onToggleCamera={handleToggleParticipantCamera}
               />
             </div>
           )}
@@ -438,6 +550,9 @@ export function ControlBar() {
         {/* Right: Secondary Controls */}
         <div className="flex items-center gap-1.5">
           <MobileChatButton isOpen={chatOpen} unreadCount={unreadCount} mentionCount={mentionCount} onToggle={toggleChat} />
+          {isModerator && (
+            <MobileRecordingButton isRecording={isRecording} isLoading={isRecordingLoading} onToggle={toggleRecording} />
+          )}
           <div className="relative">
             <button
               ref={moreButtonRef}

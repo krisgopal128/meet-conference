@@ -13,8 +13,8 @@ import logger from '../utils/logger.js';
 
 const { apiKey, apiSecret, url } = config.livekit;
 
-// Room Service Client (for room management) - internal use only
-const roomService = new RoomServiceClient(url, apiKey, apiSecret);
+// Room Service Client (for room management)
+export const roomService = new RoomServiceClient(url, apiKey, apiSecret);
 
 // Egress Client (for recording)
 export const egressClient = new EgressClient(url, apiKey, apiSecret);
@@ -23,7 +23,7 @@ export const egressClient = new EgressClient(url, apiKey, apiSecret);
 export const webhookReceiver = new WebhookReceiver(apiKey, apiSecret);
 
 // Role-based grants
-export type ParticipantRole = 'host' | 'cohost' | 'presenter' | 'attendee' | 'viewer';
+export type ParticipantRole = 'host' | 'cohost' | 'moderator' | 'presenter' | 'attendee' | 'viewer';
 
 const ROLE_GRANTS: Record<ParticipantRole, VideoGrant> = {
   host: {
@@ -36,6 +36,13 @@ const ROLE_GRANTS: Record<ParticipantRole, VideoGrant> = {
     roomRecord: true,
   },
   cohost: {
+    roomJoin: true,
+    canPublish: true,
+    canSubscribe: true,
+    canPublishData: true,
+    roomAdmin: true,
+  },
+  moderator: {
     roomJoin: true,
     canPublish: true,
     canSubscribe: true,
@@ -170,7 +177,7 @@ function parseParticipantRole(metadata?: string): ParticipantRole | null {
   try {
     const parsed = JSON.parse(metadata);
     const role = parsed?.role;
-    if (role === 'host' || role === 'cohost' || role === 'presenter' || role === 'attendee' || role === 'viewer') {
+    if (role === 'host' || role === 'cohost' || role === 'moderator' || role === 'presenter' || role === 'attendee' || role === 'viewer') {
       return role;
     }
   } catch {
@@ -184,7 +191,7 @@ function parseParticipantRole(metadata?: string): ParticipantRole | null {
 }
 
 function isModeratorRole(role: ParticipantRole | null | undefined): boolean {
-  return role === 'host' || role === 'cohost';
+  return role === 'host' || role === 'cohost' || role === 'moderator';
 }
 
 export function isModeratorParticipant(participant: ParticipantInfo, roomHostId?: string | null): boolean {
@@ -273,6 +280,38 @@ async function muteMatchingTracks(
   return mutedCount;
 }
 
+
+// Per-participant mutex to prevent permission race conditions during concurrent 
+// mute/disable operations on the same participant
+const participantLocks = new Map<string, Promise<void>>();
+
+async function withParticipantLock<T>(roomName: string, identity: string, fn: () => Promise<T>): Promise<T> {
+  const key = `${roomName}:${identity}`;
+  const prev = participantLocks.get(key) || Promise.resolve();
+  let resolve!: () => void;
+  const next = new Promise<void>(r => { resolve = r; });
+  participantLocks.set(key, next);
+  
+  try {
+    await prev; // Wait for any in-flight operation on this participant
+    return await fn();
+  } finally {
+    resolve();
+    // Clean up if this is the last operation
+    if (participantLocks.get(key) === next) {
+      participantLocks.delete(key);
+    }
+    // Size guard: prevent unbounded growth from stale entries
+    if (participantLocks.size > 100) {
+      for (const [k, v] of participantLocks) {
+        if (v !== participantLocks.get(k)) {
+          participantLocks.delete(k);
+        }
+      }
+    }
+  }
+}
+
 /**
  * Temporarily disable publishing for specific track sources, then restore permissions.
  * Consolidated function for microphone, camera, and screen share.
@@ -283,6 +322,7 @@ async function temporarilyDisableTrackPublishing(
   participant: ParticipantInfo,
   sourcesToDisable: TrackSource[]
 ): Promise<void> {
+  return withParticipantLock(roomName, identity, async () => {
   const originalPermissions = buildPermissionUpdate(participant, {});
   const currentSources = participant.permission?.canPublishSources ?? [];
 
@@ -316,6 +356,7 @@ async function temporarilyDisableTrackPublishing(
   } finally {
     await roomService.updateParticipant(roomName, identity, undefined, originalPermissions);
   }
+  }); // end withParticipantLock
 }
 
 async function temporarilyDisableMicrophonePublishing(

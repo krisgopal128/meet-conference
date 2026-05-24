@@ -7,7 +7,7 @@
 import { createAccessToken, ParticipantRole } from '../services/livekit.js';
 import { queryOne } from '../services/database.js';
  import * as roomService from '../services/roomService.js';
- import { isParticipantKicked, isGuestNameKicked, isGuestNameAdmitted } from '../services/redis.js';
+ import { isParticipantKicked, isGuestNameKicked, isGuestNameAdmitted, cacheDel } from '../services/redis.js';
  import logger from '../utils/logger.js';
 
  export const tokenRouter = Router();
@@ -49,6 +49,8 @@ tokenRouter.post('/', authenticate, tokenLimiter, async (req: AuthRequest, res: 
         "UPDATE rooms SET status = 'waiting' WHERE name = $1",
         [roomName]
       );
+      // Invalidate cached room data so subsequent requests see 'waiting' status
+      try { await cacheDel(`room:${roomName}`); } catch {}
       logger.info(`[Token] Host ${req.user!.id} restarting room ${roomName}, status reset to 'waiting'`);
     }
 
@@ -151,8 +153,8 @@ tokenRouter.post('/guest', tokenLimiter, async (req, res: Response) => {
     const { roomName, name, role, password } = guestSchema.parse(req.body);
 
     // Check if room exists and verify password if required
-    const room = await queryOne<{ id: string; status: string; password_hash: string | null }>(
-      'SELECT id, status, password_hash FROM rooms WHERE name = $1',
+    const room = await queryOne<{ id: string; status: string; room_password: string | null }>(
+      'SELECT id, status, room_password FROM rooms WHERE name = $1',
       [roomName]
     );
 
@@ -161,11 +163,11 @@ tokenRouter.post('/guest', tokenLimiter, async (req, res: Response) => {
     }
 
     // If room has password, verify it
-    if (room?.password_hash) {
+    if (room?.room_password) {
       if (!password) {
         return res.status(401).json({ error: 'Room password required' });
       }
-      const validPassword = await bcrypt.compare(password, room.password_hash);
+      const validPassword = await bcrypt.compare(password, room.room_password);
       if (!validPassword) {
         return res.status(401).json({ error: 'Invalid room password' });
       }

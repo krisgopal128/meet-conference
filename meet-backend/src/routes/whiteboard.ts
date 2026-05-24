@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { AuthRequest, authenticate } from '../middleware/authenticate.js';
-import { requireModerator } from '../middleware/requireRole.js';
+import { participantCanModerate } from '../services/livekit.js';
 import { queryOne, query } from '../services/database.js';
 import * as roomService from '../services/roomService.js';
 import logger from '../utils/logger.js';
@@ -26,8 +26,8 @@ whiteboardRouter.get('/:roomName', authenticate, async (req: AuthRequest, res) =
       locked: boolean;
       updated_at: string;
     }>(
-      'SELECT scene, locked, updated_at FROM whiteboards WHERE room_id = $1',
-      [room.id],
+      'SELECT scene, locked, updated_at FROM whiteboards WHERE room_name = $1',
+      [roomName],
     );
 
     if (!row) {
@@ -71,12 +71,25 @@ whiteboardRouter.put('/:roomName', authenticate, async (req: AuthRequest, res) =
       return;
     }
 
+    // Verify user is host or participant of this room
+    const isHost = room.host_id === req.user!.id;
+    if (!isHost) {
+      const participant = await queryOne(
+        'SELECT id FROM meeting_participants mp JOIN meetings m ON mp.meeting_id = m.id WHERE m.room_name = $1 AND mp.user_id = $2 LIMIT 1',
+        [room.id, req.user!.id]
+      );
+      if (!participant) {
+        res.status(403).json({ error: 'You must be a participant of this room to edit the whiteboard' });
+        return;
+      }
+    }
+
     await query(
-      `INSERT INTO whiteboards (room_id, scene, locked, updated_at)
+      `INSERT INTO whiteboards (room_name, scene, locked, updated_at)
        VALUES ($1, $2, true, now())
-       ON CONFLICT (room_id)
+       ON CONFLICT (room_name)
        DO UPDATE SET scene = $2, updated_at = now(), locked = whiteboards.locked`,
-      [room.id, sceneJson],
+      [roomName, sceneJson],
     );
 
     res.json({ ok: true });
@@ -91,7 +104,7 @@ whiteboardRouter.put('/:roomName', authenticate, async (req: AuthRequest, res) =
  * Toggle whiteboard lock status. Only moderators/admins can toggle.
  * Body: { locked: boolean }
  */
-whiteboardRouter.patch('/:roomName/lock', authenticate, requireModerator(), async (req: AuthRequest, res) => {
+whiteboardRouter.patch('/:roomName/lock', authenticate, async (req: AuthRequest, res) => {
   try {
     const { roomName } = req.params;
     const { locked } = req.body;
@@ -108,12 +121,22 @@ whiteboardRouter.patch('/:roomName/lock', authenticate, requireModerator(), asyn
       return;
     }
 
+    // Verify user is a room moderator (host/cohost via LiveKit metadata)
+    const canMod = await participantCanModerate(roomName, req.user!.id, room.host_id);
+    if (!canMod) {
+      // Fallback: allow system admins too
+      const isHost = room.host_id === req.user!.id;
+      if (!isHost) {
+        return res.status(403).json({ error: 'Only room moderators can toggle whiteboard lock' });
+      }
+    }
+
     await query(
-      `INSERT INTO whiteboards (room_id, scene, locked, updated_at)
+      `INSERT INTO whiteboards (room_name, scene, locked, updated_at)
        VALUES ($1, '[]'::jsonb, $2, now())
-       ON CONFLICT (room_id)
+       ON CONFLICT (room_name)
        DO UPDATE SET locked = $2, updated_at = now()`,
-      [room.id, locked],
+      [roomName, locked],
     );
 
     res.json({ ok: true, locked });
@@ -127,7 +150,7 @@ whiteboardRouter.patch('/:roomName/lock', authenticate, requireModerator(), asyn
  * DELETE /whiteboard/:roomName
  * Clear the persisted whiteboard scene.
  */
-whiteboardRouter.delete('/:roomName', authenticate, requireModerator(), async (req: AuthRequest, res) => {
+whiteboardRouter.delete('/:roomName', authenticate, async (req: AuthRequest, res) => {
   try {
     const { roomName } = req.params;
     const room = await roomService.getRoomByName(roomName);
@@ -137,7 +160,16 @@ whiteboardRouter.delete('/:roomName', authenticate, requireModerator(), async (r
       return;
     }
 
-    await query('DELETE FROM whiteboards WHERE room_id = $1', [room.id]);
+    // Verify user is a room moderator
+    const canMod = await participantCanModerate(roomName, req.user!.id, room.host_id);
+    if (!canMod) {
+      const isHost = room.host_id === req.user!.id;
+      if (!isHost) {
+        return res.status(403).json({ error: 'Only room moderators can clear the whiteboard' });
+      }
+    }
+
+    await query('DELETE FROM whiteboards WHERE room_name = $1', [roomName]);
     res.json({ ok: true });
   } catch (err) {
     logger.error('Failed to delete whiteboard', { error: err });

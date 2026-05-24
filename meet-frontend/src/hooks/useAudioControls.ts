@@ -5,7 +5,7 @@
  * Handles mic/speaker enumeration, toggle, and switching.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { LocalParticipant, Room } from 'livekit-client';
 import { buildAudioCaptureOptions } from '../config/meetingRoomConfig';
 import toast from 'react-hot-toast';
@@ -51,8 +51,12 @@ export function useAudioControls(
     };
   }, [room]);
 
+  const isTogglingMic = useRef(false);
+
   const toggleMic = useCallback(async () => {
+    if (isTogglingMic.current) return;
     if (!localParticipant) return;
+    isTogglingMic.current = true;
     try {
       const currentlyEnabled = localParticipant.isMicrophoneEnabled;
       await localParticipant.setMicrophoneEnabled(
@@ -62,6 +66,8 @@ export function useAudioControls(
     } catch (error) {
       logger.error('Failed to toggle microphone:', error);
       toast.error('Failed to toggle microphone');
+    } finally {
+      isTogglingMic.current = false;
     }
   }, [localParticipant, activeMicId]);
 

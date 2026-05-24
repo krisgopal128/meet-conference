@@ -5,11 +5,11 @@
  * Handles chat, polls, typing, hand raise, and moderation controls.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { RoomEvent } from 'livekit-client';
 import type { Room, LocalParticipant } from 'livekit-client';
 import toast from 'react-hot-toast';
-import { useChatActions, useFeatureActions, useUIActions } from '../store/roomStore';
+import { useChatActions, useFeatureActions, useUIActions, useWhiteboardOpen, useMeetingControlsActions } from '../store/roomStore';
 import type { ChatMessage } from '../types';
 
 interface UseDataChannelHandlerProps {
@@ -23,6 +23,17 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
   const { addMessage, setTypingParticipant, votePoll, closePoll, incrementMentionCount } = useChatActions();
   const { raiseHand, lowerHand } = useFeatureActions();
   const { toggleWhiteboard } = useUIActions();
+  const whiteboardOpen = useWhiteboardOpen();
+  const whiteboardOpenRef = useRef(whiteboardOpen);
+  whiteboardOpenRef.current = whiteboardOpen;
+  const {
+    setMeetingLocked,
+    setLobbyEnabled,
+    setParticipantsCanShareScreen,
+    setParticipantsCanChat,
+    setParticipantsCanUnmute,
+    setParticipantsCanTurnOnCamera,
+  } = useMeetingControlsActions();
 
   useEffect(() => {
     const handleData = async (data: Uint8Array) => {
@@ -94,9 +105,21 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
         } else if (payload.type === 'lower_hand') {
           lowerHand(payload.identity);
         } else if (payload.type === 'whiteboard-activate') {
-          // Only non-moderators react — moderator already toggled locally
-          if (!isModerator) {
-            toggleWhiteboard();
+          // Sync whiteboard state for all participants except the sender
+          // (sender already toggled locally before publishing)
+          if (payload.senderIdentity !== localParticipant.identity) {
+            if (payload.active !== whiteboardOpenRef.current) {
+              toggleWhiteboard();
+            }
+          }
+        } else if (payload.type === 'meeting_settings_update') {
+          if (payload.senderIdentity !== localParticipant.identity) {
+            if (typeof payload.meetingLocked === 'boolean') setMeetingLocked(payload.meetingLocked);
+            if (typeof payload.lobbyEnabled === 'boolean') setLobbyEnabled(payload.lobbyEnabled);
+            if (typeof payload.participantsCanShareScreen === 'boolean') setParticipantsCanShareScreen(payload.participantsCanShareScreen);
+            if (typeof payload.participantsCanChat === 'boolean') setParticipantsCanChat(payload.participantsCanChat);
+            if (typeof payload.participantsCanUnmute === 'boolean') setParticipantsCanUnmute(payload.participantsCanUnmute);
+            if (typeof payload.participantsCanTurnOnCamera === 'boolean') setParticipantsCanTurnOnCamera(payload.participantsCanTurnOnCamera);
           }
         } else if (payload.type === 'moderation_control' && payload.targetIdentity === localParticipant.identity) {
           if (payload.action === 'disable_camera' && localParticipant.isCameraEnabled) {
@@ -107,9 +130,14 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
             await localParticipant.setScreenShareEnabled(false);
           }
         }
-      } catch { /* ignore malformed */ }
+      } catch (err) {
+        /* Ignore malformed data channel messages, but log for debugging */
+        if (import.meta.env.DEV) {
+          console.debug('[DataChannel] Malformed message:', err);
+        }
+      }
     };
     room.on(RoomEvent.DataReceived, handleData);
     return () => { room.off(RoomEvent.DataReceived, handleData); };
-  }, [room, addMessage, raiseHand, lowerHand, setTypingParticipant, isModerator, votePoll, closePoll, localParticipant, toggleWhiteboard]);
+  }, [room, addMessage, raiseHand, lowerHand, setTypingParticipant, isModerator, votePoll, closePoll, localParticipant, toggleWhiteboard, setMeetingLocked, setLobbyEnabled, setParticipantsCanShareScreen, setParticipantsCanChat, setParticipantsCanUnmute, setParticipantsCanTurnOnCamera]);
 }
