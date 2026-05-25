@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS rooms (
     max_participants INTEGER DEFAULT 50,
     empty_timeout INTEGER DEFAULT 300,
     metadata JSONB DEFAULT '{}'::jsonb,
+    settings JSONB DEFAULT '{}'::jsonb,
     waiting_room_enabled BOOLEAN DEFAULT true,
     room_password VARCHAR(255),
     created_at TIMESTAMPTZ DEFAULT NOW(),

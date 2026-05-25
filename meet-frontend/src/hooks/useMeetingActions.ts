@@ -115,7 +115,11 @@ export function useMeetingActions() {
     } catch (e) {
       // Best-effort
     }
-    await room.disconnect();
+    try {
+      await room.disconnect();
+    } catch (e) {
+      logger.error('Error disconnecting from room:', e);
+    }
     reset();
     navigate('/thank-you', { state: { roomName, duration: duration > 0 ? duration : undefined } });
   }, [room, localParticipant, navigate, reset]);

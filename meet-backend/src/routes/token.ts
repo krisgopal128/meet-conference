@@ -152,13 +152,13 @@ tokenRouter.post('/guest', tokenLimiter, async (req, res: Response) => {
 
     const { roomName, name, role, password } = guestSchema.parse(req.body);
 
-    // Check if room exists and verify password if required
-    const room = await queryOne<{ id: string; status: string; room_password: string | null }>(
-      'SELECT id, status, room_password FROM rooms WHERE name = $1',
+    // Check if room exists and verify password if required (single query for all room fields)
+    const room = await queryOne<{ id: string; status: string; room_password: string | null; waiting_room_enabled: boolean; host_id: string }>(
+      'SELECT id, status, room_password, waiting_room_enabled, host_id FROM rooms WHERE name = $1',
       [roomName]
     );
 
-    if (room && room.status === 'ended') {
+    if (room?.status === 'ended') {
       return res.status(400).json({ error: 'Room has ended. Please wait for the host to restart the meeting.' });
     }
 
@@ -185,18 +185,12 @@ tokenRouter.post('/guest', tokenLimiter, async (req, res: Response) => {
     // Generate a guest identity using cryptographically secure random (no timestamp to avoid predictability)
     const guestIdentity = `guest_${crypto.randomBytes(16).toString('hex')}`;
 
-    // Check if room has waiting room enabled
-    const roomSettings = await queryOne<{ waiting_room_enabled: boolean; host_id: string }>(
-      'SELECT waiting_room_enabled, host_id FROM rooms WHERE name = $1',
-      [roomName]
-    );
-
     // Check if this guest was previously admitted (auto-admit on rejoin)
     const wasPreviouslyAdmitted = await isGuestNameAdmitted(roomName, name);
     
     // If waiting room is enabled, guests go to lobby for moderator approval
     // UNLESS they were previously admitted (reconnecting after disconnect)
-    const inLobby = roomSettings?.waiting_room_enabled === true && !wasPreviouslyAdmitted;
+    const inLobby = room?.waiting_room_enabled === true && !wasPreviouslyAdmitted;
 
     // Generate token with appropriate permissions
     const accessToken = await createAccessToken(roomName, guestIdentity, role as ParticipantRole, {
@@ -213,7 +207,7 @@ tokenRouter.post('/guest', tokenLimiter, async (req, res: Response) => {
       name,
       roomName,
       role,
-      hostId: roomSettings?.host_id || null,
+      hostId: room?.host_id || null,
       inLobby,
       wasPreviouslyAdmitted,
       expiresIn: 3600,

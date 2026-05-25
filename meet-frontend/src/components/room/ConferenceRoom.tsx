@@ -378,13 +378,6 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
     };
   }, [selectedQualityMode, setCallMetrics]);
 
-  useEffect(() => {
-    const currentReason = qualityOverrideReasonRef.current;
-    if (currentReason || selectedQualityMode !== 'audioOnly') {
-      return;
-    }
-  }, [selectedQualityMode]);
-
   // Background blur toggle effect - uses improved blur manager
   // - Debounce: 300ms minimum between toggles
   // - Async lock: prevents race conditions

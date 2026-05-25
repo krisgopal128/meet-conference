@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { config } from '../config.js';
 import { query, queryOne } from '../services/database.js';
 import { cacheGet, cacheSet, cacheDel, isTokenBlacklisted } from '../services/redis.js';
+import { cacheExists } from '../services/redis.js';
 import logger from '../utils/logger.js';
 
 /**
@@ -85,6 +86,30 @@ export function invalidateUserAuth(userId: string): void {
 }
 
 /**
+ * Set a banned marker in Redis for a user. Token cache hits will check this.
+ * Call from admin ban endpoint.
+ */
+export function setUserBanned(userId: string, ttlSeconds = 86400): void {
+  cacheSet(`banned:${userId}`, Date.now(), ttlSeconds).catch(() => {});
+}
+
+/**
+ * Remove the banned marker when a user is unbanned.
+ */
+export function clearUserBanned(userId: string): void {
+  cacheDel(`banned:${userId}`).catch(() => {});
+}
+
+/**
+ * Invalidate all token cache entries for a user.
+ * Clears user cache and banned marker so next auth does a fresh DB lookup.
+ */
+export function invalidateAllTokenCacheForUser(userId: string): void {
+  invalidateUserAuth(userId);
+  cacheDel(`banned:${userId}`).catch(() => {});
+}
+
+/**
  * Fetch user from DB with Redis caching (TTL: 5 minutes)
  */
 async function getUserById(userId: string): Promise<AuthUser | null> {
@@ -137,8 +162,20 @@ export async function authenticate(
     // One Redis GET replaces: blacklist check + jwt.verify + DB lookup
     try {
       const cached = await cacheGet<AuthUser>(tokenCacheKey(token));
-      if (cached) {
-        // Re-check ban status even on cache hit — prevents 60s bypass window
+     if (cached) {
+        // Check banned status in Redis (set by admin ban endpoint)
+        if (cached.id) {
+          try {
+            const isBanned = await cacheExists(`banned:${cached.id}`);
+            if (isBanned) {
+              res.status(403).json({ error: 'Account suspended' });
+              return;
+            }
+          } catch {
+            // If Redis check fails, proceed with cached data (best effort)
+          }
+        }
+       // Re-check ban status even on cache hit — prevents 60s bypass window
         if (cached.is_banned) {
           res.status(403).json({ error: 'Account suspended' });
           return;

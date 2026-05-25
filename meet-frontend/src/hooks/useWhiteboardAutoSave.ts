@@ -3,9 +3,44 @@ import { whiteboardApi } from '../services/whiteboardApi';
 import { registerWhiteboardSave } from './useMeetingActions';
 import logger from '../utils/logger';
 
-const apiBase = import.meta.env.VITE_API_URL || '/api';
-
 const AUTO_SAVE_MS = 2000;
+
+/**
+ * Helper: get auth token from localStorage (Zustand persisted store).
+ * This works even during page unload when React state is inaccessible.
+ */
+function getAuthToken(): string | null {
+  try {
+    const raw = localStorage.getItem('auth-storage');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.state?.token || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Helper: save whiteboard via fetch with auth headers (works with keepalive).
+ * sendBeacon cannot send custom headers, so we always use fetch keepalive
+ * for the unmount/beforeunload path.
+ */
+function saveWithAuth(url: string, scene: unknown[]): void {
+  const token = getAuthToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+
+  // Read CSRF cookie
+  const csrfMatch = document.cookie.match(/csrf_token=([^;]+)/);
+  if (csrfMatch) headers['X-CSRF-Token'] = csrfMatch[1];
+
+  fetch(url, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ scene }),
+    keepalive: true,
+  }).catch(() => {});
+}
 
 /**
  * Auto-saves the whiteboard scene to the backend every 2 seconds
@@ -87,33 +122,25 @@ export function useWhiteboardAutoSave(
   }, [roomName, excalidrawReady, shouldSave, sceneRef]);
 
   // Save on unmount — if there are unsaved changes, fire a final save
+  // Uses fetch with keepalive + auth headers (sendBeacon can't send headers)
   useEffect(() => {
     return () => {
       const rn = roomNameRef.current;
       const scene = sceneRefStable.current.current;
       if (!rn || !scene || !dirtyRef.current) return;
-      // Use sendBeacon for reliability during page unload
       try {
-        const payload = JSON.stringify({ scene });
-        const url = `${apiBase}/whiteboard/${encodeURIComponent(rn)}`;
-        navigator.sendBeacon?.(url, new Blob([payload], { type: 'application/json' }));
-        logger.debug('[Whiteboard] SendBeacon save on unmount');
+        const apiBase = import.meta.env.VITE_API_URL || '/api';
+        const url = apiBase + '/whiteboard/' + encodeURIComponent(rn);
+        saveWithAuth(url, scene as object[]);
+        logger.debug('[Whiteboard] Fetch-keepalive save on unmount');
       } catch {
-        // Fallback: best-effort fetch with keepalive
-        try {
-          const url = `${apiBase}/whiteboard/${encodeURIComponent(rn)}`;
-          fetch(url, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ scene }),
-            keepalive: true,
-          }).catch(() => {});
-        } catch {}
+        // Last resort — nothing we can do if this fails
       }
     };
   }, []);
 
   // beforeunload handler — save before tab close/refresh
+  // Uses fetch with keepalive + auth headers
   useEffect(() => {
     if (!roomName || !shouldSave) return;
 
@@ -121,8 +148,9 @@ export function useWhiteboardAutoSave(
       const scene = sceneRefStable.current.current;
       if (!scene || !dirtyRef.current) return;
       try {
-        const url = `${apiBase}/whiteboard/${encodeURIComponent(roomName)}`;
-        navigator.sendBeacon?.(url, new Blob([JSON.stringify({ scene })], { type: 'application/json' }));
+        const apiBase = import.meta.env.VITE_API_URL || '/api';
+        const url = apiBase + '/whiteboard/' + encodeURIComponent(roomName);
+        saveWithAuth(url, scene as object[]);
       } catch {}
     };
 

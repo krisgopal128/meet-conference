@@ -13,7 +13,7 @@ import logger from '../utils/logger.js';
 const CSRF_COOKIE_NAME = 'csrf_token';
 const CSRF_HEADER_NAME = 'x-csrf-token';
 
-const CSRF_SKIP_PATHS = new Set(['/health', '/webhook']);
+const CSRF_SKIP_PATHS = new Set(['/health', '/webhook', '/token']);
 const CSRF_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 export function generateCsrfToken(): string {

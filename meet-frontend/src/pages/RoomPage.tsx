@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { LiveKitRoom, useLocalParticipant, useRoomContext, useConnectionState } from '@livekit/components-react';
 import { VideoPreset, Track } from 'livekit-client';
@@ -134,7 +134,7 @@ function RoomContent({
   const { localParticipant } = useLocalParticipant();
   const room = useRoomContext();
   const connectionState = useConnectionState();
-  const { setToken, setHostId, setRole, setDisplayName } = useConnectionActions();
+  const { setToken, setHostId, setRole, setDisplayName, setPrejoinDevices } = useConnectionActions();
   
   // Get current grid aspect ratio from store for camera options
   const currentGridAspectRatio = useGridAspectRatio();
@@ -228,8 +228,12 @@ function RoomContent({
     if (state.displayName) {
       setDisplayName(state.displayName);
     }
-  }, [localParticipant.identity, state.token, state.hostId, state.role, state.displayName, state.videoEnabled, state.audioEnabled, setToken, setHostId, setRole, setDisplayName]);
+    if (state.selectedCamera || state.selectedMic) {
+      setPrejoinDevices(state.selectedCamera || null, state.selectedMic || null);
+    }
+  }, [localParticipant.identity, state.token, state.hostId, state.role, state.displayName, state.selectedCamera, state.selectedMic, setToken, setHostId, setRole, setDisplayName, setPrejoinDevices]);
 
+  // Switch audio output (speaker) to prejoin selection
   useEffect(() => {
     if (!room) return;
 
@@ -238,6 +242,24 @@ function RoomContent({
       logger.error('[RoomPage] Failed to switch speaker device:', error);
     });
   }, [room, state.selectedSpeaker]);
+
+  // Switch video input (camera) to prejoin selection
+  useEffect(() => {
+    if (!room || !state.selectedCamera) return;
+
+    void room.switchActiveDevice('videoinput', state.selectedCamera).catch((error) => {
+      logger.error('[RoomPage] Failed to switch camera device:', error);
+    });
+  }, [room, state.selectedCamera]);
+
+  // Switch audio input (microphone) to prejoin selection
+  useEffect(() => {
+    if (!room || !state.selectedMic) return;
+
+    void room.switchActiveDevice('audioinput', state.selectedMic).catch((error) => {
+      logger.error('[RoomPage] Failed to switch microphone device:', error);
+    });
+  }, [room, state.selectedMic]);
 
   useEffect(() => {
     const volume = Math.max(0, Math.min(1, (state.speakerLevel ?? 100) / 100));
@@ -593,6 +615,7 @@ export default function RoomPage() {
     },
   }), [
     effectiveQualityMode, currentGridAspectRatio, state?.micLevel, state?.cameraHardwareCaps,
+    state?.videoEnabled, state?.audioEnabled, state?.selectedCamera, state?.selectedMic,
     maxBitrate, qualitySettings, screenShareOptions,
   ]);
 
@@ -605,7 +628,7 @@ export default function RoomPage() {
     );
   }
 
-  const handleConnected = () => {
+  const handleConnected = useCallback(() => {
     setConnected(true);
     
     // Register meeting in history for moderators
@@ -619,17 +642,17 @@ export default function RoomPage() {
       logger.info('✅ Connected to room:', roomName);
       logger.info('Initial state - Video:', state.videoEnabled, 'Audio:', state.audioEnabled);
     }
-  };
+  }, [state.role, state.videoEnabled, state.audioEnabled, roomName]);
 
-  const handleDisconnected = () => {
+  const handleDisconnected = useCallback(() => {
     logger.info('[RoomPage] Disconnected from room');
-  };
+  }, []);
 
-  const handleError = (error: Error) => {
+  const handleError = useCallback((error: Error) => {
     if (import.meta.env.DEV) {
       logger.error('❌ Room error:', error);
     }
-  };
+  }, []);
 
   if (import.meta.env.DEV) {
     logger.info('🎬 LiveKitRoom options:', { 

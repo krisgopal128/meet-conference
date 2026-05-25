@@ -10,6 +10,7 @@ import type { LocalParticipant, Room } from 'livekit-client';
 import type { QualityModeName } from '../config/meetingRoomConfig';
 import type { GridAspectRatio } from '../store/roomStore';
 import { buildCameraCaptureOptions, isAudioOnlyMode, meetingRoomConfig } from '../config/meetingRoomConfig';
+import { usePrejoinCameraId } from '../store/roomStore';
 import toast from 'react-hot-toast';
 import logger from '../utils/logger';
 
@@ -19,6 +20,7 @@ export function useVideoControls(
   qualityMode: QualityModeName,
   gridAspectRatio: GridAspectRatio,
 ) {
+  const prejoinCameraId = usePrejoinCameraId();
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const [activeCameraId, setActiveCameraId] = useState('');
 
@@ -30,7 +32,8 @@ export function useVideoControls(
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         setCameras(devices.filter((device) => device.kind === 'videoinput'));
-        setActiveCameraId(room.getActiveDevice('videoinput') || '');
+        const currentDevice = room.getActiveDevice('videoinput');
+        setActiveCameraId(currentDevice || prejoinCameraId || '');
       } catch (error) {
         logger.error('Failed to refresh video devices:', error);
       }
@@ -48,7 +51,7 @@ export function useVideoControls(
       navigator.mediaDevices.removeEventListener?.('devicechange', refreshDevices);
       room.off('activeDeviceChanged', handleActiveDeviceChanged);
     };
-  }, [room]);
+  }, [room, prejoinCameraId]);
 
   const isTogglingCamera = useRef(false);
 

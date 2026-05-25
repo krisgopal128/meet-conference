@@ -18,6 +18,7 @@ const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const SchedulePage = lazy(() => import('./pages/SchedulePage'));
 const HistoryPage = lazy(() => import('./pages/HistoryPage'));
+const RecordingsPage = lazy(() => import('./pages/RecordingsPage'));
 const MeetingDetailPage = lazy(() => import('./pages/MeetingDetailPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const ThankYouPage = lazy(() => import('./pages/ThankYouPage'));
@@ -145,6 +146,14 @@ const routes: RouteObject[] = [
         element: (
           <ProtectedRoute>
             {withSuspense(MeetingDetailPage)}
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'recordings',
+        element: (
+          <ProtectedRoute>
+            {withSuspense(RecordingsPage)}
           </ProtectedRoute>
         ),
       },

@@ -43,7 +43,7 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
   const [speakerLevel, setSpeakerLevel] = useState(100);
   const [noiseSuppression, setNoiseSuppression] = useState(meetingRoomConfig.prejoin.noiseSuppression);
   const [echoCancellation, setEchoCancellation] = useState(meetingRoomConfig.prejoin.echoCancellation);
-  const [backgroundBlur] = useState(false); // Disabled - no UI to change this
+  const backgroundBlur = false; // Placeholder for future background blur toggle
   const [blurActivating] = useState(false); // Disabled - no UI to change this
   const [videoFilter, setVideoFilter] = useState<'none' | 'lightweight'>('none'); // Default OFF
   const [qualityMode, setQualityMode] = useState<QualityModeName>(getQualityModeConfig().name);
@@ -333,15 +333,6 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomName, isCreateMode, stopPermissionStream, stopPreview]);
-
-  useEffect(() => {
-    return () => {
-      // Stop video track first via preview
-      stopPreview();
-      // Clean up permission stream (skip video - already stopped above)
-      stopPermissionStream(true);
-    };
-  }, [stopPermissionStream, stopPreview]);
 
   // Note: Pre-warming blur processor removed - new blur manager creates fresh processors
   // This avoids stale state issues and memory leaks

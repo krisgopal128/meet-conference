@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { LocalParticipant, Room } from 'livekit-client';
 import { buildAudioCaptureOptions } from '../config/meetingRoomConfig';
+import { usePrejoinMicId } from '../store/roomStore';
 import toast from 'react-hot-toast';
 import logger from '../utils/logger';
 
@@ -15,6 +16,7 @@ export function useAudioControls(
   localParticipant: LocalParticipant | undefined,
   room: Room | undefined,
 ) {
+  const prejoinMicId = usePrejoinMicId();
   const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
   const [speakers, setSpeakers] = useState<MediaDeviceInfo[]>([]);
   const [activeMicId, setActiveMicId] = useState('');
@@ -29,7 +31,8 @@ export function useAudioControls(
         const devices = await navigator.mediaDevices.enumerateDevices();
         setMics(devices.filter((device) => device.kind === 'audioinput'));
         setSpeakers(devices.filter((device) => device.kind === 'audiooutput'));
-        setActiveMicId(room.getActiveDevice('audioinput') || '');
+        const currentMic = room.getActiveDevice('audioinput');
+        setActiveMicId(currentMic || prejoinMicId || '');
         setActiveSpeakerId(room.getActiveDevice('audiooutput') || '');
       } catch (error) {
         logger.error('Failed to refresh audio devices:', error);
@@ -49,7 +52,7 @@ export function useAudioControls(
       navigator.mediaDevices.removeEventListener?.('devicechange', refreshDevices);
       room.off('activeDeviceChanged', handleActiveDeviceChanged);
     };
-  }, [room]);
+  }, [room, prejoinMicId]);
 
   const isTogglingMic = useRef(false);
 

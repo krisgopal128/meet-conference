@@ -184,7 +184,7 @@ export default function ForgotPasswordPage() {
             <p id="form-disabled-reason" className="sr-only">Please fill in all required fields correctly</p>
           )}
           {!isFormValid && !loading && (
-            <p id="form-disabled-reason" className="text-xs text-surface-400 text-center">
+            <p id="form-disabled-reason-visible" className="text-xs text-surface-400 text-center">
               Please enter a valid email address
             </p>
           )}

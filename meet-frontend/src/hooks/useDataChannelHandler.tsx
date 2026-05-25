@@ -21,7 +21,8 @@ interface UseDataChannelHandlerProps {
 
 export function useDataChannelHandler({ room, localParticipant, isModerator, onMeetingEnded }: UseDataChannelHandlerProps) {
   const { addMessage, setTypingParticipant, votePoll, closePoll, incrementMentionCount } = useChatActions();
-  const { raiseHand, lowerHand } = useFeatureActions();
+  // setRecording is destructured from useFeatureActions below
+  const { raiseHand, lowerHand, setRecording } = useFeatureActions();
   const { toggleWhiteboard } = useUIActions();
   const whiteboardOpen = useWhiteboardOpen();
   const whiteboardOpenRef = useRef(whiteboardOpen);
@@ -43,6 +44,12 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
         // Handle meeting_ended - all participants navigate to ThankYou
         if (payload.type === 'meeting_ended') {
           onMeetingEnded?.(payload.reason || 'host_left');
+          return;
+        }
+
+        // Handle recording state sync from host
+        if (payload.type === 'recording_state') {
+          setRecording(payload.isRecording, payload.egressId);
           return;
         }
 
@@ -121,6 +128,11 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
             if (typeof payload.participantsCanUnmute === 'boolean') setParticipantsCanUnmute(payload.participantsCanUnmute);
             if (typeof payload.participantsCanTurnOnCamera === 'boolean') setParticipantsCanTurnOnCamera(payload.participantsCanTurnOnCamera);
           }
+        } else if (payload.type === 'settings_sync') {
+          // Sync videoFitMode from other participants
+          if (payload.senderIdentity !== localParticipant.identity && payload.videoFitMode) {
+            console.debug('[DataChannel] Received settings_sync:', payload.videoFitMode);
+          }
         } else if (payload.type === 'moderation_control' && payload.targetIdentity === localParticipant.identity) {
           if (payload.action === 'disable_camera' && localParticipant.isCameraEnabled) {
             await localParticipant.setCameraEnabled(false);
@@ -139,5 +151,5 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
     };
     room.on(RoomEvent.DataReceived, handleData);
     return () => { room.off(RoomEvent.DataReceived, handleData); };
-  }, [room, addMessage, raiseHand, lowerHand, setTypingParticipant, isModerator, votePoll, closePoll, localParticipant, toggleWhiteboard, setMeetingLocked, setLobbyEnabled, setParticipantsCanShareScreen, setParticipantsCanChat, setParticipantsCanUnmute, setParticipantsCanTurnOnCamera]);
+  }, [room, addMessage, raiseHand, lowerHand, setTypingParticipant, isModerator, votePoll, closePoll, localParticipant, toggleWhiteboard, setMeetingLocked, setLobbyEnabled, setParticipantsCanShareScreen, setParticipantsCanChat, setParticipantsCanUnmute, setParticipantsCanTurnOnCamera, setRecording, incrementMentionCount, onMeetingEnded]);
 }

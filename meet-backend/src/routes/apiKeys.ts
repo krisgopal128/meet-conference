@@ -129,7 +129,7 @@ router.post('/', async (req: Request, res: Response) => {
       [userId]
     );
     
-    if (existingCount && parseInt(existingCount.count) >= 10) {
+    if (existingCount && Number(existingCount.count) >= 10) {
       return res.status(400).json({ error: 'Maximum of 10 active API keys allowed' });
     }
     

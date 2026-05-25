@@ -130,6 +130,15 @@ export async function getPooledConnection(): Promise<RedisClientType> {
     if (!conn.inUse && conn.client.isOpen) {
       conn.inUse = true;
       conn.lastUsed = Date.now();
+      // Auto-release after MAX_HOLD_MS to prevent connection leaks
+      const timer = setTimeout(() => {
+        if (conn.inUse) {
+          logger.warn(`[Redis] Auto-releasing pool connection held too long (>${MAX_HOLD_MS}ms)`);
+          conn.inUse = false;
+          connectionTimers.delete(conn.client);
+        }
+      }, MAX_HOLD_MS);
+      connectionTimers.set(conn.client, timer);
       return conn.client;
     }
   }
@@ -140,6 +149,15 @@ export async function getPooledConnection(): Promise<RedisClientType> {
     if (!conn.inUse && conn.client.isOpen) {
       conn.inUse = true;
       conn.lastUsed = Date.now();
+      // Auto-release after MAX_HOLD_MS to prevent connection leaks
+      const timer = setTimeout(() => {
+        if (conn.inUse) {
+          logger.warn(`[Redis] Auto-releasing pool connection held too long (>${MAX_HOLD_MS}ms)`);
+          conn.inUse = false;
+          connectionTimers.delete(conn.client);
+        }
+      }, MAX_HOLD_MS);
+      connectionTimers.set(conn.client, timer);
       return conn.client;
     }
   }
@@ -154,12 +172,25 @@ export async function getPooledConnection(): Promise<RedisClientType> {
 }
 
 /**
- * Release a connection back to the pool
+ * Release a connection back to the pool.
+ * Also clears the auto-release timer set by getPooledConnection.
  */
 export function releaseConnection(client: RedisClientType): void {
   const conn = connectionPool.find(c => c.client === client);
-  if (conn) conn.inUse = false;
+  if (conn) {
+    conn.inUse = false;
+    // Clear auto-release timer if present
+    const timer = connectionTimers.get(client);
+    if (timer) {
+      clearTimeout(timer);
+      connectionTimers.delete(client);
+    }
+  }
 }
+
+// Track auto-release timers to prevent connection leaks
+const connectionTimers = new Map<RedisClientType, ReturnType<typeof setTimeout>>();
+const MAX_HOLD_MS = 30_000; // 30 seconds max hold time
 
 /**
  * Initialize Redis - creates main client and connection pool
@@ -188,6 +219,9 @@ export async function initRedis(): Promise<void> {
   });
 }
 
+// Connection promise singleton to prevent concurrent connect() calls
+let connectingPromise: Promise<void> | null = null;
+
 // Ensure connection before operations
 async function ensureConnected(): Promise<void> {
   if (!mainClient) throw new Error('Redis not initialized');
@@ -198,19 +232,16 @@ async function ensureConnected(): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, 100));
     return;
   }
-  // If not open at all, try reconnecting (only if not already connecting)
+  // If not open at all, try reconnecting — use shared promise to prevent race
   if (!mainClient.isOpen) {
-    try {
-      await mainClient.connect();
-    } catch (err: unknown) {
-      // If it's already connecting/connecting, just wait
+    if (connectingPromise) return connectingPromise;
+    connectingPromise = mainClient.connect().then(() => { connectingPromise = null; }).catch((err: unknown) => {
+      connectingPromise = null;
       const msg = err instanceof Error ? err.message : '';
-      if (msg.includes('already') || msg.includes('connecting')) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-        return;
-      }
+      if (msg.includes('already') || msg.includes('connecting')) return;
       throw new Error('Redis not connected');
-    }
+    });
+    await connectingPromise;
   }
 }
 

@@ -5,18 +5,10 @@
  * (cacheGet / cacheSet / cacheDel / cacheDelPattern from services/redis.ts).
  *
  * Provides a single `getCached<T>()` wrapper that handles:
- *   - Cache miss → fetch → store (non-blocking write)
+ *   - Cache miss -> fetch -> store (non-blocking write)
+ *   - Null sentinel for "not found" results (short TTL to prevent DoS)
  *   - Graceful fallback when Redis is unavailable
  *   - Pattern-based invalidation for mutations
- *
- * Key prefix convention:
- *   cache:stats:*       — admin dashboard stats
- *   cache:meetings:*    — meeting history / details
- *   cache:users:*       — user list / detail
- *   cache:rooms:*       — room list / detail
- *   cache:apikeys:*     — API key list
- *   cache:audit:*       — audit logs
- *   cache:participants:* — participant summaries
  */
 
 import logger from '../utils/logger.js';
@@ -36,6 +28,12 @@ export const TTL_MEDIUM = 60;
 /** Long TTL — metadata that rarely changes (room config, API key list) */
 export const TTL_LONG = 120;
 
+/** Sentinel value for cached null/not-found results */
+const NULL_SENTINEL = '__NULL__';
+
+/** TTL for null/not-found sentinel entries (prevents repeated DB hits) */
+const NULL_TTL = 5;
+
 // ============================================
 // Core: Get-or-Fetch
 // ============================================
@@ -43,12 +41,8 @@ export const TTL_LONG = 120;
 /**
  * Get a cached value or compute and store it.
  *
- * The fetch function may return `null` (e.g., "not found").
- * Null results are NOT cached — every request will re-fetch.
- * Only non-null results are stored in Redis.
- *
- * On Redis failure, silently falls through to `fetchFn`
- * so caching never breaks the application.
+ * Null results are cached with a short TTL (5s) using a sentinel value
+ * to prevent repeated DB hits for non-existent resources (DoS mitigation).
  */
 export async function getCached<T>(
   key: string,
@@ -57,10 +51,14 @@ export async function getCached<T>(
 ): Promise<T> {
   // Try cache read
   try {
-    const cached = await cacheGet<T>(key);
+    const cached = await cacheGet<string>(key);
     if (cached !== null) {
+      if (cached === NULL_SENTINEL) {
+        logger.debug(`[Cache] HIT (null sentinel) ${key}`);
+        return null as T;
+      }
       logger.debug(`[Cache] HIT  ${key}`);
-      return cached;
+      return cached as T;
     }
   } catch (err) {
     logger.warn(`[Cache] Read error for ${key}, falling through:`, err);
@@ -70,9 +68,13 @@ export async function getCached<T>(
   logger.debug(`[Cache] MISS ${key}`);
   const data = await fetchFn();
 
-  // Only cache non-null results (null = "not found", shouldn't be cached)
   if (data !== null && data !== undefined) {
     cacheSet(key, data, ttlSeconds).catch((err) => {
+      logger.warn(`[Cache] Write error for ${key}:`, err);
+    });
+  } else {
+    // Cache null results with short TTL to prevent repeated DB hits
+    cacheSet(key, NULL_SENTINEL, NULL_TTL).catch((err) => {
       logger.warn(`[Cache] Write error for ${key}:`, err);
     });
   }
@@ -100,10 +102,6 @@ export async function invalidateCache(...keys: string[]): Promise<void> {
 
 /**
  * Invalidate all cache keys matching a glob pattern.
- *
- * Uses SCAN (not KEYS) via the existing `cacheDelPattern` helper.
- *
- * Example: `invalidatePattern('cache:stats:*')`
  */
 export async function invalidatePattern(pattern: string): Promise<void> {
   try {
@@ -118,7 +116,6 @@ export async function invalidatePattern(pattern: string): Promise<void> {
 
 /**
  * Invalidate all response cache entries.
- * Use sparingly — only for global mutations.
  */
 export async function invalidateAllCache(): Promise<void> {
   await invalidatePattern('cache:*');
@@ -130,7 +127,6 @@ export async function invalidateAllCache(): Promise<void> {
 
 /**
  * Build a deterministic cache key from a prefix and query params.
- * Sorts params for consistent cache hits regardless of key order.
  */
 export function buildListKey(
   prefix: string,

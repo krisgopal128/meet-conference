@@ -134,7 +134,7 @@ export async function createRoom(
  */
 export async function getRoomInfo(roomName: string) {
   try {
-    return await roomService.listRooms([roomName]);
+    return (await roomService.listRooms([roomName]))[0] ?? null;
   } catch {
     return null;
   }

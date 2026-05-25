@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
+import { Link } from 'react-router-dom';
 import { meetingsApi } from '../services/api';
 import { PageErrorBoundary } from '../components/shared/PageErrorBoundary';
 import { MeetingFormModal } from '../components/schedule/MeetingFormModal';
@@ -208,6 +209,11 @@ function SchedulePageContent() {
     const isRecurring = recurrence.type !== 'none';
 
     // Create optimistic meetings
+    // Calculate meeting duration from base start/end to offset each instance correctly
+    const baseStart = new Date(formData.scheduledStart).getTime();
+    const baseEnd = formData.scheduledEnd ? new Date(formData.scheduledEnd).getTime() : null;
+    const meetingDurationMs = baseEnd !== null ? baseEnd - baseStart : null;
+
     const optimisticMeetings: ScheduledMeeting[] = instances.map((date, index) => ({
       id: `temp-${Date.now()}-${index}`,
       roomName: `temp-room-${Date.now()}-${index}`,
@@ -215,7 +221,7 @@ function SchedulePageContent() {
       description: formData.description,
       hostId: '',
       scheduledStart: date.toISOString(),
-      scheduledEnd: formData.scheduledEnd ? new Date(formData.scheduledEnd).toISOString() : undefined,
+      scheduledEnd: meetingDurationMs !== null ? new Date(date.getTime() + meetingDurationMs).toISOString() : undefined,
       timezone: selectedTimezone,
       status: 'scheduled' as const,
     }));
@@ -230,7 +236,7 @@ function SchedulePageContent() {
           title: formData.title,
           description: formData.description || undefined,
           scheduledStart: date.toISOString(),
-          scheduledEnd: formData.scheduledEnd ? new Date(formData.scheduledEnd).toISOString() : undefined,
+          scheduledEnd: meetingDurationMs !== null ? new Date(date.getTime() + meetingDurationMs).toISOString() : undefined,
           timezone: selectedTimezone,
         })
       );
@@ -270,7 +276,7 @@ function SchedulePageContent() {
       await meetingsApi.cancel(meetingToDelete.id);
       
       // Remove from local state
-      setMeetings(meetings.filter(m => m.id !== meetingToDelete.id));
+      setMeetings(prev => prev.filter(m => m.id !== meetingToDelete.id));
       setPendingCreations(prev => prev.filter(m => m.id !== meetingToDelete.id));
       
       toast.success('Meeting cancelled');
@@ -700,13 +706,12 @@ const MeetingCard = memo(function MeetingCard({
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <a
-            href={`/join/${meeting.room_name || meeting.roomName}`}
+          <Link to={`/join/${meeting.room_name || meeting.roomName}`}
             className="btn-primary py-2.5"
           >
             <Play size={14} aria-hidden="true" />
             <span>Start</span>
-          </a>
+          </Link>
           <button
             onClick={handleShare}
             className={cn(
@@ -794,13 +799,12 @@ const PastMeetingCard = memo(function PastMeetingCard({ meeting }: { meeting: Sc
           >
             {copied ? <Check size={14} aria-hidden="true" /> : <Share2 size={14} aria-hidden="true" />}
           </button>
-          <a
-            href={`/join/${meeting.room_name || meeting.roomName}`}
+          <Link to={`/join/${meeting.room_name || meeting.roomName}`}
             className="btn-secondary py-2.5"
           >
             <ArrowRight size={14} aria-hidden="true" />
             <span>Join Anyway</span>
-          </a>
+          </Link>
         </div>
       </div>
     </article>

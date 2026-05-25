@@ -177,10 +177,12 @@ export default function PreJoinPage() {
         hostId = res.data.hostId || null;
 
         // Save grid aspect ratio to room settings (moderator only)
-        try {
-          await updateRoomSettings(targetRoomName, { gridAspectRatio, videoFitMode });
-        } catch {
-          // Ignore errors - not critical if this fails
+        if (requestedRole === 'moderator') {
+          try {
+            await updateRoomSettings(targetRoomName, { gridAspectRatio, videoFitMode });
+          } catch {
+            // Ignore errors - not critical if this fails
+          }
         }
       }
 

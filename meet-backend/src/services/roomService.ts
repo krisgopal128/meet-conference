@@ -127,7 +127,8 @@ export async function createRoom(
 
 /**
  * Update room fields
- * Only updates provided fields (uses COALESCE)
+ * Only includes fields that are defined (not undefined).
+ * If a field is explicitly null, sets it to NULL (allows clearing).
  */
 export async function updateRoom(
   name: string,
@@ -138,15 +139,31 @@ export async function updateRoom(
     status?: string;
   }
 ): Promise<RoomRow> {
+  const setClauses: string[] = [];
+  const params: unknown[] = [];
+  let paramIdx = 1;
+
+  if (updates.title !== undefined) {
+    setClauses.push(`title = $${paramIdx++}`);
+    params.push(updates.title);
+  }
+  if (updates.description !== undefined) {
+    setClauses.push(`description = $${paramIdx++}`);
+    params.push(updates.description);
+  }
+  if (updates.maxParticipants !== undefined) {
+    setClauses.push(`max_participants = $${paramIdx++}`);
+    params.push(updates.maxParticipants);
+  }
+  if (updates.status !== undefined) {
+    setClauses.push(`status = $${paramIdx++}`);
+    params.push(updates.status);
+  }
+
+  params.push(name);
   const [room] = await query<RoomRow>(
-    `UPDATE rooms
-     SET title = COALESCE($1, title),
-         description = COALESCE($2, description),
-         max_participants = COALESCE($3, max_participants),
-         status = COALESCE($4, status)
-     WHERE name = $5
-     RETURNING *`,
-    [updates.title, updates.description, updates.maxParticipants, updates.status, name]
+    `UPDATE rooms SET ${setClauses.join(', ')} WHERE name = $${paramIdx} RETURNING *`,
+    params
   );
   return room;
 }

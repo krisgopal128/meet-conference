@@ -18,9 +18,14 @@ export async function processLobbyParticipants(
   participants: LobbyParticipant[],
   action: 'admit' | 'deny'
 ): Promise<number> {
-  const lobbyParticipants = participants.filter(
-    (p) => !p.permission?.canPublish
-  );
+  const lobbyParticipants = participants.filter((p) => {
+    // Participant is in lobby if they can't publish OR their metadata says so
+    if (!p.permission?.canPublish) return true;
+    try {
+      const meta = JSON.parse((p as { metadata?: string }).metadata || '{}');
+      return meta.inLobby === true;
+    } catch { return false; }
+  });
 
   if (lobbyParticipants.length === 0) return 0;
 

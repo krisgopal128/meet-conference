@@ -53,9 +53,10 @@ async function isAccountLocked(email: string): Promise<{ locked: boolean; remain
   const key = `lockout:${email}`;
   const attempts = await cacheGet<number>(key);
   if (attempts !== null && attempts >= MAX_FAILED_ATTEMPTS) {
-    // Get remaining TTL
-    const ttl = await cacheGet<number>(`${key}:ttl`);
-    return { locked: true, remainingSeconds: ttl || LOCKOUT_DURATION_SECONDS };
+    // Get remaining TTL directly from Redis key
+    const { cacheTTL } = await import('../services/redis.js');
+    const remainingTTL = await cacheTTL(key);
+    return { locked: true, remainingSeconds: remainingTTL > 0 ? remainingTTL : LOCKOUT_DURATION_SECONDS };
   }
   return { locked: false, remainingSeconds: 0 };
 }
@@ -71,11 +72,7 @@ async function recordFailedAttempt(email: string): Promise<void> {
   // Set or update the attempt counter with TTL
   await cacheSet(key, newAttempts, LOCKOUT_DURATION_SECONDS);
   
-  // Only store TTL value on the transition to locked (when attempts first reach max)
-  // This prevents overwriting the remaining seconds with the full duration
-  if (newAttempts === MAX_FAILED_ATTEMPTS) {
-    await cacheSet(`${key}:ttl`, LOCKOUT_DURATION_SECONDS, LOCKOUT_DURATION_SECONDS);
-  }
+
 }
 
 /**
@@ -85,7 +82,6 @@ async function clearFailedAttempts(email: string): Promise<void> {
   const key = `lockout:${email}`;
   const { cacheDel } = await import('../services/redis.js');
   await cacheDel(key);
-  await cacheDel(`${key}:ttl`);
 }
 
 // POST /auth/register
@@ -296,15 +292,32 @@ authRouter.patch('/profile', authenticate, async (req: AuthRequest, res: Respons
     const rawData = updateProfileSchema.parse(req.body);
     
     // Sanitize inputs
-    const name = rawData.name ? sanitizeName(rawData.name) : undefined;
-    const avatarUrl = rawData.avatarUrl ? sanitizeUrl(rawData.avatarUrl) : undefined;
+    const name = rawData.name !== undefined ? (rawData.name ? sanitizeName(rawData.name) : null) : undefined;
+    const avatarUrl = rawData.avatarUrl !== undefined ? (rawData.avatarUrl ? sanitizeUrl(rawData.avatarUrl) : null) : undefined;
 
+    // Build dynamic SET clause — only include fields that are defined (not undefined).
+    // If a field is explicitly null, set it to NULL (allows clearing).
+    const setClauses: string[] = [];
+    const params: unknown[] = [];
+    let paramIdx = 1;
+
+    if (name !== undefined) {
+      setClauses.push(`name = $${paramIdx++}`);
+      params.push(name);
+    }
+    if (avatarUrl !== undefined) {
+      setClauses.push(`avatar_url = $${paramIdx++}`);
+      params.push(avatarUrl);
+    }
+
+    if (setClauses.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    params.push(req.user!.id);
     const [updated] = await query<{ id: string; email: string; name: string | null; avatar_url: string | null }>(
-      `UPDATE users 
-       SET name = COALESCE($1, name), avatar_url = COALESCE($2, avatar_url)
-       WHERE id = $3
-       RETURNING id, email, name, avatar_url`,
-      [name, avatarUrl, req.user!.id]
+      `UPDATE users SET ${setClauses.join(', ')} WHERE id = $${paramIdx} RETURNING id, email, name, avatar_url`,
+      params
     );
 
     res.json({ user: updated });

@@ -141,7 +141,7 @@ function MeetingDetailContent() {
 
     for (let i = 0; i < Math.min(count, 8); i++) {
       const baseTime = meeting?.startedAt ? parseISO(meeting.startedAt) : new Date();
-      const joinTime = new Date(baseTime.getTime() + i * 60000 * Math.floor(Math.random() * 3 + 1));
+      const joinTime = new Date(baseTime.getTime() + i * 60000 * Math.floor((() => { let h = 0; for (const c of (meeting?.id || '')) h = ((h << 5) - h + c.charCodeAt(0)) | 0; return (Math.abs(h) % 1000) / 1000; })() * 3 + 1));
       mockParticipants.push({
         id: `mock-${i}`,
         identity: `participant-${i + 1}`,
@@ -151,7 +151,7 @@ function MeetingDetailContent() {
         isModerator: i === 0,
         duration: meeting?.startedAt && meeting?.endedAt
           ? Math.round((parseISO(meeting.endedAt).getTime() - parseISO(meeting.startedAt).getTime()) / 60000) - i
-          : Math.floor(Math.random() * 30 + 15),
+          : Math.floor((() => { let h = 0; for (const c of (meeting?.id || '')) h = ((h << 5) - h + c.charCodeAt(0)) | 0; return (Math.abs(h) % 1000) / 1000; })() * 30 + 15),
       });
     }
 
@@ -212,7 +212,7 @@ function MeetingDetailContent() {
       const endTime = parseISO(meeting.endedAt);
       const dur = endTime.getTime() - startTime.getTime();
 
-      if (Math.random() > 0.5) {
+      if ((() => { let h = 0; for (const c of (meeting?.id || '')) h = ((h << 5) - h + c.charCodeAt(0)) | 0; return (Math.abs(h) % 1000) / 1000; })() > 0.5) {
         const shareTime = new Date(startTime.getTime() + dur * 0.3);
         details.push({
           id: 'screen-share',
@@ -238,7 +238,7 @@ function MeetingDetailContent() {
       details.push({
         id: 'chat-activity',
         action: 'Chat Activity',
-        description: `${Math.floor(Math.random() * 10 + 5)} messages sent during meeting`,
+        description: `${Math.floor((() => { let h = 0; for (const c of (meeting?.id || '')) h = ((h << 5) - h + c.charCodeAt(0)) | 0; return (Math.abs(h) % 1000) / 1000; })() * 10 + 5)} messages sent during meeting`,
         timestamp: chatTime.toISOString(),
         icon: Clock4,
         iconColor: 'text-purple-500',

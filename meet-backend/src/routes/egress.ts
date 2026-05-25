@@ -191,11 +191,13 @@ egressRouter.get('/list', authenticate, async (req: AuthRequest, res: Response) 
     );
     const userRoomNames = new Set(userRooms.map(r => r.name));
 
-    const allEgress = await egressClient.listEgress({});
-    // Filter to only recordings from user's rooms
-    const userEgress = allEgress.filter(e => userRoomNames.has(e.roomName || ''));
-    const total = userEgress.length;
-    const recordings = userEgress.slice(offset, offset + limit);
+    // Filter per-room to avoid listing ALL egress on the server
+    const egressPromises = userRooms.map(r =>
+      egressClient.listEgress({ roomName: r.name }).catch(() => [] as Array<{ egressId: string; roomName?: string; status?: unknown; [k: string]: unknown }>)
+    );
+    const allEgress = (await Promise.all(egressPromises)).flat();
+    const total = allEgress.length;
+    const recordings = allEgress.slice(offset, offset + limit);
     
     res.json({
       recordings,

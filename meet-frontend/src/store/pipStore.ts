@@ -11,23 +11,17 @@ export type AutoPiPMode = 'always' | 'tab-switch' | 'never';
 
 interface PiPState {
   autoPiPMode: AutoPiPMode;
-  isPiPOpen: boolean;
 }
 
 interface PiPActions {
   setAutoPiPMode: (mode: AutoPiPMode) => void;
-  setPiPOpen: (open: boolean) => void;
-  togglePiP: () => void;
 }
 
 export const usePiPStore = create<PiPState & PiPActions>()(
   persist(
     (set) => ({
       autoPiPMode: 'tab-switch' as AutoPiPMode,
-      isPiPOpen: false,
       setAutoPiPMode: (mode) => set({ autoPiPMode: mode }),
-      setPiPOpen: (open: boolean) => set({ isPiPOpen: open }),
-      togglePiP: () => set((state) => ({ isPiPOpen: !state.isPiPOpen })),
     }),
     {
       name: 'pip-settings',
@@ -37,7 +31,6 @@ export const usePiPStore = create<PiPState & PiPActions>()(
 
 // Selector hooks
 export const useAutoPiPMode = () => usePiPStore((state) => state.autoPiPMode);
-export const useIsPiPOpen = () => usePiPStore((state) => state.isPiPOpen);
 
 // Action hooks
 export const usePiPActions = () => usePiPStore((state) => state);

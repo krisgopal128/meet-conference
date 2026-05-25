@@ -75,8 +75,8 @@ whiteboardRouter.put('/:roomName', authenticate, async (req: AuthRequest, res) =
     const isHost = room.host_id === req.user!.id;
     if (!isHost) {
       const participant = await queryOne(
-        'SELECT id FROM meeting_participants mp JOIN meetings m ON mp.meeting_id = m.id WHERE m.room_name = $1 AND mp.user_id = $2 LIMIT 1',
-        [room.id, req.user!.id]
+        'SELECT mp.id FROM meeting_participants mp JOIN meetings m ON mp.meeting_id = m.id JOIN rooms r ON m.room_id = r.id WHERE r.name = $1 AND mp.user_id = $2 LIMIT 1',
+        [roomName, req.user!.id]
       );
       if (!participant) {
         res.status(403).json({ error: 'You must be a participant of this room to edit the whiteboard' });

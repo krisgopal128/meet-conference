@@ -58,6 +58,8 @@ function getCsrfToken(): string {
 
 // Add auth token and CSRF token to requests
 api.interceptors.request.use(async (config) => {
+  // Bypass token refresh logic for the refresh endpoint itself
+  if (config.url?.includes('/auth/refresh')) return config;
   // Add CSRF token for state-changing requests
   const method = config.method?.toUpperCase();
   if (method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
@@ -419,6 +421,9 @@ export const roomsApi = {
 
   stopRecording: (egressId: string): Promise<AxiosResponse<RecordingResponse>> =>
     api.post<RecordingResponse>('/egress/stop', { egressId }),
+
+  listRecordings: (limit = 20, offset = 0): Promise<AxiosResponse<{ recordings: any[]; total: number; hasMore: boolean }>> =>
+    api.get('/egress/list', { params: { limit, offset } }),
 };
 
 // Simple export for direct use

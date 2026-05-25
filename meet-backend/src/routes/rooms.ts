@@ -225,7 +225,7 @@ const updateRoomSchema = z.object({
      let participants: unknown[] = [];
      try {
        const lkRooms = await getRoomInfo(name);
-       lkRoom = lkRooms?.[0] || null;
+       lkRoom = lkRooms || null;
        if (lkRoom) {
          participants = await listParticipants(name);
        }

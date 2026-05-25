@@ -703,13 +703,12 @@ function UpcomingMeetingCard({ meeting }: { meeting: ScheduledMeeting }) {
         >
           {copied ? <Check size={16} /> : <Share2 size={16} />}
         </button>
-        <a
-          href={`/join/${roomName}`}
+        <Link to={`/join/${roomName}`}
           className="btn-primary btn-sm"
         >
           <Video size={14} />
           <span>Start</span>
-        </a>
+        </Link>
       </div>
     </div>
   );

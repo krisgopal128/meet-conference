@@ -22,6 +22,8 @@ interface ConnectionState {
   isConnected: boolean;
   error: string | null;
   isPiPOpen: boolean;
+  prejoinCameraId: string | null;
+  prejoinMicId: string | null;
 }
 
 interface ConnectionActions {
@@ -36,6 +38,7 @@ interface ConnectionActions {
   resetConnection: () => void;
   setPiPOpen: (open: boolean) => void;
   togglePiP: () => void;
+  setPrejoinDevices: (cameraId: string | null, micId: string | null) => void;
 }
 
 const initialConnectionState: ConnectionState = {
@@ -49,6 +52,8 @@ const initialConnectionState: ConnectionState = {
   isConnected: false,
   error: null,
   isPiPOpen: false,
+  prejoinCameraId: null,
+  prejoinMicId: null,
 };
 
 // ============================================
@@ -278,6 +283,7 @@ export const useRoomStore = create<RoomStore>()(
           resetConnection: () => set(initialConnectionState, false, 'resetConnection'),
           setPiPOpen: (isPiPOpen) => set({ isPiPOpen }, false, 'setPiPOpen'),
           togglePiP: () => set((state) => ({ isPiPOpen: !state.isPiPOpen }), false, 'togglePiP'),
+          setPrejoinDevices: (cameraId, micId) => set({ prejoinCameraId: cameraId, prejoinMicId: micId }, false, 'setPrejoinDevices'),
 
           // UI slice
           ...initialUIState,
@@ -572,7 +578,7 @@ export const useIsModerator = () => useRoomStore((state) => {
   // Only check identity === hostId if both are non-null/non-empty
   // Otherwise null === null would incorrectly return true
   const isHostByIdentity = !!(identity && hostId && identity === hostId);
-  return role === 'host' || role === 'cohost' || isHostByIdentity;
+  return role === 'host' || role === 'cohost' || role === 'moderator' || isHostByIdentity;
 });
 
 // UI selectors
@@ -649,9 +655,14 @@ export const useConnectionActions = () => useRoomStore(
     reset: state.reset,
     setPiPOpen: state.setPiPOpen,
     togglePiP: state.togglePiP,
+    setPrejoinDevices: state.setPrejoinDevices,
   }),
   shallow
 );
+
+// Prejoin device selectors
+export const usePrejoinCameraId = () => useRoomStore((state) => state.prejoinCameraId);
+export const usePrejoinMicId = () => useRoomStore((state) => state.prejoinMicId);
 
 // Get UI actions (stable reference)
 export const useUIActions = () => useRoomStore(

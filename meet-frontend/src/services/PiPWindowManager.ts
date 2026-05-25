@@ -145,6 +145,7 @@ class PiPWindowManager {
    * Handle PiP window close event
    */
   private handleClose(): void {
+    if (!this.pipWindow) return; // Guard against double-call
     this.pipWindow = null;
     this.onExitCallback?.();
     logger.info('[PiPWindowManager] PiP window closed');

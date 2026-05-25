@@ -60,7 +60,7 @@ function HistoryPageContent() {
   const [showFilters, setShowFilters] = useState(false);
   const [dateFilter, setDateFilter] = useState<{ start?: string; end?: string }>({});
   const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null);
-  const [_error, setError] = useState<string | null>(null);
+  // Error state removed — using toast.error for user feedback
 
   // Update URL params when state changes
   useEffect(() => {
@@ -89,7 +89,7 @@ function HistoryPageContent() {
   const loadMeetings = async () => {
     try {
       setLoading(true);
-      setError(null);
+      // setError removed: // (null);
       const response = await meetingsApi.getHistory(1000, 0);
       // Normalize field names
       const normalized = (response?.data?.meetings || []).map(m => ({
@@ -105,7 +105,7 @@ function HistoryPageContent() {
     } catch (err) {
       logger.error('Failed to load meetings:', err);
       setAllMeetings([]);
-      setError('Failed to load meeting history. Please try again later.');
+      // setError removed: // ('Failed to load meeting history. Please try again later.');
       toast.error('Failed to load meeting history');
     } finally {
       setLoading(false);

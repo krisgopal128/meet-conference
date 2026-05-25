@@ -222,10 +222,20 @@ export function ControlBar() {
       if (isRecording && egressId) {
         await roomsApi.stopRecording(egressId);
         setRecording(false);
+        // Broadcast recording state to all participants
+        try {
+          const msg = JSON.stringify({ type: 'recording_state', isRecording: false });
+          localParticipant.publishData(new TextEncoder().encode(msg), { reliable: true, topic: 'meeting' });
+        } catch {}
       } else {
         const res = await roomsApi.startRecording(room.name);
         const newEgressId = res.data.egressId;
         setRecording(true, newEgressId ?? undefined);
+        // Broadcast recording state to all participants
+        try {
+          const msg = JSON.stringify({ type: 'recording_state', isRecording: true, egressId: newEgressId });
+          localParticipant.publishData(new TextEncoder().encode(msg), { reliable: true, topic: 'meeting' });
+        } catch {}
         toast.success('Recording started');
       }
     } catch (error) {

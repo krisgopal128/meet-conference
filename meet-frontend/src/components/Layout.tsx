@@ -52,6 +52,7 @@ export default function Layout() {
     { path: '/', icon: Video, label: 'Meet Now' },
     { path: '/schedule', icon: Calendar, label: 'Schedule' },
     { path: '/history', icon: Clock, label: 'History' },
+    { path: '/recordings', icon: Video, label: 'Recordings' },
     // API Keys for moderators/admins only
     ...(user?.role === 'moderator' || user?.role === 'admin' 
       ? [{ path: '/api-keys', icon: Key, label: 'API Keys' }] 

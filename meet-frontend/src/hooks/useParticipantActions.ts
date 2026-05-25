@@ -55,8 +55,11 @@ export function useParticipantActions(
     setAdmitting(participantIdentity);
     try {
       await roomsApi.admitParticipant(room.name, participantIdentity);
-      setLobbyParticipants((prev) => prev.filter((p) => p.identity !== participantIdentity));
-      setLobbyCount(lobbyParticipants.length - 1);
+      setLobbyParticipants((prev) => {
+        const next = prev.filter((p) => p.identity !== participantIdentity);
+        setLobbyCount(next.length);
+        return next;
+      });
       logger.info('[ParticipantsPanel] Participant admitted:', participantIdentity);
     } catch (err) {
       logger.error('Failed to admit participant:', err);
@@ -70,8 +73,11 @@ export function useParticipantActions(
   const handleDeny = useCallback(async (participantIdentity: string) => {
     try {
       await roomsApi.kickParticipant(room.name, participantIdentity);
-      setLobbyParticipants((prev) => prev.filter((p) => p.identity !== participantIdentity));
-      setLobbyCount(lobbyParticipants.length - 1);
+      setLobbyParticipants((prev) => {
+        const next = prev.filter((p) => p.identity !== participantIdentity);
+        setLobbyCount(next.length);
+        return next;
+      });
       logger.info('[ParticipantsPanel] Participant denied:', participantIdentity);
     } catch (err) {
       logger.error('Failed to deny participant:', err);

@@ -551,7 +551,7 @@ const fallbackConfig: MeetingRoomConfig = {
 
 function stripJsonComments(source: string) {
   return source
-    .replace(/^\s*\/\/.*$/gm, '')
+    .replace(/("(?:[^"\\]|\\.)*")|\/\/.*$/gm, '$1')
     .replace(/,\s*([}\]])/g, '$1');
 }
 
