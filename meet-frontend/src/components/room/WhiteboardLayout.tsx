@@ -1,17 +1,14 @@
 /**
- * WhiteboardLayout — Speaker-style layout with whiteboard as the main tile
+ * WhiteboardLayout — Full-screen whiteboard with floating participant panel
  *
- * Features:
- *   - Fullscreen mode for moderator (hides filmstrip, shows PiP participants overlay)
- *   - Viewport indicators showing what each participant sees on the canvas
- *   - Participants visible in floating PiP overlay when fullscreen
- *
- * Data flow:
- *   useWhiteboardSync — handles broadcast + receive for drawing, lock, activate, viewport
- *   handleChange — only broadcasts if user has edit permission (prevents echo loop)
+ * Fullscreen flow:
+ *   1. User clicks fullscreen button
+ *   2. Whiteboard container enters browser Fullscreen API (fills entire screen)
+ *   3. A floating participant panel appears on the right side INSIDE fullscreen
+ *   4. Exiting fullscreen (button, Escape key) restores normal layout
  */
 
-import React, { useState, useCallback, useEffect, useRef, useMemo, Suspense } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo, Suspense, } from 'react';
 import { useParticipants, useLocalParticipant } from '@livekit/components-react';
 import { RoomEvent } from 'livekit-client';
 import type { Room } from 'livekit-client';
@@ -29,6 +26,7 @@ import {
 import { useWhiteboardAutoSave } from '../../hooks/useWhiteboardAutoSave';
 import { whiteboardApi } from '../../services/whiteboardApi';
 import { ParticipantTile } from './ParticipantTile';
+import { FloatingParticipantPanel } from './FloatingParticipantPanel';
 import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
 import logger from '../../utils/logger';
 
@@ -44,11 +42,9 @@ interface WhiteboardLayoutProps {
 }
 
 const FILMSTRIP_HEIGHT = 119;
-const PIP_TILE_SIZE = 96;
-const PIP_TILE_RATIO = 16 / 9;
 
 export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
-  const { toggleWhiteboard, toggleWhiteboardFullscreen } = useUIActions();
+  const { toggleWhiteboard, setWhiteboardFullscreen } = useUIActions();
   const isModerator = useIsModerator();
   const isFullscreen = useWhiteboardFullscreen();
   const { localParticipant } = useLocalParticipant();
@@ -56,6 +52,9 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
   const localIdentity = localParticipant?.identity ?? '';
 
   const admittedParticipants = useAdmittedParticipants(allParticipants, localIdentity);
+
+  // Ref for the container that goes browser-fullscreen
+  const whiteboardContainerRef = useRef<HTMLDivElement>(null);
 
   // Refs — avoid state changes that trigger Excalidraw re-renders
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null);
@@ -153,13 +152,11 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
         const { scrollX, scrollY, zoom, width, height } = appState;
         const zoomValue = typeof zoom === 'object' ? zoom.value : zoom;
 
-        // Calculate the visible canvas bounds
         const viewX = -scrollX / zoomValue;
         const viewY = -scrollY / zoomValue;
         const viewW = width / zoomValue;
         const viewH = height / zoomValue;
 
-        // Normalize: use the full scene bounds as reference
         const elements = api.getSceneElements();
         if (elements.length === 0) return;
 
@@ -183,14 +180,32 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
           height: viewH / sceneH,
         });
       } catch {
-        // ignore — Excalidraw API may not be ready
+        // ignore
       }
     };
 
-    // Broadcast viewport every 500ms while whiteboard is active
     const interval = setInterval(broadcastLocalViewport, 500);
     return () => clearInterval(interval);
   }, [room, excalidrawReady, broadcastViewport]);
+
+  // Listen for browser fullscreen change events (Escape key, browser UI exit)
+  useEffect(() => {
+    const container = whiteboardContainerRef.current;
+    if (!container) return;
+
+    const handleFullscreenChange = () => {
+      const isNowFullscreen = document.fullscreenElement === container;
+      if (!isNowFullscreen && isFullscreen) {
+        // User exited fullscreen (Escape key, browser UI) — sync state
+        setWhiteboardFullscreen(false);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, [isFullscreen, setWhiteboardFullscreen]);
 
   // Handle Excalidraw API ref
   const handleAPIRef = useCallback((api: ExcalidrawImperativeAPI) => {
@@ -214,7 +229,6 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
     const next = !isLocked;
     setIsLocked(next);
     broadcastLock(next);
-    // Persist lock state to backend
     if (roomName) {
       try {
         await whiteboardApi.setLocked(roomName, next);
@@ -224,11 +238,29 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
     }
   }, [isLocked, broadcastLock, roomName]);
 
-  // Filter out local participant for PiP overlay
-  const remoteAdmitted = useMemo(
-    () => admittedParticipants.filter((p) => p.identity !== localIdentity),
-    [admittedParticipants, localIdentity],
-  );
+  // Fullscreen toggle — uses browser Fullscreen API
+  // Participants are shown in a floating overlay INSIDE the fullscreen element
+  // (Document PiP API conflicts with requestFullscreen for user activation)
+  const handleFullscreenToggle = useCallback(async () => {
+    const container = whiteboardContainerRef.current;
+    if (!container || !isModerator) return;
+
+    if (!isFullscreen) {
+      try {
+        await container.requestFullscreen();
+        setWhiteboardFullscreen(true);
+      } catch (err) {
+        logger.warn('[Whiteboard] Fullscreen request failed:', err);
+      }
+    } else {
+      try {
+        await document.exitFullscreen();
+      } catch (err) {
+        logger.warn('[Whiteboard] Exit fullscreen failed:', err);
+      }
+      setWhiteboardFullscreen(false);
+    }
+  }, [isFullscreen, isModerator, setWhiteboardFullscreen]);
 
   // Generate viewport indicator boxes for the overlay
   const viewportIndicators = useMemo(() => {
@@ -244,9 +276,20 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
   }, [participantViewports]);
 
   return (
-    <div className="flex flex-col w-full h-full bg-surface-900 relative">
-      {/* Main whiteboard area */}
-      <div className="flex-1 flex flex-col" style={{ minHeight: 0 }}>
+    <div
+      ref={whiteboardContainerRef}
+      className="flex flex-col w-full h-full bg-surface-900 relative"
+    >
+      {/* Main whiteboard area — intercept anchor clicks from Excalidraw internals to prevent page reload */}
+      <div className="flex-1 flex flex-col" style={{ minHeight: 0 }}
+        onClickCapture={(e) => {
+          const target = e.target as HTMLElement;
+          if (target.closest('a[href]')) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }}
+      >
         {/* Toolbar */}
         <div className="flex items-center justify-between px-3 py-1.5 bg-surface-800/80 border-b border-surface-700 flex-shrink-0">
           <div className="flex items-center gap-2">
@@ -256,20 +299,25 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
                 Locked
               </span>
             )}
+            {isFullscreen && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400">
+                Fullscreen
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-1">
             {/* Fullscreen toggle — moderator only */}
             {isModerator && (
               <button
-                onClick={toggleWhiteboardFullscreen}
+                onClick={handleFullscreenToggle}
                 className={`p-1.5 rounded-lg transition-colors ${
                   isFullscreen
                     ? 'text-brand-400 hover:bg-brand-400/10'
                     : 'text-surface-400 hover:bg-surface-700'
                 }`}
-                title={isFullscreen ? 'Exit fullscreen whiteboard' : 'Fullscreen whiteboard'}
-                aria-label={isFullscreen ? 'Exit fullscreen whiteboard' : 'Fullscreen whiteboard'}
+                title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen (participants in side panel)'}
+                aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen whiteboard'}
               >
                 {isFullscreen ? (
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -309,7 +357,10 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
 
             <button
               onClick={async () => {
-                // Save whiteboard scene before closing
+                if (isFullscreen && document.fullscreenElement) {
+                  try { await document.exitFullscreen(); } catch {}
+                  setWhiteboardFullscreen(false);
+                }
                 if (roomName && currentSceneRef.current.length > 0) {
                   try {
                     await whiteboardApi.saveScene(roomName, currentSceneRef.current as object[]);
@@ -331,8 +382,9 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
           </div>
         </div>
 
-        {/* Excalidraw canvas fills remaining space via absolute positioning */}
+        {/* Canvas + floating participant panel area */}
         <div className="flex-1 relative" style={{ minHeight: 0 }}>
+          {/* Excalidraw canvas */}
           <Suspense
             fallback={
               <div className="flex items-center justify-center h-full text-surface-400 text-sm">
@@ -382,34 +434,12 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
             </div>
           )}
 
-          {/* PiP participants overlay — only in fullscreen mode for moderator */}
-          {isModerator && isFullscreen && remoteAdmitted.length > 0 && (
-            <div
-              className="absolute bottom-3 right-3 z-20 flex flex-col gap-1.5 pointer-events-auto"
-              style={{ maxWidth: PIP_TILE_SIZE * PIP_TILE_RATIO + 8 }}
-            >
-              {remoteAdmitted.slice(0, 6).map((p) => (
-                <div
-                  key={p.identity}
-                  className="flex-shrink-0 rounded-lg overflow-hidden bg-surface-900/90 border border-surface-700/50 shadow-lg"
-                  style={{
-                    width: PIP_TILE_SIZE * PIP_TILE_RATIO,
-                    height: PIP_TILE_SIZE,
-                  }}
-                >
-                  <ParticipantTile
-                    participant={p}
-                    className="w-full h-full"
-                    isSpeakerTile={false}
-                  />
-                </div>
-              ))}
-              {remoteAdmitted.length > 6 && (
-                <span className="text-[10px] text-surface-400 text-center">
-                  +{remoteAdmitted.length - 6} more
-                </span>
-              )}
-            </div>
+          {/* Floating participant panel — visible in fullscreen mode */}
+          {isFullscreen && (
+            <FloatingParticipantPanel
+              participants={admittedParticipants}
+              localParticipant={localParticipant}
+            />
           )}
         </div>
       </div>

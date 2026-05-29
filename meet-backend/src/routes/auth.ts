@@ -250,24 +250,39 @@ authRouter.post('/refresh', authenticate, async (req: AuthRequest, res: Response
       return res.status(401).json({ error: 'User not found' });
     }
 
-    // Generate new token (default 7 days, refresh doesn't extend to 30 days)
-    const token = jwt.sign(
-      { userId: user.id }, 
-      config.jwt.secret, 
-      { expiresIn: TOKEN_EXPIRY_SHORT }
-    );
-
-    // Blacklist old token
+    // Preserve remember-me: if old token has >7d TTL remaining, it was a long-lived token
     const oldToken = req.headers.authorization?.slice(7);
+    let useLongExpiry = false;
     if (oldToken) {
       try {
         const decoded = jwt.decode(oldToken) as { exp?: number } | null;
-        const ttl = decoded?.exp ? Math.max(decoded.exp - Math.floor(Date.now() / 1000), 1) : 86400;
-        await blacklistToken(oldToken, ttl);
+        if (decoded?.exp) {
+          const remaining = decoded.exp - Math.floor(Date.now() / 1000);
+          // If remaining TTL > TOKEN_EXPIRY_SHORT (7d in seconds), it was a remember-me token
+          useLongExpiry = remaining > 7 * 24 * 60 * 60;
+        }
+      } catch {}
+    }
+
+    const token = jwt.sign(
+      { userId: user.id }, 
+      config.jwt.secret, 
+      { expiresIn: useLongExpiry ? TOKEN_EXPIRY_LONG : TOKEN_EXPIRY_SHORT }
+    );
+
+    // Blacklist old token
+    if (oldToken) {
+      try {
+        const ttl = useLongExpiry
+          ? Math.max(30 * 24 * 60 * 60, 86400)
+          : 86400;
+        // Re-decode for TTL (already decoded above for useLongExpiry check)
+        const decoded = jwt.decode(oldToken) as { exp?: number } | null;
+        const actualTtl = decoded?.exp ? Math.max(decoded.exp - Math.floor(Date.now() / 1000), 1) : ttl;
+        await blacklistToken(oldToken, actualTtl);
         invalidateTokenAuth(oldToken);
       } catch (blacklistError) {
         logger.error('Failed to blacklist old token on refresh:', blacklistError);
-        // Continue — new token is still valid
       }
     }
 

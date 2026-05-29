@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { meetingsApi } from '../services/api';
 import { PageErrorBoundary } from '../components/shared/PageErrorBoundary';
@@ -30,6 +30,54 @@ type SortField = 'date' | 'duration' | 'participants';
 type SortOrder = 'asc' | 'desc';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+const AVATAR_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
+
+// Module-scoped pure functions — no state dependency
+function calculateDurationMinutes(meeting: Meeting): number {
+  if (!meeting.startedAt || !meeting.endedAt) return 0;
+  const start = parseISO(meeting.startedAt);
+  const end = parseISO(meeting.endedAt);
+  return Math.abs(Math.round((end.getTime() - start.getTime()) / 60000));
+}
+
+function formatDuration(meeting: Meeting): string {
+  if (!meeting.startedAt || !meeting.endedAt) return '—';
+  const start = parseISO(meeting.startedAt);
+  const end = parseISO(meeting.endedAt);
+  const diffMs = Math.abs(end.getTime() - start.getTime());
+  if (diffMs < 60000) return '—';
+  const duration = intervalToDuration({ start: new Date(0), end: new Date(diffMs) });
+  return dateFnsFormatDuration(duration, { format: ['hours', 'minutes'] }) || '< 1 min';
+}
+
+function formatMinutes(mins: number): string {
+  if (mins < 1) return '< 1 min';
+  if (mins < 60) return `${Math.round(mins)} min`;
+  const h = Math.floor(mins / 60);
+  const m = Math.round(mins % 60);
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function getMostActiveDay(meetings: Meeting[]): string {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const counts: Record<string, number> = {};
+  meetings.forEach(m => {
+    if (m.startedAt) {
+      const day = days[new Date(m.startedAt).getDay()];
+      counts[day] = (counts[day] || 0) + 1;
+    }
+  });
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  return top ? top[0] : 'N/A';
+}
+
+// Module-scoped SortIcon — stable reference
+const SortIcon = memo(function SortIcon({ field, sortField, sortOrder }: { field: SortField; sortField: SortField; sortOrder: SortOrder }) {
+  if (sortField !== field) return <ArrowUpDown size={14} className="text-surface-400" />;
+  return sortOrder === 'asc'
+    ? <ArrowUp size={14} className="text-brand-500" />
+    : <ArrowDown size={14} className="text-brand-500" />;
+});
 
 export default function HistoryPage() {
   return (
@@ -230,46 +278,8 @@ function HistoryPageContent() {
 
   const hasActiveFilters = debouncedSearch || dateFilter.start || dateFilter.end;
 
-  // Calculate duration
-  function calculateDurationMinutes(meeting: Meeting): number {
-    if (!meeting.startedAt || !meeting.endedAt) return 0;
-    const start = parseISO(meeting.startedAt);
-    const end = parseISO(meeting.endedAt);
-    return Math.abs(Math.round((end.getTime() - start.getTime()) / 60000));
-  }
-
-  function formatDuration(meeting: Meeting): string {
-    if (!meeting.startedAt || !meeting.endedAt) return '—';
-    const start = parseISO(meeting.startedAt);
-    const end = parseISO(meeting.endedAt);
-    const diffMs = Math.abs(end.getTime() - start.getTime());
-    if (diffMs < 60000) return '—';
-    const duration = intervalToDuration({ start: new Date(0), end: new Date(diffMs) });
-    return dateFnsFormatDuration(duration, { format: ['hours', 'minutes'] }) || '< 1 min';
-  }
-
-  function formatMinutes(mins: number): string {
-    if (mins < 1) return '< 1 min';
-    if (mins < 60) return `${Math.round(mins)} min`;
-    const h = Math.floor(mins / 60);
-    const m = Math.round(mins % 60);
-    return m > 0 ? `${h}h ${m}m` : `${h}h`;
-  }
-
-  function getMostActiveDay(): string {
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const counts: Record<string, number> = {};
-    allMeetings.forEach(m => {
-      if (m.startedAt) {
-        const day = days[new Date(m.startedAt).getDay()];
-        counts[day] = (counts[day] || 0) + 1;
-      }
-    });
-    const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-    return top ? top[0] : 'N/A';
-  }
-
-  const AVATAR_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
+  // Memoize most active day computation
+  const mostActiveDay = useMemo(() => getMostActiveDay(allMeetings), [allMeetings]);
 
   // Stats for dashboard
   const stats = useMemo(() => ({
@@ -283,13 +293,6 @@ function HistoryPageContent() {
       return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
     }).length,
   }), [allMeetings]);
-
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return <ArrowUpDown size={14} className="text-surface-400" />;
-    return sortOrder === 'asc' 
-      ? <ArrowUp size={14} className="text-brand-500" />
-      : <ArrowDown size={14} className="text-brand-500" />;
-  };
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -344,7 +347,7 @@ function HistoryPageContent() {
         <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-surface-500 dark:text-surface-400 px-1">
           <span>📊 Avg duration: <strong className="text-surface-700 dark:text-surface-200">{formatMinutes(stats.totalDuration / stats.totalMeetings)}</strong></span>
           <span>👥 Avg participants: <strong className="text-surface-700 dark:text-surface-200">{(stats.totalParticipants / stats.totalMeetings).toFixed(1)}</strong></span>
-          <span>📅 Most active: <strong className="text-surface-700 dark:text-surface-200">{getMostActiveDay()}</strong></span>
+          <span>📅 Most active: <strong className="text-surface-700 dark:text-surface-200">{mostActiveDay}</strong></span>
         </div>
       )}
 
@@ -547,7 +550,7 @@ function HistoryPageContent() {
                   >
                     <div className="flex items-center gap-1.5">
                       Date & Time
-                      <SortIcon field="date" />
+                      <SortIcon field="date" sortField={sortField} sortOrder={sortOrder} />
                     </div>
                   </th>
                   <th 
@@ -556,7 +559,7 @@ function HistoryPageContent() {
                   >
                     <div className="flex items-center gap-1.5">
                       Duration
-                      <SortIcon field="duration" />
+                      <SortIcon field="duration" sortField={sortField} sortOrder={sortOrder} />
                     </div>
                   </th>
                   <th 
@@ -565,7 +568,7 @@ function HistoryPageContent() {
                   >
                     <div className="flex items-center gap-1.5">
                       Participants
-                      <SortIcon field="participants" />
+                      <SortIcon field="participants" sortField={sortField} sortOrder={sortOrder} />
                     </div>
                   </th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-surface-600 dark:text-surface-300">

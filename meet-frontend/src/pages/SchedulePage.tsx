@@ -27,6 +27,29 @@ const recurrenceOptions: { value: RecurrenceType; label: string; description: st
   { value: 'monthly', label: 'Monthly', description: 'Every month on the same date' },
 ];
 
+// Module-scoped skeleton — stable reference prevents DOM remounting
+function MeetingSkeleton() {
+  return (
+    <div className="card p-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex-1 space-y-3">
+          <div className="skeleton-text w-48 h-5" />
+          <div className="skeleton-text w-full h-3" />
+          <div className="flex gap-4">
+            <div className="skeleton w-24 h-4" />
+            <div className="skeleton w-20 h-4" />
+            <div className="skeleton w-32 h-4" />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <div className="skeleton-button" />
+          <div className="skeleton w-9 h-9 rounded-lg" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SchedulePage() {
   return (
     <PageErrorBoundary fallbackMessage="Failed to load scheduled meetings.">
@@ -374,27 +397,6 @@ function SchedulePageContent() {
     const now = new Date();
     return allMeetings.filter(m => new Date(m.scheduled_start || m.scheduledStart) < now);
   }, [allMeetings]);
-
-  // Skeleton component
-  const MeetingSkeleton = () => (
-    <div className="card p-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex-1 space-y-3">
-          <div className="skeleton-text w-48 h-5" />
-          <div className="skeleton-text w-full h-3" />
-          <div className="flex gap-4">
-            <div className="skeleton w-24 h-4" />
-            <div className="skeleton w-20 h-4" />
-            <div className="skeleton w-32 h-4" />
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <div className="skeleton-button" />
-          <div className="skeleton w-9 h-9 rounded-lg" />
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

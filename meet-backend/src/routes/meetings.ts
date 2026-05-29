@@ -541,9 +541,8 @@ meetingsRouter.post('/:id/chat', authenticate, async (req: AuthRequest, res: Res
     res.status(201).json({ 
       message: {
         ...message,
-        userId: user.id,
-        userName: user.name,
-        userEmail: user.email
+        senderIdentity: user.id,
+        senderName: user.name ?? user.email.split('@')[0],
       }
     });
   } catch (error) {

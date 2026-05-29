@@ -78,6 +78,9 @@ export const config = {
     origins: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173'],
   },
 
+  // Frontend URL (for external integrations)
+  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+
   // S3 (optional for recordings)
   s3: {
     bucket: process.env.S3_BUCKET,

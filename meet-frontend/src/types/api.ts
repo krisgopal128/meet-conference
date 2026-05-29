@@ -168,9 +168,10 @@ export interface GuestTokenResponse {
 // ============================================
 
 export interface HealthResponse {
-  status: 'ok' | 'error';
+  status: string;
   version?: string;
-  uptime?: number;
+  time?: string;
+  env?: string;
 }
 
 export interface PingResponse {

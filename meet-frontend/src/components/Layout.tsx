@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useUser, useAuthActions } from '../store/authStore';
@@ -14,6 +14,15 @@ import {
   Key,
 } from 'lucide-react';
 
+// Static nav items (no per-render allocation)
+const BASE_NAV_ITEMS = [
+  { path: '/', icon: Video, label: 'Meet Now' },
+  { path: '/schedule', icon: Calendar, label: 'Schedule' },
+  { path: '/history', icon: Clock, label: 'History' },
+  { path: '/recordings', icon: Video, label: 'Recordings' },
+];
+const API_KEYS_ITEM = { path: '/api-keys', icon: Key, label: 'API Keys' };
+
 export default function Layout() {
   const user = useUser();
   const { logout } = useAuthActions();
@@ -24,6 +33,15 @@ export default function Layout() {
 
   // Auto-refresh token before expiry
   useTokenRefresh();
+
+  // Memoized nav items — only recomputes when role changes
+  const navItems = useMemo(() => {
+    const items = [...BASE_NAV_ITEMS];
+    if (user?.role === 'moderator' || user?.role === 'admin') {
+      items.push(API_KEYS_ITEM);
+    }
+    return items;
+  }, [user?.role]);
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -48,21 +66,10 @@ export default function Layout() {
     }
   }, [logout, navigate]);
 
-  const navItems = [
-    { path: '/', icon: Video, label: 'Meet Now' },
-    { path: '/schedule', icon: Calendar, label: 'Schedule' },
-    { path: '/history', icon: Clock, label: 'History' },
-    { path: '/recordings', icon: Video, label: 'Recordings' },
-    // API Keys for moderators/admins only
-    ...(user?.role === 'moderator' || user?.role === 'admin' 
-      ? [{ path: '/api-keys', icon: Key, label: 'API Keys' }] 
-      : []),
-  ];
-
-  const isActive = (path: string) => {
+  const isActive = useCallback((path: string) => {
     if (path === '/') return location.pathname === '/';
     return location.pathname.startsWith(path);
-  };
+  }, [location.pathname]);
 
   return (
     <div className="flex min-h-screen bg-surface-50 dark:bg-surface-900">

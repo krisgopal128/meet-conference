@@ -49,6 +49,15 @@ export default function PreJoinPage() {
     searchParams,
   });
 
+  // Prefetch the RoomPage chunk (livekit + vendor) while user is on PreJoin
+  // so clicking "Join" doesn't trigger a 800KB+ download delay
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      import('./RoomPage').catch(() => { /* prefetch failure is non-critical */ });
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
   const {
     videoRef,
     videoEnabled,
@@ -70,7 +79,6 @@ export default function PreJoinPage() {
     echoCancellation,
     setEchoCancellation,
     backgroundBlur,
-    blurActivating,
     videoFilter,
     setVideoFilter,
     qualityMode,
@@ -316,16 +324,6 @@ export default function PreJoinPage() {
                       {initials}
                     </div>
                     <p className="text-surface-400">Camera is off</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Blur activation overlay */}
-              {blurActivating && (
-                <div className="absolute inset-0 bg-surface-900/50 flex items-center justify-center z-5">
-                  <div className="text-center">
-                    <div className="w-10 h-10 border-3 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-2"></div>
-                    <p className="text-white text-sm font-medium">Applying blur...</p>
                   </div>
                 </div>
               )}

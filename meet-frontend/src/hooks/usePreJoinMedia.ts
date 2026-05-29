@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { createLocalVideoTrack, LocalVideoTrack } from 'livekit-client';
 import {
-  buildCameraCaptureOptions,
   getQualityModeConfig,
   isAudioOnlyMode,
   meetingRoomConfig,
@@ -10,11 +8,62 @@ import {
   type CameraHardwareCaps,
 } from '../config/meetingRoomConfig';
 import { getCameraCapabilities, logCameraInfo } from '../utils/cameraCapabilities';
-import { forceCleanup } from '../utils/blurProcessorManager';
 import type { GridAspectRatio, VideoFitMode } from '../store/roomStore';
 import toast from 'react-hot-toast';
 import logger from '../utils/logger';
 import type { DeviceList } from '../components/prejoin';
+
+/**
+ * Build MediaTrackConstraints for getUserMedia from the same options
+ * that buildCameraCaptureOptions uses. This avoids importing livekit-client
+ * on the PreJoin page (saves ~500KB from the initial chunk).
+ */
+function buildCameraConstraints(
+  selectedCamera?: string,
+  mode?: QualityModeName,
+  _aspectRatio?: '16:9' | '9:16' | '1:1' | '4:3',
+  hardwareCaps?: CameraHardwareCaps | null,
+): MediaTrackConstraints {
+  const { cameraCapture } = meetingRoomConfig.media;
+  const { settings } = getQualityModeConfig(mode);
+
+  const targetResolution = settings
+    ? { width: 1280, height: 720 }
+    : { width: cameraCapture.width, height: cameraCapture.height };
+
+  let maxWidth: number;
+  let maxHeight: number;
+
+  if (hardwareCaps) {
+    maxWidth = hardwareCaps.maxWidth;
+    maxHeight = hardwareCaps.maxHeight;
+  } else {
+    maxWidth = Math.min(targetResolution.width, cameraCapture.maxWidth);
+    maxHeight = Math.min(targetResolution.height, cameraCapture.maxHeight);
+  }
+
+  // Apply quality mode cap
+  maxWidth = Math.min(maxWidth, targetResolution.width);
+  maxHeight = Math.min(maxHeight, targetResolution.height);
+
+  const maxFrameRate = settings?.cameraMaxFrameRate ?? cameraCapture.maxFrameRate;
+
+  const constraints: MediaTrackConstraints = {
+    deviceId: selectedCamera || undefined,
+    width: { ideal: maxWidth },
+    height: { ideal: maxHeight },
+  };
+
+  if (maxFrameRate) {
+    constraints.frameRate = { ideal: maxFrameRate };
+  }
+
+  if (!selectedCamera) {
+    constraints.facingMode = cameraCapture.facingMode as ConstrainDOMString;
+  }
+
+  return constraints;
+}
 
 interface UsePreJoinMediaParams {
   roomName: string | undefined;
@@ -23,9 +72,7 @@ interface UsePreJoinMediaParams {
 
 export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParams) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const videoTrackRef = useRef<LocalVideoTrack | null>(null);
-  const permissionStreamRef = useRef<MediaStream | null>(null);
-  const permissionVideoTrackRef = useRef<MediaStreamTrack | null>(null); // Reuse for preview
+  const previewStreamRef = useRef<MediaStream | null>(null);
   const isMountedRef = useRef(true);
   const hasRequestedPermissionsRef = useRef(false);
 
@@ -44,7 +91,6 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
   const [noiseSuppression, setNoiseSuppression] = useState(meetingRoomConfig.prejoin.noiseSuppression);
   const [echoCancellation, setEchoCancellation] = useState(meetingRoomConfig.prejoin.echoCancellation);
   const backgroundBlur = false; // Placeholder for future background blur toggle
-  const [blurActivating] = useState(false); // Disabled - no UI to change this
   const [videoFilter, setVideoFilter] = useState<'none' | 'lightweight'>('none'); // Default OFF
   const [qualityMode, setQualityMode] = useState<QualityModeName>(getQualityModeConfig().name);
   const [screenShareMode, setScreenShareMode] = useState<ScreenShareModeName>(meetingRoomConfig.media.screenShare.defaultMode);
@@ -75,36 +121,12 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
   };
 
   const stopPreview = useCallback(() => {
-    // Clear permission video track reference when stopping
-    permissionVideoTrackRef.current = null;
-
-    const track = videoTrackRef.current;
-    if (track) {
-      track.detach();
-      track.stop();
-      videoTrackRef.current = null;
+    if (previewStreamRef.current) {
+      previewStreamRef.current.getTracks().forEach((t) => t.stop());
+      previewStreamRef.current = null;
     }
     if (videoRef.current) {
       videoRef.current.srcObject = null;
-    }
-  }, []);
-
-  const stopPermissionStream = useCallback((keepVideoTrack = false) => {
-    if (!permissionStreamRef.current) {
-      return;
-    }
-    permissionStreamRef.current.getTracks().forEach((track) => {
-      // Keep video track for preview reuse if requested
-      if (keepVideoTrack && track.kind === 'video') {
-        return;
-      }
-      track.stop();
-    });
-
-    // If not keeping video track, clear the ref
-    if (!keepVideoTrack) {
-      permissionVideoTrackRef.current = null;
-      permissionStreamRef.current = null;
     }
   }, []);
 
@@ -156,7 +178,7 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
 
       // Detect camera capabilities if not already done
       let hwCaps = cameraHardwareCaps;
-      let effectiveAspectRatio = gridAspectRatio; // Use state by default
+      let effectiveAspectRatio = gridAspectRatio;
 
       if (!hwCaps && !reuseTrack) {
         const caps = await getCameraCapabilities(selectedCamera || undefined);
@@ -169,11 +191,9 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
           setCameraHardwareCaps(hwCaps);
           logCameraInfo(caps);
 
-          // Auto-select aspect ratio matching camera's native ratio (only once)
-          // This ensures >92% sensor coverage by default
           if (!aspectRatioAutoSelectedRef.current) {
             const nativeRatio = getClosestAspectRatio(caps.nativeAspectRatio);
-            effectiveAspectRatio = nativeRatio; // Use immediately for this capture
+            effectiveAspectRatio = nativeRatio;
             setGridAspectRatio(nativeRatio);
             aspectRatioAutoSelectedRef.current = true;
             logger.info(`📷 Auto-selected aspect ratio: ${nativeRatio} (native: ${caps.nativeAspectRatio.toFixed(3)})`);
@@ -181,28 +201,26 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
         }
       }
 
-      let track: LocalVideoTrack;
+      let stream: MediaStream;
 
-      // Reuse existing track if provided (optimization: avoids 2nd getUserMedia call)
       if (reuseTrack && reuseTrack.readyState === 'live') {
         logger.info('📷 Reusing permission video track for preview (1 request optimization)');
-        // Create LocalVideoTrack from existing MediaStreamTrack
-        track = new LocalVideoTrack(reuseTrack, undefined, false);
+        stream = new MediaStream([reuseTrack]);
       } else {
-        // No track to reuse, create new one
-        track = await createLocalVideoTrack(
-          buildCameraCaptureOptions(selectedCamera, qualityMode, effectiveAspectRatio, hwCaps)
-        );
+        // Use raw getUserMedia instead of LiveKit's createLocalVideoTrack
+        const constraints = buildCameraConstraints(selectedCamera, qualityMode, effectiveAspectRatio, hwCaps);
+        stream = await navigator.mediaDevices.getUserMedia({ video: constraints });
       }
-
-      // Background blur - DISABLED
 
       if (!isMountedRef.current) {
-        track.stop();
+        stream.getTracks().forEach((t) => t.stop());
         return;
       }
-      videoTrackRef.current = track;
-      if (videoRef.current) track.attach(videoRef.current);
+
+      previewStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
     } catch (e) {
       logger.error('Failed to start video preview:', e);
       if (isMountedRef.current) {
@@ -223,30 +241,28 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
     } else {
       try {
         stopPreview();
-        const track = await createLocalVideoTrack(
-          buildCameraCaptureOptions(selectedCamera, qualityMode, gridAspectRatio, cameraHardwareCaps)
-        );
+        const constraints = buildCameraConstraints(selectedCamera, qualityMode, gridAspectRatio, cameraHardwareCaps);
+        const stream = await navigator.mediaDevices.getUserMedia({ video: constraints });
         if (!isMountedRef.current) {
-          track.stop();
+          stream.getTracks().forEach((t) => t.stop());
           return;
         }
-        videoTrackRef.current = track;
-        if (videoRef.current) track.attach(videoRef.current);
+        previewStreamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
         setVideoEnabled(true);
       } catch (e) {
         logger.error('Failed to start video preview:', e);
         toast.error('Could not start camera');
       }
     }
-    // gridAspectRatio and cameraHardwareCaps intentionally omitted - changes would cause unnecessary re-renders
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoEnabled, selectedCamera, qualityMode, stopPreview]);
+  }, [videoEnabled, selectedCamera, qualityMode, gridAspectRatio, cameraHardwareCaps, stopPreview]);
 
   // Init preview effect
   useEffect(() => {
     isMountedRef.current = true;
 
-    // Request permissions - using a local function to avoid dependency issues
     const initPreview = async () => {
       // Prevent multiple permission requests (React StrictMode double-mount)
       if (hasRequestedPermissionsRef.current) {
@@ -260,13 +276,9 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
           video: { facingMode: 'user' },
           audio: true,
         });
-        permissionStreamRef.current = stream;
 
         // Extract video track for preview reuse (avoid 2nd request)
         const videoTrack = stream.getVideoTracks()[0];
-        if (videoTrack) {
-          permissionVideoTrackRef.current = videoTrack;
-        }
 
         // Stop only audio tracks, keep video for preview
         stream.getAudioTracks().forEach((track) => track.stop());
@@ -275,7 +287,7 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
         await loadDevices();
 
         setInitStatus('Starting preview...');
-        await startPreview(permissionVideoTrackRef.current);
+        await startPreview(videoTrack);
 
         if (isMountedRef.current) {
           setInitializing(false);
@@ -286,18 +298,12 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
         try {
           setInitStatus('Requesting camera only...');
           const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
-          permissionStreamRef.current = videoStream;
-
-          // Extract video track for preview reuse
           const videoTrack = videoStream.getVideoTracks()[0];
-          if (videoTrack) {
-            permissionVideoTrackRef.current = videoTrack;
-          }
 
           setVideoEnabled(true);
           setAudioEnabled(false);
           await loadDevices();
-          await startPreview(permissionVideoTrackRef.current);
+          await startPreview(videoTrack);
           if (isMountedRef.current) {
             setInitializing(false);
           }
@@ -317,37 +323,17 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
 
     return () => {
       isMountedRef.current = false;
-      // Stop video track first via preview
       stopPreview();
-      // Clean up permission stream (skip video - already stopped above)
-      stopPermissionStream(true);
-      // Ensure any remaining permission stream tracks are fully stopped
-      if (permissionStreamRef.current) {
-        permissionStreamRef.current.getTracks().forEach((track) => track.stop());
-        permissionStreamRef.current = null;
-      }
-      // Null out permission video track reference
-      permissionVideoTrackRef.current = null;
-      // Clean up blur processor via manager
-      void forceCleanup();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomName, isCreateMode, stopPermissionStream, stopPreview]);
-
-  // Note: Pre-warming blur processor removed - new blur manager creates fresh processors
-  // This avoids stale state issues and memory leaks
+  }, [roomName, isCreateMode, stopPreview, startPreview, loadDevices]);
 
   // Camera change effect
   useEffect(() => {
-    if (!selectedCamera || !videoEnabled || !videoTrackRef.current) return;
+    if (!selectedCamera || !videoEnabled || !previewStreamRef.current) return;
 
     let cancelled = false;
     stopPreview();
 
-    // Reset blur processor for new camera track - DISABLED
-    // resetForNewTrack();
-
-    // Re-detect capabilities when camera changes
     const detectAndStart = async () => {
       const caps = await getCameraCapabilities(selectedCamera);
       if (caps) {
@@ -359,26 +345,24 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
         setCameraHardwareCaps(hwCaps);
         logCameraInfo(caps);
 
-        // Auto-select aspect ratio for new camera
         const nativeRatio = getClosestAspectRatio(caps.nativeAspectRatio);
         setGridAspectRatio(nativeRatio);
         logger.info(`📷 Camera changed - auto-selected aspect ratio: ${nativeRatio}`);
 
         if (cancelled) return;
 
-        // Use nativeRatio immediately (not state which is async)
-        const track = await createLocalVideoTrack(
-          buildCameraCaptureOptions(selectedCamera, qualityMode, nativeRatio, hwCaps)
-        );
+        const constraints = buildCameraConstraints(selectedCamera, qualityMode, nativeRatio, hwCaps);
+        const stream = await navigator.mediaDevices.getUserMedia({ video: constraints });
 
         if (cancelled || !isMountedRef.current) {
-          track.stop();
+          stream.getTracks().forEach((t) => t.stop());
           return;
         }
-        videoTrackRef.current = track;
-        if (videoRef.current) track.attach(videoRef.current);
 
-        // Background blur - DISABLED
+        previewStreamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
       }
     };
 
@@ -392,9 +376,8 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
     return () => {
       cancelled = true;
     };
-    // gridAspectRatio and cameraHardwareCaps intentionally omitted
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCamera, videoEnabled, qualityMode, stopPreview, backgroundBlur]);
+  }, [selectedCamera, videoEnabled, qualityMode, stopPreview]);
 
   useEffect(() => {
     if (!isAudioOnlyMode(qualityMode)) {
@@ -404,11 +387,6 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
     stopPreview();
     setVideoEnabled(false);
   }, [qualityMode, stopPreview]);
-
-  // Background blur toggle effect - DISABLED
-  // useEffect(() => {
-  //   ... blur toggle code removed ...
-  // }, [backgroundBlur, videoEnabled]);
 
   return {
     // Refs
@@ -434,7 +412,6 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
     echoCancellation,
     setEchoCancellation,
     backgroundBlur,
-    blurActivating,
     videoFilter,
     setVideoFilter,
     qualityMode,

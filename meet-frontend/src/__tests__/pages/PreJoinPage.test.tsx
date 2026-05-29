@@ -13,14 +13,8 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-// Mock livekit-client
-vi.mock('livekit-client', () => ({
-  createLocalVideoTrack: vi.fn().mockResolvedValue({
-    attach: vi.fn(),
-    detach: vi.fn(),
-    stop: vi.fn(),
-  }),
-}));
+// Mock livekit-client (kept for any transitive imports; no longer used directly by usePreJoinMedia)
+vi.mock('livekit-client', () => ({}));
 
 // Mock services/api
 vi.mock('../../services/api', () => ({
@@ -71,6 +65,8 @@ Object.defineProperty(navigator, 'mediaDevices', {
   value: {
     getUserMedia: vi.fn().mockResolvedValue({
       getTracks: () => [{ stop: vi.fn() }],
+      getVideoTracks: () => [{ stop: vi.fn(), readyState: 'live' }],
+      getAudioTracks: () => [{ stop: vi.fn() }],
     }),
     enumerateDevices: vi.fn().mockResolvedValue([]),
   },

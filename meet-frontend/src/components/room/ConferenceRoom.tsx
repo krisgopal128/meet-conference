@@ -429,6 +429,11 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
     };
   }, []);
 
+  // Preload whiteboard chunk eagerly so first toggle doesn't suspend
+  useEffect(() => {
+    import('./WhiteboardLayout').catch(() => {});
+  }, []);
+
   const renderLayout = () => {
     switch (layout) {
       case 'grid': return <GridLayout />;
@@ -472,7 +477,14 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
             
             {/* Video layout */}
             <div className="flex-1 min-h-0 relative">
-              {renderLayout()}
+              <Suspense fallback={
+                <div className="flex items-center justify-center h-full text-surface-400 text-sm">
+                  <div className="w-6 h-6 border-2 border-brand-400 border-t-transparent rounded-full animate-spin mr-2" />
+                  Loading layout…
+                </div>
+              }>
+                {renderLayout()}
+              </Suspense>
               
               {/* Quality Indicator - Floating top-right */}
               <div className="absolute top-4 right-4 z-20">

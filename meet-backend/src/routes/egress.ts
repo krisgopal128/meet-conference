@@ -66,7 +66,7 @@ egressRouter.post('/start', authenticate, async (req: AuthRequest, res: Response
           case: 's3',
           value: new S3Upload({
             bucket: config.s3.bucket!,
-            region: config.s3.region || 'us-east-1',
+            region: config.s3.region,
             accessKey: config.s3.accessKey!,
             secret: config.s3.secretKey!,
           }),

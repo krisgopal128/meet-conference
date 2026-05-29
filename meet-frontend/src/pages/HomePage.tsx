@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createRoom, getMyRooms, meetingsApi, roomsApi } from '../services/api';
 import { useUser } from '../store/authStore';
@@ -297,7 +297,18 @@ function HomePageContent() {
     return 'Good evening';
   })();
   const firstName = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'there';
-  const todayFormatted = format(new Date(), 'EEEE, MMMM d, yyyy');
+  const todayFormatted = useMemo(() => format(new Date(), 'EEEE, MMMM d, yyyy'), []);
+
+  // Memoize sorted upcoming meetings (top 5)
+  const sortedUpcomingMeetings = useMemo(() => {
+    return [...upcomingMeetings]
+      .sort((a, b) => {
+        const aDate = new Date(a.scheduledStart || a.scheduled_start || 0).getTime();
+        const bDate = new Date(b.scheduledStart || b.scheduled_start || 0).getTime();
+        return aDate - bDate;
+      })
+      .slice(0, 5);
+  }, [upcomingMeetings]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -389,13 +400,7 @@ function HomePageContent() {
               </div>
             ) : (
               <div className="space-y-2">
-                {upcomingMeetings
-                  .sort((a, b) => {
-                    const aDate = new Date(a.scheduledStart || a.scheduled_start || 0).getTime();
-                    const bDate = new Date(b.scheduledStart || b.scheduled_start || 0).getTime();
-                    return aDate - bDate;
-                  })
-                  .slice(0, 5)
+                {sortedUpcomingMeetings
                   .map((meeting) => (
                     <UpcomingMeetingCard key={meeting.id} meeting={meeting} />
                   ))}

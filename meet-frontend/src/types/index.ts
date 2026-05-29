@@ -5,6 +5,7 @@ export interface User {
   avatarUrl?: string;
   role: 'admin' | 'moderator' | 'participant';
   isBanned?: boolean;
+  is_banned?: boolean;
   lastLoginAt?: string | null;
   createdAt?: string;
 }

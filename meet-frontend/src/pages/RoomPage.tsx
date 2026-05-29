@@ -27,6 +27,9 @@ import { Video, WifiOff } from 'lucide-react';
 import '@livekit/components-styles';
 import logger from '../utils/logger';
 
+// Module-scoped constant — avoids new object per render
+const FULLSCREEN_STYLE = { height: '100dvh' } as const;
+
 interface LocationState {
   token: string;
   videoEnabled: boolean;
@@ -277,26 +280,27 @@ function RoomContent({
 
   // Track whether camera was on before audioOnly kicked in
   const cameraWasOnBeforeAudioOnly = useRef(false);
+  const localParticipantRef = useRef(localParticipant);
+  localParticipantRef.current = localParticipant;
 
   useEffect(() => {
+    const lp = localParticipantRef.current;
     const audioOnly = isAudioOnlyMode(qualityMode);
 
     if (audioOnly) {
-      // Remember if camera was on so we can restore it later
-      if (localParticipant.isCameraEnabled) {
+      if (lp.isCameraEnabled) {
         cameraWasOnBeforeAudioOnly.current = true;
       }
-      void localParticipant.setCameraEnabled(false).catch((error) => {
+      void lp.setCameraEnabled(false).catch((error) => {
         logger.error('[RoomPage] Failed to disable camera for audio-only mode:', error);
       });
     } else if (cameraWasOnBeforeAudioOnly.current) {
-      // Recovering from audioOnly — re-enable camera if it was on before
       cameraWasOnBeforeAudioOnly.current = false;
-      void localParticipant.setCameraEnabled(true).catch((error) => {
+      void lp.setCameraEnabled(true).catch((error) => {
         logger.error('[RoomPage] Failed to re-enable camera after audio-only recovery:', error);
       });
     }
-  }, [qualityMode, localParticipant]);
+  }, [qualityMode]);
 
   // Reconfigure camera when quality mode changes (e.g., highQuality -> dataSaver)
   useEffect(() => {
@@ -322,35 +326,36 @@ function RoomContent({
     reconfigureCamera();
   }, [qualityMode, localParticipant, state.selectedCamera, state.cameraHardwareCaps, currentGridAspectRatio]);
 
+  // Permission enforcer — only react to actual permission changes, not track state changes.
+  // Using refs avoids re-running when localParticipant reference changes due to unrelated
+  // LiveKit events (stats, track updates) which caused camera/mic to be disabled spuriously.
+  const permissionEnforcerRef = useRef(localParticipant);
+  permissionEnforcerRef.current = localParticipant;
+  const canPublishSources = localParticipant.permissions?.canPublishSources;
+
   useEffect(() => {
-    const permission = localParticipant.permissions;
+    const lp = permissionEnforcerRef.current;
+    const permission = lp.permissions;
     if (!permission) return;
 
-    if (shouldDisableSource(localParticipant, 'camera')) {
-      void localParticipant.setCameraEnabled(false).catch((error) => {
+    if (shouldDisableSource(lp, 'camera')) {
+      void lp.setCameraEnabled(false).catch((error) => {
         logger.error('[RoomPage] Failed to enforce camera disable from permissions:', error);
       });
     }
 
-    if (shouldDisableSource(localParticipant, 'microphone')) {
-      void localParticipant.setMicrophoneEnabled(false).catch((error) => {
+    if (shouldDisableSource(lp, 'microphone')) {
+      void lp.setMicrophoneEnabled(false).catch((error) => {
         logger.error('[RoomPage] Failed to enforce microphone mute from permissions:', error);
       });
     }
 
-    if (shouldDisableSource(localParticipant, 'screen_share')) {
-      void localParticipant.setScreenShareEnabled(false).catch((error) => {
+    if (shouldDisableSource(lp, 'screen_share')) {
+      void lp.setScreenShareEnabled(false).catch((error) => {
         logger.error('[RoomPage] Failed to enforce screen share disable from permissions:', error);
       });
     }
-  }, [
-    localParticipant,
-    localParticipant.permissions,
-    localParticipant.permissions?.canPublishSources,
-    localParticipant.isCameraEnabled,
-    localParticipant.isMicrophoneEnabled,
-    localParticipant.isScreenShareEnabled,
-  ]);
+  }, [canPublishSources]);
 
   useEffect(() => {
     const checkLobbyStatus = () => {
@@ -676,7 +681,7 @@ export default function RoomPage() {
         onError={handleError}
         connect={true}
         options={livekitOptions}
-        style={{ height: '100dvh' }}
+        style={FULLSCREEN_STYLE}
       >
         <RoomContent roomName={roomName} state={state} qualityMode={effectiveQualityMode} />
       </LiveKitRoom>

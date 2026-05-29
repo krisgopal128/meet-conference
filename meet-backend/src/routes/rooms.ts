@@ -22,6 +22,7 @@ import { sanitizeRoomName, sanitizeDescription, sanitizeChatMessage } from '../u
 import logger from '../utils/logger.js';
 import { query, queryOne } from '../services/database.js';
 import * as roomService from '../services/roomService.js';
+import type { RoomRow } from '../services/roomService.js';
 
 export const roomsRouter = Router();
 
@@ -61,20 +62,6 @@ async function canAccessRoomChat(roomName: string, userId: string) {
     room,
     allowed: !!participant,
   };
-}
-
-// Interface for room data from database
-interface RoomRow {
-  id: string;
-  name: string;
-  title: string | null;
-  description: string | null;
-  host_id: string;
-  host_name?: string;
-  host_email?: string;
-  max_participants: number;
-  status: string;
-  created_at: Date;
 }
 
 // Enriched room with active status

@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS meetings (
     recording_url TEXT,
     started_at TIMESTAMPTZ DEFAULT NOW(),
     ended_at TIMESTAMPTZ,
-    status VARCHAR(50) DEFAULT 'ongoing', -- ongoing, ended
+    status VARCHAR(50) DEFAULT 'ongoing' -- ongoing, ended
 );
 
 CREATE INDEX idx_meetings_room_id ON meetings(room_id);
@@ -236,7 +236,8 @@ CREATE TABLE IF NOT EXISTS api_keys (
     is_active BOOLEAN DEFAULT true,
     expires_at TIMESTAMPTZ,
     last_used_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_api_keys_user_id ON api_keys(user_id);

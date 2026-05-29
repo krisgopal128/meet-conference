@@ -234,8 +234,16 @@ export const WhiteboardPanel = React.memo(function WhiteboardPanel({
         </div>
       </div>
 
-      {/* Excalidraw Canvas — fills container via absolute positioning */}
-      <div className="flex-1 relative" style={{ minHeight: 0 }}>
+      {/* Excalidraw Canvas — intercept anchor clicks from Excalidraw internals to prevent page reload */}
+      <div className="flex-1 relative" style={{ minHeight: 0 }}
+        onClickCapture={(e) => {
+          const target = e.target as HTMLElement;
+          if (target.closest('a[href]')) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }}
+      >
         <React.Suspense
           fallback={
             <div className="flex items-center justify-center h-full text-surface-400 text-sm">

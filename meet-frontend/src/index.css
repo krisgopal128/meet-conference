@@ -557,6 +557,10 @@ input[type="text"].pr-10 {
 
 .lk-participant-tile {
   @apply rounded-lg overflow-hidden;
+  /* GPU acceleration for video tiles — reduces compositing overhead */
+  contain: layout paint style size;
+  content-visibility: auto;
+  contain-intrinsic-size: 320px 180px;
 }
 
 .lk-focus-layout-wrapper {

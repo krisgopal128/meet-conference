@@ -9,7 +9,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { z } from 'zod';
 import { AccessToken } from 'livekit-server-sdk';
-import { roomService as livekitRoomService, deleteRoom as deleteLiveKitRoom } from '../services/livekit.js';
+import { deleteRoom as deleteLiveKitRoom } from '../services/livekit.js';
 import { config } from '../config.js';
 import rateLimit from 'express-rate-limit';
 import { query, queryOne } from '../services/database.js';
@@ -52,7 +52,7 @@ const externalTokenSchema = z.object({
 const LIVEKIT_URL = config.livekit.url;
 const LIVEKIT_API_KEY = config.livekit.apiKey;
 const LIVEKIT_API_SECRET = config.livekit.apiSecret;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const FRONTEND_URL = config.frontendUrl;
 
 // Validate required LiveKit configuration
 if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
@@ -379,7 +379,7 @@ router.post('/rooms/:name/end', async (req: Request, res: Response) => {
     // End room via LiveKit
     try {
       const { RoomServiceClient } = await import('livekit-server-sdk');
-      const endClient = new RoomServiceClient(process.env.LIVEKIT_URL!, process.env.LIVEKIT_API_KEY!, process.env.LIVEKIT_API_SECRET!);
+      const endClient = new RoomServiceClient(LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
       await endClient.deleteRoom(name);
     } catch {
       // Room might not exist in LiveKit
@@ -421,7 +421,7 @@ router.delete('/rooms/:name', async (req: Request, res: Response) => {
     // Delete from LiveKit first (best-effort)
     try {
       const { RoomServiceClient } = await import('livekit-server-sdk');
-      const lkClient = new RoomServiceClient(process.env.LIVEKIT_URL!, process.env.LIVEKIT_API_KEY!, process.env.LIVEKIT_API_SECRET!);
+      const lkClient = new RoomServiceClient(LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
       await lkClient.deleteRoom(name);
     } catch (lkErr) {
       logger.warn('[External API] Failed to delete room from LiveKit:', lkErr);

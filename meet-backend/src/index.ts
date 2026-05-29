@@ -107,6 +107,7 @@ app.use('/egress', apiLimiter);
 app.use('/prashasakah', apiLimiter);
 app.use('/api-keys', apiLimiter);
 app.use('/external', apiLimiter);
+app.use('/whiteboard', apiLimiter);
 
 // ============================================
 // Routes
@@ -145,7 +146,7 @@ app.get('/health', async (_req, res) => {
 
 // Simple ping endpoint
 app.get('/ping', (_req, res) => {
-  res.send('pong');
+  res.json({ pong: true, timestamp: new Date().toISOString() });
 });
 
 // ============================================

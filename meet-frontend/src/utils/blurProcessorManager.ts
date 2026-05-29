@@ -1,32 +1,36 @@
 /**
- * Blur Processor Manager - PROPER VERSION (BackgroundProcessor API)
+ * Blur Processor Manager - LAZY-LOADED VERSION
+ * 
+ * Defers loading of @livekit/track-processors (TensorFlow.js, ~184KB)
+ * until blur is actually requested. This keeps the critical room-entry
+ * path fast — the blur chunk only loads when the user enables blur.
  * 
  * Uses the modern BackgroundProcessor API with switchTo() method.
  * This keeps the processing pipeline alive between toggles, avoiding
  * the heavy TensorFlow.js model loading/unloading that causes hanging.
  * 
  * Key improvements:
- * 1. Initialize processor in 'disabled' mode ONCE
- * 2. Use switchTo() to toggle blur on/off (no stopProcessor/setProcessor loop)
- * 3. Async lock prevents race conditions
- * 4. Debounce guard prevents rapid toggling
- * 5. Proper cleanup only on final unmount
+ * 1. Lazy-load @livekit/track-processors only when blur is toggled
+ * 2. Initialize processor in 'disabled' mode ONCE
+ * 3. Use switchTo() to toggle blur on/off (no stopProcessor/setProcessor loop)
+ * 4. Async lock prevents race conditions
+ * 5. Debounce guard prevents rapid toggling
+ * 6. Proper cleanup only on final unmount
  * 
  * Reference:
  * https://github.com/livekit/track-processors-js/blob/main/processor-docs/video-processors.md
  */
 
-import { 
-  BackgroundProcessor,
-  type BackgroundProcessorWrapper,
-  supportsBackgroundProcessors,
-} from '@livekit/track-processors';
 import logger from './logger';
 
 interface VideoTrack {
-  setProcessor: (processor: BackgroundProcessorWrapper) => Promise<void>;
+  setProcessor: (processor: any) => Promise<void>;
   stopProcessor: () => Promise<void>;
 }
+
+// Lazily loaded track-processors types (resolved at runtime)
+type BackgroundProcessorWrapper = any;
+type TrackProcessorsModule = typeof import('@livekit/track-processors');
 
 interface BlurManagerState {
   processor: BackgroundProcessorWrapper | null;
@@ -46,6 +50,28 @@ const state: BlurManagerState = {
   isEnabled: false,
 };
 
+// Cached dynamic import — loads once, reused after that
+let trackProcessorsCache: TrackProcessorsModule | null = null;
+let trackProcessorsLoading: Promise<TrackProcessorsModule> | null = null;
+
+/**
+ * Lazy-load @livekit/track-processors (TensorFlow.js ~184KB).
+ * Only triggers a network request the first time; subsequent calls
+ * resolve immediately from the cache.
+ */
+async function loadTrackProcessors(): Promise<TrackProcessorsModule> {
+  if (trackProcessorsCache) return trackProcessorsCache;
+  if (trackProcessorsLoading) return trackProcessorsLoading;
+  
+  trackProcessorsLoading = import('@livekit/track-processors').then((mod) => {
+    trackProcessorsCache = mod;
+    trackProcessorsLoading = null;
+    return mod;
+  });
+  
+  return trackProcessorsLoading;
+}
+
 // Minimum time between toggle operations (ms)
 const DEBOUNCE_MS = 300;
 
@@ -53,10 +79,24 @@ const DEBOUNCE_MS = 300;
 const LOCK_TIMEOUT_MS = 8000;
 
 /**
- * Check browser support for background processors
+ * Check browser support for background processors.
+ * This triggers the lazy load of track-processors.
  */
-export function isBlurSupported(): boolean {
-  return supportsBackgroundProcessors();
+export async function isBlurSupported(): Promise<boolean> {
+  try {
+    const { supportsBackgroundProcessors } = await loadTrackProcessors();
+    return supportsBackgroundProcessors();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Synchronous check — returns false if track-processors hasn't been loaded yet.
+ * Useful for UI that checks blur state without triggering a chunk load.
+ */
+export function isBlurLoaded(): boolean {
+  return trackProcessorsCache !== null;
 }
 
 /**
@@ -131,6 +171,9 @@ export async function enableBlur(track: VideoTrack, participantCount?: number): 
 
   try {
     logger.info('[BlurManager] 🔄 Enabling blur...');
+    
+    // Lazy-load track-processors (TensorFlow.js) on first use
+    const { BackgroundProcessor } = await loadTrackProcessors();
     
     // If processor exists and is already on this track, just switch mode
     if (state.processor && state.currentTrack === track) {
