@@ -325,7 +325,13 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
       isMountedRef.current = false;
       stopPreview();
     };
-  }, [roomName, isCreateMode, stopPreview, startPreview, loadDevices]);
+    // startPreview and loadDevices are intentionally omitted — they are plain
+    // functions (new reference each render) which would cause the effect to
+    // re-run on every state change, calling stopPreview() in cleanup and
+    // killing the camera stream immediately after it starts.
+    // The hasRequestedPermissionsRef guard ensures they only execute once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomName, isCreateMode, stopPreview]);
 
   // Camera change effect
   useEffect(() => {

@@ -3,8 +3,8 @@ import { useUser } from '../../store/authStore';
 import { prashasakahApi, AdminStats, BandwidthStats, PeakUsersStats } from '../../services/prashasakahApi';
 import { StatCard, StatCardSkeleton } from '../../components/prashasakah/StatCard';
 import { DateRangeFilter } from '../../components/prashasakah/DateRangeFilter';
-import { BandwidthChartSkeleton } from '../../components/prashasakah/BandwidthChart';
-import { PeakUsersChartSkeleton } from '../../components/prashasakah/PeakUsersChart';
+import { BandwidthChartSkeleton } from '../../components/prashasakah/BandwidthChartSkeleton';
+import { PeakUsersChartSkeleton } from '../../components/prashasakah/PeakUsersChartSkeleton';
 import logger from '../../utils/logger';
 
 /** Lazy-loaded chart components — heavy chart code is not included in the initial bundle */

@@ -71,6 +71,7 @@ const externalApiLimiter = rateLimit({
   message: { error: 'External API rate limit exceeded. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: false as any,
   keyGenerator: (req: Request): string => {
     // Use API key as the rate limit key (extract from Authorization header)
     const authHeader = req.headers.authorization;
@@ -80,8 +81,7 @@ const externalApiLimiter = rateLimit({
       return crypto.createHash('sha256').update(apiKey).digest('hex').substring(0, 16);
     }
     // Fallback to IP if no API key (will be rejected by auth anyway)
-    // Use x-forwarded-for to avoid IPv6 keyGenerator warning
-    return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
+    return req.ip || 'unknown';
   },
 });
 

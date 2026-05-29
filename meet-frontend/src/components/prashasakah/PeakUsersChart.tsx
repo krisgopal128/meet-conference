@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { PeakUsersChartSkeleton } from './PeakUsersChartSkeleton';
 
 interface PeakUsersDataPoint {
   date: string;
@@ -15,18 +16,6 @@ interface PeakUsersChartProps {
 function formatDateLabel(dateStr: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-export function PeakUsersChartSkeleton({ height = 256 }: { height?: number }) {
-  return (
-    <div className="animate-pulse" style={{ height }}>
-      <div className="h-full flex items-end gap-2 px-4">
-        {Array.from({ length: 7 }).map((_, i) => (
-          <div key={i} className="flex-1 bg-surface-200 rounded" style={{ height: `${Math.random() * 60 + 40}%` }} />
-        ))}
-      </div>
-    </div>
-  );
 }
 
 export function PeakUsersChart({ data, loading = false, height = 256 }: PeakUsersChartProps) {

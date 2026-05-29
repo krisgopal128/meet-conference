@@ -14,7 +14,7 @@ const CSRF_COOKIE_NAME = 'csrf_token';
 const CSRF_HEADER_NAME = 'x-csrf-token';
 
 const CSRF_SKIP_PATHS = new Set([
-  '/health', '/webhook', '/token',
+  '/health', '/webhook', '/token', '/guest',
   // Auth endpoints that unauthenticated users access (no CSRF cookie yet)
   '/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password',
   // External API uses key-based auth, not cookies

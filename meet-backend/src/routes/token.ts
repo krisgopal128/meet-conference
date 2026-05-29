@@ -153,8 +153,8 @@ tokenRouter.post('/guest', tokenLimiter, async (req, res: Response) => {
     const { roomName, name, role, password } = guestSchema.parse(req.body);
 
     // Check if room exists and verify password if required (single query for all room fields)
-    const room = await queryOne<{ id: string; status: string; room_password: string | null; waiting_room_enabled: boolean; host_id: string }>(
-      'SELECT id, status, room_password, waiting_room_enabled, host_id FROM rooms WHERE name = $1',
+    const room = await queryOne<{ id: string; status: string; password_hash: string | null; waiting_room_enabled: boolean; host_id: string }>(
+      'SELECT id, status, password_hash, waiting_room_enabled, host_id FROM rooms WHERE name = $1',
       [roomName]
     );
 
@@ -163,11 +163,11 @@ tokenRouter.post('/guest', tokenLimiter, async (req, res: Response) => {
     }
 
     // If room has password, verify it
-    if (room?.room_password) {
+    if (room?.password_hash) {
       if (!password) {
         return res.status(401).json({ error: 'Room password required' });
       }
-      const validPassword = await bcrypt.compare(password, room.room_password);
+      const validPassword = await bcrypt.compare(password, room.password_hash);
       if (!validPassword) {
         return res.status(401).json({ error: 'Invalid room password' });
       }
@@ -216,8 +216,8 @@ tokenRouter.post('/guest', tokenLimiter, async (req, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    // Log error type only, not message (could contain sensitive data)
-    logger.error('Guest token generation failed:', error instanceof Error ? error.constructor.name : 'Unknown error type');
+    // Log error details for debugging
+    logger.error('Guest token generation failed:', error instanceof Error ? { name: error.constructor.name, message: error.message, stack: error.stack?.substring(0, 300) } : 'Unknown error type');
     res.status(500).json({ error: 'Failed to generate guest token' });
   }
 });

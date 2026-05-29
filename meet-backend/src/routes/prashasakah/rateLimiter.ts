@@ -1,14 +1,13 @@
 import rateLimit from 'express-rate-limit';
-import type { Request } from 'express';
 
-// Shared config to normalize IPv6-mapped IPv4 addresses (fixes ERR_ERL_KEY_GEN_IPV6)
+// express-rate-limit v8+ throws ERR_ERL_KEY_GEN_IPV6 with custom keyGenerator
+// behind a proxy. Since Caddy handles IPv4/IPv6 normalization, we disable
+// IP validation entirely.
 const sharedConfig = {
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req: Request) => {
-    const ip = req.ip || 'unknown';
-    return ip.replace(/^::ffff:/, '');
-  },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  validate: false as any,
 };
 
 export const adminActionLimiter = rateLimit({

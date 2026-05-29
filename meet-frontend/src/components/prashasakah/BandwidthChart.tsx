@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { BandwidthChartSkeleton } from './BandwidthChartSkeleton';
 
 interface BandwidthDataPoint {
   date: string;
@@ -23,20 +24,6 @@ function formatBytes(bytes: number): string {
 function formatDateLabel(dateStr: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-export function BandwidthChartSkeleton({ height = 256 }: { height?: number }) {
-  return (
-    <div className="animate-pulse" style={{ height }}>
-      <div className="h-full flex items-end gap-2 px-4">
-        {Array.from({ length: 7 }).map((_, i) => (
-          <div key={i} className="flex-1 flex flex-col gap-1">
-            <div className="bg-surface-200 rounded-t flex-1" style={{ height: `${Math.random() * 60 + 40}%` }} />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 export function BandwidthChart({ data, loading = false, height = 256 }: BandwidthChartProps) {
