@@ -1,74 +1,106 @@
-/**
- * WhiteboardPreviewTile — Live thumbnail of the whiteboard canvas
- *
- * Renders a miniature preview of the Excalidraw canvas using exportToCanvas.
- * Periodically refreshes to show current whiteboard state.
- * Appears in the filmstrip alongside participant video tiles.
- */
-
 import { useEffect, useRef, useState, useCallback, memo } from 'react';
 import { exportToCanvas } from '@excalidraw/excalidraw';
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 
+const PREVIEW_PADDING_PX = 6;
+
 interface WhiteboardPreviewTileProps {
   excalidrawAPI: ExcalidrawImperativeAPI | null;
+  sourceElement: HTMLElement | null;
+  sceneVersion: number;
   width: number;
   height: number;
 }
 
-const PREVIEW_INTERVAL_MS = 2000; // Refresh every 2s
-
 export const WhiteboardPreviewTile = memo(function WhiteboardPreviewTile({
   excalidrawAPI,
+  sourceElement,
+  sceneVersion,
   width,
   height,
 }: WhiteboardPreviewTileProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [isEmpty, setIsEmpty] = useState(true);
+  const isEmptyRef = useRef(true);
+  const [, forceRender] = useState(0);
+  const renderingRef = useRef(false);
+
+  const drawContained = useCallback((ctx: CanvasRenderingContext2D, source: CanvasImageSource, targetWidth: number, targetHeight: number, sourceWidth: number, sourceHeight: number) => {
+    ctx.clearRect(0, 0, targetWidth, targetHeight);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, targetWidth, targetHeight);
+
+    const availableWidth = Math.max(1, targetWidth - PREVIEW_PADDING_PX * 2);
+    const availableHeight = Math.max(1, targetHeight - PREVIEW_PADDING_PX * 2);
+    const scale = Math.min(availableWidth / sourceWidth, availableHeight / sourceHeight);
+    const drawWidth = sourceWidth * scale;
+    const drawHeight = sourceHeight * scale;
+    const drawX = (targetWidth - drawWidth) / 2;
+    const drawY = (targetHeight - drawHeight) / 2;
+
+    ctx.drawImage(source, drawX, drawY, drawWidth, drawHeight);
+  }, []);
 
   const renderPreview = useCallback(async () => {
     const api = excalidrawAPI;
-    if (!api || !canvasRef.current) return;
+    if (!api || !canvasRef.current || renderingRef.current) return;
 
-    const elements = api.getSceneElements();
-    if (!elements || elements.length === 0) {
-      setIsEmpty(true);
-      const ctx = canvasRef.current.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-      }
-      return;
-    }
-
-    setIsEmpty(false);
-
+    renderingRef.current = true;
     try {
-      const canvas = await exportToCanvas({
-        elements: elements as any,
-        appState: {
-          exportBackground: true,
-          exportWithDarkMode: true,
-          viewBackgroundColor: '#1e1e2e',
-        } as any,
-        files: (api as any).files ?? undefined,
-        getDimensions: () => ({ width, height }),
-      });
+      const elements = api.getSceneElements();
+      if (!elements || elements.length === 0) {
+        if (!isEmptyRef.current) {
+          isEmptyRef.current = true;
+          forceRender(n => n + 1);
+          const ctx = canvasRef.current?.getContext('2d');
+          if (ctx) ctx.clearRect(0, 0, canvasRef.current!.width, canvasRef.current!.height);
+        }
+        return;
+      }
 
       const target = canvasRef.current;
       if (!target) return;
       const ctx = target.getContext('2d');
       if (!ctx) return;
 
-      // Clear and draw the exported canvas
-      ctx.clearRect(0, 0, target.width, target.height);
-      ctx.drawImage(canvas, 0, 0, target.width, target.height);
+      const renderedCanvas = sourceElement
+        ? Array.from(sourceElement.querySelectorAll('canvas'))
+            .filter((canvas) => canvas.width > 0 && canvas.height > 0)
+            .sort((a, b) => (b.width * b.height) - (a.width * a.height))[0] ?? null
+        : null;
+
+      if (renderedCanvas) {
+        drawContained(ctx, renderedCanvas, target.width, target.height, renderedCanvas.width, renderedCanvas.height);
+
+        if (isEmptyRef.current) {
+          isEmptyRef.current = false;
+          forceRender((n) => n + 1);
+        }
+        return;
+      }
+
+      const canvas = await exportToCanvas({
+        elements: elements as any,
+        appState: {
+          ...(api.getAppState() as any),
+          exportBackground: true,
+        } as any,
+        files: (api as any).files ?? undefined,
+        getDimensions: () => ({ width, height }),
+      });
+
+      drawContained(ctx, canvas, target.width, target.height, canvas.width, canvas.height);
+
+      if (isEmptyRef.current) {
+        isEmptyRef.current = false;
+        forceRender(n => n + 1);
+      }
     } catch {
       // exportToCanvas can fail if elements are in flux
+    } finally {
+      renderingRef.current = false;
     }
-  }, [excalidrawAPI, width, height]);
+  }, [drawContained, excalidrawAPI, sourceElement, width, height]);
 
-  // Set canvas dimensions
   useEffect(() => {
     if (canvasRef.current) {
       canvasRef.current.width = width;
@@ -76,31 +108,35 @@ export const WhiteboardPreviewTile = memo(function WhiteboardPreviewTile({
     }
   }, [width, height]);
 
-  // Periodic refresh
+  // Re-render on scene change (parent already debounced via rAF)
   useEffect(() => {
     if (!excalidrawAPI) return;
-
-    // Initial render
     void renderPreview();
+  }, [sceneVersion, excalidrawAPI, renderPreview]);
 
-    timerRef.current = setInterval(() => {
+  // Slow poll for remote changes not reflected in sceneVersion
+  useEffect(() => {
+    if (!excalidrawAPI) return;
+    const timer = setInterval(() => {
       void renderPreview();
-    }, PREVIEW_INTERVAL_MS);
-
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    };
+    }, 2000);
+    return () => clearInterval(timer);
   }, [excalidrawAPI, renderPreview]);
 
   return (
     <div
       className="w-full h-full rounded-lg bg-surface-900 relative overflow-hidden flex items-center justify-center"
-      title="Whiteboard preview — what participants see"
+      title="Whiteboard preview"
     >
-      {isEmpty ? (
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full"
+        style={{
+          imageRendering: 'auto',
+          display: isEmptyRef.current ? 'none' : 'block',
+        }}
+      />
+      {isEmptyRef.current && (
         <div className="flex flex-col items-center gap-1">
           <svg
             className="w-6 h-6 text-surface-500"
@@ -117,19 +153,12 @@ export const WhiteboardPreviewTile = memo(function WhiteboardPreviewTile({
           </svg>
           <span className="text-[9px] text-surface-500">Whiteboard</span>
         </div>
-      ) : (
-        <canvas
-          ref={canvasRef}
-          className="w-full h-full object-cover"
-          style={{ imageRendering: 'auto' }}
-        />
       )}
-      {/* Label overlay */}
-      <div className="absolute bottom-1 left-1 right-1 flex items-center justify-between">
-        <span className="text-[9px] text-white bg-black/60 px-1.5 py-0.5 rounded truncate">
+      <div className="absolute bottom-1 left-1 right-1 flex items-center justify-between gap-1">
+        <span className="bg-black/60 backdrop-blur-sm px-1.5 py-0.5 text-[9px] text-white rounded-sm truncate">
           Whiteboard
         </span>
-        {!isEmpty && (
+        {!isEmptyRef.current && (
           <span className="flex items-center gap-0.5 text-[8px] text-green-400">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
             Live

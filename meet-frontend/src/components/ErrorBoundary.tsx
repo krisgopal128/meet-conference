@@ -35,9 +35,14 @@ export class ErrorBoundary extends React.Component<Props, State> {
             <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">
               Something went wrong
             </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
               An unexpected error occurred in the video call.
             </p>
+            {this.state.error && (
+              <p className="text-sm text-red-500 dark:text-red-400 mb-4 font-mono break-all">
+                {this.state.error.message}
+              </p>
+            )}
             <div className="flex gap-3 justify-center">
               <button
                 onClick={() => window.location.reload()}

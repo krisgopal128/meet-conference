@@ -5,8 +5,8 @@ import { VideoPreset, Track } from 'livekit-client';
 import { ConferenceRoom } from '../components/room/ConferenceRoom';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { LobbyWaiting } from '../components/room/LobbyWaiting';
-import { useConnectionActions, useQualityMode, useScreenShareMode, useUIActions, useGridAspectRatio } from '../store/roomStore';
-import { enableBlur } from '../utils/blurProcessorManager';
+import { useConnectionActions, useQualityMode, useScreenShareMode, useUIActions, useGridAspectRatio, useBackgroundBlurEnabled, useBackgroundBlurLevel } from '../store/roomStore';
+import { enableBlur, disableBlur } from '../utils/blurProcessorManager';
 import { getRoomSettings, roomsApi } from '../services/api';
 import {
   buildAudioCaptureOptions,
@@ -42,6 +42,7 @@ interface LocationState {
   noiseSuppression?: boolean;
   echoCancellation?: boolean;
   backgroundBlur?: boolean;
+  backgroundBlurLevel?: number;
   videoFilter?: 'none' | 'lightweight';
   inLobby?: boolean;
   hostId?: string;
@@ -181,9 +182,21 @@ function RoomContent({
     };
   }, [connectionState]);
 
-  // Apply background blur when camera is enabled (using blur manager)
+  const storeBlurEnabled = useBackgroundBlurEnabled();
+  const backgroundBlurLevel = useBackgroundBlurLevel();
+
   useEffect(() => {
-    if (!state.backgroundBlur || !localParticipant.isCameraEnabled) return;
+    const blurEnabled = storeBlurEnabled || state.backgroundBlur;
+    if (!blurEnabled || !localParticipant.isCameraEnabled) {
+      if (!blurEnabled && localParticipant.isCameraEnabled) {
+        const cameraPublication = localParticipant.getTrackPublication(Track.Source.Camera);
+        const cameraTrack = cameraPublication?.track;
+        if (cameraTrack && 'setProcessor' in cameraTrack) {
+          void disableBlur(cameraTrack as Parameters<typeof disableBlur>[0]);
+        }
+      }
+      return;
+    }
 
     let cancelled = false;
 
@@ -192,21 +205,20 @@ function RoomContent({
       const cameraTrack = cameraPublication?.track;
       if (cameraTrack && 'setProcessor' in cameraTrack) {
         if (cancelled) return;
-        const success = await enableBlur(cameraTrack as Parameters<typeof enableBlur>[0]);
+          const success = await enableBlur(cameraTrack as Parameters<typeof enableBlur>[0], undefined, backgroundBlurLevel);
         if (!cancelled) {
           logger.info(`[RoomPage] Background blur ${success ? 'applied' : 'failed'}`);
         }
       }
     };
 
-    // Small delay to ensure track is ready
     const timer = setTimeout(() => { void applyBlur(); }, 100);
     
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [state.backgroundBlur, localParticipant, localParticipant.isCameraEnabled]);
+  }, [storeBlurEnabled, state.backgroundBlur, localParticipant, localParticipant.isCameraEnabled, localParticipant.getTrackPublication(Track.Source.Camera)?.track, backgroundBlurLevel]);
 
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -332,6 +344,7 @@ function RoomContent({
   const permissionEnforcerRef = useRef(localParticipant);
   permissionEnforcerRef.current = localParticipant;
   const canPublishSources = localParticipant.permissions?.canPublishSources;
+  const canPublishSourcesKey = canPublishSources ? canPublishSources.join(',') : '';
 
   useEffect(() => {
     const lp = permissionEnforcerRef.current;
@@ -355,7 +368,7 @@ function RoomContent({
         logger.error('[RoomPage] Failed to enforce screen share disable from permissions:', error);
       });
     }
-  }, [canPublishSources]);
+  }, [canPublishSourcesKey]);
 
   useEffect(() => {
     const checkLobbyStatus = () => {
@@ -463,7 +476,7 @@ export default function RoomPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { setConnected } = useConnectionActions();
-  const { setQualityMode, setScreenShareMode, setGridAspectRatio, setVideoFitMode } = useUIActions();
+  const { setQualityMode, setScreenShareMode, setGridAspectRatio, setVideoFitMode, setBackgroundBlurEnabled, setBackgroundBlurLevel } = useUIActions();
   const qualityMode = useQualityMode();
   const screenShareMode = useScreenShareMode();
 
@@ -519,6 +532,17 @@ export default function RoomPage() {
     }
   }, [state?.videoFitMode, setVideoFitMode]);
 
+  // Sync background blur from PreJoinPage to store
+  useEffect(() => {
+    setBackgroundBlurEnabled(!!state?.backgroundBlur);
+  }, [state?.backgroundBlur, setBackgroundBlurEnabled]);
+
+  useEffect(() => {
+    if (typeof state?.backgroundBlurLevel === 'number') {
+      setBackgroundBlurLevel(state.backgroundBlurLevel);
+    }
+  }, [state?.backgroundBlurLevel, setBackgroundBlurLevel]);
+
   // Fetch room settings from server (moderator's saved settings)
   useEffect(() => {
     if (!roomName) return;
@@ -550,8 +574,8 @@ export default function RoomPage() {
   }, [roomName, state?.gridAspectRatio, state?.videoFitMode, setGridAspectRatio, setVideoFitMode]);
 
   // Compute derived values needed for LiveKit options - always compute to satisfy ESLint
-  const effectiveQualityMode = qualityMode || state?.qualityMode || getQualityModeConfig().name;
-  const effectiveScreenShareMode = screenShareMode || state?.screenShareMode || meetingRoomConfig.media.screenShare.defaultMode;
+  const effectiveQualityMode = state?.qualityMode || qualityMode || getQualityModeConfig().name;
+  const effectiveScreenShareMode = state?.screenShareMode || screenShareMode || meetingRoomConfig.media.screenShare.defaultMode;
   const screenShareOptions = getScreenShareOptions(effectiveQualityMode, effectiveScreenShareMode);
   const qualitySettings = getQualityModeConfig(effectiveQualityMode);
   const audioOnlyMode = isAudioOnlyMode(effectiveQualityMode);
@@ -576,11 +600,20 @@ export default function RoomPage() {
       )
     : false;
 
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const livekitUrl = isLocalhost
+    ? import.meta.env.VITE_LIVEKIT_URL
+    : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/livekit`;
   const livekitOptions = useMemo(() => ({
     adaptiveStream: getAdaptiveStreamOptions(),
     dynacast: meetingRoomConfig.room.dynacast,
     stopLocalTrackOnUnpublish: true,
     disconnectOnPageLeave: true,
+    ...(livekitUrl.includes('127.0.0.1') && {
+      rtcConfig: {
+        iceServers: [],
+      },
+    }),
     audioCaptureDefaults: buildAudioCaptureOptions(
       undefined,
       meetingRoomConfig.prejoin.noiseSuppression,
@@ -665,7 +698,7 @@ export default function RoomPage() {
       audioEnabled: state.audioEnabled,
       videoOptions, 
       audioOptions, 
-      url: import.meta.env.VITE_LIVEKIT_URL 
+      url: livekitUrl 
     });
   }
 
@@ -673,7 +706,7 @@ export default function RoomPage() {
     <ErrorBoundary>
       <LiveKitRoom
         token={state.token}
-        serverUrl={import.meta.env.VITE_LIVEKIT_URL}
+        serverUrl={livekitUrl}
         video={videoOptions}
         audio={audioOptions}
         onConnected={handleConnected}

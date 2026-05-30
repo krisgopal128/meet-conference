@@ -9,7 +9,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { z } from 'zod';
 import { AccessToken } from 'livekit-server-sdk';
-import { deleteRoom as deleteLiveKitRoom } from '../services/livekit.js';
+import { sanitizeRoomName } from '../utils/validation.js';
 import { config } from '../config.js';
 import rateLimit from 'express-rate-limit';
 import { query, queryOne } from '../services/database.js';
@@ -19,7 +19,7 @@ import type { AuthRequest } from '../middleware/authenticate.js';
 const router = Router();
 
  // Request augmented with API key info after verification
- interface ExternalApiRequest extends AuthRequest {
+interface ExternalApiRequest extends AuthRequest {
    apiKey?: {
      id: string;
      userId: string;
@@ -149,6 +149,29 @@ async function verifyAPIKey(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+function hasApiKeyPermission(req: Request, scope: 'rooms' | 'meetings' | 'token', action: string): boolean {
+  const permissions = (req as ExternalApiRequest).apiKey?.permissions || {};
+  const scopePermissions = permissions[scope] as Record<string, unknown> | undefined;
+  return scopePermissions?.[action] === true;
+}
+
+function requireApiKeyPermission(
+  req: Request,
+  res: Response,
+  scope: 'rooms' | 'meetings' | 'token',
+  action: string,
+): boolean {
+  if (hasApiKeyPermission(req, scope, action)) {
+    return true;
+  }
+
+  res.status(403).json({
+    error: 'API key does not have permission for this action',
+    requires_permission: `${scope}.${action}`,
+  });
+  return false;
+}
+
 // ==================== Health Check (NO AUTH - must be before middleware) ====================
 
 /**
@@ -176,6 +199,8 @@ router.use(verifyAPIKey);
  */
 router.post('/rooms', async (req: Request, res: Response) => {
   try {
+    if (!requireApiKeyPermission(req, res, 'rooms', 'create')) return;
+
     let name: string, title: string | undefined, waitingRoomEnabled: boolean, metadata: Record<string, unknown>;
     try {
       const parsed = createExternalRoomSchema.parse(req.body);
@@ -190,8 +215,13 @@ router.post('/rooms', async (req: Request, res: Response) => {
      // Get user ID from API key
      const userId = (req as ExternalApiRequest).apiKey?.userId;
     
-    // Sanitize room name
-    const sanitized = name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+     // Sanitize room name using strict validation
+     let sanitized: string;
+     try {
+       sanitized = sanitizeRoomName(name);
+     } catch (err) {
+       return res.status(400).json({ error: err instanceof Error ? err.message : 'Invalid room name' });
+     }
     
     // Check if room already exists
     const existing = await queryOne<{ id: string }>(
@@ -235,6 +265,8 @@ router.post('/rooms', async (req: Request, res: Response) => {
  */
 router.get('/rooms/:name', async (req: Request, res: Response) => {
   try {
+    if (!requireApiKeyPermission(req, res, 'rooms', 'read')) return;
+
     const { name } = req.params;
     
     const room = await queryOne<{ 
@@ -367,6 +399,8 @@ router.post('/token', async (req: Request, res: Response) => {
  */
 router.post('/rooms/:name/end', async (req: Request, res: Response) => {
   try {
+    if (!requireApiKeyPermission(req, res, 'rooms', 'end')) return;
+
     const { name } = req.params;
     
     // Verify ownership
@@ -409,6 +443,8 @@ router.post('/rooms/:name/end', async (req: Request, res: Response) => {
  */
 router.delete('/rooms/:name', async (req: Request, res: Response) => {
   try {
+    if (!requireApiKeyPermission(req, res, 'rooms', 'delete')) return;
+
     const { name } = req.params;
     
     // Verify ownership

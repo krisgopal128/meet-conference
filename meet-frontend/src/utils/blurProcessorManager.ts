@@ -72,7 +72,10 @@ async function loadTrackProcessors(): Promise<TrackProcessorsModule> {
   return trackProcessorsLoading;
 }
 
-// Minimum time between toggle operations (ms)
+const LOCAL_ASSET_PATHS = {
+  modelAssetPath: '/models/selfie_segmenter.tflite',
+};
+
 const DEBOUNCE_MS = 300;
 
 // Lock release timeout (safety valve)
@@ -153,7 +156,7 @@ function canToggle(): boolean {
  * @param track - the video track to apply blur to
  * @param participantCount - optional participant count for adaptive blur radius
  */
-export async function enableBlur(track: VideoTrack, participantCount?: number): Promise<boolean> {
+export async function enableBlur(track: VideoTrack, participantCount?: number, blurRadiusOverride?: number): Promise<boolean> {
   // Debounce check
   if (!canToggle()) {
     return false;
@@ -178,9 +181,9 @@ export async function enableBlur(track: VideoTrack, participantCount?: number): 
     // If processor exists and is already on this track, just switch mode
     if (state.processor && state.currentTrack === track) {
       logger.info('[BlurManager] ♻️ Reusing existing processor');
-      const blurRadius = participantCount !== undefined
+      const blurRadius = blurRadiusOverride ?? (participantCount !== undefined
         ? getAdaptiveBlurRadius(participantCount) || 10
-        : 10;
+        : 10);
       await state.processor.switchTo({
         mode: 'background-blur',
         blurRadius,
@@ -207,6 +210,7 @@ export async function enableBlur(track: VideoTrack, participantCount?: number): 
     logger.info('[BlurManager] 🔧 Initializing processor in disabled mode...');
     state.processor = BackgroundProcessor({ 
       mode: 'disabled',
+      assetPaths: LOCAL_ASSET_PATHS,
     });
     
     // Attach to track
@@ -214,9 +218,9 @@ export async function enableBlur(track: VideoTrack, participantCount?: number): 
     state.currentTrack = track;
     
     // Now switch to blur mode
-    const blurRadius = participantCount !== undefined
+    const blurRadius = blurRadiusOverride ?? (participantCount !== undefined
       ? getAdaptiveBlurRadius(participantCount) || 10
-      : 10;
+      : 10);
     await state.processor.switchTo({
       mode: 'background-blur',
       blurRadius,
@@ -287,10 +291,11 @@ export async function disableBlur(_track: VideoTrack): Promise<boolean> {
 export function toggleBlur(
   track: VideoTrack,
   enabled: boolean,
-  participantCount?: number
+  participantCount?: number,
+  blurRadiusOverride?: number,
 ): Promise<boolean> {
   if (enabled) {
-    return enableBlur(track, participantCount);
+    return enableBlur(track, participantCount, blurRadiusOverride);
   } else {
     return disableBlur(track);
   }

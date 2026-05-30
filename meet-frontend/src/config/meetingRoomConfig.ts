@@ -281,7 +281,11 @@ type AudioCaptureOptionsWithVolume = AudioCaptureOptions & {
 const fallbackConfig: MeetingRoomConfig = {
   app: {
     apiBaseUrl: '/api',
-    livekitUrl: 'ws://localhost:7880',
+    livekitUrl: typeof window !== 'undefined'
+      ? (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'ws://localhost:7880'
+        : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/livekit`)
+      : 'ws://localhost:7880',
   },
   room: {
     defaultLayout: 'speaker',

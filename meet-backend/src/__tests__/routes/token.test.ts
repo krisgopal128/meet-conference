@@ -13,6 +13,13 @@ vi.mock('../../services/livekit.js', () => ({
   ParticipantRole: 'attendee' as const,
 }));
 
+vi.mock('../../services/redis.js', () => ({
+  isParticipantKicked: vi.fn().mockResolvedValue(0),
+  isGuestNameKicked: vi.fn().mockResolvedValue(0),
+  isGuestNameAdmitted: vi.fn().mockResolvedValue(0),
+  cacheDel: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('../../middleware/rateLimiter.js', () => ({
   tokenLimiter: (_req: any, _res: any, next: () => void) => next(),
 }));
@@ -328,7 +335,7 @@ describe('Token Routes', () => {
         mockQueryOne.mockResolvedValueOnce({
           id: 'room-123',
           status: 'ended',
-          host_id: 'user-123',
+          host_id: 'other-user',
         });
 
         const response = await request(app)
@@ -338,7 +345,8 @@ describe('Token Routes', () => {
           });
 
         expect(response.status).toBe(400);
-        expect(response.body).toHaveProperty('error', 'Room has ended');
+        expect(response.body).toHaveProperty('error');
+        expect(response.body.error).toContain('Room has ended');
       });
     });
 
@@ -365,7 +373,7 @@ describe('Token Routes', () => {
         mockQueryOne.mockResolvedValueOnce({
           id: 'room-123',
           status: 'active',
-          password_hash: null,
+          room_password: null,
         });
         mockQueryOne.mockResolvedValueOnce({
           waiting_room_enabled: false,
@@ -389,7 +397,7 @@ describe('Token Routes', () => {
         mockQueryOne.mockResolvedValueOnce({
           id: 'room-123',
           status: 'active',
-          password_hash: null,
+          room_password: null,
         });
         mockQueryOne.mockResolvedValueOnce({
           waiting_room_enabled: false,
@@ -411,9 +419,7 @@ describe('Token Routes', () => {
         mockQueryOne.mockResolvedValueOnce({
           id: 'room-123',
           status: 'active',
-          password_hash: null,
-        });
-        mockQueryOne.mockResolvedValueOnce({
+          room_password: null,
           waiting_room_enabled: true,
           host_id: 'host-123',
         });
@@ -437,7 +443,7 @@ describe('Token Routes', () => {
           mockQueryOne.mockResolvedValueOnce({
             id: 'room-123',
             status: 'active',
-            password_hash: null,
+            room_password: null,
           });
           mockQueryOne.mockResolvedValueOnce({
             waiting_room_enabled: false,
@@ -465,7 +471,7 @@ describe('Token Routes', () => {
         mockQueryOne.mockResolvedValueOnce({
           id: 'room-123',
           status: 'active',
-          password_hash: passwordHash,
+          room_password: passwordHash,
         });
 
         const response = await request(app)
@@ -485,7 +491,7 @@ describe('Token Routes', () => {
         mockQueryOne.mockResolvedValueOnce({
           id: 'room-123',
           status: 'active',
-          password_hash: passwordHash,
+          room_password: passwordHash,
         });
         mockQueryOne.mockResolvedValueOnce({
           waiting_room_enabled: false,
@@ -510,7 +516,7 @@ describe('Token Routes', () => {
         mockQueryOne.mockResolvedValueOnce({
           id: 'room-123',
           status: 'active',
-          password_hash: passwordHash,
+          room_password: passwordHash,
         });
 
         const response = await request(app)

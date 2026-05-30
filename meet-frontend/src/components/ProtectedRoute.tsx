@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useIsAuthenticated, useAuthStore } from '../store/authStore';
+import { useAuthInitialized, useIsAuthenticated, useAuthStore } from '../store/authStore';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -7,9 +7,14 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
+  const initialized = useAuthInitialized();
   const isAuthenticated = useIsAuthenticated();
   const user = useAuthStore((s) => s.user);
   const location = useLocation();
+
+  if (!initialized) {
+    return null;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;

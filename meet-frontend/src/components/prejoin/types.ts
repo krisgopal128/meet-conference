@@ -35,10 +35,14 @@ export interface VideoSettingsProps {
   gridAspectRatio: GridAspectRatio;
   videoFitMode: VideoFitMode;
   videoFilter: 'none' | 'lightweight';
+  backgroundBlur: boolean;
+  backgroundBlurLevel: number;
   isGuest: boolean;
   onAspectRatioChange: (ratio: GridAspectRatio) => void;
   onVideoFitModeChange: (mode: VideoFitMode) => void;
   onVideoFilterChange: (filter: 'none' | 'lightweight') => void;
+  onBackgroundBlurChange: (enabled: boolean) => void;
+  onBackgroundBlurLevelChange: (level: number) => void;
   isExpanded: boolean;
   onToggle: () => void;
 }

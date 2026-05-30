@@ -8,7 +8,7 @@
 import { Router, Response } from 'express';
 import { query } from '../../services/database.js';
 import { z } from 'zod';
-import { authenticate, AuthRequest } from '../../middleware/authenticate.js';
+import { AuthRequest } from '../../middleware/authenticate.js';
 import { requireAdmin, requireModerator } from '../../middleware/requireRole.js';
 import { getCached, invalidatePattern, TTL_LONG } from '../../services/cache.js';
 import logger from '../../utils/logger.js';

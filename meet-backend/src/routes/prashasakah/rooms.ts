@@ -5,7 +5,7 @@
  */
 
 import { Router, Response } from 'express';
-import { authenticate, AuthRequest } from '../../middleware/authenticate.js';
+import { AuthRequest } from '../../middleware/authenticate.js';
 import { requireAdmin, requireModerator } from '../../middleware/requireRole.js';
 import { query, queryOne } from '../../services/database.js';
 import { getCached, invalidateCache, invalidatePattern, buildListKey, TTL_MEDIUM, TTL_LONG } from '../../services/cache.js';
@@ -192,7 +192,7 @@ router.post('/rooms/:id/end', adminActionLimiter, requireModerator(), async (req
         const roomClient = new RoomServiceClient(config.livekit.url, config.livekit.apiKey, config.livekit.apiSecret);
         await roomClient.deleteRoom(room.name);
         logger.info(`[Admin] Deleted LiveKit room: ${room.name}`);
-      } catch (lkErr) {
+      } catch {
         // Room may not be active in LiveKit - that's fine
         logger.info(`[Admin] LiveKit room not active (expected if idle): ${room.name}`);
       }

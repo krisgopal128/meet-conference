@@ -11,6 +11,14 @@ vi.mock('../../services/database.js', () => ({
   query: vi.fn(),
 }));
 
+vi.mock('../../services/redis.js', () => ({
+  cacheGet: vi.fn().mockResolvedValue(null),
+  cacheSet: vi.fn().mockResolvedValue(undefined),
+  cacheDel: vi.fn().mockResolvedValue(undefined),
+  cacheTTL: vi.fn().mockResolvedValue(0),
+  blacklistToken: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('../../middleware/rateLimiter.js', () => ({
   authLimiter: (_req: any, _res: any, next: () => void) => next(),
 }));
@@ -211,8 +219,8 @@ describe('Auth Routes', () => {
             password: 'password123',
           });
 
-        expect(response.status).toBe(409);
-        expect(response.body).toHaveProperty('error', 'Email already registered');
+        expect(response.status).toBe(400);
+        expect(response.body).toHaveProperty('error', 'Unable to complete registration');
       });
     });
   });

@@ -20,7 +20,7 @@ import { whiteboardRouter } from './routes/whiteboard.js';
 import { initDatabase, closeDatabase, query } from './services/database.js';
 import { initRedis, closeRedis } from './services/redis.js';
 import { config } from './config.js';
-import { apiLimiter } from './middleware/rateLimiter.js';
+import { apiLimiter, webhookLimiter } from './middleware/rateLimiter.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
 import logger from './utils/logger.js';
 import cookieParser from 'cookie-parser';
@@ -81,6 +81,7 @@ app.use(cors({
 
 // Raw body parser for webhook route (MUST come before express.json())
 app.use('/webhook/livekit',
+  webhookLimiter,
   express.raw({ type: '*/*', limit: '1mb' }),
   webhookRouter
 );

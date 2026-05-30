@@ -5,10 +5,10 @@
  */
 
 import { Router, Response } from 'express';
-import { authenticate, AuthRequest } from '../../middleware/authenticate.js';
+import { AuthRequest } from '../../middleware/authenticate.js';
 import { requireModerator } from '../../middleware/requireRole.js';
 import { query, queryOne } from '../../services/database.js';
-import { getCached, invalidatePattern, buildListKey, TTL_SHORT, TTL_MEDIUM } from '../../services/cache.js';
+import { getCached, invalidatePattern, buildListKey, TTL_SHORT } from '../../services/cache.js';
 import logger from '../../utils/logger.js';
 
 const router = Router();

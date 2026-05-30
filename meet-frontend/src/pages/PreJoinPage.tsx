@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link, useSearchParams } from 'react-router-dom';
 import { getToken, getGuestToken, createRoom, updateRoomSettings } from '../services/api';
 import { useLightweightPreviewFilter } from '../hooks/useLightweightVideoFilter';
+import { usePreviewBackgroundBlur } from '../hooks/usePreviewBackgroundBlur';
 import { usePreJoinMedia } from '../hooks/usePreJoinMedia';
 import { usePreJoinAuth } from '../hooks/usePreJoinAuth';
 import {
@@ -79,6 +80,9 @@ export default function PreJoinPage() {
     echoCancellation,
     setEchoCancellation,
     backgroundBlur,
+    setBackgroundBlur,
+    backgroundBlurLevel,
+    setBackgroundBlurLevel,
     videoFilter,
     setVideoFilter,
     qualityMode,
@@ -180,7 +184,7 @@ export default function PreJoinPage() {
         const tokenRole = requestedRole === 'moderator' ? 'moderator' : 'attendee';
         const res = await getToken(targetRoomName, tokenRole);
         token = res.data.token;
-        inLobby = false;
+        inLobby = res.data.inLobby || false;
         role = res.data.role || 'attendee';
         hostId = res.data.hostId || null;
 
@@ -209,6 +213,7 @@ export default function PreJoinPage() {
           noiseSuppression,
           echoCancellation,
           backgroundBlur,
+          backgroundBlurLevel,
           videoFilter,
           qualityMode,
           screenShareMode,
@@ -245,8 +250,14 @@ export default function PreJoinPage() {
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
 
   useLightweightPreviewFilter(videoElement, {
-    enabled: videoFilter === 'lightweight' && videoEnabled,
+    enabled: videoFilter === 'lightweight' && videoEnabled && !backgroundBlur,
     blendFactor: 0.3,
+    fitMode: videoFitMode,
+  });
+
+  usePreviewBackgroundBlur(videoElement, {
+    enabled: backgroundBlur && videoEnabled,
+    blurRadius: backgroundBlurLevel,
     fitMode: videoFitMode,
   });
 
@@ -256,11 +267,11 @@ export default function PreJoinPage() {
   }, [videoRef]);
 
   return (
-    <div className="min-h-screen bg-surface-50 dark:bg-surface-900 flex flex-col sm:flex-row">
+    <div className="min-h-screen min-h-dvh bg-surface-50 dark:bg-surface-900 flex flex-col sm:flex-row overscroll-none">
       {/* Left side - Preview */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <header className="h-16 px-6 flex items-center justify-between border-b border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800">
+        <header className="h-14 sm:h-16 px-4 sm:px-6 flex items-center justify-between border-b border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800">
           <Link to="/" className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center">
               <Video className="w-4 h-4 text-white" />
@@ -276,10 +287,10 @@ export default function PreJoinPage() {
         <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
           {/* Loading overlay */}
           {initializing && (
-            <div className="absolute inset-0 bg-surface-50 dark:bg-surface-900 flex items-center justify-center z-50">
+            <div className="absolute inset-0 bg-surface-50 dark:bg-surface-900 flex items-center justify-center z-50 p-4">
               <div className="text-center">
-                <div className="w-12 h-12 border-4 border-brand-200 border-t-brand-500 rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-surface-600 dark:text-surface-400">{initStatus}</p>
+                <div className="w-10 h-10 sm:w-12 sm:h-12 border-4 border-brand-200 border-t-brand-500 rounded-full animate-spin mx-auto mb-3 sm:mb-4"></div>
+                <p className="text-sm sm:text-base text-surface-600 dark:text-surface-400">{initStatus}</p>
               </div>
             </div>
           )}
@@ -303,6 +314,7 @@ export default function PreJoinPage() {
                   'absolute inset-0 overflow-hidden',
                   videoFitMode === 'contain' && 'bg-black'
                 )}
+                style={{ touchAction: 'manipulation', WebkitTouchCallout: 'none' }}
               >
                 <video
                   ref={videoRef}
@@ -341,7 +353,7 @@ export default function PreJoinPage() {
 
             {/* Device settings panel */}
             {showDeviceSettings && (
-              <div className="mt-4 card p-4 animate-fade-in space-y-4">
+              <div className="mt-3 sm:mt-4 card p-3 sm:p-4 animate-fade-in space-y-3 sm:space-y-4 max-h-[50vh] overflow-y-auto">
                 <DeviceSettings
                   devices={devices}
                   selectedCamera={selectedCamera}
@@ -371,10 +383,14 @@ export default function PreJoinPage() {
                   gridAspectRatio={gridAspectRatio}
                   videoFitMode={videoFitMode}
                   videoFilter={videoFilter}
+                  backgroundBlur={backgroundBlur}
+                  backgroundBlurLevel={backgroundBlurLevel}
                   isGuest={isGuest}
                   onAspectRatioChange={setGridAspectRatio}
                   onVideoFitModeChange={setVideoFitMode}
                   onVideoFilterChange={setVideoFilter}
+                  onBackgroundBlurChange={setBackgroundBlur}
+                  onBackgroundBlurLevelChange={setBackgroundBlurLevel}
                   isExpanded={expandedSections.video}
                   onToggle={() => toggleSection('video')}
                 />
@@ -473,7 +489,7 @@ export default function PreJoinPage() {
 
       {/* Right side - Join panel */}
       <div className="w-full sm:w-96 bg-white dark:bg-surface-800 border-surface-200 dark:border-surface-700 flex flex-col border-t sm:border-t-0 sm:border-l">
-        <div className="flex-1 flex flex-col justify-center p-4 sm:p-6">
+        <div className="flex-1 flex flex-col justify-center p-4 sm:p-6 overflow-y-auto max-h-[60vh] sm:max-h-none">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-surface-800 dark:text-white mb-2">
               {isCreateMode ? 'Quick Meeting' : room?.title || 'Join Meeting'}
@@ -687,6 +703,13 @@ export default function PreJoinPage() {
                 <div className="flex items-center gap-2 text-sm text-surface-500 dark:text-surface-400">
                   <Check size={16} />
                   <span>Filter on</span>
+                </div>
+              )}
+              {/* Background blur status */}
+              {backgroundBlur && (
+                <div className="flex items-center gap-2 text-sm text-surface-500 dark:text-surface-400">
+                  <Check size={16} />
+                  <span>Background blur on</span>
                 </div>
               )}
               {/* Aspect Ratio - All authenticated users */}

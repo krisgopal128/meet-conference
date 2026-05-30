@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { roomsApi } from '../services/api';
 import toast from 'react-hot-toast';
+import { sanitizeUrl } from '../utils/security';
 
 interface Recording {
   egressId: string;
@@ -121,9 +122,9 @@ export default function RecordingsPage() {
                     </div>
                   </div>
 
-                  {rec.url && (
+                  {rec.url && sanitizeUrl(rec.url) && (
                     <a
-                      href={rec.url}
+                      href={sanitizeUrl(rec.url) ?? undefined}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="ml-4 inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md text-white bg-brand-600 hover:bg-brand-700 transition-colors"

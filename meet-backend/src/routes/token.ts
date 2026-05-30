@@ -50,7 +50,7 @@ tokenRouter.post('/', authenticate, tokenLimiter, async (req: AuthRequest, res: 
         [roomName]
       );
       // Invalidate cached room data so subsequent requests see 'waiting' status
-      try { await cacheDel(`room:${roomName}`); } catch {}
+      try { await cacheDel(`room:${roomName}`); } catch { /* cache del best effort */ }
       logger.info(`[Token] Host ${req.user!.id} restarting room ${roomName}, status reset to 'waiting'`);
     }
 
@@ -153,21 +153,24 @@ tokenRouter.post('/guest', tokenLimiter, async (req, res: Response) => {
     const { roomName, name, role, password } = guestSchema.parse(req.body);
 
     // Check if room exists and verify password if required (single query for all room fields)
-    const room = await queryOne<{ id: string; status: string; password_hash: string | null; waiting_room_enabled: boolean; host_id: string }>(
-      'SELECT id, status, password_hash, waiting_room_enabled, host_id FROM rooms WHERE name = $1',
+    const room = await queryOne<{ id: string; status: string; room_password: string | null; waiting_room_enabled: boolean; host_id: string }>(
+      'SELECT id, status, room_password, waiting_room_enabled, host_id FROM rooms WHERE name = $1',
       [roomName]
     );
+
+    if (!room) {
+      return res.status(404).json({ error: 'Room not found. The room must be created before guests can join.' });
+    }
 
     if (room?.status === 'ended') {
       return res.status(400).json({ error: 'Room has ended. Please wait for the host to restart the meeting.' });
     }
 
-    // If room has password, verify it
-    if (room?.password_hash) {
+    if (room?.room_password) {
       if (!password) {
         return res.status(401).json({ error: 'Room password required' });
       }
-      const validPassword = await bcrypt.compare(password, room.password_hash);
+      const validPassword = await bcrypt.compare(password, room.room_password);
       if (!validPassword) {
         return res.status(401).json({ error: 'Invalid room password' });
       }

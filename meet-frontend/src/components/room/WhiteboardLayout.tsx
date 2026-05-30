@@ -17,6 +17,8 @@ import {
   useUIActions,
   useIsModerator,
   useWhiteboardFullscreen,
+  useGridAspectRatio,
+  type GridAspectRatio,
 } from '../../store/roomStore';
 import {
   useWhiteboardSync,
@@ -27,7 +29,9 @@ import { useWhiteboardAutoSave } from '../../hooks/useWhiteboardAutoSave';
 import { whiteboardApi } from '../../services/whiteboardApi';
 import { ParticipantTile } from './ParticipantTile';
 import { FloatingParticipantPanel } from './FloatingParticipantPanel';
+import { WhiteboardPreviewTile } from './WhiteboardPreviewTile';
 import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import logger from '../../utils/logger';
 
 import '@excalidraw/excalidraw/index.css';
@@ -41,7 +45,14 @@ interface WhiteboardLayoutProps {
   roomName?: string;
 }
 
-const FILMSTRIP_HEIGHT = 119;
+const ASPECT_RATIO_MULTIPLIERS: Record<GridAspectRatio, number> = {
+  '16:9': 16 / 9,
+  '9:16': 9 / 16,
+  '1:1': 1,
+  '4:3': 4 / 3,
+};
+
+const whiteboardSceneCache = new Map<string, { scene: unknown[]; locked: boolean }>();
 
 export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
   const { toggleWhiteboard, setWhiteboardFullscreen } = useUIActions();
@@ -50,6 +61,14 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
   const { localParticipant } = useLocalParticipant();
   const allParticipants = useParticipants();
   const localIdentity = localParticipant?.identity ?? '';
+  const aspectRatio = useGridAspectRatio();
+  const isMobile = useIsMobile();
+
+  const filmstripHeightCss = isMobile ? '12dvh' : '119px';
+  const filmstripPx = isMobile ? Math.round(window.innerHeight * 0.12) : 119;
+  const filmstripGap = Math.max(6, Math.round(filmstripPx * 0.06));
+  const filmstripPaddingX = Math.max(6, Math.round(filmstripPx * 0.08));
+  const filmstripPaddingBottom = Math.max(6, Math.round(filmstripPx * 0.08));
 
   const admittedParticipants = useAdmittedParticipants(allParticipants, localIdentity);
 
@@ -59,18 +78,71 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
   // Refs — avoid state changes that trigger Excalidraw re-renders
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null);
   const currentSceneRef = useRef<unknown[]>([]);
+  const sceneBoundsRef = useRef<{ minX: number; minY: number; width: number; height: number } | null>(null);
+  const lastViewportSignatureRef = useRef<string | null>(null);
 
   const [isLocked, setIsLocked] = useState(true);
   const [excalidrawReady, setExcalidrawReady] = useState(false);
+  const sceneVersionRef = useRef(0);
+  const sceneVersionTickRef = useRef(0);
+  const [sceneVersionTick, setSceneVersionTick] = useState(0);
+  const sceneRafRef = useRef<number | null>(null);
 
   // Track what each participant is viewing on the canvas
   const [participantViewports, setParticipantViewports] = useState<ParticipantViewports>({});
+
+  const applySceneElements = useCallback((scene: unknown[]) => {
+    currentSceneRef.current = [...scene];
+
+    if (roomName) {
+      whiteboardSceneCache.set(roomName, {
+        scene: [...scene],
+        locked: isLocked,
+      });
+    }
+
+    if (scene.length === 0) {
+      sceneBoundsRef.current = null;
+      lastViewportSignatureRef.current = null;
+      return;
+    }
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const el of scene as Array<{ x: number; y: number; width?: number; height?: number }>) {
+      if (el.x < minX) minX = el.x;
+      if (el.y < minY) minY = el.y;
+      const elRight = el.x + (el.width || 0);
+      const elBottom = el.y + (el.height || 0);
+      if (elRight > maxX) maxX = elRight;
+      if (elBottom > maxY) maxY = elBottom;
+    }
+
+    sceneBoundsRef.current = {
+      minX,
+      minY,
+      width: maxX - minX || 1,
+      height: maxY - minY || 1,
+    };
+  }, [isLocked, roomName]);
+
+  const bumpSceneVersion = useCallback(() => {
+    sceneVersionRef.current += 1;
+    if (sceneRafRef.current === null) {
+      sceneRafRef.current = requestAnimationFrame(() => {
+        sceneRafRef.current = null;
+        sceneVersionTickRef.current = sceneVersionRef.current;
+        setSceneVersionTick((n) => n + 1);
+      });
+    }
+  }, []);
 
   // Single whiteboard sync hook — handles broadcast + receive
   const { broadcastChange, broadcastLock, broadcastActivate, broadcastViewport } = useWhiteboardSync(
     room,
     localParticipant ?? null,
     excalidrawAPIRef,
+    bumpSceneVersion,
+    applySceneElements,
   );
 
   const isViewOnly = !isModerator && isLocked;
@@ -92,10 +164,25 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
     if (!roomName || !excalidrawAPIRef.current || hasLoadedRef.current) return;
     hasLoadedRef.current = true;
 
+    const cached = whiteboardSceneCache.get(roomName);
+    if (cached) {
+      setIsLocked(cached.locked);
+      applySceneElements(cached.scene);
+      if (cached.scene.length > 0) {
+        excalidrawAPIRef.current.updateScene({ elements: cached.scene as any[] });
+        excalidrawAPIRef.current.scrollToContent(cached.scene as any[], {
+          fitToContent: true,
+          animate: false,
+        });
+      }
+      return;
+    }
+
     whiteboardApi.getState(roomName).then((state) => {
       if (state) {
         setIsLocked(state.locked);
         if (excalidrawAPIRef.current && Array.isArray(state.scene) && state.scene.length > 0) {
+          applySceneElements(state.scene as unknown[]);
           excalidrawAPIRef.current.updateScene({ elements: state.scene as any[] });
           excalidrawAPIRef.current.scrollToContent(state.scene as any[], {
             fitToContent: true,
@@ -107,7 +194,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
     }).catch((err) => {
       logger.warn('[Whiteboard] Failed to load persisted scene', { error: err });
     });
-  }, [roomName]);
+  }, [applySceneElements, roomName]);
 
   // Subscribe to remote lock messages + viewport messages
   useEffect(() => {
@@ -121,6 +208,12 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
 
         if (msg.type === 'whiteboard-lock') {
           setIsLocked(msg.locked);
+          if (roomName) {
+            whiteboardSceneCache.set(roomName, {
+              scene: [...currentSceneRef.current],
+              locked: msg.locked,
+            });
+          }
         }
 
         // Track participant viewports for the viewport indicator overlay
@@ -136,17 +229,32 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
     };
 
     room.on(RoomEvent.DataReceived, onDataReceived);
+    const handleParticipantDisconnected = (participant: { identity: string }) => {
+      setParticipantViewports((prev) => {
+        if (!prev[participant.identity]) return prev;
+        const next = { ...prev };
+        delete next[participant.identity];
+        return next;
+      });
+    };
+    room.on(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
     return () => {
       room.off(RoomEvent.DataReceived, onDataReceived);
+      room.off(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
     };
-  }, [room, localIdentity]);
+  }, [room, localIdentity, roomName]);
 
-  // Broadcast local viewport periodically when canvas scrolls/zooms
+  // Broadcast local viewport when the user pans/zooms or viewport size changes
   useEffect(() => {
     const api = excalidrawAPIRef.current;
-    if (!api || !room) return;
+    const container = whiteboardContainerRef.current;
+    if (!api || !room || !container) return;
+
+    let rafId: number | null = null;
+    let dragging = false;
 
     const broadcastLocalViewport = () => {
+      rafId = null;
       try {
         const appState = api.getAppState();
         const { scrollX, scrollY, zoom, width, height } = appState;
@@ -157,35 +265,68 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
         const viewW = width / zoomValue;
         const viewH = height / zoomValue;
 
-        const elements = api.getSceneElements();
-        if (elements.length === 0) return;
+        const bounds = sceneBoundsRef.current;
+        if (!bounds) return;
 
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        for (const el of elements) {
-          if (el.x < minX) minX = el.x;
-          if (el.y < minY) minY = el.y;
-          const elRight = el.x + (el.width || 0);
-          const elBottom = el.y + (el.height || 0);
-          if (elRight > maxX) maxX = elRight;
-          if (elBottom > maxY) maxY = elBottom;
-        }
+        const nextViewport = {
+          x: (viewX - bounds.minX) / bounds.width,
+          y: (viewY - bounds.minY) / bounds.height,
+          width: viewW / bounds.width,
+          height: viewH / bounds.height,
+        };
 
-        const sceneW = maxX - minX || 1;
-        const sceneH = maxY - minY || 1;
+        const signature = JSON.stringify([
+          Math.round(nextViewport.x * 1000),
+          Math.round(nextViewport.y * 1000),
+          Math.round(nextViewport.width * 1000),
+          Math.round(nextViewport.height * 1000),
+        ]);
+        if (signature === lastViewportSignatureRef.current) return;
+        lastViewportSignatureRef.current = signature;
 
-        broadcastViewport({
-          x: (viewX - minX) / sceneW,
-          y: (viewY - minY) / sceneH,
-          width: viewW / sceneW,
-          height: viewH / sceneH,
-        });
+        broadcastViewport(nextViewport);
       } catch {
         // ignore
       }
     };
 
-    const interval = setInterval(broadcastLocalViewport, 500);
-    return () => clearInterval(interval);
+    const scheduleBroadcast = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(broadcastLocalViewport);
+    };
+
+    const handlePointerDown = () => {
+      dragging = true;
+      scheduleBroadcast();
+    };
+    const handlePointerMove = () => {
+      if (dragging) scheduleBroadcast();
+    };
+    const handlePointerUp = () => {
+      dragging = false;
+      scheduleBroadcast();
+    };
+    const handleWheel = () => scheduleBroadcast();
+    const handleResize = () => scheduleBroadcast();
+
+    container.addEventListener('pointerdown', handlePointerDown);
+    container.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    container.addEventListener('wheel', handleWheel, { passive: true });
+    window.addEventListener('resize', handleResize);
+
+    scheduleBroadcast();
+
+    return () => {
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+      }
+      container.removeEventListener('pointerdown', handlePointerDown);
+      container.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      container.removeEventListener('wheel', handleWheel);
+      window.removeEventListener('resize', handleResize);
+    };
   }, [room, excalidrawReady, broadcastViewport]);
 
   // Listen for browser fullscreen change events (Escape key, browser UI exit)
@@ -216,18 +357,25 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
   // Handle drawing changes — broadcast if user can edit
   const handleChange = useCallback(
     (elements: readonly any[]) => {
-      currentSceneRef.current = [...elements];
+      applySceneElements(elements as unknown[]);
+      bumpSceneVersion();
       if (canEditRef.current) {
         broadcastChange(elements);
         (currentSceneRef as any).__markDirty?.();
       }
     },
-    [broadcastChange],
+    [applySceneElements, broadcastChange, bumpSceneVersion],
   );
 
   const handleToggleLock = useCallback(async () => {
     const next = !isLocked;
     setIsLocked(next);
+    if (roomName) {
+      whiteboardSceneCache.set(roomName, {
+        scene: [...currentSceneRef.current],
+        locked: next,
+      });
+    }
     broadcastLock(next);
     if (roomName) {
       try {
@@ -278,7 +426,8 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
   return (
     <div
       ref={whiteboardContainerRef}
-      className="flex flex-col w-full h-full bg-surface-900 relative"
+      className="flex flex-col w-full h-full bg-surface-900 relative overscroll-none"
+      style={{ touchAction: 'none' }}
     >
       {/* Main whiteboard area — intercept anchor clicks from Excalidraw internals to prevent page reload */}
       <div className="flex-1 flex flex-col" style={{ minHeight: 0 }}
@@ -291,22 +440,22 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
         }}
       >
         {/* Toolbar */}
-        <div className="flex items-center justify-between px-3 py-1.5 bg-surface-800/80 border-b border-surface-700 flex-shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-surface-300">Whiteboard</span>
+        <div className="flex items-center justify-between px-2 sm:px-3 py-1 sm:py-1.5 bg-surface-800/80 border-b border-surface-700 flex-shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <span className="text-[10px] sm:text-xs font-medium text-surface-300">Whiteboard</span>
             {isLocked && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400">
+              <span className="text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400">
                 Locked
               </span>
             )}
             {isFullscreen && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400">
+              <span className="text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400">
                 Fullscreen
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 sm:gap-1">
             {/* Fullscreen toggle — moderator only */}
             {isModerator && (
               <button
@@ -444,23 +593,37 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
         </div>
       </div>
 
-      {/* Bottom filmstrip — hidden in fullscreen mode */}
       {!isFullscreen && admittedParticipants.length > 0 && (
         <div
-          className="flex gap-2 flex-shrink-0 overflow-x-auto overflow-y-hidden px-2 pb-2"
+          className="flex flex-shrink-0 overflow-x-auto overflow-y-hidden"
           style={{
-            height: FILMSTRIP_HEIGHT,
+            height: filmstripHeightCss,
+            gap: `${filmstripGap}px`,
+            paddingInline: `${filmstripPaddingX}px`,
+            paddingBottom: `${filmstripPaddingBottom}px`,
             scrollbarWidth: 'thin',
             scrollbarColor: 'rgba(255,255,255,0.3) transparent',
           }}
         >
+          <div
+            className="flex-shrink-0 h-full rounded-2xl bg-surface-900"
+            style={{ width: filmstripPx * ASPECT_RATIO_MULTIPLIERS[aspectRatio] }}
+          >
+            <WhiteboardPreviewTile
+              excalidrawAPI={excalidrawAPIRef.current}
+              sourceElement={whiteboardContainerRef.current}
+              sceneVersion={sceneVersionTick}
+              width={Math.round(filmstripPx * ASPECT_RATIO_MULTIPLIERS[aspectRatio])}
+              height={filmstripPx}
+            />
+          </div>
           {admittedParticipants.map((p) => (
             <div
               key={p.identity}
-              className="flex-shrink-0 h-full rounded-lg bg-surface-900"
-              style={{ width: FILMSTRIP_HEIGHT * (16 / 9) }}
+              className="flex-shrink-0 h-full rounded-2xl bg-surface-900"
+              style={{ width: filmstripPx * ASPECT_RATIO_MULTIPLIERS[aspectRatio] }}
             >
-              <ParticipantTile participant={p} className="w-full h-full rounded-lg" isSpeakerTile={false} />
+              <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} />
             </div>
           ))}
         </div>

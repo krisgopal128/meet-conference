@@ -14,7 +14,7 @@ vi.mock('../../services/database.js', () => ({
 vi.mock('../../services/livekit.js', () => ({
   createRoom: vi.fn().mockResolvedValue({}),
   listRooms: vi.fn().mockResolvedValue([]),
-  getRoomInfo: vi.fn().mockResolvedValue([]),
+  getRoomInfo: vi.fn().mockResolvedValue(null),
   deleteRoom: vi.fn().mockResolvedValue(undefined),
   listParticipants: vi.fn().mockResolvedValue([]),
   removeParticipant: vi.fn().mockResolvedValue(undefined),
@@ -96,7 +96,7 @@ describe('Rooms Router', () => {
     });
 
     it('should reject duplicate room names', async () => {
-      mockQueryOne.mockResolvedValueOnce({ id: 'existing-room' });
+      mockQueryOne.mockResolvedValueOnce({ exists_check: true });
 
       const response = await request(app)
         .post('/rooms')

@@ -158,6 +158,13 @@ export async function authenticate(
   const token = authHeader.slice(7);
 
   try {
+    const blacklisted = await isTokenBlacklisted(token);
+    if (blacklisted) {
+       logFailedAuthAttempt('token_revoked', req).catch(() => {});
+      res.status(401).json({ error: 'Token has been revoked' });
+      return;
+    }
+
     // Fast path: check token-level auth cache first
     // One Redis GET replaces: blacklist check + jwt.verify + DB lookup
     try {
@@ -189,15 +196,14 @@ export async function authenticate(
     }
 
     // Full verification path (cache miss)
-    // Check if token is blacklisted
-    const blacklisted = await isTokenBlacklisted(token);
-    if (blacklisted) {
-       logFailedAuthAttempt('token_revoked', req).catch(() => {});
-      res.status(401).json({ error: 'Token has been revoked' });
+    const allowExpired = req.path === '/auth/refresh';
+    const verifyOptions: jwt.VerifyOptions = allowExpired ? { ignoreExpiration: true } : {};
+    const payload = jwt.verify(token, config.jwt.secret, verifyOptions) as { userId: string; type?: string };
+    if (payload.type && payload.type !== 'access') {
+       logFailedAuthAttempt('invalid_token', req).catch(() => {});
+      res.status(401).json({ error: 'Invalid token' });
       return;
     }
-
-    const payload = jwt.verify(token, config.jwt.secret) as { userId: string };
     
     const user = await getUserById(payload.userId);
 

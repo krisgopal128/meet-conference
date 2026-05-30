@@ -30,7 +30,7 @@ import { useAuthStore } from '../store/authStore';
 
 // Module-level reference to auth store getState — set by authStore after creation
 // This avoids circular dependency while allowing the interceptor to read the store
-let _authStoreGetState: (() => { token: string | null; user: unknown; isAuthenticated: boolean }) | null = null;
+let _authStoreGetState: (() => { token: string | null; user: unknown; isAuthenticated: boolean; initialized: boolean }) | null = null;
 export function registerAuthStore(getState: typeof _authStoreGetState) {
   _authStoreGetState = getState;
 }
@@ -59,7 +59,15 @@ function getCsrfToken(): string {
 // Add auth token and CSRF token to requests
 api.interceptors.request.use(async (config) => {
   // Bypass token refresh logic for the refresh endpoint itself
-  if (config.url?.includes('/auth/refresh')) return config;
+  if (config.url?.includes('/auth/refresh')) {
+    config.headers['X-CSRF-Token'] = getCsrfToken();
+    const storeState = _authStoreGetState?.();
+    const token = storeState?.token || null;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  }
   // Add CSRF token for state-changing requests
   const method = config.method?.toUpperCase();
   if (method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
@@ -75,53 +83,19 @@ api.interceptors.request.use(async (config) => {
     // Store not available yet
   }
 
-  // Fallback: Zustand persisted storage in localStorage
-  if (!token) {
-    const authStorage = localStorage.getItem('auth-storage');
-    if (authStorage) {
-      try {
-        const parsed = JSON.parse(authStorage);
-        token = parsed?.state?.token || null;
-      } catch {
-        // Ignore parse errors
-      }
-    }
-  }
-
-  // Legacy fallback: Direct localStorage keys
-  if (!token) {
-    token = localStorage.getItem('auth_token') || localStorage.getItem('token');
-  }
-
   if (token) {
     const expired = isTokenExpired(token);
     if (expired === true) {
       // Token is expired — deduplicate refresh attempts to avoid race
-      if (!isRefreshing) {
-        isRefreshing = true;
-        try {
-          const refreshRes = await api.post<LoginResponse>('/auth/refresh');
-          if (refreshRes.data?.token) {
-            // Update stored token
-            const authStorage = localStorage.getItem('auth-storage');
-            if (authStorage) {
-              try {
-                const parsed = JSON.parse(authStorage);
-                parsed.state.token = refreshRes.data.token;
-                parsed.state.user = refreshRes.data.user;
-                parsed.state.isAuthenticated = true;
-                localStorage.setItem('auth-storage', JSON.stringify(parsed));
-                // Sync Zustand store with refreshed token
-                try {
-                  useAuthStore.setState({ token: refreshRes.data.token, user: refreshRes.data.user, isAuthenticated: true });
-                } catch { /* store may not be initialized yet */ }
-              } catch {
-                // Ignore parse errors
-              }
-            }
-            processQueue(null, refreshRes.data.token);
-            config.headers.Authorization = `Bearer ${refreshRes.data.token}`;
-            return config;
+        if (!isRefreshing) {
+          isRefreshing = true;
+          try {
+            const refreshRes = await api.post<LoginResponse>('/auth/refresh');
+            if (refreshRes.data?.token) {
+              useAuthStore.setState({ token: refreshRes.data.token, user: refreshRes.data.user, isAuthenticated: true, initialized: true });
+              processQueue(null, refreshRes.data.token);
+              config.headers.Authorization = `Bearer ${refreshRes.data.token}`;
+              return config;
           }
         } catch {
           // Refresh failed - fall through to clear auth
@@ -138,10 +112,7 @@ api.interceptors.request.use(async (config) => {
         return config;
       }
       // Refresh also failed - clear auth
-      localStorage.removeItem('auth-storage');
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      useAuthStore.setState({ user: null, token: null, isAuthenticated: false, initialized: true });
       window.location.href = '/login?reason=expired';
       return Promise.reject(new Error('Token expired'));
     }
@@ -188,10 +159,7 @@ api.interceptors.response.use(
       // Don't try to refresh if this IS the refresh request
       if (originalRequest.url?.includes('/auth/refresh')) {
         // Refresh itself failed — clear auth and redirect
-        localStorage.removeItem('auth-storage');
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        useAuthStore.setState({ user: null, token: null, isAuthenticated: false, initialized: true });
         window.location.href = '/login';
         return Promise.reject(error);
       }
@@ -215,23 +183,7 @@ api.interceptors.response.use(
         const newToken = refreshRes.data?.token;
 
         if (newToken) {
-          // Update stored token
-          const authStorage = localStorage.getItem('auth-storage');
-          if (authStorage) {
-            try {
-              const parsed = JSON.parse(authStorage);
-              parsed.state.token = newToken;
-              parsed.state.user = refreshRes.data.user;
-              parsed.state.isAuthenticated = true;
-              localStorage.setItem('auth-storage', JSON.stringify(parsed));
-              // Sync Zustand store with refreshed token
-              try {
-                useAuthStore.setState({ token: newToken, user: refreshRes.data.user, isAuthenticated: true });
-              } catch { /* store may not be initialized yet */ }
-            } catch {
-              // Ignore parse errors
-            }
-          }
+          useAuthStore.setState({ token: newToken, user: refreshRes.data.user, isAuthenticated: true, initialized: true });
 
           // Process queued requests
           processQueue(null, newToken);
@@ -243,10 +195,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         // Refresh failed — clear auth
         processQueue(refreshError, null);
-        localStorage.removeItem('auth-storage');
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        useAuthStore.setState({ user: null, token: null, isAuthenticated: false, initialized: true });
         window.location.href = '/login';
         return Promise.reject(refreshError);
       } finally {
@@ -318,8 +267,8 @@ export const tokenApi = {
   getToken: (roomName: string, role: string = 'attendee', identity?: string, name?: string): Promise<AxiosResponse<TokenResponse>> =>
     api.post<TokenResponse>('/token', { roomName, role, identity, name }),
 
-  getGuestToken: (roomName: string, name: string, role: 'attendee' | 'viewer' = 'attendee'): Promise<AxiosResponse<GuestTokenResponse>> =>
-    api.post<GuestTokenResponse>('/token/guest', { roomName, name, role }),
+  getGuestToken: (roomName: string, name: string, role: 'attendee' | 'viewer' = 'attendee', password?: string): Promise<AxiosResponse<GuestTokenResponse>> =>
+    api.post<GuestTokenResponse>('/token/guest', { roomName, name, role, password }),
 };
 
 // Simple export for direct use
@@ -337,10 +286,9 @@ export const roomsApi = {
     name: string;
     title?: string;
     description?: string;
-    password?: string;
     waitingRoomEnabled?: boolean;
     maxParticipants?: number;
-    scheduledAt?: string;
+    startsAt?: string;
   }): Promise<AxiosResponse<CreateRoomResponse>> =>
     api.post<CreateRoomResponse>('/rooms', data),
 
@@ -355,6 +303,7 @@ export const roomsApi = {
     description: string;
     maxParticipants: number;
     status: string;
+    waitingRoomEnabled: boolean;
   }>): Promise<AxiosResponse<RoomResponse>> =>
     api.patch<RoomResponse>(`/rooms/${name}`, data),
 
@@ -544,22 +493,10 @@ export const healthApi = {
  * Used by components that can't use hooks
  */
 export function isAuthenticated(): boolean {
-  try {
-    const authStorage = localStorage.getItem('auth-storage');
-    if (authStorage) {
-      const parsed = JSON.parse(authStorage);
-      const hasAuth = !!parsed?.state?.isAuthenticated && !!parsed?.state?.token;
-      if (hasAuth && parsed.state.token) {
-        // Also check token expiry
-        const expired = isTokenExpired(parsed.state.token);
-        if (expired === true) return false;
-      }
-      return hasAuth;
-    }
-  } catch {
-    // Ignore parse errors
-  }
-  return false;
+  const state = useAuthStore.getState();
+  if (!state.isAuthenticated || !state.token) return false;
+  const expired = isTokenExpired(state.token);
+  return expired !== true;
 }
 
 export default api;

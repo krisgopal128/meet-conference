@@ -1,25 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { useAuthStore } from '../../store/authStore';
 import type { User } from '../../types';
-
-// Mock localStorage for persist middleware
-const localStorageMock = (() => {
-  let store: Record<string, string> = {};
-  return {
-    getItem: vi.fn((key: string) => store[key] || null),
-    setItem: vi.fn((key: string, value: string) => {
-      store[key] = value;
-    }),
-    removeItem: vi.fn((key: string) => {
-      delete store[key];
-    }),
-    clear: vi.fn(() => {
-      store = {};
-    }),
-  };
-})();
-
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
 describe('authStore', () => {
   const mockUser: User = {
@@ -30,13 +11,13 @@ describe('authStore', () => {
   };
 
   beforeEach(() => {
-    // Reset store to initial state before each test
     useAuthStore.setState({
       user: null,
       token: null,
       isAuthenticated: false,
+      initialized: true,
     });
-    localStorageMock.clear();
+    localStorage.clear();
   });
 
   describe('login action', () => {
@@ -138,47 +119,28 @@ describe('authStore', () => {
     });
   });
 
-  describe('token persistence', () => {
-    it('should have token in persisted state', () => {
+  describe('in-memory auth state', () => {
+    it('should keep token in store state only', () => {
       const { login } = useAuthStore.getState();
-      login(mockUser, 'persisted-token');
+      login(mockUser, 'session-token');
       
       const state = useAuthStore.getState();
-      const partialState = {
-        user: state.user,
-        token: state.token,
-        isAuthenticated: state.isAuthenticated,
-      };
-      
-      expect(partialState.token).toBe('persisted-token');
+      expect(state.token).toBe('session-token');
     });
 
-    it('should have user in persisted state', () => {
+    it('should keep user in store state', () => {
       const { login } = useAuthStore.getState();
       login(mockUser, 'test-token');
       
       const state = useAuthStore.getState();
-      const partialState = {
-        user: state.user,
-        token: state.token,
-        isAuthenticated: state.isAuthenticated,
-      };
-      
-      expect(partialState.user).toEqual(mockUser);
+      expect(state.user).toEqual(mockUser);
     });
 
-    it('should have isAuthenticated in persisted state', () => {
+    it('should mark store initialized after login', () => {
       const { login } = useAuthStore.getState();
       login(mockUser, 'test-token');
       
-      const state = useAuthStore.getState();
-      const partialState = {
-        user: state.user,
-        token: state.token,
-        isAuthenticated: state.isAuthenticated,
-      };
-      
-      expect(partialState.isAuthenticated).toBe(true);
+      expect(useAuthStore.getState().initialized).toBe(true);
     });
   });
 
@@ -224,7 +186,7 @@ describe('authStore', () => {
         id: 'user-123',
         email: 'test@example.com',
         name: 'New Name',
-        role: 'user',
+        role: 'participant',
       });
     });
   });
@@ -273,6 +235,11 @@ describe('authStore', () => {
     it('should have isAuthenticated false initially', () => {
       const state = useAuthStore.getState();
       expect(state.isAuthenticated).toBe(false);
+    });
+
+    it('should expose initialized state', () => {
+      const state = useAuthStore.getState();
+      expect(state.initialized).toBe(true);
     });
   });
 });

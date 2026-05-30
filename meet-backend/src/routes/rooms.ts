@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import { AuthRequest, authenticate, optionalAuth } from '../middleware/authenticate.js';
-import { requireUser, AuthenticationError } from '../middleware/requireUser.js';
+import { requireUser } from '../middleware/requireUser.js';
 import {
   createRoom as createLiveKitRoom,
   listRooms,
@@ -92,6 +92,7 @@ const updateRoomSchema = z.object({
   description: z.string().max(1000).optional(),
   maxParticipants: z.number().min(2).max(100).optional(),
   status: z.enum(['waiting', 'active', 'ended']).optional(),
+  waitingRoomEnabled: z.boolean().optional(),
 });
 
  // POST /rooms - Create a new room
@@ -150,13 +151,16 @@ const updateRoomSchema = z.object({
 
       // Invalidate room list caches
       invalidatePattern('cache:rooms:*').catch(() => {});
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: 'Validation error', details: error.errors });
-      }
-      logger.error('Create room error:', error);
-      res.status(500).json({ error: 'Failed to create room' });
-    }
+     } catch (error) {
+       if (error instanceof z.ZodError) {
+         return res.status(400).json({ error: 'Validation error', details: error.errors });
+       }
+       if (error instanceof roomService.RoomServiceError && error.code === 'DUPLICATE_NAME') {
+         return res.status(409).json({ error: 'Room name already exists' });
+       }
+       logger.error('Create room error:', error);
+       res.status(500).json({ error: 'Failed to create room' });
+     }
   });
 
   // GET /rooms - List all rooms (user's rooms or all active)
@@ -286,6 +290,7 @@ const updateRoomSchema = z.object({
         description: data.description,
         maxParticipants: data.maxParticipants,
         status: data.status,
+        waitingRoomEnabled: data.waitingRoomEnabled,
       });
 
       // Invalidate room caches

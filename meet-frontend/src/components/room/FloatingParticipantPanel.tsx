@@ -4,7 +4,7 @@
  * Renders as a toggleable sidebar overlay within the fullscreen container.
  */
 
-import { memo, useMemo, useState, useCallback } from 'react';
+import { memo, useState, useCallback, useMemo } from 'react';
 import { Track } from 'livekit-client';
 import {
   VideoTrack,
@@ -20,7 +20,12 @@ interface FloatingParticipantPanelProps {
 }
 
 const MAX_VISIBLE = 6;
-const PANEL_WIDTH = 220;
+
+function getPanelWidth(): number {
+  const vw = window.innerWidth;
+  if (vw < 480) return Math.round(vw * 0.4);
+  return 220;
+}
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -98,6 +103,7 @@ export function FloatingParticipantPanel({
 }: FloatingParticipantPanelProps) {
   const [collapsed, setCollapsed] = useState(false);
   const localIdentity = localParticipant?.identity ?? '';
+  const panelWidth = getPanelWidth();
 
   // Sort: remote with camera first, then others, local last
   const sortedParticipants = useMemo(() => {
@@ -118,7 +124,7 @@ export function FloatingParticipantPanel({
     <div
       className="absolute top-0 right-0 bottom-0 z-50 flex"
       style={{
-        width: collapsed ? 36 : PANEL_WIDTH,
+        width: collapsed ? 36 : panelWidth,
         transition: 'width 200ms ease',
       }}
     >

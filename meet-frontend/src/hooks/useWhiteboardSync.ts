@@ -60,6 +60,8 @@ export function useWhiteboardSync(
   room: Room | null,
   localParticipant: LocalParticipant | null,
   excalidrawAPIRef: RefObject<ExcalidrawImperativeAPI | null>,
+  onSceneUpdate?: () => void,
+  onSceneElements?: (elements: unknown[]) => void,
 ) {
   const commitRef = useRef(0);
   const lastBroadcastRef = useRef(0);
@@ -172,6 +174,8 @@ export function useWhiteboardSync(
         const state = await whiteboardApi.getState(roomName);
         if (excalidrawAPIRef.current && Array.isArray(state.scene) && state.scene.length > 0) {
           excalidrawAPIRef.current.updateScene({ elements: state.scene as any[] });
+          onSceneElements?.(state.scene as unknown[]);
+          onSceneUpdate?.();
         }
         return state;
       } catch (err) {
@@ -179,7 +183,7 @@ export function useWhiteboardSync(
         return null;
       }
     },
-    [excalidrawAPIRef],
+    [excalidrawAPIRef, onSceneElements, onSceneUpdate],
   );
 
   // Subscribe to incoming remote drawing updates + lock + viewport messages
@@ -203,6 +207,8 @@ export function useWhiteboardSync(
             commit: msg.commit,
           });
           api.updateScene({ elements: msg.elements as any[] });
+          onSceneElements?.(msg.elements as unknown[]);
+          onSceneUpdate?.();
 
           // Google Meet-style: auto-fit viewport to show all content
           // Ensures all participants see the same drawings regardless of screen size
@@ -227,7 +233,7 @@ export function useWhiteboardSync(
     return () => {
       room.off(RoomEvent.DataReceived, onDataReceived);
     };
-  }, [room, excalidrawAPIRef, localParticipant]);
+  }, [room, excalidrawAPIRef, localParticipant, onSceneElements, onSceneUpdate]);
 
   // Cleanup timer
   useEffect(() => {

@@ -9,7 +9,7 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { authenticate, AuthRequest, invalidateUserAuth } from '../../middleware/authenticate.js';
+import { AuthRequest, invalidateUserAuth, setUserBanned, clearUserBanned } from '../../middleware/authenticate.js';
 import { requireAdmin, requireModerator } from '../../middleware/requireRole.js';
 import { query, queryOne } from '../../services/database.js';
 import { sanitizeName, validatePassword } from '../../utils/validation.js';
@@ -274,6 +274,7 @@ router.post('/users/:id/ban', adminActionLimiter, requireModerator(), async (req
     await invalidateCache(`cache:users:detail:${id}`);
     await invalidatePattern('cache:users:*');
     invalidateUserAuth(id);
+    setUserBanned(id);
 
     const user = await queryOne<UserRow>('SELECT id, email, name, role, is_banned, last_login_at, created_at FROM users WHERE id = $1', [id]);
 
@@ -306,6 +307,7 @@ router.post('/users/:id/unban', adminActionLimiter, requireModerator(), async (r
     await invalidateCache(`cache:users:detail:${id}`);
     await invalidatePattern('cache:users:*');
     invalidateUserAuth(id);
+    clearUserBanned(id);
 
     const user = await queryOne<UserRow>('SELECT id, email, name, role, is_banned, last_login_at, created_at FROM users WHERE id = $1', [id]);
 
@@ -367,7 +369,8 @@ router.post('/users/:id/reset-password', requireAdmin(), async (req: AuthRequest
     invalidateUserAuth(id);
 
     res.json({
-      message: 'Password reset successfully. User should check their email for the new password.',
+      message: 'Password reset successfully',
+      temporaryPassword: tempPassword,
     });
   } catch (error) {
     logger.error('[Admin] Error resetting password:', error);

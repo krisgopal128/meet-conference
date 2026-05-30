@@ -1,4 +1,4 @@
-import { Crop, Grid3X3, Maximize2 } from 'lucide-react';
+import { Crop, Grid3X3, Maximize2, Eye } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import type { VideoSettingsProps } from './types';
 
@@ -6,10 +6,14 @@ export function VideoSettings({
   gridAspectRatio,
   videoFitMode,
   videoFilter,
+  backgroundBlur,
+  backgroundBlurLevel,
   isGuest,
   onAspectRatioChange,
   onVideoFitModeChange,
   onVideoFilterChange,
+  onBackgroundBlurChange,
+  onBackgroundBlurLevelChange,
   isExpanded,
   onToggle,
 }: VideoSettingsProps) {
@@ -123,6 +127,54 @@ export function VideoSettings({
               <option value="none">None</option>
             </select>
           </label>
+
+          {/* Background Blur */}
+          <label className="flex items-center justify-between rounded-lg border border-surface-200 dark:border-surface-700 px-3 py-2.5 cursor-pointer">
+            <div>
+              <p className="text-sm font-medium text-surface-700 dark:text-surface-200 flex items-center gap-2">
+                <Eye size={14} />
+                Background Blur
+              </p>
+              <p className="text-xs text-surface-500 dark:text-surface-400">Blur your background for privacy</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={backgroundBlur}
+              onClick={() => onBackgroundBlurChange(!backgroundBlur)}
+              className={cn(
+                'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                backgroundBlur ? 'bg-brand-500' : 'bg-surface-300 dark:bg-surface-600'
+              )}
+            >
+              <span
+                className={cn(
+                  'inline-block h-4 w-4 rounded-full bg-white transition-transform',
+                  backgroundBlur ? 'translate-x-6' : 'translate-x-1'
+                )}
+              />
+            </button>
+          </label>
+          {backgroundBlur && (
+            <div className="rounded-lg border border-surface-200 dark:border-surface-700 px-3 py-2.5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-surface-700 dark:text-surface-200">Blur Level</p>
+                  <p className="text-xs text-surface-500 dark:text-surface-400">Controls how strongly the background is blurred</p>
+                </div>
+                <span className="text-xs font-medium text-surface-500 dark:text-surface-300">{backgroundBlurLevel}</span>
+              </div>
+              <input
+                type="range"
+                min={4}
+                max={24}
+                step={1}
+                value={backgroundBlurLevel}
+                onChange={(e) => onBackgroundBlurLevelChange(Number(e.target.value))}
+                className="mt-3 w-full accent-brand-500"
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

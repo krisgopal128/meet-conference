@@ -3,8 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5" />
     <meta name="description" content="LiveKit Video Conference Platform" />
+    <meta name="theme-color" content="#1c1917" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: light)" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no" />
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <link rel="preconnect" href="https://livekit.phuket-tourist.com" />
     <link rel="preconnect" href="https://livekit.phuket-tourist.com" crossorigin />
@@ -16,9 +22,9 @@
       content="
         default-src 'self';
         script-src 'self' 'unsafe-eval';
-        style-src 'self' 'unsafe-inline';
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
         img-src 'self' data: blob: https:;
-        font-src 'self' data: https://esm.sh;
+        font-src 'self' data: https://esm.sh https://fonts.gstatic.com;
         connect-src 'self' https: wss: ws:;
         media-src 'self' blob:;
         worker-src 'self' blob:;

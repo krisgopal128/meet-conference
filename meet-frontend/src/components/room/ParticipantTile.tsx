@@ -1,7 +1,6 @@
-import { memo, useEffect, useRef, useState, useMemo, Component, ReactNode } from 'react';
+import { memo, useEffect, useRef, useState, Component, ReactNode } from 'react';
 import { Track, RoomEvent, ConnectionQuality, type RemoteTrackPublication, type Participant } from 'livekit-client';
 import {
-  useTracks,
   VideoTrack,
   ParticipantName,
   useIsSpeaking,
@@ -16,6 +15,7 @@ import {
   useFeatureActions,
   useHostId,
   useLayout,
+  useQualityMode,
   useVideoFitMode,
   useSelectedQualityMode,
   useQualityOverrideReason,
@@ -23,11 +23,14 @@ import {
 } from '../../store/roomStore';
 import { Pin, Hand, Mic, MicOff, Maximize, Minimize, Crop, Square } from 'lucide-react';
 import {
+  isAudioOnlyMode,
   meetingRoomConfig,
   resolveTileTargetLayer,
   resolveVideoQuality,
 } from '../../config/meetingRoomConfig';
 import { useParticipantVisibility } from '../../contexts/ParticipantVisibilityContext';
+import { useRoomCameraTrack } from '../../contexts/RoomCameraTracksContext';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import logger from '../../utils/logger';
 import toast from 'react-hot-toast';
 
@@ -99,6 +102,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
   
   const isSpeaking = useIsSpeaking(participant);
   const { quality: connectionQuality } = useConnectionQualityIndicator({ participant });
+  const qualityMode = useQualityMode();
   const videoFitMode = useVideoFitMode();
   const selectedQualityMode = useSelectedQualityMode();
   const qualityOverrideReason = useQualityOverrideReason();
@@ -107,17 +111,11 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
   const room = useRoomContext();
   const hostId = useHostId();
   const layout = useLayout();
+  const isMobile = useIsMobile();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isVideoPaused, setIsVideoPaused] = useState(false);
 
-  // Get all camera tracks (subscribed or not)
-  const tracks = useTracks([Track.Source.Camera], { onlySubscribed: false });
-  
-  // Find the camera track for this participant
-  const cameraTrackRef = useMemo(() => 
-    tracks.find((ref) => ref.participant.identity === participant.identity),
-    [tracks, participant.identity]
-  );
+  const cameraTrackRef = useRoomCameraTrack(participant.identity);
   
   // Get track SID for key to VideoTrack
   const trackSid = cameraTrackRef?.publication?.trackSid;
@@ -130,7 +128,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
   // IMPROVED: More robust with retry mechanism for late joins
   // ========================================
   useEffect(() => {
-    if (participant.isLocal) return;
+    if (participant.isLocal || isAudioOnlyMode(qualityMode)) return;
     
     // Get camera publications directly from participant
     const cameraPublications = Array.from(participant.trackPublications.values())
@@ -150,12 +148,14 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
         remotePub.setSubscribed(true);
       }
     }
-  }, [participant, participant.trackPublications.size, participant.isLocal]);
+  }, [participant, participant.trackPublications.size, participant.isLocal, qualityMode]);
 
   // ========================================
   // Listen for track events to force re-render
   // ========================================
   useEffect(() => {
+    if (participant.isLocal || isAudioOnlyMode(qualityMode)) return;
+
     const handleTrackEvent = () => {
       logger.debug(`[ParticipantTile] Track event for ${participant.identity}, forcing re-render`);
       forceRender(v => v + 1);
@@ -168,13 +168,13 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
       room.off(RoomEvent.TrackSubscribed, handleTrackEvent);
       room.off(RoomEvent.TrackUnsubscribed, handleTrackEvent);
     };
-  }, [participant.identity, room]);
+  }, [participant.identity, participant.isLocal, room, qualityMode]);
 
   // ========================================
   // Listen for new tracks being published (late joins)
   // ========================================
   useEffect(() => {
-    if (participant.isLocal) return;
+    if (participant.isLocal || isAudioOnlyMode(qualityMode)) return;
     
     const handleTrackPublished = (publication: RemoteTrackPublication, pubParticipant: Participant) => {
       if (pubParticipant.identity === participant.identity && publication.source === Track.Source.Camera) {
@@ -193,13 +193,13 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
     return () => {
       room.off(RoomEvent.TrackPublished, handleTrackPublished);
     };
-  }, [participant.identity, participant.isLocal, room]);
+  }, [participant.identity, participant.isLocal, room, qualityMode]);
 
   // ========================================
   // Listen for participant join events (for tracks already published)
   // ========================================
   useEffect(() => {
-    if (participant.isLocal) return;
+    if (participant.isLocal || isAudioOnlyMode(qualityMode)) return;
     
     const handleParticipantConnected = (connectedParticipant: Participant) => {
       if (connectedParticipant.identity === participant.identity) {
@@ -233,10 +233,11 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
       room.off(RoomEvent.ParticipantConnected, handleParticipantConnected);
       room.off(RoomEvent.ParticipantMetadataChanged, handleParticipantMetadataChanged);
     };
-  }, [participant.identity, participant.isLocal, room]);
+  }, [participant.identity, participant.isLocal, room, qualityMode]);
 
   // Debug logging for track state (development only)
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
     if (participant.isLocal) return;
     
     const logTrackState = () => {
@@ -288,7 +289,10 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
   }, [participant.identity, visibilityContext, isCullingActive]);
 
   // hasVideo now uses the isTrackSubscribed state (reactive)
-  const hasVideo = participant.isCameraEnabled && 
+  const effectiveQualityMode = qualityMode || (qualityOverrideReason ? 'dataSaver' : selectedQualityMode);
+  const audioOnlyMode = isAudioOnlyMode(effectiveQualityMode);
+
+  const hasVideo = !audioOnlyMode && participant.isCameraEnabled && 
                    isTrackSubscribed && 
                    cameraTrackRef?.publication?.track;
                    
@@ -321,10 +325,13 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
     : (participant.name || participant.identity || '');
   const initial = getInitials(participantName);
 
-  // Avatar size: smaller for filmstrip participants in speaker layout
   const isFilmstrip = layout === 'speaker' && !isSpeakerTile;
-  const avatarSize = isFilmstrip ? 'w-[84px] h-[84px]' : 'w-[120px] h-[120px]';
-  const avatarTextSize = isFilmstrip ? 'text-[32px]' : 'text-[45px]';
+  const avatarSize = isFilmstrip
+    ? (isMobile ? 'w-[40%] aspect-square' : 'w-[84px] h-[84px]')
+    : (isMobile ? 'w-[30%] aspect-square' : 'w-[120px] h-[120px]');
+  const avatarTextSize = isFilmstrip
+    ? (isMobile ? 'text-base' : 'text-[32px]')
+    : (isMobile ? 'text-xl' : 'text-[45px]');
 
   const toggleFullscreen = async () => {
     if (!tileRef.current) return;
@@ -347,11 +354,8 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
   const allParticipants = useParticipants();
   const gridParticipantCount = allParticipants.length;
 
-  // Determine effective quality mode (considering auto fallbacks)
-  const effectiveQualityMode = qualityOverrideReason ? 'dataSaver' : selectedQualityMode;
-
   useEffect(() => {
-    if (!cameraTrackRef?.publication || participant.isLocal) {
+    if (!cameraTrackRef?.publication || participant.isLocal || audioOnlyMode) {
       return;
     }
 
@@ -399,7 +403,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
       resizeObserver.disconnect();
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
-  }, [cameraTrackRef, hostId, isFullscreen, isPinned, layout, participant.identity, participant.isLocal, effectiveQualityMode, gridParticipantCount]);
+  }, [cameraTrackRef, hostId, isFullscreen, isPinned, layout, participant.identity, participant.isLocal, effectiveQualityMode, gridParticipantCount, audioOnlyMode]);
 
   useEffect(() => {
     const publication = cameraTrackRef?.publication as RemoteTrackPublication | undefined;
@@ -447,7 +451,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
           >
             <VideoTrack 
               key={trackSid || 'no-track'}
-              trackRef={cameraTrackRef}
+              trackRef={cameraTrackRef as any}
               className={`w-full h-full ${participant.isLocal && mirrorLocalVideo ? 'scale-x-[-1]' : ''}`}
               style={{ 
                 objectFit: videoFitMode,
@@ -468,34 +472,33 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
         )}
       </div>
 
-      {/* Bottom bar with name and mic status */}
-      <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2">
-        <div className="bg-black/60 backdrop-blur-sm px-2 py-1 flex items-center gap-1.5">
+      <div className={`absolute ${isMobile ? 'bottom-1 left-1 right-1' : 'bottom-2 left-2 right-2'} flex items-center gap-1 sm:gap-2`}>
+        <div className="bg-black/60 backdrop-blur-sm px-1.5 sm:px-2 py-0.5 sm:py-1 flex items-center gap-1 sm:gap-1.5">
           {isMicMuted ? (
-            <MicOff size={14} className="text-danger-400 shrink-0" />
+            <MicOff size={isMobile ? 10 : 14} className="text-danger-400 shrink-0" />
           ) : (
-            <Mic size={14} className={`${isSpeaking ? 'text-brand-400' : 'text-surface-300'} shrink-0`} />
+            <Mic size={isMobile ? 10 : 14} className={`${isSpeaking ? 'text-brand-400' : 'text-surface-300'} shrink-0`} />
           )}
-          <span className="text-xs text-white truncate">
+          <span className={`${isMobile ? 'text-[9px]' : 'text-xs'} text-white truncate`}>
             {participant.isLocal && !participant.name && localDisplayName 
               ? localDisplayName 
               : <ParticipantName participant={participant} />}
           </span>
         </div>
-        {/* Video fit mode indicator */}
-        <span className="text-[10px] text-surface-400 flex items-center gap-0.5 shrink-0" title={`Video fit: ${videoFitMode}`}>
+        {isSpeakerTile && (
+          <span className="text-[10px] text-surface-400 items-center gap-0.5 shrink-0 hidden sm:flex" title={`Video fit: ${videoFitMode}`}>
           {videoFitMode === 'contain' ? <Square size={10} /> : <Crop size={10} />}
-        </span>
-        {meetingRoomConfig.features.connectionQualityIndicator && (
+          </span>
+        )}
+        {meetingRoomConfig.features.connectionQualityIndicator && !isMobile && isSpeakerTile && (
           <SignalBars quality={connectionQuality} />
         )}
       </div>
 
-      {/* Hand raised badge */}
       {hasRaisedHand && (
-        <div className="absolute top-2 right-2 bg-warning-500 text-surface-900 text-[10px] font-bold px-2 py-1 flex items-center gap-1 shadow">
-          <Hand size={10} /> 
-          <span>Raised</span>
+        <div className={`absolute top-1 sm:top-2 right-1 sm:right-2 bg-warning-500 text-surface-900 ${isMobile ? 'text-[8px]' : 'text-[10px]'} font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 flex items-center gap-0.5 sm:gap-1 shadow`}>
+          <Hand size={isMobile ? 8 : 10} /> 
+          {(isSpeakerTile || !isMobile) && <span>Raised</span>}
         </div>
       )}
 

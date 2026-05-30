@@ -6,10 +6,10 @@
 
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { authenticate, AuthRequest } from '../../middleware/authenticate.js';
+import { AuthRequest } from '../../middleware/authenticate.js';
 import { requireModerator } from '../../middleware/requireRole.js';
 import { query, queryOne } from '../../services/database.js';
-import { getCached, invalidatePattern, TTL_MEDIUM, TTL_LONG } from '../../services/cache.js';
+import { getCached, TTL_MEDIUM, TTL_LONG } from '../../services/cache.js';
 import logger from '../../utils/logger.js';
 
 const router = Router();

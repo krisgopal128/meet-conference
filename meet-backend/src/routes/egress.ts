@@ -189,9 +189,7 @@ egressRouter.get('/list', authenticate, async (req: AuthRequest, res: Response) 
       'SELECT name FROM rooms WHERE host_id = $1',
       [req.user!.id]
     );
-    const userRoomNames = new Set(userRooms.map(r => r.name));
 
-    // Filter per-room to avoid listing ALL egress on the server
     const egressPromises = userRooms.map(r =>
       egressClient.listEgress({ roomName: r.name }).catch(() => [] as Array<{ egressId: string; roomName?: string; status?: unknown; [k: string]: unknown }>)
     );

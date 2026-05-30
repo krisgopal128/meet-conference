@@ -16,17 +16,21 @@ import {
   useBatteryLevelPercent,
   useBatteryCharging,
   useQualityOverrideReason,
+  useBackgroundBlurEnabled,
+  useBackgroundBlurLevel,
   useGridAspectRatio,
   useVideoFitMode,
   useUIActions,
   useIsModerator,
   useRoomName,
 } from '../../store/roomStore';
-import { X, Video, Volume2, Activity, Sparkles, FlipHorizontal, Users, Grid3X3, Maximize2, Crop, SquareIcon, ChevronDown, ChevronRight, Shield } from 'lucide-react';
+import { X, Video, Volume2, Activity, Sparkles, FlipHorizontal, Users, Grid3X3, Maximize2, Crop, SquareIcon, ChevronDown, ChevronRight, Shield, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { meetingRoomConfig, type QualityModeName, type ScreenShareModeName } from '../../config/meetingRoomConfig';
 import { meetingsApi, updateRoomSettings } from '../../services/api';
 import logger from '../../utils/logger';
+
+let persistedSpeakerVolume = 100;
 
 export function SettingsPanel() {
   const room = useRoomContext();
@@ -48,18 +52,18 @@ export function SettingsPanel() {
   const batteryLevelPercent = useBatteryLevelPercent();
   const batteryCharging = useBatteryCharging();
   const qualityOverrideReason = useQualityOverrideReason();
-  // Background blur disabled
-  // const backgroundBlurEnabled = useBackgroundBlurEnabled();
+  const backgroundBlurEnabled = useBackgroundBlurEnabled();
+  const backgroundBlurLevel = useBackgroundBlurLevel();
   const gridAspectRatio = useGridAspectRatio();
   const videoFitMode = useVideoFitMode();
   const isModerator = useIsModerator();
   const roomName = useRoomName();
 
   // Action hooks
-  const { toggleSettings, openSettingsView, toggleMirrorLocalVideo, setQualityMode, setScreenShareMode, setGridAspectRatio, setVideoFitMode, clearDiagnosticsLog } = useUIActions();
+  const { toggleSettings, openSettingsView, toggleMirrorLocalVideo, toggleBackgroundBlur, setBackgroundBlurLevel, setQualityMode, setScreenShareMode, setGridAspectRatio, setVideoFitMode, clearDiagnosticsLog } = useUIActions();
   
-  const [speakerVolume, setSpeakerVolume] = useState(100);
-  const speakerVolumeRef = useRef(100);
+  const [speakerVolume, setSpeakerVolume] = useState(() => persistedSpeakerVolume);
+  const speakerVolumeRef = useRef(persistedSpeakerVolume);
 
   const applyVolumeToAllRemoteParticipants = useCallback((volume: number) => {
     const normalizedVolume = volume / 100;
@@ -75,6 +79,7 @@ export function SettingsPanel() {
   const handleSpeakerVolumeChange = (value: number) => {
     setSpeakerVolume(value);
     speakerVolumeRef.current = value;
+    persistedSpeakerVolume = value;
     applyVolumeToAllRemoteParticipants(value);
   };
 
@@ -286,13 +291,13 @@ export function SettingsPanel() {
   }
 
   return (
-    <div className="w-72 flex flex-col bg-surface-800 border-l border-surface-700">
+    <div className="w-full md:w-72 flex flex-col bg-surface-800 md:border-l border-surface-700">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-surface-700">
         <span className="font-semibold text-surface-100">Settings</span>
         <button 
           onClick={toggleSettings} 
-          className="p-1.5 rounded-lg text-surface-400 hover:text-surface-200 hover:bg-surface-700 transition-colors"
+          className="hidden md:block p-1.5 rounded-lg text-surface-400 hover:text-surface-200 hover:bg-surface-700 transition-colors"
           aria-label="Close settings"
         >
           <X size={18} />
@@ -408,7 +413,7 @@ export function SettingsPanel() {
                       <div>
                         <label className="text-xs text-surface-400 mb-2 block flex items-center gap-2">
                           Quality Mode
-                          <span className="text-[10px] px-1 py-0.5 rounded bg-surface-700 text-surface-400">Meeting-wide</span>
+                          <span className="text-[10px] px-1 py-0.5 rounded bg-surface-700 text-surface-400">Host default</span>
                         </label>
                         <select
                           value={qualityMode}
@@ -421,7 +426,7 @@ export function SettingsPanel() {
                             </option>
                           ))}
                         </select>
-                        <p className="text-xs text-surface-500 mt-1">Affects all participants</p>
+                        <p className="text-xs text-surface-500 mt-1">Sets the host's preferred default, not an active force-sync</p>
                       </div>
                     )}
 
@@ -429,7 +434,7 @@ export function SettingsPanel() {
                       <div>
                         <label className="text-xs text-surface-400 mb-2 block flex items-center gap-2">
                           Screenshare Mode
-                          <span className="text-[10px] px-1 py-0.5 rounded bg-surface-700 text-surface-400">Meeting-wide</span>
+                          <span className="text-[10px] px-1 py-0.5 rounded bg-surface-700 text-surface-400">Host default</span>
                         </label>
                         <select
                           value={screenShareMode}
@@ -439,7 +444,7 @@ export function SettingsPanel() {
                           <option value="documents">Documents / Slides</option>
                           <option value="motion">Motion / Video</option>
                         </select>
-                        <p className="text-xs text-surface-500 mt-1">Optimizes for content type</p>
+                        <p className="text-xs text-surface-500 mt-1">Stores the host's preferred default for future screen shares</p>
                       </div>
                     )}
                   </div>
@@ -694,8 +699,48 @@ export function SettingsPanel() {
               <p className="mt-1 text-xs text-surface-400">Flip your video horizontally (mirror effect)</p>
             </button>
 
-            {/* Background Blur - DISABLED */}
-            
+            {/* Background Blur */}
+            <div className="rounded-xl border border-surface-200 dark:border-surface-700 px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-surface-700 dark:text-surface-200">
+                  <Eye size={16} />
+                  <span className="text-sm font-medium">Background Blur</span>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={backgroundBlurEnabled}
+                  onClick={toggleBackgroundBlur}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    backgroundBlurEnabled ? 'bg-brand-500' : 'bg-surface-300 dark:bg-surface-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+                      backgroundBlurEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-surface-400">Blur your background for privacy during the call</p>
+              {backgroundBlurEnabled && (
+                <div className="mt-3">
+                  <div className="mb-2 flex items-center justify-between text-xs text-surface-400">
+                    <span>Blur level</span>
+                    <span>{backgroundBlurLevel}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={4}
+                    max={24}
+                    step={1}
+                    value={backgroundBlurLevel}
+                    onChange={(e) => setBackgroundBlurLevel(Number(e.target.value))}
+                    className="w-full accent-brand-500"
+                  />
+                </div>
+              )}
+            </div>
             {/* Background Replacement - Future feature */}
             <div className="rounded-xl border border-dashed border-surface-600 px-4 py-3">
               <div className="flex items-center gap-2 text-surface-300">

@@ -34,7 +34,7 @@ const btnAccent = 'bg-brand-500 hover:bg-brand-600 text-white shadow-sm';
 const btnSuccess = 'bg-success-500 hover:bg-success-600 text-white shadow-sm';
 const btnWarning = 'bg-warning-500 hover:bg-warning-600 text-surface-900 shadow-sm';
 
-const btnMobile = 'flex flex-col items-center justify-center p-2.5 rounded-xl text-xs font-medium transition-all min-w-[48px] min-h-[48px]';
+const btnMobile = 'flex items-center justify-center p-2 rounded-xl text-xs font-medium transition-all min-w-[44px] min-h-[44px]';
 const btnMobilePrimary = 'bg-surface-700 hover:bg-surface-600 text-white';
 const btnMobileOff = 'bg-danger-500 hover:bg-danger-600 text-white';
 const btnMobileSecondary = 'bg-surface-700/60 hover:bg-surface-600 text-surface-300';

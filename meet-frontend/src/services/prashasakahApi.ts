@@ -392,9 +392,6 @@ export const prashasakahApi = {
   }): Promise<AxiosResponse<AdminUserActivityResponse>> =>
     api.get(`/prashasakah/users/${id}/activity`, { params }),
 
-  resetUserPassword: (id: string): Promise<AxiosResponse<{ message: string; tempPassword?: string }>> =>
-    api.post(`/prashasakah/users/${id}/reset-password`),
-
   // Rooms
   getRooms: (params?: {
     limit?: number;

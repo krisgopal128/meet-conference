@@ -35,7 +35,7 @@ export function ChatHeader({
         )}
         <button
           onClick={onCloseChat}
-          className="p-1.5 rounded-lg text-surface-400 hover:text-surface-200 hover:bg-surface-700 transition-colors"
+          className="hidden md:block p-1.5 rounded-lg text-surface-400 hover:text-surface-200 hover:bg-surface-700 transition-colors"
           aria-label="Close chat"
         >
           <X size={18} />

@@ -88,6 +88,7 @@ interface UIState {
   gridAspectRatio: GridAspectRatio;
   videoFitMode: VideoFitMode;
   backgroundBlurEnabled: boolean;
+  backgroundBlurLevel: number;
   diagnosticsLog: Array<{
     id: string;
     at: string;
@@ -118,6 +119,8 @@ interface UIActions {
   setCallMetrics: (metrics: Partial<Pick<UIState, 'packetLossPercent' | 'rttMs' | 'jitterMs' | 'availableBitrateKbps' | 'batteryLevelPercent' | 'batteryCharging'>>) => void;
   setGridAspectRatio: (ratio: GridAspectRatio) => void;
   setVideoFitMode: (mode: VideoFitMode) => void;
+  setBackgroundBlurEnabled: (enabled: boolean) => void;
+  setBackgroundBlurLevel: (level: number) => void;
   toggleBackgroundBlur: () => void;
   addDiagnosticsEvent: (event: Omit<UIState['diagnosticsLog'][number], 'id' | 'at'>) => void;
   clearDiagnosticsLog: () => void;
@@ -151,6 +154,7 @@ const initialUIState: UIState = {
   gridAspectRatio: '16:9',
   videoFitMode: 'cover',
   backgroundBlurEnabled: false,
+  backgroundBlurLevel: 10,
   diagnosticsLog: [],
 };
 
@@ -351,6 +355,8 @@ export const useRoomStore = create<RoomStore>()(
           setCallMetrics: (metrics) => set(metrics, false, 'setCallMetrics'),
           setGridAspectRatio: (gridAspectRatio) => set({ gridAspectRatio }, false, 'setGridAspectRatio'),
           setVideoFitMode: (videoFitMode) => set({ videoFitMode }, false, 'setVideoFitMode'),
+          setBackgroundBlurEnabled: (backgroundBlurEnabled) => set({ backgroundBlurEnabled }, false, 'setBackgroundBlurEnabled'),
+          setBackgroundBlurLevel: (backgroundBlurLevel) => set({ backgroundBlurLevel }, false, 'setBackgroundBlurLevel'),
           toggleBackgroundBlur: () => set((state) => ({
             backgroundBlurEnabled: !state.backgroundBlurEnabled,
           }), false, 'toggleBackgroundBlur'),
@@ -608,6 +614,7 @@ export const useBatteryCharging = () => useRoomStore((state) => state.batteryCha
 export const useGridAspectRatio = () => useRoomStore((state) => state.gridAspectRatio);
 export const useVideoFitMode = () => useRoomStore((state) => state.videoFitMode);
 export const useBackgroundBlurEnabled = () => useRoomStore((state) => state.backgroundBlurEnabled);
+export const useBackgroundBlurLevel = () => useRoomStore((state) => state.backgroundBlurLevel);
 export const useDiagnosticsLog = () => useRoomStore((state) => state.diagnosticsLog);
 
 // Chat selectors
@@ -688,6 +695,8 @@ export const useUIActions = () => useRoomStore(
     setCallMetrics: state.setCallMetrics,
     setGridAspectRatio: state.setGridAspectRatio,
     setVideoFitMode: state.setVideoFitMode,
+    setBackgroundBlurEnabled: state.setBackgroundBlurEnabled,
+    setBackgroundBlurLevel: state.setBackgroundBlurLevel,
     toggleBackgroundBlur: state.toggleBackgroundBlur,
     addDiagnosticsEvent: state.addDiagnosticsEvent,
     clearDiagnosticsLog: state.clearDiagnosticsLog,

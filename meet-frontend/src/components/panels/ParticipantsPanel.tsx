@@ -7,13 +7,12 @@ import {
   useIsModerator,
   useUIActions,
 } from '../../store/roomStore';
-import { roomsApi } from '../../services/api';
 import type { LobbyParticipant as ApiLobbyParticipant } from '../../types/api';
 import { X, UserCheck, UserX, Users, Clock, Mic2, CameraOff } from 'lucide-react';
 import { meetingRoomConfig } from '../../config/meetingRoomConfig';
 import ParticipantListItem, { getInitials } from './ParticipantListItem';
 import { useParticipantActions } from '../../hooks/useParticipantActions';
-import logger from '../../utils/logger';
+import { useLobbyPolling } from '../../hooks/useLobbyPolling';
 
 // Sort options for participants
 type SortOption = 'name' | 'joinTime' | 'role';
@@ -95,43 +94,14 @@ export function ParticipantsPanel() {
     persistSortPreference(newSort);
   }, []);
 
-  // Fetch lobby participants periodically for moderators
-  useEffect(() => {
-    if (!isModerator) return;
-    
-    const fetchLobby = async () => {
-      try {
-        const res = await roomsApi.getLobby(room.name);
-        const lobby = res.data.lobby || [];
-        setLobbyCount(lobby.length);
-        setLobbyParticipants(lobby.map((p: ApiLobbyParticipant) => ({
-          identity: p.identity,
-          name: p.name || p.identity,
-          joinedAt: Date.now(),
-        })));
-      } catch (err) {
-        logger.error('Failed to fetch lobby:', err);
-      }
-    };
-
-    fetchLobby();
-    let pollTimeout: ReturnType<typeof setTimeout>;
-    let consecutiveErrors = 0;
-    const scheduleNext = () => {
-      const delay = consecutiveErrors > 2 ? 60000 : 10000; // Back off to 60s after 3 errors
-      pollTimeout = setTimeout(async () => {
-        try {
-          await fetchLobby();
-          consecutiveErrors = 0;
-        } catch {
-          consecutiveErrors++;
-        }
-        scheduleNext();
-      }, delay);
-    };
-    scheduleNext();
-    return () => clearTimeout(pollTimeout);
-  }, [isModerator, room.name, setLobbyCount]);
+  useLobbyPolling(room.name, isModerator, useCallback((lobby: ApiLobbyParticipant[]) => {
+    setLobbyCount(lobby.length);
+    setLobbyParticipants(lobby.map((p) => ({
+      identity: p.identity,
+      name: p.name || p.identity,
+      joinedAt: Date.now(),
+    })));
+  }, [setLobbyCount]));
 
   // Listen for new participants joining
   useEffect(() => {
@@ -148,10 +118,10 @@ export function ParticipantsPanel() {
       }
     };
     
-    room.on('participantConnected', handleParticipantConnected);
-    return () => {
+      room.on('participantConnected', handleParticipantConnected);
+      return () => {
       room.off('participantConnected', handleParticipantConnected);
-    };
+      };
   }, [room, isModerator, setLobbyCount]);
 
   // Filter participants
@@ -215,7 +185,7 @@ export function ParticipantsPanel() {
   }, [filteredLobbyParticipants]);
 
   return (
-    <div className="w-72 flex flex-col bg-surface-800 border-l border-surface-700">
+    <div className="w-full md:w-72 flex flex-col bg-surface-800 md:border-l border-surface-700">
       {/* Header */}
       <div className="px-4 py-3 border-b border-surface-700">
         <div className="flex items-center justify-between">
@@ -224,7 +194,7 @@ export function ParticipantsPanel() {
           </h2>
           <button 
             onClick={toggleParticipants} 
-            className="p-1.5 rounded-lg text-surface-400 hover:text-surface-200 hover:bg-surface-700 transition-colors"
+            className="hidden md:block p-1.5 rounded-lg text-surface-400 hover:text-surface-200 hover:bg-surface-700 transition-colors"
             aria-label="Close participants"
           >
             <X size={18} />

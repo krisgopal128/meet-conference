@@ -7,12 +7,12 @@ const mockEnd = vi.fn();
 
 vi.mock('pg', () => ({
   default: {
-    Pool: vi.fn().mockImplementation(() => ({
-      query: mockQuery,
-      connect: mockConnect,
-      end: mockEnd,
-      totalCount: 5,
-    })),
+    Pool: vi.fn().mockImplementation(function (this: Record<string, unknown>) {
+      this.query = mockQuery;
+      this.connect = mockConnect;
+      this.end = mockEnd;
+      this.totalCount = 5;
+    }),
   },
 }));
 

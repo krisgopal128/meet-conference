@@ -134,28 +134,7 @@ function MeetingDetailContent() {
     if (meeting?.participants && meeting.participants.length > 0) {
       return meeting.participants;
     }
-
-    const count = meeting?.participantCount || meeting?.uniqueParticipants || 1;
-    const mockParticipants: MeetingParticipant[] = [];
-    const names = ['John Smith', 'Sarah Johnson', 'Mike Williams', 'Emily Davis', 'Chris Brown', 'Amanda Wilson', 'David Lee', 'Jennifer Taylor'];
-
-    for (let i = 0; i < Math.min(count, 8); i++) {
-      const baseTime = meeting?.startedAt ? parseISO(meeting.startedAt) : new Date();
-      const joinTime = new Date(baseTime.getTime() + i * 60000 * Math.floor((() => { let h = 0; for (const c of (meeting?.id || '')) h = ((h << 5) - h + c.charCodeAt(0)) | 0; return (Math.abs(h) % 1000) / 1000; })() * 3 + 1));
-      mockParticipants.push({
-        id: `mock-${i}`,
-        identity: `participant-${i + 1}`,
-        name: names[i] || `Participant ${i + 1}`,
-        joinedAt: joinTime.toISOString(),
-        leftAt: meeting?.endedAt || undefined,
-        isModerator: i === 0,
-        duration: meeting?.startedAt && meeting?.endedAt
-          ? Math.round((parseISO(meeting.endedAt).getTime() - parseISO(meeting.startedAt).getTime()) / 60000) - i
-          : Math.floor((() => { let h = 0; for (const c of (meeting?.id || '')) h = ((h << 5) - h + c.charCodeAt(0)) | 0; return (Math.abs(h) % 1000) / 1000; })() * 30 + 15),
-      });
-    }
-
-    return mockParticipants;
+    return [];
   }, [meeting]);
 
   const actionDetails = useMemo(() => {

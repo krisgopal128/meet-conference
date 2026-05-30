@@ -24,6 +24,15 @@ const PollCreator = lazy(() =>
   import('../chat/PollCreator').then((mod) => ({ default: mod.PollCreator }))
 );
 
+const chatPanelDraftCache = new Map<string, {
+  input: string;
+  sendPrivateToModerators: boolean;
+  showPollCreator: boolean;
+  pollQuestion: string;
+  pollOptions: string[];
+  allowMultiple: boolean;
+}>();
+
 // API response type for chat history messages
 interface ChatHistoryMessage {
   id: string;
@@ -40,7 +49,21 @@ interface ChatPanelProps {
   roomName?: string;
 }
 
+function getParticipantRole(metadata: string | undefined, hostId: string | null, identity: string): string {
+  if (identity === hostId) return 'host';
+  if (!metadata) return 'attendee';
+
+  try {
+    const parsed = JSON.parse(metadata) as { role?: string };
+    return parsed.role || 'attendee';
+  } catch {
+    return 'attendee';
+  }
+}
+
 export function ChatPanel({ roomName }: ChatPanelProps) {
+  const draftKey = roomName || '__default__';
+  const cachedDraft = chatPanelDraftCache.get(draftKey);
   // Optimized selectors
   const messages = useMessages();
   const showChatTimestamps = useShowChatTimestamps();
@@ -54,9 +77,9 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
 
   const { localParticipant } = useLocalParticipant();
   const participants = useParticipants();
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(cachedDraft?.input || '');
   const [historyLoaded, setHistoryLoaded] = useState(false);
-  const [sendPrivateToModerators, setSendPrivateToModerators] = useState(false);
+  const [sendPrivateToModerators, setSendPrivateToModerators] = useState(cachedDraft?.sendPrivateToModerators || false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<number | null>(null);
   const isModerator = role === 'host' || role === 'cohost' || localParticipant?.identity === hostId;
@@ -72,18 +95,28 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
   const mentionListRef = useRef<HTMLDivElement>(null);
 
   // Poll creation state
-  const [showPollCreator, setShowPollCreator] = useState(false);
-  const [pollQuestion, setPollQuestion] = useState('');
-  const [pollOptions, setPollOptions] = useState(['', '']);
-  const [allowMultiple, setAllowMultiple] = useState(false);
+  const [showPollCreator, setShowPollCreator] = useState(cachedDraft?.showPollCreator || false);
+  const [pollQuestion, setPollQuestion] = useState(cachedDraft?.pollQuestion || '');
+  const [pollOptions, setPollOptions] = useState(cachedDraft?.pollOptions || ['', '']);
+  const [allowMultiple, setAllowMultiple] = useState(cachedDraft?.allowMultiple || false);
+
+  useEffect(() => {
+    chatPanelDraftCache.set(draftKey, {
+      input,
+      sendPrivateToModerators,
+      showPollCreator,
+      pollQuestion,
+      pollOptions,
+      allowMultiple,
+    });
+  }, [allowMultiple, draftKey, input, pollOptions, pollQuestion, sendPrivateToModerators, showPollCreator]);
 
   // Build participant list for mentions with roles
   const mentionableParticipants = useMemo((): MentionableParticipant[] => {
     return participants
       .filter((p) => p.identity !== localParticipant?.identity)
       .map((p) => {
-        const participantRole = p.identity === hostId ? 'host' : 
-          (p.metadata ? (JSON.parse(p.metadata).role || 'attendee') : 'attendee');
+        const participantRole = getParticipantRole(p.metadata, hostId, p.identity);
         const isParticipantModerator = participantRole === 'host' || participantRole === 'cohost';
         return {
           identity: p.identity,
@@ -430,6 +463,14 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
     setPollOptions(['', '']);
     setAllowMultiple(false);
     setShowPollCreator(false);
+    chatPanelDraftCache.set(draftKey, {
+      input: '',
+      sendPrivateToModerators,
+      showPollCreator: false,
+      pollQuestion: '',
+      pollOptions: ['', ''],
+      allowMultiple: false,
+    });
   }
 
   async function handleVote(pollId: string, optionId: string) {
@@ -481,7 +522,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
       : `${activeTypers.slice(0, 2).join(', ')} ${activeTypers.length > 2 ? `and ${activeTypers.length - 2} more ` : ''}are typing...`;
 
   return (
-    <div className="w-80 flex flex-col bg-surface-800 border-l border-surface-700">
+    <div className="w-full md:w-80 flex flex-col bg-surface-800 md:border-l border-surface-700">
       <ChatHeader
         showChatTimestamps={showChatTimestamps}
         onToggleTimestamps={toggleChatTimestamps}

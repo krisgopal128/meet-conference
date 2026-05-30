@@ -5,7 +5,7 @@
  */
 
 import { Router, Response } from 'express';
-import { authenticate, AuthRequest } from '../../middleware/authenticate.js';
+import { AuthRequest } from '../../middleware/authenticate.js';
 import { requireModerator } from '../../middleware/requireRole.js';
 import { query, queryOne } from '../../services/database.js';
 import { getCached, buildListKey, TTL_MEDIUM } from '../../services/cache.js';

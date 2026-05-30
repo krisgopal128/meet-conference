@@ -56,6 +56,7 @@ import { useAudioControls } from '../../hooks/useAudioControls';
 import { useVideoControls } from '../../hooks/useVideoControls';
 import { useScreenShareControls } from '../../hooks/useScreenShareControls';
 import { useMeetingActions } from '../../hooks/useMeetingActions';
+import { useLobbyPolling } from '../../hooks/useLobbyPolling';
 import logger from '../../utils/logger';
 
 // Import memoized button components
@@ -155,28 +156,15 @@ export function ControlBar() {
   const isScreenSharing = localParticipant?.isScreenShareEnabled;
   const handRaised = useHasRaisedHand(localParticipant?.identity || '');
 
-  // Lobby count - poll periodically for moderators
   useEffect(() => {
     if (!room || !isModerator) {
       setLobbyCount(0);
-      return;
     }
-
-    const fetchLobbyCount = async () => {
-      try {
-        const res = await roomsApi.getLobby(room.name);
-        const lobby = res.data.lobby || [];
-        setLobbyCount(lobby.length);
-      } catch {
-        // Silently ignore errors (e.g., when lobby is disabled)
-      }
-    };
-
-    void fetchLobbyCount();
-    const pollInterval = setInterval(() => { void fetchLobbyCount(); }, 5000);
-
-    return () => { clearInterval(pollInterval); };
   }, [room, isModerator, setLobbyCount]);
+
+  useLobbyPolling(room?.name, !!room && isModerator, useCallback((lobby) => {
+    setLobbyCount(lobby.length);
+  }, [setLobbyCount]));
 
   // Hand raise
   const toggleHandRaise = useCallback(async () => {
@@ -222,7 +210,7 @@ export function ControlBar() {
       if (isRecording && egressId) {
         await roomsApi.stopRecording(egressId);
         setRecording(false);
-        // Broadcast recording state to all participants
+        toast.success('Recording stopped');
         try {
           const msg = JSON.stringify({ type: 'recording_state', isRecording: false });
           localParticipant.publishData(new TextEncoder().encode(msg), { reliable: true, topic: 'meeting' });
@@ -231,7 +219,6 @@ export function ControlBar() {
         const res = await roomsApi.startRecording(room.name);
         const newEgressId = res.data.egressId;
         setRecording(true, newEgressId ?? undefined);
-        // Broadcast recording state to all participants
         try {
           const msg = JSON.stringify({ type: 'recording_state', isRecording: true, egressId: newEgressId });
           localParticipant.publishData(new TextEncoder().encode(msg), { reliable: true, topic: 'meeting' });
@@ -244,7 +231,7 @@ export function ControlBar() {
     } finally {
       setIsRecordingLoading(false);
     }
-  }, [room, isRecording, egressId, setRecording]);
+  }, [room, isRecording, egressId, setRecording, localParticipant]);
 
   const toggleLayout = useCallback(() => {
     // Don't cycle through whiteboard mode here — that's toggled by its own button
@@ -291,7 +278,12 @@ export function ControlBar() {
       meetingLocked, lobbyEnabled: newVal, participantsCanShareScreen,
       participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera,
     });
-  }, [meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setLobbyEnabled, broadcastMeetingSettings]);
+    try {
+      await roomsApi.update(room!.name, { waitingRoomEnabled: newVal });
+    } catch (err) {
+      logger.error('Failed to persist lobby toggle:', err);
+    }
+  }, [room, meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setLobbyEnabled, broadcastMeetingSettings]);
 
   const handleToggleParticipantScreenShare = useCallback(async () => {
     const newVal = !participantsCanShareScreen;
@@ -542,7 +534,7 @@ export function ControlBar() {
       </div>
 
       {/* Mobile Layout */}
-      <div className="md:hidden flex items-center justify-between bg-surface-800/95 backdrop-blur-sm border-t border-surface-700 py-2 px-4 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <div className="md:hidden flex items-center justify-between bg-surface-800/95 backdrop-blur-sm border-t border-surface-700 py-2 px-4 overscroll-behavior-contain" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))', paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))', paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}>
         {/* Left: Primary Controls */}
         <div className="flex items-center gap-1.5">
           <MobileMicButton isMuted={isMicMuted} onToggle={audioControls.toggleMic} />

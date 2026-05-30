@@ -22,6 +22,7 @@ vi.mock('../../services/api', () => ({
   getGuestToken: vi.fn().mockResolvedValue({ data: { token: 'test-token' } }),
   getRoom: vi.fn().mockResolvedValue({ data: { room: { title: 'Test Room' } } }),
   isAuthenticated: vi.fn().mockReturnValue(false),
+  registerAuthStore: vi.fn(),
 }));
 
 // Mock config

@@ -90,13 +90,14 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
   const [speakerLevel, setSpeakerLevel] = useState(100);
   const [noiseSuppression, setNoiseSuppression] = useState(meetingRoomConfig.prejoin.noiseSuppression);
   const [echoCancellation, setEchoCancellation] = useState(meetingRoomConfig.prejoin.echoCancellation);
-  const backgroundBlur = false; // Placeholder for future background blur toggle
+  const [backgroundBlur, setBackgroundBlur] = useState(false);
+  const [backgroundBlurLevel, setBackgroundBlurLevel] = useState(10);
   const [videoFilter, setVideoFilter] = useState<'none' | 'lightweight'>('none'); // Default OFF
   const [qualityMode, setQualityMode] = useState<QualityModeName>(getQualityModeConfig().name);
   const [screenShareMode, setScreenShareMode] = useState<ScreenShareModeName>(meetingRoomConfig.media.screenShare.defaultMode);
   // Default to 16:9 (100% camera coverage for most webcams)
   // Will auto-update to camera's native ratio when detected
-  const [gridAspectRatio, setGridAspectRatio] = useState<GridAspectRatio>('16:9');
+  const [gridAspectRatio, setGridAspectRatioState] = useState<GridAspectRatio>('16:9');
   const [videoFitMode, setVideoFitMode] = useState<VideoFitMode>('cover');
   const [showDeviceSettings, setShowDeviceSettings] = useState(meetingRoomConfig.prejoin.showDeviceSettingsByDefault);
   const [initializing, setInitializing] = useState(true);
@@ -194,7 +195,7 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
           if (!aspectRatioAutoSelectedRef.current) {
             const nativeRatio = getClosestAspectRatio(caps.nativeAspectRatio);
             effectiveAspectRatio = nativeRatio;
-            setGridAspectRatio(nativeRatio);
+            setGridAspectRatioState(nativeRatio);
             aspectRatioAutoSelectedRef.current = true;
             logger.info(`📷 Auto-selected aspect ratio: ${nativeRatio} (native: ${caps.nativeAspectRatio.toFixed(3)})`);
           }
@@ -352,8 +353,10 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
         logCameraInfo(caps);
 
         const nativeRatio = getClosestAspectRatio(caps.nativeAspectRatio);
-        setGridAspectRatio(nativeRatio);
-        logger.info(`📷 Camera changed - auto-selected aspect ratio: ${nativeRatio}`);
+        if (!aspectRatioAutoSelectedRef.current) {
+          setGridAspectRatioState(nativeRatio);
+          logger.info(`📷 Camera changed - auto-selected aspect ratio: ${nativeRatio}`);
+        }
 
         if (cancelled) return;
 
@@ -394,6 +397,11 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
     setVideoEnabled(false);
   }, [qualityMode, stopPreview]);
 
+  const setGridAspectRatio = useCallback((ratio: GridAspectRatio) => {
+    aspectRatioAutoSelectedRef.current = true;
+    setGridAspectRatioState(ratio);
+  }, []);
+
   return {
     // Refs
     videoRef,
@@ -418,6 +426,9 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
     echoCancellation,
     setEchoCancellation,
     backgroundBlur,
+    setBackgroundBlur,
+    backgroundBlurLevel,
+    setBackgroundBlurLevel,
     videoFilter,
     setVideoFilter,
     qualityMode,

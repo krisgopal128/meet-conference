@@ -17,6 +17,7 @@ import { ParticipantTile } from './ParticipantTile';
 import { usePinnedIdentity, useGridAspectRatio, type GridAspectRatio } from '../../store/roomStore';
 import { useMemo } from 'react';
 import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 interface SpeakerLayoutProps {
   activeSpeakers: Participant[];
@@ -36,17 +37,28 @@ const ASPECT_RATIO_CSS: Record<GridAspectRatio, string> = {
   '4:3': '4/3',
 };
 
-const FILMSTRIP_HEIGHT = 140;
-
 export function SpeakerLayout({ activeSpeakers }: SpeakerLayoutProps) {
   const participants = useParticipants();
   const { localParticipant } = useLocalParticipant();
   const pinnedIdentity = usePinnedIdentity();
   const aspectRatio = useGridAspectRatio();
+  const isMobile = useIsMobile();
+
+  const filmstripHeight = isMobile ? '15dvh' : '140px';
+
+  const filmstripPx = useMemo(() => {
+    if (!isMobile) return 140;
+    return Math.round(window.innerHeight * 0.15);
+  }, [isMobile]);
 
   const filmstripTileWidth = useMemo(() => {
-    return FILMSTRIP_HEIGHT * ASPECT_RATIO_MULTIPLIERS[aspectRatio];
-  }, [aspectRatio]);
+    const h = isMobile ? filmstripPx : 140;
+    return h * ASPECT_RATIO_MULTIPLIERS[aspectRatio];
+  }, [aspectRatio, filmstripPx, isMobile]);
+
+  const filmstripGap = useMemo(() => Math.max(6, Math.round(filmstripPx * 0.06)), [filmstripPx]);
+  const filmstripPaddingX = useMemo(() => Math.max(6, Math.round(filmstripPx * 0.08)), [filmstripPx]);
+  const filmstripPaddingBottom = useMemo(() => Math.max(6, Math.round(filmstripPx * 0.08)), [filmstripPx]);
 
   const admittedParticipants = useAdmittedParticipants(participants, localParticipant?.identity);
 
@@ -62,20 +74,16 @@ export function SpeakerLayout({ activeSpeakers }: SpeakerLayoutProps) {
 
   const rest = admittedParticipants.filter(p => p !== featured);
 
-  // Determine if aspect ratio is landscape (width > height)
   const isLandscape = aspectRatio === '16:9' || aspectRatio === '4:3';
 
   return (
-    <div className={`flex flex-col h-full ${rest.length > 0 ? 'gap-2' : ''}`}>
-      {/* Main speaker area */}
+    <div className={`flex flex-col h-full ${rest.length > 0 ? 'gap-1 sm:gap-2' : ''}`}>
       <div className="flex-1 min-h-0 flex items-center justify-center">
         {featured ? (
           <div
-            className="relative rounded-lg bg-surface-900"
+            className="relative rounded-2xl bg-surface-900"
             style={{
               aspectRatio: ASPECT_RATIO_CSS[aspectRatio],
-              // For landscape: width drives the size, height calculates from aspect ratio
-              // For portrait: height drives the size, width calculates from aspect ratio
               width: isLandscape ? '100%' : 'auto',
               height: isLandscape ? 'auto' : '100%',
               maxWidth: '100%',
@@ -84,7 +92,7 @@ export function SpeakerLayout({ activeSpeakers }: SpeakerLayoutProps) {
           >
             <ParticipantTile 
               participant={featured} 
-              className="w-full h-full rounded-lg" 
+              className="w-full h-full rounded-2xl" 
               isSpeakerTile={true} 
             />
           </div>
@@ -95,12 +103,14 @@ export function SpeakerLayout({ activeSpeakers }: SpeakerLayoutProps) {
         )}
       </div>
 
-      {/* Filmstrip */}
       {rest.length > 0 && (
         <div
-          className="flex gap-2 flex-shrink-0 overflow-x-auto overflow-y-hidden px-2 pb-2"
+          className="flex flex-shrink-0 overflow-x-auto overflow-y-hidden"
           style={{
-            height: FILMSTRIP_HEIGHT,
+            height: filmstripHeight,
+            gap: `${filmstripGap}px`,
+            paddingInline: `${filmstripPaddingX}px`,
+            paddingBottom: `${filmstripPaddingBottom}px`,
             scrollbarWidth: 'thin',
             scrollbarColor: 'rgba(255,255,255,0.3) transparent',
           }}
@@ -108,10 +118,10 @@ export function SpeakerLayout({ activeSpeakers }: SpeakerLayoutProps) {
           {rest.map((p) => (
             <div
               key={p.identity}
-              className="flex-shrink-0 h-full rounded-lg bg-surface-900"
+              className="flex-shrink-0 h-full rounded-2xl bg-surface-900"
               style={{ width: filmstripTileWidth }}
             >
-              <ParticipantTile participant={p} className="w-full h-full rounded-lg" isSpeakerTile={false} />
+              <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} />
             </div>
           ))}
         </div>

@@ -12,6 +12,9 @@ import logger from '../utils/logger';
 export function usePermissionEnforcer() {
   const { localParticipant } = useLocalParticipant();
 
+  const canPublishSources = localParticipant.permissions?.canPublishSources;
+  const canPublishSourcesKey = canPublishSources ? canPublishSources.join(',') : '';
+
   useEffect(() => {
     const permission = localParticipant.permissions;
     if (!permission) return;
@@ -34,11 +37,6 @@ export function usePermissionEnforcer() {
       });
     }
   }, [
-    localParticipant,
-    localParticipant.permissions,
-    localParticipant.permissions?.canPublishSources,
-    localParticipant.isCameraEnabled,
-    localParticipant.isMicrophoneEnabled,
-    localParticipant.isScreenShareEnabled,
+    canPublishSourcesKey,
   ]);
 }

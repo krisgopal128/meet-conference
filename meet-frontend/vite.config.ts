@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import fs from 'fs';
 
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
@@ -12,16 +13,27 @@ export default defineConfig(({ mode }) => ({
   server: {
     port: 5173,
     host: true,
+    https: fs.existsSync('/tmp/cert.pem') ? {
+      key: fs.readFileSync('/tmp/key.pem'),
+      cert: fs.readFileSync('/tmp/cert.pem'),
+    } : undefined,
     allowedHosts: [
       'meet.livekit.phuket-tourist.com',
       'localhost',
       '.phuket-tourist.com',
+      '192.168.0.207',
     ],
     proxy: {
       '/api/': {
         target: 'http://localhost:4000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+      '/livekit': {
+        target: 'http://localhost:7880',
+        changeOrigin: true,
+        ws: true,
+        rewrite: (path) => path.replace(/^\/livekit/, ''),
       },
     },
   },

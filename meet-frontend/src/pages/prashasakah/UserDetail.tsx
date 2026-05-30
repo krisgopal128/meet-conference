@@ -93,9 +93,14 @@ export default function UserDetail() {
   }, [fetchUser]);
 
   const handleSaveUser = async (userId: string, data: { name?: string; role?: 'admin' | 'moderator' | 'participant' }) => {
-    await prashasakahApi.updateUser(userId, data);
-    toast.success('User updated successfully');
-    fetchUser();
+    try {
+      await prashasakahApi.updateUser(userId, data);
+      toast.success('User updated successfully');
+      fetchUser();
+    } catch (error) {
+      toast.error('Failed to update user');
+      throw error;
+    }
   };
 
   const handleBan = async () => {

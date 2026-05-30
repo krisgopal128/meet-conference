@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS meetings (
 
 CREATE INDEX idx_meetings_room_id ON meetings(room_id);
 CREATE INDEX idx_meetings_started_at ON meetings(started_at);
+CREATE UNIQUE INDEX idx_meetings_one_active_per_room ON meetings(room_id) WHERE ended_at IS NULL;
 
 -- ============================================
 -- MEETING PARTICIPANTS TABLE

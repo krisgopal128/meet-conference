@@ -22,6 +22,12 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overscroll-behavior: none;
 }
 
 /* Dark mode */
@@ -634,6 +640,120 @@ input[type="text"].pr-10 {
 
 .pt-safe {
   padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Mobile bottom sheet animation */
+@keyframes sheetSlideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.mobile-sheet {
+  animation: sheetSlideUp 0.25s ease-out forwards;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Body scroll lock for mobile overlays */
+body.scroll-locked {
+  overflow: hidden !important;
+  position: fixed;
+  width: 100%;
+  overscroll-behavior: none;
+}
+
+/* Mobile-specific fixes — Safari, Chrome, Firefox */
+@media (max-width: 767px) {
+  /* Prevent pull-to-refresh in meeting rooms */
+  .lk-participant-tile {
+    contain-intrinsic-size: 160px 120px;
+    touch-action: manipulation;
+  }
+
+  /* Video elements: prevent long-press context menu on iOS */
+  video {
+    -webkit-touch-callout: none;
+  }
+
+  /* Compact table cells on mobile */
+  .data-table th,
+  .data-table td {
+    @apply px-2 py-2;
+  }
+
+  /* Prevent auto-zoom on iOS Safari — inputs must be >= 16px font */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="datetime-local"],
+  input[type="url"],
+  input[type="search"],
+  input[type="tel"],
+  textarea,
+  select {
+    font-size: 16px !important;
+    min-height: 44px;
+    border-radius: 8px;
+  }
+
+  /* Select dropdowns: prevent iOS zoom */
+  select {
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2378716c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+  }
+
+  /* Scrollable containers: use momentum scrolling on iOS */
+  .overflow-y-auto,
+  .overflow-x-auto,
+  .overflow-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Buttons: prevent double-tap zoom on older iOS */
+  button,
+  [role="button"] {
+    touch-action: manipulation;
+  }
+
+  /* Safe-area aware bottom padding for fixed bottom elements */
+  .pb-safe-ios {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Full-height fallback for browsers without dvh support */
+@supports not (height: 100dvh) {
+  .h-dvh,
+  [style*="100dvh"] {
+    height: 100vh;
+  }
+  .min-h-dvh {
+    min-height: 100vh;
+  }
+}
+
+@supports (height: 100dvh) {
+  .h-dvh {
+    height: 100dvh;
+  }
+  .min-h-dvh {
+    min-height: 100dvh;
+  }
+}
+
+/* Landscape orientation on phones: prevent squished layout */
+@media (max-width: 767px) and (orientation: landscape) and (max-height: 500px) {
+  .mobile-sheet {
+    max-height: 95vh !important;
+  }
 }
 
 /* Fade-in animation for lazy-loaded content */

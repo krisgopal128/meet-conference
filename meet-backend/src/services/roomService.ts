@@ -122,6 +122,9 @@ export async function createRoom(
       waitingRoomEnabled,
     ]
   );
+  if (!room) {
+    throw new RoomServiceError('Room name already exists', 'DUPLICATE_NAME');
+  }
   return room;
 }
 
@@ -137,6 +140,7 @@ export async function updateRoom(
     description?: string | null;
     maxParticipants?: number;
     status?: string;
+    waitingRoomEnabled?: boolean;
   }
 ): Promise<RoomRow> {
   const setClauses: string[] = [];
@@ -158,6 +162,10 @@ export async function updateRoom(
   if (updates.status !== undefined) {
     setClauses.push(`status = $${paramIdx++}`);
     params.push(updates.status);
+  }
+  if (updates.waitingRoomEnabled !== undefined) {
+    setClauses.push(`waiting_room_enabled = $${paramIdx++}`);
+    params.push(updates.waitingRoomEnabled);
   }
 
   params.push(name);
@@ -322,11 +330,25 @@ export async function hasActiveMeeting(roomId: string): Promise<boolean> {
  * Create a new meeting record for a room
  */
 export async function createMeeting(roomId: string): Promise<string> {
-  const [meeting] = await query<{ id: string }>(
-    "INSERT INTO meetings (room_id, status) VALUES ($1, 'ongoing') RETURNING id",
-    [roomId]
-  );
-  return meeting.id;
+  try {
+    const [meeting] = await query<{ id: string }>(
+      "INSERT INTO meetings (room_id, status) VALUES ($1, 'ongoing') RETURNING id",
+      [roomId]
+    );
+    return meeting.id;
+  } catch (error) {
+    const dbError = error as { code?: string };
+    if (dbError.code === '23505') {
+      const existing = await queryOne<{ id: string }>(
+        "SELECT id FROM meetings WHERE room_id = $1 AND ended_at IS NULL ORDER BY started_at DESC LIMIT 1",
+        [roomId]
+      );
+      if (existing) {
+        return existing.id;
+      }
+    }
+    throw error;
+  }
 }
 
 /**

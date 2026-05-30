@@ -202,6 +202,10 @@ describe('Meetings Router', () => {
       mockQueryOne.mockResolvedValueOnce({
         id: 'meeting-123',
         room_id: 'room-123',
+      });
+      mockQueryOne.mockResolvedValueOnce({
+        id: 'meeting-123',
+        room_id: 'room-123',
         room_name: 'test-room',
         room_title: 'Test Room',
         room_description: null,

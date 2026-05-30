@@ -8,7 +8,7 @@ import { query, queryOne } from '../services/database.js';
 import { verifyMeetingAccess } from '../services/meetingService.js';
 import { scheduleMeetingSchema, diagnosticsPayloadSchema } from '../schemas/meetings.js';
 import { sanitizeChatMessage } from '../utils/validation.js';
-import { getCached, invalidateCache, invalidatePattern, TTL_MEDIUM, TTL_SHORT } from '../services/cache.js';
+import { getCached, invalidatePattern, TTL_MEDIUM, TTL_SHORT } from '../services/cache.js';
 import logger from '../utils/logger.js';
 
 export const meetingsRouter = Router();

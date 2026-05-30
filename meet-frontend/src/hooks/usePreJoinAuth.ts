@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getRoom } from '../services/api';
 import { useIsAuthenticated, useUser } from '../store/authStore';
@@ -26,15 +26,33 @@ export function usePreJoinAuth({ roomName, isCreateMode, searchParams }: UsePreJ
     return true; // default to guest
   });
 
+  const stripSensitiveTokenParams = useCallback(() => {
+    const current = new URL(window.location.href);
+    const currentHash = new URLSearchParams(window.location.hash.slice(1));
+
+    current.searchParams.delete('t');
+    if (!current.searchParams.has('role')) {
+      current.searchParams.delete('role');
+    }
+
+    if (currentHash.has('t')) {
+      currentHash.delete('t');
+      const nextHash = currentHash.toString();
+      current.hash = nextHash ? `#${nextHash}` : '';
+    }
+
+    window.history.replaceState(null, '', `${current.pathname}${current.search}${current.hash}`);
+  }, []);
+
   useEffect(() => {
     // Check for token parameter - teacher one-click join
     // Read token from hash fragment (not sent to server) with query param fallback
     const hashParams = new URLSearchParams(window.location.hash.slice(1));
     const tokenParam = hashParams.get('t') || searchParams.get('t');
     const roleParam = hashParams.get('role') || searchParams.get('role');
-    // Clear hash to prevent token from persisting in browser history
-    if (hashParams.get('t')) window.history.replaceState(null, '', window.location.pathname + window.location.search);
+
     if (tokenParam && roomName) {
+      stripSensitiveTokenParams();
       logger.info('[PreJoin] Token found in URL, redirecting to room...');
       // Store token in sessionStorage for RoomPage to use
       sessionStorage.setItem(`token_${roomName}`, tokenParam);
@@ -72,7 +90,7 @@ export function usePreJoinAuth({ roomName, isCreateMode, searchParams }: UsePreJ
           navigate('/404', { replace: true });
         });
     }
-  }, [roomName, isCreateMode, requestedRole, isAuthenticatedFromStore, navigate]);
+  }, [roomName, isCreateMode, requestedRole, isAuthenticatedFromStore, navigate, searchParams, stripSensitiveTokenParams]);
 
   return {
     room,

@@ -15,9 +15,8 @@ const CSRF_HEADER_NAME = 'x-csrf-token';
 
 const CSRF_SKIP_PATHS = new Set([
   '/health', '/webhook', '/token', '/guest',
-  // Auth endpoints that unauthenticated users access (no CSRF cookie yet)
   '/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password',
-  // External API uses key-based auth, not cookies
+  '/auth/refresh',
   '/external',
 ]);
 const CSRF_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -28,10 +27,13 @@ export function generateCsrfToken(): string {
 
 export function issueCsrfToken(res: Response, token?: string): string {
   const csrfToken = token || generateCsrfToken();
+  const req = res.req as Request & { secure?: boolean };
+  const forwarded = req.headers['x-forwarded-proto'];
+  const isSecure = (typeof forwarded === 'string' && forwarded.startsWith('https')) || req.secure;
   res.cookie(CSRF_COOKIE_NAME, csrfToken, {
     httpOnly: false,
-    sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'strict',
-    secure: process.env.NODE_ENV === 'production',
+    sameSite: isSecure ? 'lax' : 'strict',
+    secure: !!isSecure,
     path: '/',
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });

@@ -1,23 +1,17 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { whiteboardApi } from '../services/whiteboardApi';
 import { registerWhiteboardSave } from './useMeetingActions';
+import { useAuthStore } from '../store/authStore';
 import logger from '../utils/logger';
 
 const AUTO_SAVE_MS = 2000;
 
 /**
- * Helper: get auth token from localStorage (Zustand persisted store).
- * This works even during page unload when React state is inaccessible.
+ * Helper: get auth token from the Zustand store.
+ * This works during page unload because we read the store synchronously.
  */
 function getAuthToken(): string | null {
-  try {
-    const raw = localStorage.getItem('auth-storage');
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return parsed?.state?.token || null;
-  } catch {
-    return null;
-  }
+  return useAuthStore.getState().token;
 }
 
 /**

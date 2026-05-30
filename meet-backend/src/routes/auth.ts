@@ -1,13 +1,15 @@
-import { Router, Response } from 'express';
+import { Router, Response, Request } from 'express';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import type { StringValue } from 'ms';
 import { z } from 'zod';
 import { config } from '../config.js';
 import { query, queryOne } from '../services/database.js';
 import { AuthRequest, authenticate } from '../middleware/authenticate.js';
 import { authLimiter } from '../middleware/rateLimiter.js';
 import { blacklistToken, cacheGet, cacheSet } from '../services/redis.js';
-import { invalidateTokenAuth, invalidateUserAuth } from '../middleware/authenticate.js';
+import { invalidateTokenAuth } from '../middleware/authenticate.js';
 import { 
   sanitizeEmail, 
   sanitizeName, 
@@ -39,8 +41,18 @@ const updateProfileSchema = z.object({
 });
 
 // Token expiration times
-const TOKEN_EXPIRY_SHORT = '7d';     // 7 days (default)
-const TOKEN_EXPIRY_LONG = '30d';     // 30 days (remember me)
+const ACCESS_TOKEN_EXPIRY: StringValue = '15m';
+const REFRESH_TOKEN_EXPIRY_SHORT: StringValue = '7d';
+const REFRESH_TOKEN_EXPIRY_LONG: StringValue = '30d';
+const REFRESH_TOKEN_COOKIE = 'refresh_token';
+
+function reqProtocol(res: Response): string {
+  const req = res.req as Request & { secure?: boolean };
+  const forwarded = req.headers['x-forwarded-proto'];
+  if (typeof forwarded === 'string') return forwarded.split(',')[0].trim();
+  if (req.secure) return 'https';
+  return req.protocol || 'http';
+}
 
 // Account lockout configuration
 const MAX_FAILED_ATTEMPTS = 5;
@@ -66,13 +78,11 @@ async function isAccountLocked(email: string): Promise<{ locked: boolean; remain
  */
 async function recordFailedAttempt(email: string): Promise<void> {
   const key = `lockout:${email}`;
+  const { cacheGet, cacheSet } = await import('../services/redis.js');
   const attempts = await cacheGet<number>(key);
   const newAttempts = (attempts || 0) + 1;
   
-  // Set or update the attempt counter with TTL
   await cacheSet(key, newAttempts, LOCKOUT_DURATION_SECONDS);
-  
-
 }
 
 /**
@@ -82,6 +92,68 @@ async function clearFailedAttempts(email: string): Promise<void> {
   const key = `lockout:${email}`;
   const { cacheDel } = await import('../services/redis.js');
   await cacheDel(key);
+}
+
+function hashToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function createAccessToken(userId: string): string {
+  return jwt.sign(
+    { userId, type: 'access' },
+    config.jwt.secret,
+    { expiresIn: ACCESS_TOKEN_EXPIRY }
+  );
+}
+
+function getRefreshExpiry(rememberMe: boolean): { tokenExpiry: StringValue; expiresAt: Date } {
+  const expiresAt = new Date();
+  if (rememberMe) {
+    expiresAt.setDate(expiresAt.getDate() + 30);
+    return { tokenExpiry: REFRESH_TOKEN_EXPIRY_LONG, expiresAt };
+  }
+
+  expiresAt.setDate(expiresAt.getDate() + 7);
+  return { tokenExpiry: REFRESH_TOKEN_EXPIRY_SHORT, expiresAt };
+}
+
+function createRefreshToken(userId: string, rememberMe: boolean): { token: string; expiresAt: Date } {
+  const { tokenExpiry, expiresAt } = getRefreshExpiry(rememberMe);
+  const token = jwt.sign(
+    { userId, type: 'refresh' },
+    config.jwt.secret,
+    { expiresIn: tokenExpiry }
+  );
+  return { token, expiresAt };
+}
+
+async function storeRefreshToken(userId: string, refreshToken: string, expiresAt: Date): Promise<void> {
+  await query(
+    `INSERT INTO refresh_tokens (user_id, token_hash, expires_at, revoked)
+     VALUES ($1, $2, $3, false)`,
+    [userId, hashToken(refreshToken), expiresAt]
+  );
+}
+
+function setRefreshTokenCookie(res: Response, refreshToken: string, expiresAt: Date): void {
+  const isSecure = reqProtocol(res) === 'https';
+  res.cookie(REFRESH_TOKEN_COOKIE, refreshToken, {
+    httpOnly: true,
+    sameSite: isSecure ? 'lax' : 'strict',
+    secure: isSecure,
+    path: '/',
+    expires: expiresAt,
+  });
+}
+
+function clearRefreshTokenCookie(res: Response): void {
+  const isSecure = reqProtocol(res) === 'https';
+  res.clearCookie(REFRESH_TOKEN_COOKIE, {
+    httpOnly: true,
+    sameSite: isSecure ? 'lax' : 'strict',
+    secure: isSecure,
+    path: '/',
+  });
 }
 
 // POST /auth/register
@@ -119,15 +191,13 @@ authRouter.post('/register', authLimiter, async (req, res: Response) => {
       [email, passwordHash, name]
     );
 
-    // Generate token (30 days if remember me, 7 days otherwise)
-    const token = jwt.sign(
-      { userId: user.id }, 
-      config.jwt.secret, 
-      { expiresIn: rawData.rememberMe ? TOKEN_EXPIRY_LONG : TOKEN_EXPIRY_SHORT }
-    );
+    const token = createAccessToken(user.id);
+    const refresh = createRefreshToken(user.id, rawData.rememberMe);
+    await storeRefreshToken(user.id, refresh.token, refresh.expiresAt);
 
     // Issue CSRF token cookie for subsequent state-changing requests
     issueCsrfToken(res);
+    setRefreshTokenCookie(res, refresh.token, refresh.expiresAt);
 
     res.status(201).json({
       user: {
@@ -197,15 +267,14 @@ authRouter.post('/login', authLimiter, async (req, res: Response) => {
     // Clear failed attempts on successful login
     await clearFailedAttempts(email);
 
-    // Generate token (30 days if remember me, 7 days otherwise)
-    const token = jwt.sign(
-      { userId: user.id }, 
-      config.jwt.secret, 
-      { expiresIn: rawData.rememberMe ? TOKEN_EXPIRY_LONG : TOKEN_EXPIRY_SHORT }
-    );
+    await query('UPDATE users SET last_login_at = NOW() WHERE id = $1', [user.id]);
 
-    // Issue CSRF token cookie for subsequent state-changing requests
+    const token = createAccessToken(user.id);
+    const refresh = createRefreshToken(user.id, rawData.rememberMe);
+    await storeRefreshToken(user.id, refresh.token, refresh.expiresAt);
+
     issueCsrfToken(res);
+    setRefreshTokenCookie(res, refresh.token, refresh.expiresAt);
 
     res.json({
       user: {
@@ -234,57 +303,70 @@ authRouter.get('/me', authenticate, async (req: AuthRequest, res: Response) => {
 });
 
 // POST /auth/refresh - Refresh token
-authRouter.post('/refresh', authenticate, async (req: AuthRequest, res: Response) => {
+authRouter.post('/refresh', async (req, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: 'Not authenticated' });
+    const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE] as string | undefined;
+    if (!refreshToken) {
+      clearRefreshTokenCookie(res);
+      return res.status(401).json({ error: 'Refresh token missing' });
+    }
+
+    const payload = jwt.verify(refreshToken, config.jwt.secret) as { userId: string; type?: string };
+    if (payload.type !== 'refresh') {
+      clearRefreshTokenCookie(res);
+      return res.status(401).json({ error: 'Invalid refresh token' });
+    }
+
+    const refreshTokenHash = hashToken(refreshToken);
+    const storedRefreshToken = await queryOne<{ user_id: string }>(
+      `SELECT user_id FROM refresh_tokens
+       WHERE token_hash = $1 AND revoked = false AND expires_at > NOW()`,
+      [refreshTokenHash]
+    );
+
+    if (!storedRefreshToken || storedRefreshToken.user_id !== payload.userId) {
+      clearRefreshTokenCookie(res);
+      return res.status(401).json({ error: 'Refresh token revoked or expired' });
     }
 
     // Get fresh user data
     const user = await queryOne<{ id: string; email: string; name: string | null; role: string }>(
       'SELECT id, email, name, role FROM users WHERE id = $1',
-      [req.user.id]
+      [payload.userId]
     );
 
     if (!user) {
+      clearRefreshTokenCookie(res);
       return res.status(401).json({ error: 'User not found' });
     }
 
-    // Preserve remember-me: if old token has >7d TTL remaining, it was a long-lived token
-    const oldToken = req.headers.authorization?.slice(7);
-    let useLongExpiry = false;
-    if (oldToken) {
+    const oldAccessToken = req.headers.authorization?.startsWith('Bearer ')
+      ? req.headers.authorization.slice(7)
+      : null;
+    if (oldAccessToken) {
       try {
-        const decoded = jwt.decode(oldToken) as { exp?: number } | null;
-        if (decoded?.exp) {
-          const remaining = decoded.exp - Math.floor(Date.now() / 1000);
-          // If remaining TTL > TOKEN_EXPIRY_SHORT (7d in seconds), it was a remember-me token
-          useLongExpiry = remaining > 7 * 24 * 60 * 60;
-        }
-      } catch {}
-    }
-
-    const token = jwt.sign(
-      { userId: user.id }, 
-      config.jwt.secret, 
-      { expiresIn: useLongExpiry ? TOKEN_EXPIRY_LONG : TOKEN_EXPIRY_SHORT }
-    );
-
-    // Blacklist old token
-    if (oldToken) {
-      try {
-        const ttl = useLongExpiry
-          ? Math.max(30 * 24 * 60 * 60, 86400)
-          : 86400;
-        // Re-decode for TTL (already decoded above for useLongExpiry check)
-        const decoded = jwt.decode(oldToken) as { exp?: number } | null;
-        const actualTtl = decoded?.exp ? Math.max(decoded.exp - Math.floor(Date.now() / 1000), 1) : ttl;
-        await blacklistToken(oldToken, actualTtl);
-        invalidateTokenAuth(oldToken);
+        const decoded = jwt.decode(oldAccessToken) as { exp?: number } | null;
+        const actualTtl = decoded?.exp ? Math.max(decoded.exp - Math.floor(Date.now() / 1000), 1) : 86400;
+        await blacklistToken(oldAccessToken, actualTtl);
+        invalidateTokenAuth(oldAccessToken);
       } catch (blacklistError) {
-        logger.error('Failed to blacklist old token on refresh:', blacklistError);
+        logger.error('Failed to blacklist old access token on refresh:', blacklistError);
       }
     }
+
+    await query('UPDATE refresh_tokens SET revoked = true WHERE token_hash = $1', [refreshTokenHash]);
+
+    const rememberMe = (() => {
+      const decoded = jwt.decode(refreshToken) as { exp?: number } | null;
+      if (!decoded?.exp) return false;
+      const remaining = decoded.exp - Math.floor(Date.now() / 1000);
+      return remaining > 7 * 24 * 60 * 60;
+    })();
+
+    const token = createAccessToken(user.id);
+    const nextRefresh = createRefreshToken(user.id, rememberMe);
+    await storeRefreshToken(user.id, nextRefresh.token, nextRefresh.expiresAt);
+    setRefreshTokenCookie(res, nextRefresh.token, nextRefresh.expiresAt);
 
     res.json({
       user: {
@@ -296,7 +378,11 @@ authRouter.post('/refresh', authenticate, async (req: AuthRequest, res: Response
       token,
     });
   } catch (error) {
+    clearRefreshTokenCookie(res);
     logger.error('Refresh token error:', error);
+    if (error instanceof jwt.JsonWebTokenError || error instanceof jwt.TokenExpiredError) {
+      return res.status(401).json({ error: 'Invalid refresh token' });
+    }
     res.status(500).json({ error: 'Failed to refresh token' });
   }
 });
@@ -463,11 +549,19 @@ authRouter.post('/logout', authenticate, async (req: AuthRequest, res: Response)
       const decoded = jwt.decode(token) as { exp?: number } | null;
       const ttl = decoded?.exp ? Math.max(decoded.exp - Math.floor(Date.now() / 1000), 1) : 86400;
       await blacklistToken(token, ttl);
+      invalidateTokenAuth(token);
     }
+
+    const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE] as string | undefined;
+    if (refreshToken) {
+      await query('UPDATE refresh_tokens SET revoked = true WHERE token_hash = $1', [hashToken(refreshToken)]);
+    }
+    clearRefreshTokenCookie(res);
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
     // Even if blacklisting fails, return success (client should remove token)
     logger.error('Logout blacklist error:', error);
+    clearRefreshTokenCookie(res);
     res.json({ message: 'Logged out successfully' });
   }
 });

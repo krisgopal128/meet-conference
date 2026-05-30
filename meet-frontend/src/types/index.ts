@@ -102,6 +102,7 @@ export interface TokenResponse {
   roomName: string;
   role: string;
   hostId?: string | null;
+  inLobby?: boolean;
   expiresIn: number;
 }
 

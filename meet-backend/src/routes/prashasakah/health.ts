@@ -5,7 +5,7 @@
  */
 
 import { Router, Response } from 'express';
-import { authenticate, AuthRequest } from '../../middleware/authenticate.js';
+import { AuthRequest } from '../../middleware/authenticate.js';
 import { requireModerator } from '../../middleware/requireRole.js';
 import { queryOne } from '../../services/database.js';
 import { getRedisInfo } from '../../services/redis.js';
