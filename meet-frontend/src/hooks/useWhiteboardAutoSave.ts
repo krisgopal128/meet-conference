@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { whiteboardApi } from '../services/whiteboardApi';
 import { registerWhiteboardSave } from './useMeetingActions';
 import { useAuthStore } from '../store/authStore';
+import { getWhiteboardAPI } from '../services/whiteboardAPIBridge';
 import logger from '../utils/logger';
 
 const AUTO_SAVE_MS = 2000;
@@ -73,7 +74,7 @@ export function useWhiteboardAutoSave(
     const scene = sceneRefStable.current.current;
     if (!rn || !scene || !dirtyRef.current) return;
     try {
-      await whiteboardApi.saveScene(rn, scene as object[]);
+      await whiteboardApi.saveScene(rn, scene as object[], ((getWhiteboardAPI() as any)?.files || undefined) as Record<string, unknown> | undefined);
       dirtyRef.current = false;
       logger.debug('[Whiteboard] Force-saved scene before leave');
     } catch (err) {
@@ -102,7 +103,7 @@ export function useWhiteboardAutoSave(
       const scene = sceneRef.current;
       if (!scene) return;
       try {
-        await whiteboardApi.saveScene(roomName, scene as object[]);
+        await whiteboardApi.saveScene(roomName, scene as object[], ((getWhiteboardAPI() as any)?.files || undefined) as Record<string, unknown> | undefined);
         dirtyRef.current = false;
         logger.debug('[Whiteboard] Auto-saved scene');
       } catch (err) {

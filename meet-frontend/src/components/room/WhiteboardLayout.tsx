@@ -27,6 +27,7 @@ import {
 } from '../../hooks/useWhiteboardSync';
 import { useWhiteboardAutoSave } from '../../hooks/useWhiteboardAutoSave';
 import { whiteboardApi } from '../../services/whiteboardApi';
+import { setWhiteboardAPI } from '../../services/whiteboardAPIBridge';
 import { ParticipantTile } from './ParticipantTile';
 import { FloatingParticipantPanel } from './FloatingParticipantPanel';
 import { WhiteboardPreviewTile } from './WhiteboardPreviewTile';
@@ -52,7 +53,7 @@ const ASPECT_RATIO_MULTIPLIERS: Record<GridAspectRatio, number> = {
   '4:3': 4 / 3,
 };
 
-const whiteboardSceneCache = new Map<string, { scene: unknown[]; locked: boolean }>();
+const whiteboardSceneCache = new Map<string, { scene: unknown[]; files?: Record<string, unknown>; locked: boolean }>();
 
 export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
   const { toggleWhiteboard, setWhiteboardFullscreen } = useUIActions();
@@ -97,6 +98,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
     if (roomName) {
       whiteboardSceneCache.set(roomName, {
         scene: [...scene],
+        files: ((excalidrawAPIRef.current as any)?.files || undefined) as Record<string, unknown> | undefined,
         locked: isLocked,
       });
     }
@@ -169,7 +171,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
       setIsLocked(cached.locked);
       applySceneElements(cached.scene);
       if (cached.scene.length > 0) {
-        excalidrawAPIRef.current.updateScene({ elements: cached.scene as any[] });
+        excalidrawAPIRef.current.updateScene({ elements: cached.scene as any[], files: cached.files as any } as any);
         excalidrawAPIRef.current.scrollToContent(cached.scene as any[], {
           fitToContent: true,
           animate: false,
@@ -183,7 +185,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
         setIsLocked(state.locked);
         if (excalidrawAPIRef.current && Array.isArray(state.scene) && state.scene.length > 0) {
           applySceneElements(state.scene as unknown[]);
-          excalidrawAPIRef.current.updateScene({ elements: state.scene as any[] });
+          excalidrawAPIRef.current.updateScene({ elements: state.scene as any[], files: state.files as any } as any);
           excalidrawAPIRef.current.scrollToContent(state.scene as any[], {
             fitToContent: true,
             animate: true,
@@ -211,6 +213,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
           if (roomName) {
             whiteboardSceneCache.set(roomName, {
               scene: [...currentSceneRef.current],
+              files: ((excalidrawAPIRef.current as any)?.files || undefined) as Record<string, unknown> | undefined,
               locked: msg.locked,
             });
           }
@@ -351,6 +354,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
   // Handle Excalidraw API ref
   const handleAPIRef = useCallback((api: ExcalidrawImperativeAPI) => {
     excalidrawAPIRef.current = api;
+    setWhiteboardAPI(api);
     setExcalidrawReady(true);
   }, []);
 
@@ -512,7 +516,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
                 }
                 if (roomName && currentSceneRef.current.length > 0) {
                   try {
-                    await whiteboardApi.saveScene(roomName, currentSceneRef.current as object[]);
+                    await whiteboardApi.saveScene(roomName, currentSceneRef.current as object[], (excalidrawAPIRef.current as any)?.files);
                   } catch (err) {
                     logger.warn('[Whiteboard] Failed to save on close', { error: err });
                   }

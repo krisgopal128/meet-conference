@@ -14,6 +14,7 @@ import { useWhiteboardOpen, useUIActions, useIsModerator } from '../../store/roo
 import { useWhiteboardSync, type WhiteboardMessage } from '../../hooks/useWhiteboardSync';
 import { useWhiteboardAutoSave } from '../../hooks/useWhiteboardAutoSave';
 import { whiteboardApi } from '../../services/whiteboardApi';
+import { setWhiteboardAPI } from '../../services/whiteboardAPIBridge';
 import type { Room } from 'livekit-client';
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 import logger from '../../utils/logger';
@@ -78,6 +79,7 @@ export const WhiteboardPanel = React.memo(function WhiteboardPanel({
         // Scroll to fit content after loading
         const api = excalidrawAPIRef.current;
         if (api && Array.isArray(state.scene) && state.scene.length > 0) {
+          api.updateScene({ elements: state.scene as any[], files: state.files as any } as any);
           api.scrollToContent(state.scene as any[], {
             fitToContent: true,
             animate: true,
@@ -147,6 +149,7 @@ export const WhiteboardPanel = React.memo(function WhiteboardPanel({
 
   const handleAPIRef = useCallback((api: ExcalidrawImperativeAPI) => {
     excalidrawAPIRef.current = api;
+    setWhiteboardAPI(api);
     setExcalidrawAPI(api);
     setExcalidrawReady(true);
   }, []);
@@ -217,7 +220,7 @@ export const WhiteboardPanel = React.memo(function WhiteboardPanel({
               // Save whiteboard scene before closing
               if (roomName && currentSceneRef.current.length > 0) {
                 try {
-                  await whiteboardApi.saveScene(roomName, currentSceneRef.current as object[]);
+                  await whiteboardApi.saveScene(roomName, currentSceneRef.current as object[], (excalidrawAPIRef.current as any)?.files);
                 } catch (err) {
                   logger.warn('[Whiteboard] Failed to save on close', { error: err });
                 }

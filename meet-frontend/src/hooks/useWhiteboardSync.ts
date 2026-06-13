@@ -17,6 +17,7 @@ export interface WhiteboardDrawMsg {
   type: 'whiteboard-update';
   commit: number;
   elements: unknown[];
+  files?: Record<string, unknown>;
 }
 
 export interface WhiteboardLockMsg {
@@ -78,6 +79,7 @@ export function useWhiteboardSync(
 
       const now = Date.now();
       const elapsed = now - lastBroadcastRef.current;
+      const files = ((excalidrawAPIRef.current as any)?.files || undefined) as Record<string, unknown> | undefined;
 
       if (elapsed >= THROTTLE_MS) {
         commitRef.current += 1;
@@ -85,6 +87,7 @@ export function useWhiteboardSync(
           type: 'whiteboard-update',
           commit: commitRef.current,
           elements: [...elements],
+          files,
         };
         const encoder = new TextEncoder();
         room.localParticipant.publishData(encoder.encode(JSON.stringify(msg)), {
@@ -95,11 +98,13 @@ export function useWhiteboardSync(
       } else if (!timerRef.current) {
         // Schedule deferred broadcast
         timerRef.current = setTimeout(() => {
+          const deferredFiles = ((excalidrawAPIRef.current as any)?.files || undefined) as Record<string, unknown> | undefined;
           commitRef.current += 1;
           const msg: WhiteboardDrawMsg = {
             type: 'whiteboard-update',
             commit: commitRef.current,
             elements: [...pendingElements.current],
+            files: deferredFiles,
           };
           const encoder = new TextEncoder();
           room.localParticipant.publishData(encoder.encode(JSON.stringify(msg)), {
@@ -173,7 +178,7 @@ export function useWhiteboardSync(
       try {
         const state = await whiteboardApi.getState(roomName);
         if (state && excalidrawAPIRef.current && Array.isArray(state.scene) && state.scene.length > 0) {
-          excalidrawAPIRef.current.updateScene({ elements: state.scene as any[] });
+          excalidrawAPIRef.current.updateScene({ elements: state.scene as any[], files: state.files as any } as any);
           onSceneElements?.(state.scene as unknown[]);
           onSceneUpdate?.();
         }
@@ -206,7 +211,7 @@ export function useWhiteboardSync(
             elements: msg.elements.length,
             commit: msg.commit,
           });
-          api.updateScene({ elements: msg.elements as any[] });
+          api.updateScene({ elements: msg.elements as any[], files: msg.files as any } as any);
           onSceneElements?.(msg.elements as unknown[]);
           onSceneUpdate?.();
 

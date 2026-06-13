@@ -22,7 +22,7 @@ whiteboardRouter.get('/:roomName', authenticate, async (req: AuthRequest, res) =
     }
 
     const row = await queryOne<{
-      scene: string;
+      scene: unknown;
       locked: boolean;
       updated_at: string;
     }>(
@@ -32,11 +32,20 @@ whiteboardRouter.get('/:roomName', authenticate, async (req: AuthRequest, res) =
 
     if (!row) {
       // Default: locked=true (moderator-only edit)
-      res.json({ scene: [], locked: true, updated_at: null });
+      res.json({ scene: [], files: {}, locked: true, updated_at: null });
       return;
     }
 
-    res.json({ scene: row.scene, locked: row.locked, updated_at: row.updated_at });
+    const payload = row.scene && typeof row.scene === 'object' && !Array.isArray(row.scene)
+      ? row.scene as { elements?: unknown[]; files?: Record<string, unknown> }
+      : null;
+
+    res.json({
+      scene: payload?.elements ?? (Array.isArray(row.scene) ? row.scene : []),
+      files: payload?.files ?? {},
+      locked: row.locked,
+      updated_at: row.updated_at,
+    });
   } catch (err) {
     logger.error('Failed to fetch whiteboard', { error: err });
     res.status(500).json({ error: 'Internal server error' });
@@ -50,7 +59,7 @@ whiteboardRouter.get('/:roomName', authenticate, async (req: AuthRequest, res) =
 whiteboardRouter.put('/:roomName', authenticate, async (req: AuthRequest, res) => {
   try {
     const { roomName } = req.params;
-    const { scene } = req.body;
+    const { scene, files } = req.body;
 
     if (!Array.isArray(scene)) {
       res.status(400).json({ error: 'scene must be an array' });
@@ -58,7 +67,8 @@ whiteboardRouter.put('/:roomName', authenticate, async (req: AuthRequest, res) =
     }
 
     // Limit scene size to 1MB
-    const sceneJson = JSON.stringify(scene);
+    const scenePayload = { elements: scene, files: files && typeof files === 'object' ? files : {} };
+    const sceneJson = JSON.stringify(scenePayload);
     if (sceneJson.length > 1_000_000) {
       res.status(413).json({ error: 'Scene too large (max 1MB)' });
       return;
@@ -148,7 +158,7 @@ whiteboardRouter.patch('/:roomName/lock', authenticate, async (req: AuthRequest,
 
     await query(
       `INSERT INTO whiteboards (room_name, scene, locked, updated_at)
-       VALUES ($1, '[]'::jsonb, $2, now())
+       VALUES ($1, '{"elements":[],"files":{}}'::jsonb, $2, now())
        ON CONFLICT (room_name)
        DO UPDATE SET locked = $2, updated_at = now()`,
       [roomName, locked],

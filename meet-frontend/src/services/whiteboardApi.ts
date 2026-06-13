@@ -2,6 +2,7 @@ import api from './api';
 
 export interface WhiteboardState {
   scene: unknown[];
+  files?: Record<string, unknown>;
   locked: boolean;
   updated_at: string | null;
 }
@@ -14,8 +15,8 @@ export const whiteboardApi = {
   },
 
   /** Save (upsert) whiteboard scene */
-  async saveScene(roomName: string, scene: unknown[]): Promise<{ ok: boolean }> {
-    const { data } = await api.put(`/whiteboard/${roomName}`, { scene });
+  async saveScene(roomName: string, scene: unknown[], files?: Record<string, unknown>): Promise<{ ok: boolean }> {
+    const { data } = await api.put(`/whiteboard/${roomName}`, { scene, files });
     return data;
   },
 
