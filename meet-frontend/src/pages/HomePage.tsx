@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { createRoom, getMyRooms, meetingsApi, roomsApi } from '../services/api';
 import { useUser } from '../store/authStore';
 import { PageErrorBoundary } from '../components/shared/PageErrorBoundary';
@@ -8,7 +8,7 @@ import type { StatItem } from '../components/shared/DashboardStats';
 import { cn } from '../utils/cn';
 import { generateRoomName } from '../utils/roomName';
 import type { Room, ScheduledMeeting } from '../types';
-import { Plus, Link2 as Link, ArrowRight, X, Trash2, Calendar, Clock, AlertCircle, Check, Video, Users, Share2, ChevronRight, LayoutGrid } from 'lucide-react';
+import { Plus, Link2 as LinkIcon, ArrowRight, X, Trash2, Calendar, Clock, AlertCircle, Check, Video, Users, Share2, ChevronRight, LayoutGrid } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format, parseISO } from 'date-fns';
 import logger from '../utils/logger';
@@ -510,7 +510,7 @@ function HomePageContent() {
                         aria-label="Copy room link"
                         title="Copy link"
                       >
-                        {copied === room.name ? <Check size={16} /> : <Link size={16} />}
+                        {copied === room.name ? <Check size={16} /> : <LinkIcon size={16} />}
                       </button>
                       <button
                         onClick={(e) => handleDeleteRoom(room.name, e)}
