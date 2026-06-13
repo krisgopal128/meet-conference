@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS rooms (
     metadata JSONB DEFAULT '{}'::jsonb,
     settings JSONB DEFAULT '{}'::jsonb,
     waiting_room_enabled BOOLEAN DEFAULT true,
-    room_password VARCHAR(255),
+    password_hash VARCHAR(255),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     starts_at TIMESTAMPTZ,

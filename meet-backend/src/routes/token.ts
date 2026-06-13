@@ -152,8 +152,8 @@ tokenRouter.post('/guest', tokenLimiter, async (req, res: Response) => {
     const { roomName, name, role, password } = guestSchema.parse(req.body);
 
     // Check if room exists and verify password if required (single query for all room fields)
-    const room = await queryOne<{ id: string; status: string; room_password: string | null; waiting_room_enabled: boolean; host_id: string }>(
-      'SELECT id, status, room_password, waiting_room_enabled, host_id FROM rooms WHERE name = $1',
+    const room = await queryOne<{ id: string; status: string; password_hash: string | null; waiting_room_enabled: boolean; host_id: string }>(
+      'SELECT id, status, password_hash, waiting_room_enabled, host_id FROM rooms WHERE name = $1',
       [roomName]
     );
 
@@ -165,11 +165,11 @@ tokenRouter.post('/guest', tokenLimiter, async (req, res: Response) => {
       return res.status(400).json({ error: 'Room has ended. Please wait for the host to restart the meeting.' });
     }
 
-    if (room?.room_password) {
+    if (room?.password_hash) {
       if (!password) {
         return res.status(401).json({ error: 'Room password required' });
       }
-      const validPassword = await bcrypt.compare(password, room.room_password);
+      const validPassword = await bcrypt.compare(password, room.password_hash);
       if (!validPassword) {
         return res.status(401).json({ error: 'Invalid room password' });
       }
