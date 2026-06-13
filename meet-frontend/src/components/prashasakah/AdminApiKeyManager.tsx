@@ -173,6 +173,7 @@ export default function AdminApiKeyManager() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
             <input
               type="text"
+              aria-label="Search API keys"
               placeholder="Search by key name, user name, or email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -183,6 +184,7 @@ export default function AdminApiKeyManager() {
         
         <div className="flex gap-2">
           <select
+            aria-label="Filter by status"
             value={filterActive}
             onChange={(e) => setFilterActive(e.target.value)}
             className="px-3 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
@@ -193,6 +195,7 @@ export default function AdminApiKeyManager() {
           </select>
           
           <select
+            aria-label="Filter by owner role"
             value={filterRole}
             onChange={(e) => setFilterRole(e.target.value)}
             className="px-3 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
@@ -205,6 +208,8 @@ export default function AdminApiKeyManager() {
           <button
             onClick={fetchKeys}
             disabled={loading}
+            aria-label="Refresh API keys"
+            title="Refresh"
             className="p-2 text-surface-400 hover:text-surface-600 hover:bg-surface-50 rounded-lg transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -313,7 +318,7 @@ export default function AdminApiKeyManager() {
                             onClick={() => handleRevoke(key)}
                             disabled={actioningId === key.id}
                             className="p-2 text-surface-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors disabled:opacity-50"
-                            title="Revoke key"
+                            aria-label="Revoke key" title="Revoke key"
                           >
                             <Ban className="w-4 h-4" />
                           </button>
@@ -322,7 +327,7 @@ export default function AdminApiKeyManager() {
                             onClick={() => handleEnable(key)}
                             disabled={actioningId === key.id}
                             className="p-2 text-surface-400 hover:text-success-600 hover:bg-success-50 rounded-lg transition-colors disabled:opacity-50"
-                            title="Enable key"
+                            aria-label="Enable key" title="Enable key"
                           >
                             <CheckCircle className="w-4 h-4" />
                           </button>
@@ -331,7 +336,7 @@ export default function AdminApiKeyManager() {
                           onClick={() => setConfirmDelete(key)}
                           disabled={actioningId === key.id}
                           className="p-2 text-surface-400 hover:text-danger-600 hover:bg-danger-50 rounded-lg transition-colors disabled:opacity-50"
-                          title="Delete key permanently"
+                          aria-label="Delete key permanently" title="Delete key permanently"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

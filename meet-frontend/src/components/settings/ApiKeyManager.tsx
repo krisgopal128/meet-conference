@@ -185,7 +185,7 @@ export default function ApiKeyManager({ className = '' }: ApiKeyManagerProps) {
           <div className="flex items-center gap-3">
             <Key className="w-6 h-6 text-brand-600" />
             <div>
-              <h3 className="text-lg font-semibold text-surface-800 dark:text-white">API Keys</h3>
+              <h2 className="text-lg font-semibold text-surface-800 dark:text-white">API Keys</h2>
               <p className="text-sm text-surface-500 dark:text-surface-400">
                 Generate API keys for external integrations (e.g., Tuition Notebook)
               </p>
@@ -207,9 +207,9 @@ export default function ApiKeyManager({ className = '' }: ApiKeyManagerProps) {
           <div className="flex items-start gap-3">
             <Check className="w-5 h-5 text-success-600 mt-0.5" />
             <div className="flex-1">
-              <h4 className="font-medium text-success-800 dark:text-success-300 mb-2">
+              <h3 className="font-medium text-success-800 dark:text-success-300 mb-2">
                 API Key Created - Copy Now!
-              </h4>
+              </h3>
               <p className="text-sm text-emerald-700 dark:text-emerald-300 mb-3">
                 This is the only time you'll see this key. Copy it now and store it securely.
               </p>
@@ -282,7 +282,7 @@ export default function ApiKeyManager({ className = '' }: ApiKeyManagerProps) {
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <h4 className="font-medium text-gray-900 truncate">{key.name}</h4>
+                    <h3 className="font-medium text-gray-900 truncate">{key.name}</h3>
                     {!key.is_active && (
                       <span className="px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded">
                         Disabled
@@ -312,6 +312,7 @@ export default function ApiKeyManager({ className = '' }: ApiKeyManagerProps) {
                         : 'text-gray-500 hover:text-green-600 hover:bg-green-50'
                     }`}
                     title={key.is_active ? 'Disable' : 'Enable'}
+                    aria-label={key.is_active ? 'Disable API key' : 'Enable API key'}
                   >
                     {key.is_active ? (
                       <X className="w-4 h-4" />
@@ -323,6 +324,7 @@ export default function ApiKeyManager({ className = '' }: ApiKeyManagerProps) {
                     onClick={() => handleRegenerateKey(key.id)}
                     className="p-2 text-gray-500 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors"
                     title="Regenerate"
+                    aria-label="Regenerate API key"
                   >
                     <RefreshCw className="w-4 h-4" />
                   </button>
@@ -331,6 +333,7 @@ export default function ApiKeyManager({ className = '' }: ApiKeyManagerProps) {
                     disabled={deletingId === key.id}
                     className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
                     title="Delete"
+                    aria-label="Delete API key"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -346,7 +349,7 @@ export default function ApiKeyManager({ className = '' }: ApiKeyManagerProps) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Create API Key</h3>
+              <h2 className="text-lg font-semibold text-gray-900">Create API Key</h2>
               <p className="text-sm text-gray-500 mt-1">
                 Generate a new API key for external integrations
               </p>
@@ -371,7 +374,7 @@ export default function ApiKeyManager({ className = '' }: ApiKeyManagerProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Expiration (Optional)
                 </label>
-                <select
+                <select aria-label="Select"
                   value={newKeyExpiry || ''}
                   onChange={(e) => setNewKeyExpiry(e.target.value ? parseInt(e.target.value) : undefined)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent"

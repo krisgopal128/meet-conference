@@ -357,7 +357,7 @@ function HistoryPageContent() {
           {/* Search */}
           <div className="flex-1 relative">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
-            <input
+            <input aria-label="Search by title or room code"
               type="text"
               placeholder="Search by title or room code..."
               value={searchQuery}
@@ -429,7 +429,7 @@ function HistoryPageContent() {
                 <label className="text-sm text-surface-600 dark:text-surface-400 mb-1 block">
                   Start Date
                 </label>
-                <input
+                <input aria-label="Date"
                   type="date"
                   value={dateFilter.start || ''}
                   onChange={(e) => setDateFilter(prev => ({ ...prev, start: e.target.value }))}
@@ -440,7 +440,7 @@ function HistoryPageContent() {
                 <label className="text-sm text-surface-600 dark:text-surface-400 mb-1 block">
                   End Date
                 </label>
-                <input
+                <input aria-label="Date"
                   type="date"
                   value={dateFilter.end || ''}
                   onChange={(e) => setDateFilter(prev => ({ ...prev, end: e.target.value }))}
@@ -468,7 +468,7 @@ function HistoryPageContent() {
           Showing {paginatedMeetings.length} of {sortedMeetings.length} meeting(s)
           {hasActiveFilters && ` (filtered from ${allMeetings.length})`}
         </p>
-        <select
+        <select aria-label="Filter"
           value={pageSize}
           onChange={(e) => handlePageSizeChange(parseInt(e.target.value, 10))}
           className="input text-sm py-2 px-3 w-auto"

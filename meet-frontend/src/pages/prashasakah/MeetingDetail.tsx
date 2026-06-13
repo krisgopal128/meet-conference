@@ -210,9 +210,9 @@ export default function MeetingDetail() {
         <div className="lg:col-span-1 space-y-6">
           {/* Meeting Info Card */}
           <div className="bg-white rounded-xl border border-surface-200 p-5">
-            <h3 className="text-sm font-semibold text-surface-500 uppercase tracking-wider mb-4">
+            <h2 className="text-sm font-semibold text-surface-500 uppercase tracking-wider mb-4">
               Meeting Information
-            </h3>
+            </h2>
             <dl className="space-y-4">
               <div>
                 <dt className="text-sm text-surface-500">Room Name</dt>

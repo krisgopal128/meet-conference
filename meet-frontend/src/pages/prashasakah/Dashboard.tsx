@@ -204,7 +204,7 @@ export function Dashboard() {
         <div className="flex flex-col sm:flex-row flex-wrap items-center gap-3">
           {/* Auto-refresh toggle */}
           <label className="flex items-center gap-2 text-sm text-surface-500 dark:text-surface-400 cursor-pointer">
-            <input
+            <input aria-label="Toggle"
               type="checkbox"
               checked={autoRefresh}
               onChange={(e) => setAutoRefresh(e.target.checked)}
@@ -239,7 +239,7 @@ export function Dashboard() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div>
-              <h4 className="text-sm font-medium text-danger-800">Error Loading Data</h4>
+              <h2 className="text-sm font-medium text-danger-800">Error Loading Data</h2>
               <p className="text-sm text-danger-600 mt-1">
                 {statsError || bandwidthError || peakUsersError}
               </p>
@@ -312,7 +312,7 @@ export function Dashboard() {
         {/* Bandwidth Chart */}
         <div className="bg-white dark:bg-surface-900 rounded-xl border border-surface-200 dark:border-surface-700 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-surface-700 dark:text-surface-200">Bandwidth Usage</h3>
+            <h2 className="text-lg font-semibold text-surface-700 dark:text-surface-200">Bandwidth Usage</h2>
             {bandwidthLoading && (
               <span className="text-xs text-surface-400 dark:text-surface-500 animate-pulse">Loading...</span>
             )}
@@ -335,7 +335,7 @@ export function Dashboard() {
         {/* Peak Users Chart */}
         <div className="bg-white dark:bg-surface-900 rounded-xl border border-surface-200 dark:border-surface-700 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-surface-700 dark:text-surface-200">Peak Users Over Time</h3>
+            <h2 className="text-lg font-semibold text-surface-700 dark:text-surface-200">Peak Users Over Time</h2>
             {peakUsersLoading && (
               <span className="text-xs text-surface-400 dark:text-surface-500 animate-pulse">Loading...</span>
             )}
@@ -359,7 +359,7 @@ export function Dashboard() {
       {/* Quick Stats */}
       {!statsLoading && stats && (
         <div className="bg-gradient-to-r from-brand-600 to-brand-800 rounded-xl shadow p-6 text-white">
-          <h3 className="text-lg font-semibold mb-4">Quick Stats</h3>
+          <h2 className="text-lg font-semibold mb-4">Quick Stats</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <p className="text-brand-200 text-sm">Active Rate</p>

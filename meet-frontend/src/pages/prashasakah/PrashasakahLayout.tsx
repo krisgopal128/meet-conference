@@ -246,7 +246,7 @@ export default function PrashasakahLayout() {
       </aside>
 
       {/* Main Content */}
-      <div className={`flex-1 ml-0 md:ml-64 flex flex-col transition-all duration-200 ${collapsed ? 'md:ml-16' : ''}`}>
+      <div className={`flex-1 ml-0 md:ml-64 flex flex-col min-w-0 transition-all duration-200 ${collapsed ? 'md:ml-16' : ''}`}>
         {/* Header */}
         <header className="bg-white border-b border-surface-200 px-4 md:px-6 py-4">
           <div className="flex items-center justify-between">
@@ -285,7 +285,7 @@ export default function PrashasakahLayout() {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 md:p-6 overflow-auto">
+        <main className="flex-1 p-4 md:p-6 overflow-auto min-w-0">
           <Outlet />
         </main>
 

@@ -58,6 +58,7 @@ export function DateRangeFilter({ value, onChange, className }: DateRangeFilterP
         <label className="block text-xs text-surface-500 mb-1">From</label>
         <input
           type="date"
+          aria-label="From date"
           value={from}
           onChange={(e) => handleFromChange(e.target.value)}
           className="px-3 py-2 border border-surface-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
@@ -67,6 +68,7 @@ export function DateRangeFilter({ value, onChange, className }: DateRangeFilterP
         <label className="block text-xs text-surface-500 mb-1">To</label>
         <input
           type="date"
+          aria-label="To date"
           value={to}
           onChange={(e) => handleToChange(e.target.value)}
           className="px-3 py-2 border border-surface-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"

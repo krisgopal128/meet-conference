@@ -31,7 +31,7 @@ export default function ApiKeysPage() {
             </svg>
           </div>
           <div>
-            <h3 className="text-sm font-medium text-brand-800">Admin Oversight</h3>
+            <h2 className="text-sm font-medium text-brand-800">Admin Oversight</h2>
             <p className="text-sm text-brand-600 mt-1">
               This page shows all API keys across the platform. Moderators create and manage their own keys 
               via <code className="bg-brand-100 px-1 rounded">/api-keys</code> in the main app. 

@@ -108,7 +108,7 @@ export default function Meetings() {
       <div className="bg-white dark:bg-surface-900 rounded-xl border border-surface-200 dark:border-surface-700 p-4">
         <div className="flex flex-col sm:flex-row flex-wrap items-center gap-3">
           <div className="flex-1 min-w-64 w-full sm:w-auto">
-            <input
+            <input aria-label="Search by room name"
               type="text"
               placeholder="Search by room name..."
               value={search}
@@ -117,7 +117,7 @@ export default function Meetings() {
               className="w-full px-3 py-2 border border-surface-300 dark:border-surface-600 dark:bg-surface-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400"
             />
           </div>
-          <select
+          <select aria-label="Filter"
             value={status}
             onChange={(e) => setStatus(e.target.value)}
             className="px-3 py-2 border border-surface-300 dark:border-surface-600 dark:bg-surface-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400"

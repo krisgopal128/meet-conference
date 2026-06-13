@@ -56,7 +56,7 @@ function SettingInput({ value, onChange, fieldKey }: {
 
   if (fieldKey === 'storageType') {
     return (
-      <select
+      <select aria-label="Filter"
         value={String(value)}
         onChange={(e) => onChange(e.target.value)}
         className="w-full max-w-xs px-3 py-2 border border-surface-300 rounded-lg text-surface-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400 transition"
@@ -69,7 +69,7 @@ function SettingInput({ value, onChange, fieldKey }: {
 
   if (typeof value === 'number') {
     return (
-      <input
+      <input aria-label="Value"
         type="number"
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
@@ -79,7 +79,7 @@ function SettingInput({ value, onChange, fieldKey }: {
   }
 
   return (
-    <input
+    <input aria-label="Search"
       type="text"
       value={String(value)}
       onChange={(e) => onChange(e.target.value)}

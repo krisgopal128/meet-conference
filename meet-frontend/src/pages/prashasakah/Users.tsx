@@ -182,7 +182,7 @@ export default function Users() {
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              <input
+              <input aria-label="Search by name or email"
                 type="text"
                 placeholder="Search by name or email..."
                 value={search}
@@ -194,7 +194,7 @@ export default function Users() {
 
           {/* Role Filter */}
           <div className="w-full md:w-40">
-            <select
+            <select aria-label="Filter by role"
               value={roleFilter}
               onChange={(e) => {
                 setRoleFilter(e.target.value);
@@ -211,7 +211,7 @@ export default function Users() {
 
           {/* Status Filter */}
           <div className="w-full md:w-40">
-            <select
+            <select aria-label="Filter by status"
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value);
@@ -245,7 +245,7 @@ export default function Users() {
         <div className="flex items-center justify-between bg-white rounded-xl border border-surface-200 px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="text-sm text-surface-500">Show</span>
-            <select
+            <select aria-label="Items per page"
               value={limit}
               onChange={(e) => {
                 setLimit(Number(e.target.value));
@@ -318,7 +318,7 @@ export default function Users() {
                   </svg>
                 </div>
                 <div>
-                  <h3 id="modal-title" className="text-lg font-semibold text-surface-800">Delete User</h3>
+                  <h2 id="modal-title" className="text-lg font-semibold text-surface-800">Delete User</h2>
                   <p className="text-sm text-surface-500">This action cannot be undone.</p>
                 </div>
               </div>
