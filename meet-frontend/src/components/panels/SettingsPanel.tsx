@@ -20,6 +20,7 @@ import {
   useBackgroundBlurIntensity,
   useBackgroundMode,
   useBackgroundBgColor,
+  useBackgroundImagePath,
   useGridAspectRatio,
   useVideoFitMode,
   useUIActions,
@@ -58,13 +59,14 @@ export function SettingsPanel() {
   const backgroundBlurIntensity = useBackgroundBlurIntensity();
   const backgroundMode = useBackgroundMode();
   const backgroundBgColor = useBackgroundBgColor();
+  const backgroundImagePath = useBackgroundImagePath();
   const gridAspectRatio = useGridAspectRatio();
   const videoFitMode = useVideoFitMode();
   const isModerator = useIsModerator();
   const roomName = useRoomName();
 
   // Action hooks
-  const { toggleSettings, openSettingsView, toggleMirrorLocalVideo, toggleBackgroundBlur, setBackgroundBlurLevel, setBackgroundBlurIntensity, setBackgroundMode, setBackgroundBgColor, setQualityMode, setScreenShareMode, setGridAspectRatio, setVideoFitMode, clearDiagnosticsLog } = useUIActions();
+  const { toggleSettings, openSettingsView, toggleMirrorLocalVideo, toggleBackgroundBlur, setBackgroundBlurLevel, setBackgroundBlurIntensity, setBackgroundMode, setBackgroundBgColor, setBackgroundImagePath, setQualityMode, setScreenShareMode, setGridAspectRatio, setVideoFitMode, clearDiagnosticsLog } = useUIActions();
   
   const [speakerVolume, setSpeakerVolume] = useState(() => persistedSpeakerVolume);
   const speakerVolumeRef = useRef(persistedSpeakerVolume);
@@ -807,7 +809,14 @@ export function SettingsPanel() {
                       <div className="mb-2 flex items-center justify-between text-xs text-surface-400">
                         <span>Background image URL</span>
                       </div>
-                      <p className="text-xs text-surface-500">Enter an image URL to use as your virtual background</p>
+                      <input
+                        type="url"
+                        value={backgroundImagePath ?? ''}
+                        onChange={(e) => setBackgroundImagePath(e.target.value || null)}
+                        placeholder="https://example.com/background.jpg"
+                        className="w-full rounded-lg bg-surface-700 border border-surface-600 px-3 py-2 text-sm text-surface-100 placeholder-surface-500 focus:border-brand-500 focus:outline-none"
+                      />
+                      <p className="mt-1 text-xs text-surface-500">Enter an image URL to use as your virtual background</p>
                     </div>
                   )}
                 </div>

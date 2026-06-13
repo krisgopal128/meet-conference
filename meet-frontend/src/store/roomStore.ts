@@ -101,6 +101,7 @@ interface UIState {
   backgroundBlurIntensity: number;
   backgroundFeather: number;
   backgroundBgColor: string;
+  backgroundImagePath: string | null;
   diagnosticsLog: Array<{
     id: string;
     at: string;
@@ -137,6 +138,7 @@ interface UIActions {
   setBackgroundBlurIntensity: (intensity: number) => void;
   setBackgroundFeather: (feather: number) => void;
   setBackgroundBgColor: (color: string) => void;
+  setBackgroundImagePath: (path: string | null) => void;
   toggleBackgroundBlur: () => void;
   addDiagnosticsEvent: (event: Omit<UIState['diagnosticsLog'][number], 'id' | 'at'>) => void;
   clearDiagnosticsLog: () => void;
@@ -175,6 +177,7 @@ const initialUIState: UIState = {
   backgroundBlurIntensity: 14,
   backgroundFeather: 3,
   backgroundBgColor: '#1e1e2e',
+  backgroundImagePath: null,
   _prevLayout: undefined,
   diagnosticsLog: [],
 };
@@ -388,6 +391,7 @@ export const useRoomStore = create<RoomStore>()(
           setBackgroundBlurIntensity: (backgroundBlurIntensity) => set({ backgroundBlurIntensity }, false, 'setBackgroundBlurIntensity'),
           setBackgroundFeather: (backgroundFeather) => set({ backgroundFeather }, false, 'setBackgroundFeather'),
           setBackgroundBgColor: (backgroundBgColor) => set({ backgroundBgColor }, false, 'setBackgroundBgColor'),
+          setBackgroundImagePath: (backgroundImagePath) => set({ backgroundImagePath }, false, 'setBackgroundImagePath'),
           toggleBackgroundBlur: () => set((state) => ({
             backgroundBlurEnabled: !state.backgroundBlurEnabled,
           }), false, 'toggleBackgroundBlur'),
@@ -650,6 +654,7 @@ export const useBackgroundMode = () => useRoomStore((state) => state.backgroundM
 export const useBackgroundBlurIntensity = () => useRoomStore((state) => state.backgroundBlurIntensity);
 export const useBackgroundFeather = () => useRoomStore((state) => state.backgroundFeather);
 export const useBackgroundBgColor = () => useRoomStore((state) => state.backgroundBgColor);
+export const useBackgroundImagePath = () => useRoomStore((state) => state.backgroundImagePath);
 export const useDiagnosticsLog = () => useRoomStore((state) => state.diagnosticsLog);
 
 // Chat selectors
@@ -736,6 +741,7 @@ export const useUIActions = () => useRoomStore(
     setBackgroundBlurIntensity: state.setBackgroundBlurIntensity,
     setBackgroundFeather: state.setBackgroundFeather,
     setBackgroundBgColor: state.setBackgroundBgColor,
+    setBackgroundImagePath: state.setBackgroundImagePath,
     toggleBackgroundBlur: state.toggleBackgroundBlur,
     addDiagnosticsEvent: state.addDiagnosticsEvent,
     clearDiagnosticsLog: state.clearDiagnosticsLog,

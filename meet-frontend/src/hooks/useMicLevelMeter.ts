@@ -15,6 +15,8 @@ export function useMicLevelMeter(
   micDeviceId: string | undefined,
   enabled: boolean,
   meterFillRef: React.RefObject<HTMLElement | null>,
+  noiseSuppression?: boolean,
+  echoCancellation?: boolean,
 ) {
   const rafRef = useRef<number | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -39,10 +41,10 @@ export function useMicLevelMeter(
           audio: micDeviceId
             ? {
                 deviceId: { exact: micDeviceId },
-                echoCancellation: true,
-                noiseSuppression: true,
+                echoCancellation: echoCancellation ?? true,
+                noiseSuppression: noiseSuppression ?? true,
               }
-            : { echoCancellation: true, noiseSuppression: true },
+            : { echoCancellation: echoCancellation ?? true, noiseSuppression: noiseSuppression ?? true },
           video: false,
         };
 
@@ -126,5 +128,5 @@ export function useMicLevelMeter(
       levelRef.current = 0;
       if (meterEl) meterEl.style.width = '0%';
     };
-  }, [micDeviceId, enabled, meterFillRef]);
+  }, [micDeviceId, enabled, meterFillRef, noiseSuppression, echoCancellation]);
 }

@@ -1,6 +1,6 @@
 import { useTracks, VideoTrack, useParticipants } from '@livekit/components-react';
 import { Track } from 'livekit-client';
-import { ParticipantTile } from './ParticipantTile';
+import { SafeParticipantTile as ParticipantTile } from './ParticipantTile';
 import { useGridAspectRatio, type GridAspectRatio } from '../../store/roomStore';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useMemo } from 'react';
@@ -21,7 +21,8 @@ const ASPECT_RATIO_MULTIPLIERS: Record<GridAspectRatio, number> = {
 
 export function ScreenShareLayout() {
   const screenTracks = useTracks([Track.Source.ScreenShare, Track.Source.ScreenShareAudio]);
-  const participants = useParticipants();
+  const allParticipants = useParticipants();
+  const participants = allParticipants.filter(p => p.permissions?.canPublish !== false);
   const aspectRatio = useGridAspectRatio();
   const isMobile = useIsMobile();
   

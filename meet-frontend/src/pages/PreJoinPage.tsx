@@ -243,7 +243,8 @@ export default function PreJoinPage() {
     }
   };
 
-  const initials = displayName.charAt(0).toUpperCase() || '?';
+  const effectiveName = isGuest ? displayName : (user?.name || displayName);
+  const initials = effectiveName.charAt(0).toUpperCase() || '?';
 
   // Apply lightweight video filter to preview
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
@@ -270,7 +271,7 @@ export default function PreJoinPage() {
 
   // Voice level meter — tracks selected mic input in real time
   const micMeterFillRef = useRef<HTMLDivElement | null>(null);
-  useMicLevelMeter(selectedMic, audioEnabled, micMeterFillRef);
+  useMicLevelMeter(selectedMic, audioEnabled, micMeterFillRef, noiseSuppression, echoCancellation);
 
   return (
     <div className="min-h-screen min-h-dvh bg-surface-50 dark:bg-surface-900 flex flex-col sm:flex-row overscroll-none">
@@ -290,7 +291,7 @@ export default function PreJoinPage() {
         </header>
 
         {/* Preview area */}
-        <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-8 relative">
           {/* Loading overlay */}
           {initializing && (
             <div className="absolute inset-0 bg-surface-50 dark:bg-surface-900 flex items-center justify-center z-50 p-4">
@@ -561,6 +562,7 @@ export default function PreJoinPage() {
             loading={loading}
             creatingRoom={creatingRoom}
             disabled={isCreateMode && !meetingRoomCode.trim()}
+            willJoinAsModerator={requestedRole === 'moderator' || isCreateMode}
             onDisplayNameChange={setDisplayName}
             onPasswordChange={setPassword}
             onJoin={handleJoin}

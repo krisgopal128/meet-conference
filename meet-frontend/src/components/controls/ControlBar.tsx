@@ -539,7 +539,7 @@ export function ControlBar() {
 
           {/* Controls - Moderators only */}
           {isModerator && (
-            <div className="relative">
+    <div className="relative z-[60]">
               <button
                 ref={controlsButtonRef}
                 onClick={() => setShowControls(!showControls)}

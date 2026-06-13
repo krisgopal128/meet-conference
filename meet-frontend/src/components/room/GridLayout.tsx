@@ -14,7 +14,7 @@
  */
 
 import { useParticipants, useLocalParticipant } from '@livekit/components-react';
-import { ParticipantTile } from './ParticipantTile';
+import { SafeParticipantTile as ParticipantTile } from './ParticipantTile';
 import { useGridAspectRatio, type GridAspectRatio } from '../../store/roomStore';
 import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
 import { useIsMobile } from '../../hooks/useIsMobile';

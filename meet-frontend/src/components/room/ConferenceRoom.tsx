@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, lazy, Suspense, memo } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, lazy, Suspense, memo } from 'react';
 import {
   useTracks,
   useRoomContext,
@@ -464,9 +464,9 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
 
   const isMobile = useIsMobile();
 
-  // Mobile: enforce single-panel exclusivity (desktop allows side-by-side panels)
+  // Mobile: enforce single-panel exclusivity synchronously (before browser paint)
   const prevPanelState = useRef({ chat: chatOpen, participants: participantsOpen, settings: settingsOpen });
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isMobile) {
       prevPanelState.current = { chat: chatOpen, participants: participantsOpen, settings: settingsOpen };
       return;
@@ -539,7 +539,7 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
                 {renderLayout()}
               </Suspense>
               
-              <div className="absolute top-2 sm:top-4 right-2 sm:right-4 z-20">
+              <div className="absolute top-2 sm:top-4 left-2 sm:left-4 z-20">
                 <QualityIndicator />
               </div>
             </div>

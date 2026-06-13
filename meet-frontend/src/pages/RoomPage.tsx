@@ -5,7 +5,7 @@ import { VideoPreset, Track } from 'livekit-client';
 import { ConferenceRoom } from '../components/room/ConferenceRoom';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { LobbyWaiting } from '../components/room/LobbyWaiting';
-import { useConnectionActions, useQualityMode, useScreenShareMode, useUIActions, useGridAspectRatio, useBackgroundBlurEnabled, useBackgroundBlurIntensity, useBackgroundMode, useBackgroundBgColor, useMeetingControlsActions } from '../store/roomStore';
+import { useConnectionActions, useQualityMode, useScreenShareMode, useUIActions, useGridAspectRatio, useBackgroundBlurEnabled, useBackgroundBlurIntensity, useBackgroundMode, useBackgroundBgColor, useBackgroundImagePath, useMeetingControlsActions } from '../store/roomStore';
 import { enableBackgroundEffect, disableBackgroundEffect, updateBackgroundEffect } from '../utils/backgroundEffectsManager';
 import { getRoomSettings, roomsApi } from '../services/api';
 import {
@@ -115,7 +115,7 @@ function ReconnectionOverlay({ isReconnecting }: { isReconnecting: boolean }) {
   if (!isReconnecting) return null;
   
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
       <div className="bg-surface-800 rounded-xl p-6 flex flex-col items-center gap-4">
         <WifiOff className="w-12 h-12 text-yellow-400 animate-pulse" />
         <div className="text-white font-medium">Reconnecting...</div>
@@ -136,7 +136,7 @@ function DisconnectOverlay({
   onReturnToJoin: () => void;
 }) {
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4">
       <div className="bg-surface-800 rounded-xl p-6 w-full max-w-sm text-center">
         <WifiOff className="w-12 h-12 text-danger-400 mx-auto mb-4" />
         <div className="text-white font-medium">Connection lost</div>
@@ -222,6 +222,7 @@ function RoomContent({
   const backgroundBlurIntensity = useBackgroundBlurIntensity();
   const backgroundMode = useBackgroundMode();
   const backgroundBgColor = useBackgroundBgColor();
+  const backgroundImagePath = useBackgroundImagePath();
 
   useEffect(() => {
     const blurEnabled = storeBlurEnabled || state.backgroundBlur;
@@ -272,8 +273,9 @@ function RoomContent({
       mode: backgroundMode,
       blurRadius: backgroundBlurIntensity,
       bgColor: backgroundBgColor,
+      bgImagePath: backgroundImagePath,
     });
-  }, [backgroundMode, backgroundBlurIntensity, backgroundBgColor, storeBlurEnabled]);
+  }, [backgroundMode, backgroundBlurIntensity, backgroundBgColor, backgroundImagePath, storeBlurEnabled]);
 
   useEffect(() => {
     if (import.meta.env.DEV) {

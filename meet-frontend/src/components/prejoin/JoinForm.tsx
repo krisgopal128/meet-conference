@@ -17,6 +17,7 @@ interface JoinFormProps {
   loading: boolean;
   creatingRoom: boolean;
   disabled?: boolean;
+  willJoinAsModerator?: boolean;
   onDisplayNameChange: (name: string) => void;
   onPasswordChange: (password: string) => void;
   onJoin: () => void;
@@ -32,6 +33,7 @@ export function JoinForm({
   loading,
   creatingRoom,
   disabled = false,
+  willJoinAsModerator = false,
   onDisplayNameChange,
   onPasswordChange,
   onJoin,
@@ -86,7 +88,11 @@ export function JoinForm({
           </div>
           <div>
             <p className="font-medium text-surface-800 dark:text-white">Signed in</p>
-            <p className="text-sm text-surface-500 dark:text-surface-400">You'll join as a moderator</p>
+            <p className="text-sm text-surface-500 dark:text-surface-400">
+              {willJoinAsModerator
+                ? "You'll join as a moderator"
+                : "You'll join as a participant"}
+            </p>
           </div>
         </div>
       )}

@@ -73,6 +73,7 @@ export function DeviceSettings({
               onChange={(e) => onMicLevelChange(Number(e.target.value))}
               className="w-full accent-brand-500"
             />
+            <p className="text-[10px] text-surface-400 mt-0.5">Applies when you join the meeting</p>
           </div>
           <div>
             <label className="text-xs text-surface-500 dark:text-surface-400 mb-1 block">Speaker</label>
@@ -101,6 +102,7 @@ export function DeviceSettings({
               onChange={(e) => onSpeakerLevelChange(Number(e.target.value))}
               className="w-full accent-brand-500"
             />
+            <p className="text-[10px] text-surface-400 mt-0.5">Applies when you join the meeting</p>
           </div>
         </div>
       )}

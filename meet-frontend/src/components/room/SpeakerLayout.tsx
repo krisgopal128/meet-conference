@@ -13,7 +13,7 @@
 
 import { useParticipants, useLocalParticipant } from '@livekit/components-react';
 import { Participant } from 'livekit-client';
-import { ParticipantTile } from './ParticipantTile';
+import { SafeParticipantTile as ParticipantTile } from './ParticipantTile';
 import { usePinnedIdentity, useGridAspectRatio, type GridAspectRatio } from '../../store/roomStore';
 import { useMemo } from 'react';
 import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';

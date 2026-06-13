@@ -28,7 +28,7 @@ import {
 import { useWhiteboardAutoSave } from '../../hooks/useWhiteboardAutoSave';
 import { whiteboardApi } from '../../services/whiteboardApi';
 import { setWhiteboardAPI } from '../../services/whiteboardAPIBridge';
-import { ParticipantTile } from './ParticipantTile';
+import { SafeParticipantTile as ParticipantTile } from './ParticipantTile';
 import { FloatingParticipantPanel } from './FloatingParticipantPanel';
 import { WhiteboardPreviewTile } from './WhiteboardPreviewTile';
 import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';

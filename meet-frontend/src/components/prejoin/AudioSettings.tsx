@@ -24,6 +24,7 @@ export function AudioSettings({
       </button>
       {isExpanded && (
         <div className="mt-3 space-y-2">
+          <p className="text-[10px] text-surface-400 mb-1">Audio settings apply when you join the meeting</p>
           <label className="flex items-center justify-between rounded-lg border border-surface-200 dark:border-surface-700 px-3 py-2.5">
             <div>
               <p className="text-sm font-medium text-surface-700 dark:text-surface-200">Noise suppression</p>

@@ -11,11 +11,12 @@ export function PreJoinControls({
   onToggleSettings,
 }: PreJoinControlsProps) {
   return (
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-10 flex-row">
+    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20 flex-row">
       <button
         onClick={onToggleVideo}
+        aria-label={videoEnabled ? 'Turn camera off' : 'Turn camera on'}
         className={cn(
-          'flex items-center justify-center rounded-lg text-sm font-medium transition shadow-lg whitespace-nowrap',
+          'flex items-center justify-center rounded-lg text-sm font-medium transition shadow-lg whitespace-nowrap focus:ring-2 focus:ring-brand-500 focus:outline-none',
           gridAspectRatio === '9:16' ? 'p-2.5' : 'px-4 py-2.5 gap-2',
           videoEnabled
             ? 'bg-white/90 text-surface-800 hover:bg-white'
@@ -29,8 +30,9 @@ export function PreJoinControls({
       </button>
       <button
         onClick={onToggleAudio}
+        aria-label={audioEnabled ? 'Mute microphone' : 'Unmute microphone'}
         className={cn(
-          'flex items-center justify-center rounded-lg text-sm font-medium transition shadow-lg whitespace-nowrap',
+          'flex items-center justify-center rounded-lg text-sm font-medium transition shadow-lg whitespace-nowrap focus:ring-2 focus:ring-brand-500 focus:outline-none',
           gridAspectRatio === '9:16' ? 'p-2.5' : 'px-4 py-2.5 gap-2',
           audioEnabled
             ? 'bg-white/90 text-surface-800 hover:bg-white'
@@ -44,8 +46,9 @@ export function PreJoinControls({
       </button>
       <button
         onClick={onToggleSettings}
+        aria-label="Device settings"
         className={cn(
-          'flex items-center justify-center rounded-lg text-sm font-medium bg-white/90 text-surface-800 hover:bg-white transition shadow-lg whitespace-nowrap',
+          'flex items-center justify-center rounded-lg text-sm font-medium bg-white/90 text-surface-800 hover:bg-white transition shadow-lg whitespace-nowrap focus:ring-2 focus:ring-brand-500 focus:outline-none',
           gridAspectRatio === '9:16' ? 'p-2.5' : 'px-4 py-2.5 gap-2'
         )}
       >
