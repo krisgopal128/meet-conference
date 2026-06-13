@@ -923,7 +923,7 @@ export const ControlsMenu = memo(function ControlsMenu({
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div
         ref={menuRef}
-        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-surface-700 rounded-xl shadow-lg border border-surface-600 py-2 min-w-[280px] z-50 animate-fade-in"
+        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-surface-700 rounded-xl shadow-lg border border-surface-600 py-2 min-w-[280px] max-h-[80vh] overflow-y-auto z-50 animate-fade-in"
         role="menu"
       >
         <div className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-surface-400 border-b border-surface-600 mb-1">
@@ -1028,7 +1028,7 @@ export const MoreMenu = memo(function MoreMenu({
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div
         ref={menuRef}
-        className="absolute bottom-full right-0 mb-2 mr-2 bg-surface-700 rounded-xl shadow-lg border border-surface-600 py-1 min-w-[160px] max-w-[calc(100vw-2rem)] z-50 animate-fade-in"
+        className="absolute bottom-full right-0 mb-2 mr-2 bg-surface-700 rounded-xl shadow-lg border border-surface-600 py-1 min-w-[160px] max-w-[calc(100vw-2rem)] max-h-[70vh] overflow-y-auto z-50 animate-fade-in"
         role="menu"
       >
         {items.map((item, i) => (

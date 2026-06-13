@@ -10,7 +10,8 @@ import {
   Mic, Monitor, Users,
   Hand, LayoutGrid, MoreVertical,
   Link2, Bell, BellOff, FlipHorizontal, Activity, Sparkles,
-  SquarePlay, Lock, Unlock, DoorOpen, PictureInPicture2, Pencil
+  SquarePlay, Lock, Unlock, DoorOpen, PictureInPicture2, Pencil,
+  ScreenShare, MessageCircle, Camera
 } from 'lucide-react';
 import {
   useLayout,
@@ -423,6 +424,11 @@ export function ControlBar() {
       label: isPiPOpen ? 'Close Picture-in-Picture' : 'Open Picture-in-Picture',
       onClick: () => togglePiP(),
     }] : []),
+    ...(meetingRoomConfig.features.joinLeaveSoundToggle ? [{
+      icon: joinLeaveSoundsEnabled ? <Bell size={16} /> : <BellOff size={16} />,
+      label: joinLeaveSoundsEnabled ? 'Mute Sounds' : 'Enable Sounds',
+      onClick: toggleJoinLeaveSounds,
+    }] : []),
     ...(meetingRoomConfig.features.mirrorLocalVideoToggle ? [{
       icon: <FlipHorizontal size={16} />,
       label: mirrorLocalVideo ? 'Unmirror My Tile' : 'Mirror My Tile',
@@ -454,6 +460,10 @@ export function ControlBar() {
     ...(isModerator ? [
       { icon: meetingLocked ? <Lock size={16} className="text-warning-400" /> : <Unlock size={16} />, label: meetingLocked ? 'Unlock Meeting' : 'Lock Meeting', onClick: handleToggleLock },
       { icon: <DoorOpen size={16} />, label: lobbyEnabled ? 'Disable Lobby' : 'Enable Lobby', onClick: handleToggleLobby },
+      { icon: <ScreenShare size={16} className={participantsCanShareScreen ? 'text-brand-400' : ''} />, label: participantsCanShareScreen ? 'Disallow Screen Share' : 'Allow Screen Share', onClick: handleToggleParticipantScreenShare },
+      { icon: <MessageCircle size={16} className={participantsCanChat ? 'text-brand-400' : ''} />, label: participantsCanChat ? 'Mute Participant Chat' : 'Allow Participant Chat', onClick: handleToggleParticipantChat },
+      { icon: <Mic size={16} className={participantsCanUnmute ? 'text-brand-400' : ''} />, label: participantsCanUnmute ? 'Mute All Participants' : 'Allow Unmute', onClick: handleToggleParticipantUnmute },
+      { icon: <Camera size={16} className={participantsCanTurnOnCamera ? 'text-brand-400' : ''} />, label: participantsCanTurnOnCamera ? 'Disable Cameras' : 'Allow Cameras', onClick: handleToggleParticipantCamera },
     ] : []),
   ];
 
