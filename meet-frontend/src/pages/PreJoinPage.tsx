@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, Link, useSearchParams } from 'react-router-dom';
 import { getToken, getGuestToken, createRoom, updateRoomSettings } from '../services/api';
 import { useLightweightPreviewFilter } from '../hooks/useLightweightVideoFilter';
-import { usePreviewBackgroundBlur } from '../hooks/usePreviewBackgroundBlur';
+import { useBackgroundBlurPreview } from '../hooks/useBackgroundBlurPreview';
+import { useMicLevelMeter } from '../hooks/useMicLevelMeter';
 import { usePreJoinMedia } from '../hooks/usePreJoinMedia';
 import { usePreJoinAuth } from '../hooks/usePreJoinAuth';
 import {
@@ -22,6 +23,7 @@ import {
   Check,
   Grid3X3,
   Users,
+  Mic,
 } from 'lucide-react';
 import {
   DeviceSettings,
@@ -252,16 +254,23 @@ export default function PreJoinPage() {
     fitMode: videoFitMode,
   });
 
-  usePreviewBackgroundBlur(videoElement, {
+  useBackgroundBlurPreview(videoElement, {
     enabled: backgroundBlur && videoEnabled,
+    mode: 'blur',
     blurRadius: backgroundBlurLevel,
-    fitMode: videoFitMode,
+    feather: 3,
+    bgColor: '#1e1e2e',
+    bgImage: null,
   });
 
   // Update video element ref - runs once on mount
   useEffect(() => {
     setVideoElement(videoRef.current);
   }, [videoRef]);
+
+  // Voice level meter — tracks selected mic input in real time
+  const micMeterFillRef = useRef<HTMLDivElement | null>(null);
+  useMicLevelMeter(selectedMic, audioEnabled, micMeterFillRef);
 
   return (
     <div className="min-h-screen min-h-dvh bg-surface-50 dark:bg-surface-900 flex flex-col sm:flex-row overscroll-none">
@@ -336,6 +345,25 @@ export default function PreJoinPage() {
                   </div>
                 </div>
               )}
+
+              {/* Voice level meter overlay */}
+              <div
+                className={cn(
+                  'absolute left-3 bottom-3 flex items-center gap-2 rounded-full px-2.5 py-1.5 z-10 transition-opacity duration-200',
+                  audioEnabled
+                    ? 'bg-black/55 backdrop-blur-sm opacity-100'
+                    : 'opacity-0 pointer-events-none'
+                )}
+              >
+                <Mic className="w-3.5 h-3.5 text-white/70 shrink-0" />
+                <div className="w-20 h-1.5 rounded-full bg-white/15 overflow-hidden">
+                  <div
+                    ref={micMeterFillRef}
+                    className="h-full w-0 rounded-full transition-[width] duration-75"
+                    style={{ background: 'linear-gradient(90deg, #37d67a, #fbbf24 60%, #ef4444)' }}
+                  />
+                </div>
+              </div>
 
               {/* Video overlay controls */}
               <PreJoinControls

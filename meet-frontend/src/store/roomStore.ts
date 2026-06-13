@@ -9,6 +9,8 @@ function safeGetTime(date: Date | string): number {
   return date instanceof Date ? date.getTime() : new Date(date).getTime();
 }
 
+export type BackgroundMode = 'blur' | 'image' | 'color' | 'none';
+
 export type SettingsView = 'devices' | 'call-health' | 'video-effects';
 export type QualityOverrideReason = 'network' | 'cpu' | 'battery' | null;
 export type GridAspectRatio = '16:9' | '9:16' | '1:1' | '4:3';
@@ -95,6 +97,10 @@ interface UIState {
   videoFitMode: VideoFitMode;
   backgroundBlurEnabled: boolean;
   backgroundBlurLevel: number;
+  backgroundMode: BackgroundMode;
+  backgroundBlurIntensity: number;
+  backgroundFeather: number;
+  backgroundBgColor: string;
   diagnosticsLog: Array<{
     id: string;
     at: string;
@@ -127,6 +133,10 @@ interface UIActions {
   setVideoFitMode: (mode: VideoFitMode) => void;
   setBackgroundBlurEnabled: (enabled: boolean) => void;
   setBackgroundBlurLevel: (level: number) => void;
+  setBackgroundMode: (mode: BackgroundMode) => void;
+  setBackgroundBlurIntensity: (intensity: number) => void;
+  setBackgroundFeather: (feather: number) => void;
+  setBackgroundBgColor: (color: string) => void;
   toggleBackgroundBlur: () => void;
   addDiagnosticsEvent: (event: Omit<UIState['diagnosticsLog'][number], 'id' | 'at'>) => void;
   clearDiagnosticsLog: () => void;
@@ -161,6 +171,10 @@ const initialUIState: UIState = {
   videoFitMode: 'cover',
   backgroundBlurEnabled: false,
   backgroundBlurLevel: 10,
+  backgroundMode: 'blur' as BackgroundMode,
+  backgroundBlurIntensity: 14,
+  backgroundFeather: 3,
+  backgroundBgColor: '#1e1e2e',
   _prevLayout: undefined,
   diagnosticsLog: [],
 };
@@ -370,6 +384,10 @@ export const useRoomStore = create<RoomStore>()(
           setVideoFitMode: (videoFitMode) => set({ videoFitMode }, false, 'setVideoFitMode'),
           setBackgroundBlurEnabled: (backgroundBlurEnabled) => set({ backgroundBlurEnabled }, false, 'setBackgroundBlurEnabled'),
           setBackgroundBlurLevel: (backgroundBlurLevel) => set({ backgroundBlurLevel }, false, 'setBackgroundBlurLevel'),
+          setBackgroundMode: (backgroundMode) => set({ backgroundMode }, false, 'setBackgroundMode'),
+          setBackgroundBlurIntensity: (backgroundBlurIntensity) => set({ backgroundBlurIntensity }, false, 'setBackgroundBlurIntensity'),
+          setBackgroundFeather: (backgroundFeather) => set({ backgroundFeather }, false, 'setBackgroundFeather'),
+          setBackgroundBgColor: (backgroundBgColor) => set({ backgroundBgColor }, false, 'setBackgroundBgColor'),
           toggleBackgroundBlur: () => set((state) => ({
             backgroundBlurEnabled: !state.backgroundBlurEnabled,
           }), false, 'toggleBackgroundBlur'),
@@ -628,6 +646,10 @@ export const useGridAspectRatio = () => useRoomStore((state) => state.gridAspect
 export const useVideoFitMode = () => useRoomStore((state) => state.videoFitMode);
 export const useBackgroundBlurEnabled = () => useRoomStore((state) => state.backgroundBlurEnabled);
 export const useBackgroundBlurLevel = () => useRoomStore((state) => state.backgroundBlurLevel);
+export const useBackgroundMode = () => useRoomStore((state) => state.backgroundMode);
+export const useBackgroundBlurIntensity = () => useRoomStore((state) => state.backgroundBlurIntensity);
+export const useBackgroundFeather = () => useRoomStore((state) => state.backgroundFeather);
+export const useBackgroundBgColor = () => useRoomStore((state) => state.backgroundBgColor);
 export const useDiagnosticsLog = () => useRoomStore((state) => state.diagnosticsLog);
 
 // Chat selectors
@@ -710,6 +732,10 @@ export const useUIActions = () => useRoomStore(
     setVideoFitMode: state.setVideoFitMode,
     setBackgroundBlurEnabled: state.setBackgroundBlurEnabled,
     setBackgroundBlurLevel: state.setBackgroundBlurLevel,
+    setBackgroundMode: state.setBackgroundMode,
+    setBackgroundBlurIntensity: state.setBackgroundBlurIntensity,
+    setBackgroundFeather: state.setBackgroundFeather,
+    setBackgroundBgColor: state.setBackgroundBgColor,
     toggleBackgroundBlur: state.toggleBackgroundBlur,
     addDiagnosticsEvent: state.addDiagnosticsEvent,
     clearDiagnosticsLog: state.clearDiagnosticsLog,

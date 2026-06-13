@@ -5,8 +5,8 @@ import { VideoPreset, Track } from 'livekit-client';
 import { ConferenceRoom } from '../components/room/ConferenceRoom';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { LobbyWaiting } from '../components/room/LobbyWaiting';
-import { useConnectionActions, useQualityMode, useScreenShareMode, useUIActions, useGridAspectRatio, useBackgroundBlurEnabled, useBackgroundBlurLevel, useMeetingControlsActions } from '../store/roomStore';
-import { enableBlur, disableBlur } from '../utils/blurProcessorManager';
+import { useConnectionActions, useQualityMode, useScreenShareMode, useUIActions, useGridAspectRatio, useBackgroundBlurEnabled, useBackgroundBlurIntensity, useBackgroundMode, useBackgroundBgColor, useMeetingControlsActions } from '../store/roomStore';
+import { enableBackgroundEffect, disableBackgroundEffect, updateBackgroundEffect } from '../utils/backgroundEffectsManager';
 import { getRoomSettings, roomsApi } from '../services/api';
 import {
   buildAudioCaptureOptions,
@@ -219,7 +219,9 @@ function RoomContent({
   }, [connectionState]);
 
   const storeBlurEnabled = useBackgroundBlurEnabled();
-  const backgroundBlurLevel = useBackgroundBlurLevel();
+  const backgroundBlurIntensity = useBackgroundBlurIntensity();
+  const backgroundMode = useBackgroundMode();
+  const backgroundBgColor = useBackgroundBgColor();
 
   useEffect(() => {
     const blurEnabled = storeBlurEnabled || state.backgroundBlur;
@@ -228,7 +230,7 @@ function RoomContent({
         const cameraPublication = localParticipant.getTrackPublication(Track.Source.Camera);
         const cameraTrack = cameraPublication?.track;
         if (cameraTrack && 'setProcessor' in cameraTrack) {
-          void disableBlur(cameraTrack as Parameters<typeof disableBlur>[0]);
+          void disableBackgroundEffect(cameraTrack as Parameters<typeof disableBackgroundEffect>[0]);
         }
       }
       return;
@@ -241,20 +243,37 @@ function RoomContent({
       const cameraTrack = cameraPublication?.track;
       if (cameraTrack && 'setProcessor' in cameraTrack) {
         if (cancelled) return;
-          const success = await enableBlur(cameraTrack as Parameters<typeof enableBlur>[0], undefined, backgroundBlurLevel);
+        const success = await enableBackgroundEffect(
+          cameraTrack as Parameters<typeof enableBackgroundEffect>[0],
+          {
+            enabled: true,
+            mode: backgroundMode,
+            blurRadius: backgroundBlurIntensity,
+          },
+        );
         if (!cancelled) {
-          logger.info(`[RoomPage] Background blur ${success ? 'applied' : 'failed'}`);
+          logger.info(`[RoomPage] Background effect ${success ? 'applied' : 'failed'}`);
         }
       }
     };
 
     const timer = setTimeout(() => { void applyBlur(); }, 100);
-    
+
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [storeBlurEnabled, state.backgroundBlur, localParticipant, localParticipant.isCameraEnabled, localParticipant.getTrackPublication(Track.Source.Camera)?.track, backgroundBlurLevel]);
+  }, [storeBlurEnabled, state.backgroundBlur, localParticipant, localParticipant.isCameraEnabled, localParticipant.getTrackPublication(Track.Source.Camera)?.track, backgroundBlurIntensity, backgroundMode]);
+
+  // Update effect settings at runtime when store values change (in-room controls)
+  useEffect(() => {
+    if (!storeBlurEnabled) return;
+    void updateBackgroundEffect({
+      mode: backgroundMode,
+      blurRadius: backgroundBlurIntensity,
+      bgColor: backgroundBgColor,
+    });
+  }, [backgroundMode, backgroundBlurIntensity, backgroundBgColor, storeBlurEnabled]);
 
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -519,7 +538,7 @@ export default function RoomPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { setConnected } = useConnectionActions();
-  const { setQualityMode, setScreenShareMode, setGridAspectRatio, setVideoFitMode, setBackgroundBlurEnabled, setBackgroundBlurLevel } = useUIActions();
+  const { setQualityMode, setScreenShareMode, setGridAspectRatio, setVideoFitMode, setBackgroundBlurEnabled, setBackgroundBlurLevel, setBackgroundBlurIntensity } = useUIActions();
   const { setMeetingLocked, setParticipantsCanShareScreen, setParticipantsCanChat, setParticipantsCanUnmute, setParticipantsCanTurnOnCamera } = useMeetingControlsActions();
   const qualityMode = useQualityMode();
   const screenShareMode = useScreenShareMode();
@@ -597,8 +616,9 @@ export default function RoomPage() {
   useEffect(() => {
     if (typeof state?.backgroundBlurLevel === 'number') {
       setBackgroundBlurLevel(state.backgroundBlurLevel);
+      setBackgroundBlurIntensity(state.backgroundBlurLevel);
     }
-  }, [state?.backgroundBlurLevel, setBackgroundBlurLevel]);
+  }, [state?.backgroundBlurLevel, setBackgroundBlurLevel, setBackgroundBlurIntensity]);
 
   // Fetch room settings from server (moderator's saved settings)
   useEffect(() => {

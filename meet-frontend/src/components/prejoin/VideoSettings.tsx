@@ -166,8 +166,8 @@ export function VideoSettings({
               </div>
               <input
                 type="range"
-                min={4}
-                max={24}
+                min={0}
+                max={40}
                 step={1}
                 value={backgroundBlurLevel}
                 onChange={(e) => onBackgroundBlurLevelChange(Number(e.target.value))}

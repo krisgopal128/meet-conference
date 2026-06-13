@@ -17,14 +17,16 @@ import {
   useBatteryCharging,
   useQualityOverrideReason,
   useBackgroundBlurEnabled,
-  useBackgroundBlurLevel,
+  useBackgroundBlurIntensity,
+  useBackgroundMode,
+  useBackgroundBgColor,
   useGridAspectRatio,
   useVideoFitMode,
   useUIActions,
   useIsModerator,
   useRoomName,
 } from '../../store/roomStore';
-import { X, Video, Volume2, Activity, Sparkles, FlipHorizontal, Users, Grid3X3, Maximize2, Crop, SquareIcon, ChevronDown, ChevronRight, Shield, Eye } from 'lucide-react';
+import { X, Video, Volume2, Activity, FlipHorizontal, Users, Grid3X3, Maximize2, Crop, SquareIcon, ChevronDown, ChevronRight, Shield, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { meetingRoomConfig, type QualityModeName, type ScreenShareModeName } from '../../config/meetingRoomConfig';
 import { meetingsApi, updateRoomSettings } from '../../services/api';
@@ -53,14 +55,16 @@ export function SettingsPanel() {
   const batteryCharging = useBatteryCharging();
   const qualityOverrideReason = useQualityOverrideReason();
   const backgroundBlurEnabled = useBackgroundBlurEnabled();
-  const backgroundBlurLevel = useBackgroundBlurLevel();
+  const backgroundBlurIntensity = useBackgroundBlurIntensity();
+  const backgroundMode = useBackgroundMode();
+  const backgroundBgColor = useBackgroundBgColor();
   const gridAspectRatio = useGridAspectRatio();
   const videoFitMode = useVideoFitMode();
   const isModerator = useIsModerator();
   const roomName = useRoomName();
 
   // Action hooks
-  const { toggleSettings, openSettingsView, toggleMirrorLocalVideo, toggleBackgroundBlur, setBackgroundBlurLevel, setQualityMode, setScreenShareMode, setGridAspectRatio, setVideoFitMode, clearDiagnosticsLog } = useUIActions();
+  const { toggleSettings, openSettingsView, toggleMirrorLocalVideo, toggleBackgroundBlur, setBackgroundBlurLevel, setBackgroundBlurIntensity, setBackgroundMode, setBackgroundBgColor, setQualityMode, setScreenShareMode, setGridAspectRatio, setVideoFitMode, clearDiagnosticsLog } = useUIActions();
   
   const [speakerVolume, setSpeakerVolume] = useState(() => persistedSpeakerVolume);
   const speakerVolumeRef = useRef(persistedSpeakerVolume);
@@ -700,12 +704,13 @@ export function SettingsPanel() {
               <p className="mt-1 text-xs text-surface-400">Flip your video horizontally (mirror effect)</p>
             </button>
 
-            {/* Background Blur */}
+            {/* Background Effects */}
             <div className="rounded-xl border border-surface-200 dark:border-surface-700 px-4 py-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-surface-700 dark:text-surface-200">
                   <Eye size={16} />
-                  <span className="text-sm font-medium">Background Blur</span>
+                  <span className="text-sm font-medium">Background Effect</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400">Personal</span>
                 </div>
                 <button
                   type="button"
@@ -723,32 +728,90 @@ export function SettingsPanel() {
                   />
                 </button>
               </div>
-              <p className="mt-1 text-xs text-surface-400">Blur your background for privacy during the call</p>
+              <p className="mt-1 text-xs text-surface-400">Apply effects to your camera background</p>
+
               {backgroundBlurEnabled && (
-                <div className="mt-3">
-                  <div className="mb-2 flex items-center justify-between text-xs text-surface-400">
-                    <span>Blur level</span>
-                    <span>{backgroundBlurLevel}</span>
+                <div className="mt-3 space-y-3">
+                  {/* Mode selector */}
+                  <div>
+                    <div className="mb-2 flex items-center justify-between text-xs text-surface-400">
+                      <span>Mode</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {([
+                        { mode: 'blur' as const, label: 'Blur' },
+                        { mode: 'color' as const, label: 'Color' },
+                        { mode: 'image' as const, label: 'Image' },
+                        { mode: 'none' as const, label: 'None' },
+                      ]).map(({ mode, label }) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => setBackgroundMode(mode)}
+                          className={`rounded-lg px-2 py-1.5 text-xs font-medium transition ${
+                            backgroundMode === mode
+                              ? 'bg-brand-500 text-white'
+                              : 'bg-surface-700 text-surface-300 hover:bg-surface-600'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <input
-                    type="range"
-                    min={4}
-                    max={24}
-                    step={1}
-                    value={backgroundBlurLevel}
-                    onChange={(e) => setBackgroundBlurLevel(Number(e.target.value))}
-                    className="w-full accent-brand-500"
-                  />
+
+                  {/* Blur intensity slider (shown for blur mode) */}
+                  {backgroundMode === 'blur' && (
+                    <div>
+                      <div className="mb-2 flex items-center justify-between text-xs text-surface-400">
+                        <span>Blur intensity</span>
+                        <span>{backgroundBlurIntensity}px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={40}
+                        step={1}
+                        value={backgroundBlurIntensity}
+                        onChange={(e) => {
+                          const v = Number(e.target.value);
+                          setBackgroundBlurIntensity(v);
+                          setBackgroundBlurLevel(v);
+                        }}
+                        className="w-full accent-brand-500"
+                      />
+                    </div>
+                  )}
+
+                  {/* Color picker (shown for color mode) */}
+                  {backgroundMode === 'color' && (
+                    <div>
+                      <div className="mb-2 flex items-center justify-between text-xs text-surface-400">
+                        <span>Background color</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={backgroundBgColor}
+                          onChange={(e) => setBackgroundBgColor(e.target.value)}
+                          className="h-8 w-12 rounded border border-surface-600 bg-transparent"
+                        />
+                        <span className="text-xs text-surface-400 font-mono">{backgroundBgColor}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Image URL (shown for image mode) */}
+                  {backgroundMode === 'image' && (
+                    <div>
+                      <div className="mb-2 flex items-center justify-between text-xs text-surface-400">
+                        <span>Background image URL</span>
+                      </div>
+                      <p className="text-xs text-surface-500">Enter an image URL to use as your virtual background</p>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-            {/* Background Replacement - Future feature */}
-            <div className="rounded-xl border border-dashed border-surface-600 px-4 py-3">
-              <div className="flex items-center gap-2 text-surface-300">
-                <Sparkles size={16} />
-                <span className="text-sm font-medium">Background Replacement</span>
-              </div>
-              <p className="mt-1 text-xs text-surface-500">Reserved for a future video pipeline.</p>
             </div>
           </>
         )}
