@@ -247,15 +247,14 @@ CREATE INDEX IF NOT EXISTS idx_api_keys_is_active ON api_keys(is_active);
 
 CREATE TABLE IF NOT EXISTS whiteboards (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    room_name VARCHAR(255) NOT NULL,
-    scene JSONB DEFAULT '{}'::jsonb,
-    locked BOOLEAN DEFAULT false,
-    locked_by VARCHAR(255),
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    room_id UUID NOT NULL,
+    scene JSONB DEFAULT '[]'::jsonb,
+    locked BOOLEAN DEFAULT true,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT whiteboards_room_id_fkey FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_whiteboards_room_name ON whiteboards(room_name);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_whiteboards_room_id ON whiteboards(room_id);
 
 CREATE TABLE IF NOT EXISTS meeting_diagnostics (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

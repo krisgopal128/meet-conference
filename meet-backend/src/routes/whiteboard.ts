@@ -26,8 +26,8 @@ whiteboardRouter.get('/:roomName', authenticate, async (req: AuthRequest, res) =
       locked: boolean;
       updated_at: string;
     }>(
-      'SELECT scene, locked, updated_at FROM whiteboards WHERE room_name = $1',
-      [roomName],
+      'SELECT scene, locked, updated_at FROM whiteboards WHERE room_id = $1',
+      [room.id],
     );
 
     if (!row) {
@@ -99,8 +99,8 @@ whiteboardRouter.put('/:roomName', authenticate, async (req: AuthRequest, res) =
     }
 
     const existingWhiteboard = await queryOne<{ locked: boolean }>(
-      'SELECT locked FROM whiteboards WHERE room_name = $1',
-      [roomName],
+      'SELECT locked FROM whiteboards WHERE room_id = $1',
+      [room.id],
     );
 
     const isLocked = existingWhiteboard?.locked ?? true;
@@ -110,11 +110,11 @@ whiteboardRouter.put('/:roomName', authenticate, async (req: AuthRequest, res) =
     }
 
     await query(
-      `INSERT INTO whiteboards (room_name, scene, locked, updated_at)
+      `INSERT INTO whiteboards (room_id, scene, locked, updated_at)
        VALUES ($1, $2, true, now())
-       ON CONFLICT (room_name)
+       ON CONFLICT (room_id)
        DO UPDATE SET scene = $2, updated_at = now(), locked = whiteboards.locked`,
-      [roomName, sceneJson],
+      [room.id, sceneJson],
     );
 
     res.json({ ok: true });
@@ -157,11 +157,11 @@ whiteboardRouter.patch('/:roomName/lock', authenticate, async (req: AuthRequest,
     }
 
     await query(
-      `INSERT INTO whiteboards (room_name, scene, locked, updated_at)
+      `INSERT INTO whiteboards (room_id, scene, locked, updated_at)
        VALUES ($1, '{"elements":[],"files":{}}'::jsonb, $2, now())
-       ON CONFLICT (room_name)
+       ON CONFLICT (room_id)
        DO UPDATE SET locked = $2, updated_at = now()`,
-      [roomName, locked],
+      [room.id, locked],
     );
 
     res.json({ ok: true, locked });
@@ -194,7 +194,7 @@ whiteboardRouter.delete('/:roomName', authenticate, async (req: AuthRequest, res
       }
     }
 
-    await query('DELETE FROM whiteboards WHERE room_name = $1', [roomName]);
+    await query('DELETE FROM whiteboards WHERE room_id = $1', [room.id]);
     res.json({ ok: true });
   } catch (err) {
     logger.error('Failed to delete whiteboard', { error: err });
