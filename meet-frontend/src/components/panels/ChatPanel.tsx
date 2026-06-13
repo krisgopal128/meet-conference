@@ -5,6 +5,7 @@ import {
   useShowChatTimestamps,
   useTypingParticipants,
   useUserRole,
+  useParticipantsCanChat,
   useUIActions,
   useChatActions,
   useHostId,
@@ -69,6 +70,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
   const showChatTimestamps = useShowChatTimestamps();
   const typingParticipants = useTypingParticipants();
   const role = useUserRole();
+  const participantsCanChat = useParticipantsCanChat();
   const hostId = useHostId();
 
   // Action hooks (stable references)
@@ -83,6 +85,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<number | null>(null);
   const isModerator = role === 'host' || role === 'cohost' || localParticipant?.identity === hostId;
+  const chatDisabled = !isModerator && !participantsCanChat;
 
   // Mention autocomplete state
   const [showMentionList, setShowMentionList] = useState(false);
@@ -310,7 +313,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
   }, [localParticipant, setTypingParticipant]);
 
   async function publishTyping(isTyping: boolean) {
-    if (!localParticipant) {
+    if (!localParticipant || chatDisabled) {
       return;
     }
 
@@ -327,6 +330,11 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
   }
 
   async function sendMessage() {
+    if (chatDisabled) {
+      toast.error('Chat is disabled by the host');
+      return;
+    }
+
     if (!inputValueRef.current.trim() || !localParticipant) {
       return;
     }
@@ -557,8 +565,9 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
         </Suspense>
       )}
 
-      <ChatInput
-        input={input}
+        <ChatInput
+          disabled={chatDisabled}
+          input={input}
         onInputChange={handleInputChangeWithMentions}
         onKeyDown={handleKeyDown}
         onSendMessage={sendMessage}

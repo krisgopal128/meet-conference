@@ -19,13 +19,7 @@ import {
   Video,
   MicOff,
   VideoOff,
-  ArrowRight,
-  User,
-  Lock,
   Check,
-  Edit3,
-  RefreshCw,
-  Copy,
   Grid3X3,
   Users,
 } from 'lucide-react';
@@ -34,6 +28,8 @@ import {
   AudioSettings,
   VideoSettings,
   PreJoinControls,
+  CreateMeetingForm,
+  JoinForm,
 } from '../components/prejoin';
 
 export default function PreJoinPage() {
@@ -143,6 +139,7 @@ export default function PreJoinPage() {
           await createRoom({
             title: meetingTitle || 'Quick Meeting',
             name: meetingRoomCode,
+            password: meetingPassword || undefined,
             waitingRoomEnabled,
           });
         } catch (err: unknown) {
@@ -510,169 +507,36 @@ export default function PreJoinPage() {
 
           {/* Create mode - Moderator settings */}
           {isCreateMode && !isGuest && (
-            <div className="space-y-4 mb-6">
-              {/* Meeting Title */}
-              <div>
-                <label htmlFor="meetingTitle" className="flex items-center gap-2">
-                  <Edit3 size={14} className="text-surface-400" />
-                  Meeting Title
-                </label>
-                <input
-                  id="meetingTitle"
-                  value={meetingTitle}
-                  onChange={(e) => setMeetingTitle(e.target.value)}
-                  placeholder="e.g., Team Standup"
-                  className="mt-1"
-                />
-              </div>
-
-              {/* Room Code */}
-              <div>
-                <label htmlFor="meetingRoomCode" className="flex items-center gap-2">
-                  <Video size={14} className="text-surface-400" />
-                  Room Code
-                </label>
-                <div className="flex gap-2 mt-1">
-                  <input
-                    id="meetingRoomCode"
-                    value={meetingRoomCode}
-                    onChange={(e) =>
-                      setMeetingRoomCode(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))
-                    }
-                    placeholder="room-code"
-                    className="font-mono flex-1"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setMeetingRoomCode(generateRoomName())}
-                    className="btn-secondary btn-icon"
-                    title="Generate new code"
-                  >
-                    <RefreshCw size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCopyRoomCode}
-                    className="btn-secondary btn-icon"
-                    title="Copy code"
-                  >
-                    <Copy size={16} />
-                  </button>
-                </div>
-                <p className="text-xs text-surface-400 mt-1">Share this code with participants</p>
-              </div>
-
-              {/* Password (Optional) */}
-              <div>
-                <label htmlFor="meetingPassword" className="flex items-center gap-2">
-                  <Lock size={14} className="text-surface-400" />
-                  Password <span className="text-surface-400 font-normal">(optional)</span>
-                </label>
-                <div className="relative mt-1">
-                  <input
-                    id="meetingPassword"
-                    type={showPassword ? 'text' : 'password'}
-                    value={meetingPassword}
-                    onChange={(e) => setMeetingPassword(e.target.value)}
-                    placeholder="Leave empty for no password"
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600"
-                  >
-                    {showPassword ? <VideoOff size={16} /> : <Video size={16} />}
-                  </button>
-                </div>
-                <p className="text-xs text-surface-400 mt-1">Protect your meeting with a password</p>
-              </div>
-            </div>
+            <CreateMeetingForm
+              meetingTitle={meetingTitle}
+              meetingRoomCode={meetingRoomCode}
+              meetingPassword={meetingPassword}
+              showPassword={showPassword}
+              waitingRoomEnabled={waitingRoomEnabled}
+              onTitleChange={setMeetingTitle}
+              onRoomCodeChange={setMeetingRoomCode}
+              onPasswordChange={setMeetingPassword}
+              onShowPasswordToggle={() => setShowPassword(!showPassword)}
+              onWaitingRoomChange={setWaitingRoomEnabled}
+              onGenerateRoomCode={() => setMeetingRoomCode(generateRoomName())}
+              onCopyRoomCode={handleCopyRoomCode}
+            />
           )}
 
-          {/* Guest form */}
-          {!isAuthenticatedFromStore && !isGuest && !isCreateMode ? (
-            <div className="space-y-4">
-              <div className="p-4 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 rounded-lg">
-                <p className="text-sm text-warning-700 dark:text-warning-300">
-                  This is a moderator link. Please sign in to continue as moderator, or you can join as a guest below.
-                </p>
-              </div>
-              <div>
-                <label htmlFor="displayName">Your Name</label>
-                <div className="relative">
-                  <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
-                  <input
-                    id="displayName"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="Enter your name"
-                    required
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              {room && (
-                <div>
-                  <label htmlFor="password">Room Password (if required)</label>
-                  <div className="relative">
-                    <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
-                    <input
-                      id="password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter password"
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : isGuest ? (
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="displayName">Your Name</label>
-                <div className="relative">
-                  <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
-                  <input
-                    id="displayName"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="Enter your name"
-                    required
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              {room && (
-                <div>
-                  <label htmlFor="password">Room Password (if required)</label>
-                  <div className="relative">
-                    <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
-                    <input
-                      id="password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter password"
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : !isAuthenticatedFromStore && !isCreateMode ? (
-            <div className="flex items-center gap-3 p-4 bg-brand-50 dark:bg-brand-900/20 rounded-lg">
-              <div className="w-10 h-10 bg-brand-500 rounded-full flex items-center justify-center">
-                <Check size={20} className="text-white" />
-              </div>
-              <div>
-                <p className="font-medium text-surface-800 dark:text-white">Signed in</p>
-                <p className="text-sm text-surface-500 dark:text-surface-400">You'll join as a moderator</p>
-              </div>
-            </div>
-          ) : null}
+          <JoinForm
+            showGuestFields={isGuest || (!isAuthenticatedFromStore && requestedRole === 'moderator' && !isCreateMode)}
+            showModeratorLinkPrompt={!isAuthenticatedFromStore && requestedRole === 'moderator' && !isCreateMode}
+            isCreateMode={isCreateMode}
+            displayName={displayName}
+            password={password}
+            room={room}
+            loading={loading}
+            creatingRoom={creatingRoom}
+            disabled={isCreateMode && !meetingRoomCode.trim()}
+            onDisplayNameChange={setDisplayName}
+            onPasswordChange={setPassword}
+            onJoin={handleJoin}
+          />
 
           {/* Ready status */}
           <div className="mt-6 p-4 bg-surface-50 dark:bg-surface-700/50 rounded-lg">
@@ -738,28 +602,6 @@ export default function PreJoinPage() {
             </div>
           </div>
 
-          {/* Join/Create button */}
-          <button
-            onClick={handleJoin}
-            disabled={
-              loading ||
-              creatingRoom ||
-              (isGuest && !displayName.trim()) ||
-              (isCreateMode && !meetingRoomCode.trim())
-            }
-            className="btn-primary w-full mt-6"
-          >
-            {creatingRoom ? (
-              <span>Creating Room...</span>
-            ) : loading ? (
-              <span>{isCreateMode ? 'Starting...' : 'Joining...'}</span>
-            ) : (
-              <>
-                <span>{isCreateMode ? 'Start Meeting' : 'Join Now'}</span>
-                <ArrowRight size={18} />
-              </>
-            )}
-          </button>
         </div>
       </div>
     </div>

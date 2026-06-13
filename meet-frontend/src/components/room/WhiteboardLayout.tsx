@@ -161,7 +161,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
   // Load persisted scene once when API is ready
   const hasLoadedRef = useRef(false);
   useEffect(() => {
-    if (!roomName || !excalidrawAPIRef.current || hasLoadedRef.current) return;
+    if (!roomName || !excalidrawReady || !excalidrawAPIRef.current || hasLoadedRef.current) return;
     hasLoadedRef.current = true;
 
     const cached = whiteboardSceneCache.get(roomName);
@@ -194,7 +194,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
     }).catch((err) => {
       logger.warn('[Whiteboard] Failed to load persisted scene', { error: err });
     });
-  }, [applySceneElements, roomName]);
+  }, [applySceneElements, excalidrawReady, roomName]);
 
   // Subscribe to remote lock messages + viewport messages
   useEffect(() => {

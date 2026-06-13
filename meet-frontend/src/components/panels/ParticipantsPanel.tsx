@@ -96,11 +96,14 @@ export function ParticipantsPanel() {
 
   useLobbyPolling(room.name, isModerator, useCallback((lobby: ApiLobbyParticipant[]) => {
     setLobbyCount(lobby.length);
-    setLobbyParticipants(lobby.map((p) => ({
-      identity: p.identity,
-      name: p.name || p.identity,
-      joinedAt: Date.now(),
-    })));
+    setLobbyParticipants((prev) => {
+      const existingJoinedAt = new Map(prev.map((participant) => [participant.identity, participant.joinedAt]));
+      return lobby.map((participant) => ({
+        identity: participant.identity,
+        name: participant.name || participant.identity,
+        joinedAt: existingJoinedAt.get(participant.identity) ?? Date.now(),
+      }));
+    });
   }, [setLobbyCount]));
 
   // Listen for new participants joining
@@ -127,6 +130,19 @@ export function ParticipantsPanel() {
   // Filter participants
   const activeParticipants = participants.filter((p) => p.permissions?.canPublish !== false);
   const normalizedQuery = searchQuery.trim().toLowerCase();
+
+  useEffect(() => {
+    if (!isModerator) return;
+
+    const admittedIdentities = new Set(activeParticipants.map((participant) => participant.identity));
+    setLobbyParticipants((prev) => {
+      const next = prev.filter((participant) => !admittedIdentities.has(participant.identity));
+      if (next.length !== prev.length) {
+        setLobbyCount(next.length);
+      }
+      return next;
+    });
+  }, [activeParticipants, isModerator, setLobbyCount]);
   
   const filteredLobbyParticipants = lobbyParticipants.filter((participant) => {
     if (!normalizedQuery) return true;

@@ -27,11 +27,12 @@ import { format, formatDistanceToNow } from 'date-fns';
    return typeof err === 'object' && err !== null && 'response' in (err as object);
  }
 
- export default function AdminApiKeyManager() {
+export default function AdminApiKeyManager() {
   const user = useUser();
   const [keys, setKeys] = useState<AdminApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [appliedSearchQuery, setAppliedSearchQuery] = useState('');
   const [filterActive, setFilterActive] = useState<string>('all');
   const [filterRole, setFilterRole] = useState<string>('all');
   const [actioningId, setActioningId] = useState<string | null>(null);
@@ -44,13 +45,13 @@ import { format, formatDistanceToNow } from 'date-fns';
     if (isAdmin) {
       fetchKeys();
     }
-  }, [isAdmin, filterActive, filterRole]);
+  }, [isAdmin, filterActive, filterRole, appliedSearchQuery]);
 
   const fetchKeys = async () => {
     try {
       setLoading(true);
       const params: Record<string, string> = {};
-      if (searchQuery) params.search = searchQuery;
+      if (appliedSearchQuery) params.search = appliedSearchQuery;
       if (filterActive !== 'all') params.is_active = filterActive;
       if (filterRole !== 'all') params.role = filterRole;
       
@@ -66,7 +67,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchKeys();
+    setAppliedSearchQuery(searchQuery.trim());
   };
 
   const handleRevoke = async (key: AdminApiKey) => {

@@ -15,8 +15,9 @@ import logger from '../../utils/logger';
  */
 
 interface UserDetailData extends AdminUser {
-  meetingCount?: number;
-  recentActivity?: ActivityItem[];
+  meetingsAttended?: number;
+  meetingsHosted?: number;
+  totalDurationMinutes?: number;
   banned_at?: string | null;
 }
 
@@ -53,13 +54,24 @@ function formatRelativeTime(dateStr: string | null | undefined): string {
   return formatDate(dateStr);
 }
 
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export default function UserDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const currentUser = useUser();
   
   const [user, setUser] = useState<UserDetailData | null>(null);
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activityLoading, setActivityLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   
   // Modal states
@@ -84,13 +96,34 @@ export default function UserDetail() {
     }
   }, [id, navigate]);
 
+  const fetchUserActivity = useCallback(async () => {
+    if (!id) return;
+
+    setActivityLoading(true);
+    try {
+      const response = await prashasakahApi.getUserActivity(id, { limit: 50, offset: 0 });
+      const mapped: ActivityItem[] = (response.data.activities || []).map((activity) => ({
+        id: activity.id,
+        activity_type: activity.type,
+        metadata: {
+          ...(activity.metadata || {}),
+          ip_address: activity.ipAddress,
+        },
+        created_at: activity.createdAt,
+      }));
+      setActivities(mapped);
+    } catch (error) {
+      logger.error('Failed to fetch user activity:', error);
+      toast.error('Failed to load user activity');
+    } finally {
+      setActivityLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => {
-    const controller = new AbortController();
     fetchUser();
-    return () => {
-      controller.abort();
-    };
-  }, [fetchUser]);
+    fetchUserActivity();
+  }, [fetchUser, fetchUserActivity]);
 
   const handleSaveUser = async (userId: string, data: { name?: string; role?: 'admin' | 'moderator' | 'participant' }) => {
     try {
@@ -155,11 +188,14 @@ export default function UserDetail() {
     try {
       const response = await prashasakahApi.resetPassword(user.id);
       toast.success('Password reset link generated');
-      // In production, this would be sent via email
-      // For now, show the reset token (for testing)
+
       if (response?.data?.resetUrl) {
-        navigator.clipboard.writeText(response.data.resetUrl);
-        toast.success('Reset link copied to clipboard');
+        const copied = await copyToClipboard(response.data.resetUrl);
+        if (copied) {
+          toast.success('Reset link copied to clipboard');
+        } else {
+          toast.error('Reset link generated, but copying to clipboard failed');
+        }
       }
     } catch (error) {
       logger.error('Failed to reset password:', error);
@@ -317,7 +353,7 @@ export default function UserDetail() {
               {!isCurrentUser && (
                 user.isBanned ? (
                   <button
-                    onClick={handleUnban}
+                    onClick={() => { void handleUnban(); }}
                     disabled={actionLoading !== null}
                     className="w-full px-4 py-2 text-sm font-medium text-green-700 bg-success-100 rounded-lg hover:bg-green-200 disabled:opacity-50 transition-colors"
                   >
@@ -325,7 +361,7 @@ export default function UserDetail() {
                   </button>
                 ) : (
                   <button
-                    onClick={handleBan}
+                    onClick={() => { void handleBan(); }}
                     disabled={actionLoading !== null}
                     className="w-full px-4 py-2 text-sm font-medium text-orange-700 bg-orange-100 rounded-lg hover:bg-orange-200 disabled:opacity-50 transition-colors"
                   >
@@ -354,7 +390,7 @@ export default function UserDetail() {
             <dl className="space-y-4">
               <div className="flex justify-between">
                 <dt className="text-surface-500">Meetings Joined</dt>
-                <dd className="font-semibold text-surface-800">{user.meetingCount || 0}</dd>
+                <dd className="font-semibold text-surface-800">{user.meetingsAttended || 0}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-surface-500">Account Age</dt>
@@ -377,8 +413,8 @@ export default function UserDetail() {
           <div className="bg-white rounded-xl border border-surface-200 p-5">
             <h3 className="text-lg font-semibold text-surface-800 mb-4">Recent Activity</h3>
             <UserActivityLog 
-              activities={user.recentActivity || []} 
-              loading={loading}
+              activities={activities} 
+              loading={loading || activityLoading}
             />
           </div>
         </div>
@@ -436,7 +472,7 @@ export default function UserDetail() {
                   Cancel
                 </button>
                 <button
-                  onClick={handleDelete}
+                  onClick={() => { void handleDelete(); }}
                   disabled={actionLoading !== null}
                   className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
                 >
@@ -483,7 +519,7 @@ export default function UserDetail() {
                   Cancel
                 </button>
                 <button
-                  onClick={handleResetPassword}
+                  onClick={() => { void handleResetPassword(); }}
                   disabled={actionLoading !== null}
                   className="flex-1 px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-50 transition-colors"
                 >

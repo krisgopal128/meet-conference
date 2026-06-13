@@ -172,7 +172,7 @@ export function useWhiteboardSync(
     async (roomName: string) => {
       try {
         const state = await whiteboardApi.getState(roomName);
-        if (excalidrawAPIRef.current && Array.isArray(state.scene) && state.scene.length > 0) {
+        if (state && excalidrawAPIRef.current && Array.isArray(state.scene) && state.scene.length > 0) {
           excalidrawAPIRef.current.updateScene({ elements: state.scene as any[] });
           onSceneElements?.(state.scene as unknown[]);
           onSceneUpdate?.();

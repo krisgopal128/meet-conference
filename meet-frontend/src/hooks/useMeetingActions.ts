@@ -23,7 +23,7 @@ async function saveAllWhiteboards() {
   const saves = Array.from(whiteboardSaveFns).map(fn => fn().catch(() => {}));
   await Promise.allSettled(saves);
 }
-import { useConnectionActions, useRoomStore } from '../store/roomStore';
+import { useConnectionActions } from '../store/roomStore';
 import toast from 'react-hot-toast';
 import logger from '../utils/logger';
 
@@ -59,12 +59,6 @@ export function useMeetingActions() {
 
     // Save whiteboard before leaving (best-effort)
     await saveAllWhiteboards();
-
-    // Stop recording if active
-    const storeState = useRoomStore.getState();
-    if (storeState.isRecording && storeState.egressId) {
-      try { await roomsApi.stopRecording(storeState.egressId); } catch {}
-    }
 
     try {
       await stopLocalTracks(localParticipant);

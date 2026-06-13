@@ -98,6 +98,7 @@ export async function createRoom(
   hostId: string,
   title: string | null,
   description: string | null,
+  roomPassword: string | null,
   maxParticipants: number,
   emptyTimeout: number,
   startsAt: Date | null,
@@ -106,14 +107,15 @@ export async function createRoom(
   waitingRoomEnabled: boolean
 ): Promise<RoomRow> {
   const [room] = await query<RoomRow>(
-    `INSERT INTO rooms (name, title, description, host_id, max_participants, empty_timeout, starts_at, ends_at, settings, waiting_room_enabled)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `INSERT INTO rooms (name, title, description, host_id, room_password, max_participants, empty_timeout, starts_at, ends_at, settings, waiting_room_enabled)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
      RETURNING *`,
     [
       name,
       title,
       description,
       hostId,
+      roomPassword,
       maxParticipants,
       emptyTimeout,
       startsAt,

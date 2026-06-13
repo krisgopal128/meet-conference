@@ -95,6 +95,7 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
   
   const [activeSpeakers, setActiveSpeakers] = useState<Participant[]>([]);
   const screenShareTracks = useTracks([Track.Source.ScreenShare]);
+  const hasActiveScreenShare = screenShareTracks.some((track) => track.publication?.isSubscribed);
   const isModerator = role === 'host' || role === 'cohost' || identity === hostId;
   const activeSpeakerPromoteTimerRef = useRef<number | null>(null);
   const activeSpeakerDemoteTimerRef = useRef<number | null>(null);
@@ -180,14 +181,13 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
 
   // Auto-switch to screenshare layout
   useEffect(() => {
-    const hasScreenShare = screenShareTracks.length > 0 && screenShareTracks[0].publication?.isSubscribed;
-    if (hasScreenShare && layout !== 'screenshare') {
+    if (hasActiveScreenShare && layout !== 'screenshare') {
       layoutBeforeScreenshare.current = layout;
       setLayout('screenshare');
-    } else if (!hasScreenShare && layout === 'screenshare') {
+    } else if (!hasActiveScreenShare && layout === 'screenshare') {
       setLayout(layoutBeforeScreenshare.current);
     }
-  }, [screenShareTracks.length, setLayout, layout]);
+  }, [hasActiveScreenShare, setLayout, layout]);
 
   // Data channel, join/leave sounds, and quality monitoring are handled by extracted hooks
 

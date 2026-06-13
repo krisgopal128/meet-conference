@@ -35,6 +35,7 @@ vi.mock('@livekit/components-react', () => ({
       setCameraEnabled: vi.fn().mockResolvedValue(undefined),
       setMicrophoneEnabled: vi.fn().mockResolvedValue(undefined),
       setScreenShareEnabled: vi.fn().mockResolvedValue(undefined),
+      getTrackPublication: vi.fn().mockReturnValue(undefined),
       on: vi.fn(),
       off: vi.fn(),
       trackPublications: [],
@@ -52,6 +53,7 @@ vi.mock('@livekit/components-react', () => ({
       setCameraEnabled: vi.fn().mockResolvedValue(undefined),
       setMicrophoneEnabled: vi.fn().mockResolvedValue(undefined),
       setScreenShareEnabled: vi.fn().mockResolvedValue(undefined),
+      getTrackPublication: vi.fn().mockReturnValue(undefined),
       on: vi.fn(),
       off: vi.fn(),
       trackPublications: [],
@@ -71,11 +73,18 @@ vi.mock('livekit-client', () => ({
   VideoPreset: class {
     constructor() {}
   },
+  Track: {
+    Source: {
+      Camera: 'camera',
+      Microphone: 'microphone',
+      ScreenShare: 'screen_share',
+    },
+  },
 }));
 
 vi.mock('../../services/api', () => ({
   registerAuthStore: vi.fn(),
-  getRoomSettings: vi.fn().mockResolvedValue({}),
+  getRoomSettings: vi.fn().mockResolvedValue({ data: { settings: {} } }),
 }));
 
 vi.mock('../../utils/blurProcessorManager', () => ({
@@ -105,6 +114,7 @@ vi.mock('../../store/roomStore', () => ({
   useScreenShareMode: () => 'documents',
   useGridAspectRatio: () => '16:9',
   useBackgroundBlurEnabled: () => false,
+  useBackgroundBlurLevel: () => 10,
 }));
 
 vi.mock('../../config/meetingRoomConfig', () => ({
@@ -169,7 +179,7 @@ const renderRoomPage = async () => {
   let result: ReturnType<typeof render>;
   await act(async () => {
     result = render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <RoomPage />
       </MemoryRouter>
     );

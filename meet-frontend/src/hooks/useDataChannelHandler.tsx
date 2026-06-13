@@ -165,6 +165,7 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
             if (typeof payload.participantsCanTurnOnCamera === 'boolean') setParticipantsCanTurnOnCamera(payload.participantsCanTurnOnCamera);
           }
         } else if (payload.type === 'settings_sync') {
+          if (!isPrivilegedSender) return;
           if (senderIdentity !== localParticipant.identity && payload.setting === 'videoFitMode' && (payload.value === 'cover' || payload.value === 'contain')) {
             setVideoFitMode(payload.value);
           }

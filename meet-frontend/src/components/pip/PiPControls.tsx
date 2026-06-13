@@ -28,6 +28,10 @@ import toast from 'react-hot-toast';
 interface PiPControlsProps {
   onReturnToTab: () => void;
   localParticipant: LocalParticipant | null;
+  isModerator: boolean;
+  participantsCanShareScreen: boolean;
+  participantsCanUnmute: boolean;
+  participantsCanTurnOnCamera: boolean;
 }
 
 // Button style presets for PiP
@@ -128,7 +132,14 @@ const HangUpButton = memo(function HangUpButton({ onClick }: HangUpButtonProps) 
   );
 });
 
-export function PiPControls({ onReturnToTab, localParticipant }: PiPControlsProps) {
+export function PiPControls({
+  onReturnToTab,
+  localParticipant,
+  isModerator,
+  participantsCanShareScreen,
+  participantsCanUnmute,
+  participantsCanTurnOnCamera,
+}: PiPControlsProps) {
   // Derived state
   const isMicMuted = !localParticipant?.isMicrophoneEnabled;
   const isCameraOff = !localParticipant?.isCameraEnabled;
@@ -137,33 +148,45 @@ export function PiPControls({ onReturnToTab, localParticipant }: PiPControlsProp
   // Toggle handlers
   const toggleMic = useCallback(async () => {
     if (!localParticipant) return;
+    if (!localParticipant.isMicrophoneEnabled && !isModerator && !participantsCanUnmute) {
+      toast.error('The host has disabled self-unmute');
+      return;
+    }
     try {
       await localParticipant.setMicrophoneEnabled(!localParticipant.isMicrophoneEnabled);
     } catch (error) {
       logger.error('[PiPControls] Failed to toggle microphone:', error);
       toast.error('Failed to toggle microphone');
     }
-  }, [localParticipant]);
+  }, [isModerator, localParticipant, participantsCanUnmute]);
 
   const toggleCamera = useCallback(async () => {
     if (!localParticipant) return;
+    if (!localParticipant.isCameraEnabled && !isModerator && !participantsCanTurnOnCamera) {
+      toast.error('The host has disabled self camera enable');
+      return;
+    }
     try {
       await localParticipant.setCameraEnabled(!localParticipant.isCameraEnabled);
     } catch (error) {
       logger.error('[PiPControls] Failed to toggle camera:', error);
       toast.error('Failed to toggle camera');
     }
-  }, [localParticipant]);
+  }, [isModerator, localParticipant, participantsCanTurnOnCamera]);
 
   const toggleScreenShare = useCallback(async () => {
     if (!localParticipant) return;
+    if (!localParticipant.isScreenShareEnabled && !isModerator && !participantsCanShareScreen) {
+      toast.error('The host has disabled participant screen sharing');
+      return;
+    }
     try {
       await localParticipant.setScreenShareEnabled(!localParticipant.isScreenShareEnabled);
     } catch (error) {
       logger.error('[PiPControls] Failed to toggle screen share:', error);
       toast.error('Failed to toggle screen share');
     }
-  }, [localParticipant]);
+  }, [isModerator, localParticipant, participantsCanShareScreen]);
 
   // Leave meeting handler - navigates back to main tab first
   const handleHangUp = useCallback(async () => {

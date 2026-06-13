@@ -49,7 +49,7 @@ export default function Alerts() {
       setProcessingId(id);
       await prashasakahApi.resolveAlert(id);
       toast.success('Alert resolved');
-      setAlerts(alerts.filter(a => a.id !== id));
+      setAlerts((prev) => prev.filter((alert) => alert.id !== id));
     } catch {
       toast.error('Failed to resolve alert');
     } finally {
@@ -61,8 +61,8 @@ export default function Alerts() {
     try {
       setProcessingId(id);
       await prashasakahApi.markAlertAsRead(id);
-      setAlerts(alerts.map(a => 
-        a.id === id ? { ...a, readAt: new Date().toISOString() } : a
+      setAlerts((prev) => prev.map((alert) =>
+        alert.id === id ? { ...alert, readAt: new Date().toISOString() } : alert
       ));
       toast.success('Alert marked as read');
     } catch {

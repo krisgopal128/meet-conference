@@ -3,6 +3,8 @@ import { devtools, persist, subscribeWithSelector } from 'zustand/middleware';
 import type { ChatMessage, LayoutMode } from '../types';
 import { meetingRoomConfig, type QualityModeName, type ScreenShareModeName } from '../config/meetingRoomConfig';
 
+const DEVTOOLS_ENABLED = import.meta.env.DEV && import.meta.env.MODE !== 'test';
+
 export type SettingsView = 'devices' | 'call-health' | 'video-effects';
 export type QualityOverrideReason = 'network' | 'cpu' | 'battery' | null;
 export type GridAspectRatio = '16:9' | '9:16' | '1:1' | '4:3';
@@ -251,6 +253,12 @@ const initialFeaturesState: FeaturesState = {
 type RoomStoreState = ConnectionState & UIState & ChatState & FeaturesState & MeetingControlsState;
 type RoomStoreActions = ConnectionActions & UIActions & ChatActions & FeaturesActions & MeetingControlsActions;
 type RoomStore = RoomStoreState & RoomStoreActions & { reset: () => void };
+
+function getPersistedLayoutPreference(layout: LayoutMode): LayoutMode {
+  return layout === 'whiteboard' || layout === 'screenshare'
+    ? meetingRoomConfig.room.defaultLayout
+    : layout;
+}
 
 // ============================================
 // OPTIMIZED STORE (NO IMMER - using spread operators)
@@ -532,7 +540,7 @@ export const useRoomStore = create<RoomStore>()(
             ...initialConnectionState,
             ...initialUIState,
             // Preserve persisted user preferences
-            layout: state.layout,
+            layout: getPersistedLayoutPreference(state.layout),
             mirrorLocalVideo: state.mirrorLocalVideo,
             joinLeaveSoundsEnabled: state.joinLeaveSoundsEnabled,
             showChatTimestamps: state.showChatTimestamps,
@@ -562,7 +570,7 @@ export const useRoomStore = create<RoomStore>()(
         }),
       }
     ),
-    { name: 'room-store', enabled: import.meta.env.DEV }
+    { name: 'room-store', enabled: DEVTOOLS_ENABLED }
   )
 );
 

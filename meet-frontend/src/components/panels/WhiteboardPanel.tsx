@@ -52,7 +52,7 @@ export const WhiteboardPanel = React.memo(function WhiteboardPanel({
     excalidrawAPIRef.current = excalidrawAPI;
   }, [excalidrawAPI]);
 
-  const { broadcastChange, broadcastLock, loadPersistedScene } = useWhiteboardSync(
+  const { broadcastChange, broadcastLock, broadcastActivate, loadPersistedScene } = useWhiteboardSync(
     room,
     localParticipant ?? null,
     excalidrawAPIRef,
@@ -222,6 +222,7 @@ export const WhiteboardPanel = React.memo(function WhiteboardPanel({
                   logger.warn('[Whiteboard] Failed to save on close', { error: err });
                 }
               }
+              broadcastActivate(false);
               toggleWhiteboard();
             }}
             className="p-1.5 rounded-lg text-surface-400 hover:text-surface-200 hover:bg-surface-700 transition-colors"

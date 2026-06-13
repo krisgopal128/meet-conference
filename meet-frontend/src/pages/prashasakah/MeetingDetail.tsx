@@ -50,6 +50,15 @@ function formatRelativeTime(dateStr: string): string {
   return formatDateTime(dateStr);
 }
 
+function getSafeRecordingUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    return sanitizeUrl(url) || null;
+  } catch {
+    return null;
+  }
+}
+
 const statusColors: Record<string, string> = {
   ongoing: 'bg-success-100 text-green-800 border-green-200',
   ended: 'bg-surface-100 text-surface-700 border-surface-200',
@@ -100,11 +109,9 @@ export default function MeetingDetail() {
   }, [id]);
 
   useEffect(() => {
-    const controller = new AbortController();
+    setChatMessages([]);
+    setActiveTab('participants');
     fetchMeeting();
-    return () => {
-      controller.abort();
-    };
   }, [fetchMeeting]);
 
   useEffect(() => {
@@ -153,6 +160,7 @@ export default function MeetingDetail() {
   }
 
   const isOngoing = meeting.status === 'ongoing';
+  const safeRecordingUrl = getSafeRecordingUrl(meeting.recording_url);
 
   return (
     <div className="space-y-6">
@@ -237,12 +245,12 @@ export default function MeetingDetail() {
                   {formatDateTime(meeting.endedAt)}
                 </dd>
               </div>
-              {meeting.recording_url && sanitizeUrl(meeting.recording_url) && (
+              {safeRecordingUrl && (
                 <div>
                   <dt className="text-sm text-surface-500">Recording</dt>
                   <dd className="mt-1">
                     <a 
-                      href={sanitizeUrl(meeting.recording_url) ?? undefined} 
+                      href={safeRecordingUrl} 
                       target="_blank" rel="noreferrer noopener"
                       className="text-sm text-brand-600 hover:underline"
                     >

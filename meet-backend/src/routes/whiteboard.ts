@@ -71,6 +71,10 @@ whiteboardRouter.put('/:roomName', authenticate, async (req: AuthRequest, res) =
       return;
     }
 
+    const canModerate = room.host_id === req.user!.id
+      ? true
+      : await participantCanModerate(roomName, req.user!.id, room.host_id);
+
     // Verify user is host or participant of this room
     const isHost = room.host_id === req.user!.id;
     if (!isHost) {
@@ -82,6 +86,17 @@ whiteboardRouter.put('/:roomName', authenticate, async (req: AuthRequest, res) =
         res.status(403).json({ error: 'You must be a participant of this room to edit the whiteboard' });
         return;
       }
+    }
+
+    const existingWhiteboard = await queryOne<{ locked: boolean }>(
+      'SELECT locked FROM whiteboards WHERE room_name = $1',
+      [roomName],
+    );
+
+    const isLocked = existingWhiteboard?.locked ?? true;
+    if (isLocked && !canModerate) {
+      res.status(403).json({ error: 'Whiteboard is locked. Only room moderators can edit it.' });
+      return;
     }
 
     await query(

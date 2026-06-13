@@ -13,6 +13,25 @@ import toast from 'react-hot-toast';
 import { format, parseISO } from 'date-fns';
 import logger from '../utils/logger';
 
+function normalizeRoomNameInput(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+}
+
+function getRoomNameError(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return 'Room name is required';
+  if (!/^[a-z][a-z0-9-]{2,99}$/.test(trimmed)) {
+    return 'Room name must start with a letter and use only lowercase letters, numbers, and hyphens';
+  }
+  if (trimmed.includes('--')) {
+    return 'Room name cannot contain consecutive hyphens';
+  }
+  if (trimmed.endsWith('-')) {
+    return 'Room name cannot end with a hyphen';
+  }
+  return '';
+}
+
 export default function HomePage() {
   return (
     <PageErrorBoundary fallbackMessage="Failed to load dashboard.">
@@ -68,15 +87,7 @@ function HomePageContent() {
   // Validate room name
   useEffect(() => {
     if (roomNameTouched) {
-      if (!roomName.trim()) {
-        setRoomNameError('Room name is required');
-      } else if (!/^[a-z0-9-]+$/.test(roomName)) {
-        setRoomNameError('Only lowercase letters, numbers, and hyphens allowed');
-      } else if (roomName.length > 50) {
-        setRoomNameError('Room name must be 50 characters or less');
-      } else {
-        setRoomNameError('');
-      }
+      setRoomNameError(getRoomNameError(roomName));
     }
   }, [roomName, roomNameTouched]);
 
@@ -572,7 +583,7 @@ function HomePageContent() {
                     type="text"
                     value={roomName}
                     onChange={(e) => {
-                      setRoomName(e.target.value);
+                      setRoomName(normalizeRoomNameInput(e.target.value));
                       if (!roomNameTouched) setRoomNameTouched(true);
                     }}
                     onBlur={() => setRoomNameTouched(true)}

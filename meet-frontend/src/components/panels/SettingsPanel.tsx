@@ -158,7 +158,7 @@ export function SettingsPanel() {
     }
     
     // Moderators can save to backend (debounced)
-    if (roomName) {
+    if (roomName && isModerator) {
       if (saveSettingsTimerRef.current) {
         clearTimeout(saveSettingsTimerRef.current);
       }

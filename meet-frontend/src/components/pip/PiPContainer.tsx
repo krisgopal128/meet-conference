@@ -10,7 +10,16 @@ import { PiPScreenShare } from './PiPScreenShare';
 import { useLocalParticipant, useParticipants, useTracks } from '@livekit/components-react';
 import type { Participant } from 'livekit-client';
 import { Track } from 'livekit-client';
-import { useUserIdentity, useUserRole, useHostId, useIsPiPOpen, usePiPActions } from '../../store/roomStore';
+import {
+  useUserIdentity,
+  useUserRole,
+  useHostId,
+  useIsPiPOpen,
+  usePiPActions,
+  useParticipantsCanShareScreen,
+  useParticipantsCanUnmute,
+  useParticipantsCanTurnOnCamera,
+} from '../../store/roomStore';
 import logger from '../../utils/logger';
 
 const PIP_WINDOW_WIDTH = 400;
@@ -53,6 +62,9 @@ export function PiPContainer() {
   const identity = useUserIdentity();
   const role = useUserRole();
   const hostId = useHostId();
+  const participantsCanShareScreen = useParticipantsCanShareScreen();
+  const participantsCanUnmute = useParticipantsCanUnmute();
+  const participantsCanTurnOnCamera = useParticipantsCanTurnOnCamera();
   const isModerator = role === 'host' || role === 'cohost' || identity === hostId;
 
   const openPiPWindow = useCallback(async () => {
@@ -153,6 +165,10 @@ export function PiPContainer() {
       <PiPControls
         onReturnToTab={() => setPiPOpen(false)}
         localParticipant={localParticipant}
+        isModerator={isModerator}
+        participantsCanShareScreen={participantsCanShareScreen}
+        participantsCanUnmute={participantsCanUnmute}
+        participantsCanTurnOnCamera={participantsCanTurnOnCamera}
       />
     </div>,
     container

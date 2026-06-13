@@ -22,8 +22,8 @@ router.get('/audit-logs', requireAdmin(), async (req: AuthRequest, res: Response
   try {
     const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 50, 1), 200);
     const offset = Math.max(parseInt(req.query.offset as string, 10) || 0, 0);
-    const actionType = req.query.action_type as string | undefined;
-    const adminId = req.query.admin_id as string | undefined;
+    const actionType = (req.query.action as string | undefined) || (req.query.action_type as string | undefined);
+    const adminId = (req.query.actorId as string | undefined) || (req.query.admin_id as string | undefined);
 
     let whereClause = '';
     const params: any[] = [];
@@ -49,16 +49,38 @@ router.get('/audit-logs', requireAdmin(), async (req: AuthRequest, res: Response
     );
     const total = parseInt(countResult[0]?.count || '0', 10);
 
-    const logs = await query(
-      `SELECT id, admin_id, action_type, target_type, target_id, details, ip_address, created_at
-       FROM admin_audit_logs ${whereClause}
+    const logs = await query<{
+      id: string;
+      admin_id: string;
+      actor_email: string | null;
+      action_type: string;
+      target_type: 'user' | 'room' | 'meeting' | 'system';
+      target_id: string | null;
+      details: Record<string, unknown> | null;
+      ip_address: string | null;
+      created_at: string;
+    }>(
+      `SELECT aal.id, aal.admin_id, u.email as actor_email, aal.action_type, aal.target_type, aal.target_id, aal.details, aal.ip_address, aal.created_at
+       FROM admin_audit_logs aal
+       LEFT JOIN users u ON u.id = aal.admin_id
+       ${whereClause.replaceAll('action_type', 'aal.action_type').replaceAll('admin_id', 'aal.admin_id')}
        ORDER BY created_at DESC
        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
       [...params, limit, offset]
     );
 
     res.json({
-      logs,
+      logs: logs.map((log) => ({
+        id: log.id,
+        action: log.action_type,
+        targetType: log.target_type,
+        targetId: log.target_id,
+        actorId: log.admin_id,
+        actorEmail: log.actor_email || 'Unknown admin',
+        details: log.details || {},
+        ipAddress: log.ip_address,
+        createdAt: log.created_at,
+      })),
       total,
       limit,
       offset,

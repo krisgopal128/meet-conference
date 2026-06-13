@@ -34,9 +34,9 @@ router.get('/api-keys/admin', requireAdmin(), async (req: AuthRequest, res: Resp
   try {
     const search = req.query.search as string | undefined;
     const isActive = req.query.is_active as string | undefined;
-    void req.query.role;
+    const role = req.query.role as string | undefined;
 
-    const cacheKey = buildListKey('apikeys', { search, isActive });
+    const cacheKey = buildListKey('apikeys', { search, isActive, role });
 
     const result = await getCached<{
       keys: unknown[];
@@ -50,7 +50,7 @@ router.get('/api-keys/admin', requireAdmin(), async (req: AuthRequest, res: Resp
         let paramIndex = 1;
 
         if (search) {
-          whereClause += ` AND ak.name ILIKE $${paramIndex}`;
+          whereClause += ` AND (ak.name ILIKE $${paramIndex} OR u.name ILIKE $${paramIndex} OR u.email ILIKE $${paramIndex})`;
           params.push(`%${search}%`);
           paramIndex++;
         }
@@ -58,6 +58,12 @@ router.get('/api-keys/admin', requireAdmin(), async (req: AuthRequest, res: Resp
         if (isActive !== undefined) {
           whereClause += ` AND ak.is_active = $${paramIndex}`;
           params.push(isActive === 'true');
+          paramIndex++;
+        }
+
+        if (role && (role === 'admin' || role === 'moderator' || role === 'participant')) {
+          whereClause += ` AND u.role = $${paramIndex}`;
+          params.push(role);
           paramIndex++;
         }
 

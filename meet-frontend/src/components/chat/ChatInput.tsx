@@ -23,6 +23,7 @@ interface ChatInputProps {
   mentionListRef: React.RefObject<HTMLDivElement>;
   onSelectMention: (participant: MentionableParticipant) => void;
   onInsertAtSign: () => void;
+  disabled?: boolean;
 }
 
 export const ChatInput = React.memo(function ChatInput({
@@ -42,6 +43,7 @@ export const ChatInput = React.memo(function ChatInput({
   mentionListRef,
   onSelectMention,
   onInsertAtSign,
+  disabled = false,
 }: ChatInputProps) {
   return (
     <div className="p-3 border-t border-surface-700">
@@ -54,6 +56,7 @@ export const ChatInput = React.memo(function ChatInput({
           <input
             type="checkbox"
             checked={sendPrivateToModerators}
+            disabled={disabled}
             onChange={(event) => onTogglePrivate(event.target.checked)}
             className="h-4 w-4 rounded border-surface-500 text-brand-500 focus:ring-brand-500"
           />
@@ -74,11 +77,13 @@ export const ChatInput = React.memo(function ChatInput({
         {/* Poll button */}
         <button
           onClick={onTogglePollCreator}
+          disabled={disabled}
           className={cn(
             'p-2.5 rounded-lg transition-colors',
             showPollCreator
               ? 'bg-brand-500 text-white'
-              : 'bg-surface-700 text-surface-400 hover:text-surface-200 hover:bg-surface-600'
+              : 'bg-surface-700 text-surface-400 hover:text-surface-200 hover:bg-surface-600',
+            disabled && 'opacity-50 cursor-not-allowed hover:bg-surface-700 hover:text-surface-400'
           )}
           aria-label="Create poll"
           title="Create poll"
@@ -89,7 +94,11 @@ export const ChatInput = React.memo(function ChatInput({
         {/* @ Mention button */}
         <button
           onClick={onInsertAtSign}
-          className="p-2.5 rounded-lg bg-surface-700 text-surface-400 hover:text-surface-200 hover:bg-surface-600 transition-colors"
+          disabled={disabled}
+          className={cn(
+            'p-2.5 rounded-lg bg-surface-700 text-surface-400 hover:text-surface-200 hover:bg-surface-600 transition-colors',
+            disabled && 'opacity-50 cursor-not-allowed hover:bg-surface-700 hover:text-surface-400'
+          )}
           aria-label="Mention someone"
           title="Mention someone (@)"
         >
@@ -103,13 +112,14 @@ export const ChatInput = React.memo(function ChatInput({
             void onInputChange(event.target.value, event.target.selectionStart);
           }}
           onKeyDown={onKeyDown}
+          disabled={disabled}
           placeholder={sendPrivateToModerators ? 'Message moderators…' : 'Message everyone…'}
           className="flex-1 bg-surface-700 text-surface-100 text-sm rounded-lg px-3 py-2 outline-none border border-surface-600 focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 placeholder:text-surface-500"
         />
         
         <button
           onClick={() => { void onSendMessage(); }}
-          disabled={!input.trim()}
+          disabled={disabled || !input.trim()}
           className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed text-white p-2.5 rounded-lg transition-colors"
           aria-label="Send message"
         >

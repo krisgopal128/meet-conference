@@ -13,6 +13,7 @@ export default function Meetings() {
   const [meetings, setMeetings] = useState<AdminMeeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -26,7 +27,7 @@ export default function Meetings() {
       const response = await prashasakahApi.getMeetings({
         limit: 20,
         offset: (page - 1) * 20,
-        roomName: search,
+        roomName: appliedSearch,
         status: status || undefined,
         fromDate: dateFrom,
         toDate: dateTo,
@@ -45,7 +46,7 @@ export default function Meetings() {
         setLoading(false);
       }
     }
-  }, [page, search, status, dateFrom, dateTo]);
+  }, [page, appliedSearch, status, dateFrom, dateTo]);
 
   useEffect(() => {
     cancelledRef.current = false;
@@ -56,8 +57,8 @@ export default function Meetings() {
   }, [fetchMeetings]);
 
   const handleSearch = () => {
+    setAppliedSearch(search.trim());
     setPage(1);
-    fetchMeetings();
   };
 
   const handleDateChange = (from: string, to: string) => {

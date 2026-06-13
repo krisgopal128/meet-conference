@@ -286,6 +286,7 @@ export const roomsApi = {
     name: string;
     title?: string;
     description?: string;
+    password?: string;
     waitingRoomEnabled?: boolean;
     maxParticipants?: number;
     startsAt?: string;
@@ -358,10 +359,10 @@ export const roomsApi = {
     api.post<ChatHistoryResponse>(`/rooms/${roomName}/chat`, { content, messageType }),
 
   // Room settings (grid aspect ratio, etc.)
-  getSettings: (roomName: string): Promise<AxiosResponse<{ settings: { gridAspectRatio?: string; videoFitMode?: string } }>> =>
+  getSettings: (roomName: string): Promise<AxiosResponse<{ settings: { gridAspectRatio?: string; videoFitMode?: string; meetingLocked?: boolean; participantsCanShareScreen?: boolean; participantsCanChat?: boolean; participantsCanUnmute?: boolean; participantsCanTurnOnCamera?: boolean } }>> =>
     api.get(`/rooms/${roomName}/settings`),
 
-  updateSettings: (roomName: string, settings: { gridAspectRatio?: string; videoFitMode?: string }): Promise<AxiosResponse<{ settings: object }>> =>
+  updateSettings: (roomName: string, settings: { gridAspectRatio?: string; videoFitMode?: string; meetingLocked?: boolean; participantsCanShareScreen?: boolean; participantsCanChat?: boolean; participantsCanUnmute?: boolean; participantsCanTurnOnCamera?: boolean }): Promise<AxiosResponse<{ settings: object }>> =>
     api.put(`/rooms/${roomName}/settings`, settings),
 
   // Recording - uses /egress endpoints
@@ -380,6 +381,7 @@ export const createRoom = (data: {
   name: string;
   title?: string;
   description?: string;
+  password?: string;
   maxParticipants?: number;
   emptyTimeout?: number;
   startsAt?: string;
@@ -394,10 +396,10 @@ export const getRoom = (name: string): Promise<AxiosResponse<RoomResponse>> =>
 export const getMyRooms = (): Promise<AxiosResponse<RoomsListResponse>> =>
   api.get<RoomsListResponse>('/rooms');
 
-export const getRoomSettings = (roomName: string): Promise<AxiosResponse<{ settings: { gridAspectRatio?: string; videoFitMode?: string } }>> =>
+export const getRoomSettings = (roomName: string): Promise<AxiosResponse<{ settings: { gridAspectRatio?: string; videoFitMode?: string; meetingLocked?: boolean; participantsCanShareScreen?: boolean; participantsCanChat?: boolean; participantsCanUnmute?: boolean; participantsCanTurnOnCamera?: boolean } }>> =>
   api.get(`/rooms/${roomName}/settings`);
 
-export const updateRoomSettings = (roomName: string, settings: { gridAspectRatio?: string; videoFitMode?: string }): Promise<AxiosResponse<{ settings: object }>> =>
+export const updateRoomSettings = (roomName: string, settings: { gridAspectRatio?: string; videoFitMode?: string; meetingLocked?: boolean; participantsCanShareScreen?: boolean; participantsCanChat?: boolean; participantsCanUnmute?: boolean; participantsCanTurnOnCamera?: boolean }): Promise<AxiosResponse<{ settings: object }>> =>
   api.put(`/rooms/${roomName}/settings`, settings);
 
 // ============================================

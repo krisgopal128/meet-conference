@@ -81,10 +81,18 @@ export function useLobbyPolling(
       onLobbyUpdate(entry.latestLobby);
     }
 
+    const handleVisibilityChange = () => {
+      if (document.hidden) return;
+      void fetchLobby(roomName, entry);
+      schedulePoll(roomName, entry);
+    };
+
     void fetchLobby(roomName, entry);
     schedulePoll(roomName, entry);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       const current = lobbyPollingRegistry.get(roomName);
       if (!current) return;
 

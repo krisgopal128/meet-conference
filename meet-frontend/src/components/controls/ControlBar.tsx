@@ -47,6 +47,7 @@ import {
   useIsPiPOpen,
 } from '../../store/roomStore';
 import { roomsApi } from '../../services/api';
+import { updateRoomSettings } from '../../services/api';
 import { meetingRoomConfig } from '../../config/meetingRoomConfig';
 import toast from 'react-hot-toast';
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -135,6 +136,33 @@ export function ControlBar() {
   const videoControls = useVideoControls(localParticipant, room ?? undefined, qualityMode, gridAspectRatio);
   const { toggleScreenShare } = useScreenShareControls(localParticipant, qualityMode, screenShareMode);
   const { leaveRoom, endMeeting, hasOtherParticipants } = useMeetingActions();
+
+  const handleToggleMic = useCallback(async () => {
+    if (!localParticipant) return;
+    if (!localParticipant.isMicrophoneEnabled && !isModerator && !participantsCanUnmute) {
+      toast.error('The host has disabled self-unmute');
+      return;
+    }
+    await audioControls.toggleMic();
+  }, [audioControls, isModerator, localParticipant, participantsCanUnmute]);
+
+  const handleToggleCamera = useCallback(async () => {
+    if (!localParticipant) return;
+    if (!localParticipant.isCameraEnabled && !isModerator && !participantsCanTurnOnCamera) {
+      toast.error('The host has disabled self camera enable');
+      return;
+    }
+    await videoControls.toggleCamera();
+  }, [videoControls, isModerator, localParticipant, participantsCanTurnOnCamera]);
+
+  const handleToggleScreenShare = useCallback(async () => {
+    if (!localParticipant) return;
+    if (!localParticipant.isScreenShareEnabled && !isModerator && !participantsCanShareScreen) {
+      toast.error('The host has disabled participant screen sharing');
+      return;
+    }
+    await toggleScreenShare();
+  }, [isModerator, localParticipant, participantsCanShareScreen, toggleScreenShare]);
 
   // PiP support detection
   const { isDocumentPiPSupported: isPiPSupported } = usePictureInPicture();
@@ -269,7 +297,14 @@ export function ControlBar() {
       meetingLocked: newVal, lobbyEnabled, participantsCanShareScreen,
       participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera,
     });
-  }, [meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setMeetingLocked, broadcastMeetingSettings]);
+    if (room?.name) {
+      try {
+        await updateRoomSettings(room.name, { meetingLocked: newVal });
+      } catch (err) {
+        logger.error('Failed to persist meeting lock:', err);
+      }
+    }
+  }, [room, meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setMeetingLocked, broadcastMeetingSettings]);
 
   const handleToggleLobby = useCallback(async () => {
     const newVal = !lobbyEnabled;
@@ -292,7 +327,14 @@ export function ControlBar() {
       meetingLocked, lobbyEnabled, participantsCanShareScreen: newVal,
       participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera,
     });
-  }, [meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setParticipantsCanShareScreen, broadcastMeetingSettings]);
+    if (room?.name) {
+      try {
+        await updateRoomSettings(room.name, { participantsCanShareScreen: newVal });
+      } catch (err) {
+        logger.error('Failed to persist screen share control:', err);
+      }
+    }
+  }, [room, meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setParticipantsCanShareScreen, broadcastMeetingSettings]);
 
   const handleToggleParticipantChat = useCallback(async () => {
     const newVal = !participantsCanChat;
@@ -301,7 +343,14 @@ export function ControlBar() {
       meetingLocked, lobbyEnabled, participantsCanShareScreen,
       participantsCanChat: newVal, participantsCanUnmute, participantsCanTurnOnCamera,
     });
-  }, [meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setParticipantsCanChat, broadcastMeetingSettings]);
+    if (room?.name) {
+      try {
+        await updateRoomSettings(room.name, { participantsCanChat: newVal });
+      } catch (err) {
+        logger.error('Failed to persist chat control:', err);
+      }
+    }
+  }, [room, meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setParticipantsCanChat, broadcastMeetingSettings]);
 
   const handleToggleParticipantUnmute = useCallback(async () => {
     const newVal = !participantsCanUnmute;
@@ -310,7 +359,14 @@ export function ControlBar() {
       meetingLocked, lobbyEnabled, participantsCanShareScreen,
       participantsCanChat, participantsCanUnmute: newVal, participantsCanTurnOnCamera,
     });
-  }, [meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setParticipantsCanUnmute, broadcastMeetingSettings]);
+    if (room?.name) {
+      try {
+        await updateRoomSettings(room.name, { participantsCanUnmute: newVal });
+      } catch (err) {
+        logger.error('Failed to persist unmute control:', err);
+      }
+    }
+  }, [room, meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setParticipantsCanUnmute, broadcastMeetingSettings]);
 
   const handleToggleParticipantCamera = useCallback(async () => {
     const newVal = !participantsCanTurnOnCamera;
@@ -319,7 +375,14 @@ export function ControlBar() {
       meetingLocked, lobbyEnabled, participantsCanShareScreen,
       participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera: newVal,
     });
-  }, [meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setParticipantsCanTurnOnCamera, broadcastMeetingSettings]);
+    if (room?.name) {
+      try {
+        await updateRoomSettings(room.name, { participantsCanTurnOnCamera: newVal });
+      } catch (err) {
+        logger.error('Failed to persist camera control:', err);
+      }
+    }
+  }, [room, meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setParticipantsCanTurnOnCamera, broadcastMeetingSettings]);
 
   // More menu items
   const moreMenuItems = [
@@ -350,7 +413,7 @@ export function ControlBar() {
 
   // Mobile more menu items (extended)
   const mobileMoreMenuItems = [
-    { icon: <Monitor size={16} />, label: isScreenSharing ? 'Stop Share' : 'Share Screen', onClick: toggleScreenShare },
+    { icon: <Monitor size={16} />, label: isScreenSharing ? 'Stop Share' : 'Share Screen', onClick: handleToggleScreenShare },
     { icon: <Hand size={16} className={handRaised ? 'text-warning-500' : ''} />, label: handRaised ? 'Lower Hand' : 'Raise Hand', onClick: toggleHandRaise },
     { icon: layout === 'grid' ? <SquarePlay size={16} /> : <LayoutGrid size={16} />, label: layout === 'grid' ? 'Speaker View' : 'Grid View', onClick: toggleLayout },
     ...(isPiPSupported ? [{
@@ -417,7 +480,7 @@ export function ControlBar() {
         <div className="flex items-center gap-2">
           <MicButton
             isMuted={isMicMuted}
-            onToggle={audioControls.toggleMic}
+            onToggle={handleToggleMic}
             showDeviceMenu={meetingRoomConfig.features.micDropdownDeviceMenu}
             mics={audioControls.mics}
             speakers={audioControls.speakers}
@@ -428,13 +491,13 @@ export function ControlBar() {
           />
           <CameraButton
             isOff={isCameraOff}
-            onToggle={videoControls.toggleCamera}
+            onToggle={handleToggleCamera}
             showDeviceMenu={meetingRoomConfig.features.cameraDropdownDeviceMenu}
             cameras={videoControls.cameras}
             activeCameraId={videoControls.activeCameraId}
             onSwitchCamera={videoControls.switchCamera}
           />
-          <ScreenShareButton isSharing={isScreenSharing} onToggle={toggleScreenShare} />
+          <ScreenShareButton isSharing={isScreenSharing} onToggle={handleToggleScreenShare} />
           {isModerator && (
             <RecordingButton isRecording={isRecording} isLoading={isRecordingLoading} onToggle={toggleRecording} />
           )}
@@ -537,8 +600,8 @@ export function ControlBar() {
       <div className="md:hidden flex items-center justify-between bg-surface-800/95 backdrop-blur-sm border-t border-surface-700 py-2 px-4 overscroll-behavior-contain" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))', paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))', paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}>
         {/* Left: Primary Controls */}
         <div className="flex items-center gap-1.5">
-          <MobileMicButton isMuted={isMicMuted} onToggle={audioControls.toggleMic} />
-          <MobileCameraButton isOff={isCameraOff} onToggle={videoControls.toggleCamera} />
+          <MobileMicButton isMuted={isMicMuted} onToggle={handleToggleMic} />
+          <MobileCameraButton isOff={isCameraOff} onToggle={handleToggleCamera} />
         </div>
 
         {/* Center: Leave */}

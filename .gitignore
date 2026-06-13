@@ -98,3 +98,5 @@ Caddyfile.new
 .understand-anything/
 test-screenshots/
 build_tree.py
+
+testsprite_tests/tmp/config.json

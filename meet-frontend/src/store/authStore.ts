@@ -5,6 +5,8 @@ import type { User } from '../types';
 import logger from '../utils/logger';
 import { registerAuthStore } from '../services/api';
 
+const DEVTOOLS_ENABLED = import.meta.env.DEV && import.meta.env.MODE !== 'test';
+
 // ============================================
 // AUTH STORE WITH OPTIMIZATIONS
 // ============================================
@@ -56,7 +58,7 @@ export const useAuthStore = create<AuthStoreState>()(
         set({ initialized }, false, 'setInitialized');
       },
     }),
-    { name: 'auth-store', enabled: import.meta.env.DEV }
+    { name: 'auth-store', enabled: DEVTOOLS_ENABLED }
   )
 );
 

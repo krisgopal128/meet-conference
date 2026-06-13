@@ -3,6 +3,8 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import PreJoinPage from '../../pages/PreJoinPage';
 
+const mockStopPreview = vi.fn();
+
 // Mock react-router-dom hooks
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
@@ -15,6 +17,71 @@ vi.mock('react-router-dom', async () => {
 
 // Mock livekit-client (kept for any transitive imports; no longer used directly by usePreJoinMedia)
 vi.mock('livekit-client', () => ({}));
+
+vi.mock('../../hooks/usePreJoinAuth', () => ({
+  usePreJoinAuth: () => ({
+    room: { title: 'Test Room', host_id: 'host-1' },
+    isGuest: true,
+    requestedRole: null,
+    isAuthenticatedFromStore: false,
+    user: null,
+  }),
+}));
+
+vi.mock('../../hooks/usePreJoinMedia', () => ({
+  usePreJoinMedia: () => ({
+    videoRef: { current: null },
+    videoEnabled: true,
+    audioEnabled: true,
+    setAudioEnabled: vi.fn(),
+    devices: { cameras: [], mics: [], speakers: [] },
+    selectedCamera: '',
+    setSelectedCamera: vi.fn(),
+    selectedMic: '',
+    setSelectedMic: vi.fn(),
+    selectedSpeaker: '',
+    setSelectedSpeaker: vi.fn(),
+    micLevel: 100,
+    setMicLevel: vi.fn(),
+    speakerLevel: 100,
+    setSpeakerLevel: vi.fn(),
+    noiseSuppression: true,
+    setNoiseSuppression: vi.fn(),
+    echoCancellation: true,
+    setEchoCancellation: vi.fn(),
+    backgroundBlur: false,
+    setBackgroundBlur: vi.fn(),
+    backgroundBlurLevel: 10,
+    setBackgroundBlurLevel: vi.fn(),
+    videoFilter: 'none',
+    setVideoFilter: vi.fn(),
+    qualityMode: 'auto',
+    setQualityMode: vi.fn(),
+    screenShareMode: 'documents',
+    setScreenShareMode: vi.fn(),
+    gridAspectRatio: '16:9',
+    setGridAspectRatio: vi.fn(),
+    videoFitMode: 'cover',
+    setVideoFitMode: vi.fn(),
+    cameraHardwareCaps: null,
+    showDeviceSettings: false,
+    setShowDeviceSettings: vi.fn(),
+    expandedSections: { devices: true, audio: false, video: false, moderator: false },
+    toggleSection: vi.fn(),
+    initializing: false,
+    initStatus: 'Ready',
+    toggleVideo: vi.fn(),
+    stopPreview: mockStopPreview,
+  }),
+}));
+
+vi.mock('../../hooks/useLightweightVideoFilter', () => ({
+  useLightweightPreviewFilter: vi.fn(),
+}));
+
+vi.mock('../../hooks/usePreviewBackgroundBlur', () => ({
+  usePreviewBackgroundBlur: vi.fn(),
+}));
 
 // Mock services/api
 vi.mock('../../services/api', () => ({
@@ -61,21 +128,9 @@ vi.mock('react-hot-toast', () => ({
   },
 }));
 
-// Mock mediaDevices
-Object.defineProperty(navigator, 'mediaDevices', {
-  value: {
-    getUserMedia: vi.fn().mockResolvedValue({
-      getTracks: () => [{ stop: vi.fn() }],
-      getVideoTracks: () => [{ stop: vi.fn(), readyState: 'live' }],
-      getAudioTracks: () => [{ stop: vi.fn() }],
-    }),
-    enumerateDevices: vi.fn().mockResolvedValue([]),
-  },
-});
-
 const renderPreJoinPage = () => {
   return render(
-    <MemoryRouter>
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <PreJoinPage />
     </MemoryRouter>
   );

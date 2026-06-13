@@ -24,8 +24,16 @@ function buildCameraConstraints(
   _aspectRatio?: '16:9' | '9:16' | '1:1' | '4:3',
   hardwareCaps?: CameraHardwareCaps | null,
 ): MediaTrackConstraints {
-  const { cameraCapture } = meetingRoomConfig.media;
-  const { settings } = getQualityModeConfig(mode);
+  const cameraCapture = meetingRoomConfig.media?.cameraCapture ?? {
+    width: 1280,
+    height: 720,
+    maxWidth: 1280,
+    maxHeight: 720,
+    maxFrameRate: 30,
+    facingMode: 'user',
+  };
+  const qualityConfig = getQualityModeConfig(mode);
+  const settings = qualityConfig?.settings;
 
   const targetResolution = settings
     ? { width: 1280, height: 720 }
@@ -204,7 +212,7 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
 
       let stream: MediaStream;
 
-      if (reuseTrack && reuseTrack.readyState === 'live') {
+      if (reuseTrack && reuseTrack.readyState === 'live' && typeof MediaStream !== 'undefined') {
         logger.info('📷 Reusing permission video track for preview (1 request optimization)');
         stream = new MediaStream([reuseTrack]);
       } else {

@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
+import bcrypt from 'bcryptjs';
 import { AuthRequest, authenticate, optionalAuth } from '../middleware/authenticate.js';
 import { requireUser } from '../middleware/requireUser.js';
 import {
@@ -73,6 +74,7 @@ const createRoomSchema = z.object({
   name: z.string().min(3).max(100),
   title: z.string().max(255).optional(),
   description: z.string().max(1000).optional(),
+  password: z.string().max(255).optional(),
   maxParticipants: z.number().min(2).max(100).default(50),
   emptyTimeout: z.number().min(60).max(3600).default(300),
   startsAt: z.string().datetime().optional(),
@@ -112,28 +114,31 @@ const updateRoomSchema = z.object({
        });
      }
      
-     // Sanitize description if provided
-     const description = data.description ? sanitizeDescription(data.description) : null;
+      // Sanitize description if provided
+      const description = data.description ? sanitizeDescription(data.description) : null;
+      const roomPassword = data.password?.trim();
+      const roomPasswordHash = roomPassword ? await bcrypt.hash(roomPassword, 12) : null;
 
-     // Check if room name already exists
+      // Check if room name already exists
      const exists = await roomService.roomExists(roomName);
      if (exists) {
        return res.status(409).json({ error: 'Room name already exists' });
      }
 
      // Create room in database
-     const room = await roomService.createRoom(
-       roomName,
-       user.id,
-       data.title || null,
-       description,
-       data.maxParticipants,
-       data.emptyTimeout,
-       data.startsAt ? new Date(data.startsAt) : null,
-       data.endsAt ? new Date(data.endsAt) : null,
-       data.settings || null,
-       data.waitingRoomEnabled
-     );
+      const room = await roomService.createRoom(
+        roomName,
+        user.id,
+        data.title || null,
+        description,
+        roomPasswordHash,
+        data.maxParticipants,
+        data.emptyTimeout,
+        data.startsAt ? new Date(data.startsAt) : null,
+        data.endsAt ? new Date(data.endsAt) : null,
+        data.settings || null,
+        data.waitingRoomEnabled
+      );
 
      // Optionally create room in LiveKit (auto_create: false in config)
      // We create it here to set limits
@@ -821,6 +826,10 @@ roomsRouter.post('/:name/chat', authenticate, async (req: AuthRequest, res: Resp
       return res.status(403).json({ error: 'Only active participants or the host can send room chat messages' });
     }
 
+    if (room.settings?.participantsCanChat === false && room.host_id !== user.id) {
+      return res.status(403).json({ error: 'Chat is disabled for participants in this room' });
+    }
+
     const latestMeeting = await queryOne<{ id: string }>(
       `SELECT id
        FROM meetings
@@ -904,6 +913,11 @@ roomsRouter.post('/:name/chat', authenticate, async (req: AuthRequest, res: Resp
 const roomSettingsSchema = z.object({
   gridAspectRatio: z.enum(['16:9', '9:16', '1:1', '4:3', 'none']).optional(),
   videoFitMode: z.enum(['cover', 'contain']).optional(),
+  meetingLocked: z.boolean().optional(),
+  participantsCanShareScreen: z.boolean().optional(),
+  participantsCanChat: z.boolean().optional(),
+  participantsCanUnmute: z.boolean().optional(),
+  participantsCanTurnOnCamera: z.boolean().optional(),
   faceCrop: z.object({
     enabled: z.boolean(),
     aspectRatio: z.enum(['16:9', '9:16', '1:1', '4:3', 'none']),
@@ -912,7 +926,7 @@ const roomSettingsSchema = z.object({
 });
 
  // GET /rooms/:name/settings - Get room settings (public)
- roomsRouter.get('/:name/settings', authenticate, async (req, res: Response) => {
+ roomsRouter.get('/:name/settings', optionalAuth, async (req, res: Response) => {
    try {
      const { name } = req.params;
 
@@ -923,14 +937,19 @@ const roomSettingsSchema = z.object({
      }
 
      // Return settings or defaults
-     const settings = room.settings || {
-       gridAspectRatio: '16:9',
-       videoFitMode: 'cover',
-       faceCrop: {
-         enabled: false,
-         aspectRatio: '16:9',
-         model: 'tiny',
-       },
+      const settings = room.settings || {
+        gridAspectRatio: '16:9',
+        videoFitMode: 'cover',
+        meetingLocked: false,
+        participantsCanShareScreen: true,
+        participantsCanChat: true,
+        participantsCanUnmute: true,
+        participantsCanTurnOnCamera: true,
+        faceCrop: {
+          enabled: false,
+          aspectRatio: '16:9',
+          model: 'tiny',
+        },
      };
 
      res.json({ settings });

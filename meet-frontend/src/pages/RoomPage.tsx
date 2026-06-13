@@ -5,7 +5,7 @@ import { VideoPreset, Track } from 'livekit-client';
 import { ConferenceRoom } from '../components/room/ConferenceRoom';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { LobbyWaiting } from '../components/room/LobbyWaiting';
-import { useConnectionActions, useQualityMode, useScreenShareMode, useUIActions, useGridAspectRatio, useBackgroundBlurEnabled, useBackgroundBlurLevel } from '../store/roomStore';
+import { useConnectionActions, useQualityMode, useScreenShareMode, useUIActions, useGridAspectRatio, useBackgroundBlurEnabled, useBackgroundBlurLevel, useMeetingControlsActions } from '../store/roomStore';
 import { enableBlur, disableBlur } from '../utils/blurProcessorManager';
 import { getRoomSettings, roomsApi } from '../services/api';
 import {
@@ -126,6 +126,36 @@ function ReconnectionOverlay({ isReconnecting }: { isReconnecting: boolean }) {
   );
 }
 
+function DisconnectOverlay({
+  roomName,
+  onRetry,
+  onReturnToJoin,
+}: {
+  roomName?: string;
+  onRetry: () => void;
+  onReturnToJoin: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-800 rounded-xl p-6 w-full max-w-sm text-center">
+        <WifiOff className="w-12 h-12 text-danger-400 mx-auto mb-4" />
+        <div className="text-white font-medium">Connection lost</div>
+        <div className="text-surface-400 text-sm mt-2">
+          We could not reconnect you to {roomName || 'the meeting'}.
+        </div>
+        <div className="flex gap-3 mt-6">
+          <button type="button" onClick={onRetry} className="btn-primary flex-1">
+            Retry
+          </button>
+          <button type="button" onClick={onReturnToJoin} className="btn-secondary flex-1">
+            Return
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RoomContent({
   roomName,
   state,
@@ -137,6 +167,7 @@ function RoomContent({
 }) {
   const { localParticipant } = useLocalParticipant();
   const room = useRoomContext();
+  const navigate = useNavigate();
   const connectionState = useConnectionState();
   const { setToken, setHostId, setRole, setDisplayName, setPrejoinDevices } = useConnectionActions();
   
@@ -150,6 +181,7 @@ function RoomContent({
   
   // Reconnection state
   const [isReconnecting, setIsReconnecting] = useState(false);
+  const [hasReconnectFailed, setHasReconnectFailed] = useState(false);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Monitor connection state for reconnection
@@ -157,9 +189,11 @@ function RoomContent({
     if (connectionState === 'reconnecting') {
       logger.info('[RoomPage] Connection state: reconnecting');
       setIsReconnecting(true);
+      setHasReconnectFailed(false);
     } else if (connectionState === 'connected') {
       logger.info('[RoomPage] Connection state: connected');
       setIsReconnecting(false);
+      setHasReconnectFailed(false);
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
@@ -171,7 +205,9 @@ function RoomContent({
         clearTimeout(reconnectTimeoutRef.current);
       }
       reconnectTimeoutRef.current = setTimeout(() => {
-        logger.info('[RoomPage] Reconnection timeout, staying disconnected');
+        logger.info('[RoomPage] Reconnection timeout, showing disconnect overlay');
+        setIsReconnecting(false);
+        setHasReconnectFailed(true);
       }, 30000); // 30 second grace period
     }
     
@@ -465,6 +501,13 @@ function RoomContent({
 
   return (
     <>
+      {hasReconnectFailed && (
+        <DisconnectOverlay
+          roomName={roomName}
+          onRetry={() => window.location.reload()}
+          onReturnToJoin={() => navigate(`/join/${roomName}`, { replace: true })}
+        />
+      )}
       <ReconnectionOverlay isReconnecting={isReconnecting} />
       <ConferenceRoom roomName={roomName} />
     </>
@@ -477,6 +520,7 @@ export default function RoomPage() {
   const navigate = useNavigate();
   const { setConnected } = useConnectionActions();
   const { setQualityMode, setScreenShareMode, setGridAspectRatio, setVideoFitMode, setBackgroundBlurEnabled, setBackgroundBlurLevel } = useUIActions();
+  const { setMeetingLocked, setParticipantsCanShareScreen, setParticipantsCanChat, setParticipantsCanUnmute, setParticipantsCanTurnOnCamera } = useMeetingControlsActions();
   const qualityMode = useQualityMode();
   const screenShareMode = useScreenShareMode();
 
@@ -562,6 +606,21 @@ export default function RoomPage() {
         if (settings.videoFitMode && !state?.videoFitMode) {
           setVideoFitMode(settings.videoFitMode as 'cover' | 'contain');
         }
+        if (typeof settings.meetingLocked === 'boolean') {
+          setMeetingLocked(settings.meetingLocked);
+        }
+        if (typeof settings.participantsCanShareScreen === 'boolean') {
+          setParticipantsCanShareScreen(settings.participantsCanShareScreen);
+        }
+        if (typeof settings.participantsCanChat === 'boolean') {
+          setParticipantsCanChat(settings.participantsCanChat);
+        }
+        if (typeof settings.participantsCanUnmute === 'boolean') {
+          setParticipantsCanUnmute(settings.participantsCanUnmute);
+        }
+        if (typeof settings.participantsCanTurnOnCamera === 'boolean') {
+          setParticipantsCanTurnOnCamera(settings.participantsCanTurnOnCamera);
+        }
       } catch (error) {
         if (!cancelled) {
           logger.warn('[RoomPage] Could not fetch room settings:', error);
@@ -571,7 +630,7 @@ export default function RoomPage() {
     
     void fetchSettings();
     return () => { cancelled = true; };
-  }, [roomName, state?.gridAspectRatio, state?.videoFitMode, setGridAspectRatio, setVideoFitMode]);
+  }, [roomName, state?.gridAspectRatio, state?.videoFitMode, setGridAspectRatio, setVideoFitMode, setMeetingLocked, setParticipantsCanShareScreen, setParticipantsCanChat, setParticipantsCanUnmute, setParticipantsCanTurnOnCamera]);
 
   // Compute derived values needed for LiveKit options - always compute to satisfy ESLint
   const effectiveQualityMode = state?.qualityMode || qualityMode || getQualityModeConfig().name;
@@ -654,8 +713,35 @@ export default function RoomPage() {
   }), [
     effectiveQualityMode, currentGridAspectRatio, state?.micLevel, state?.cameraHardwareCaps,
     state?.videoEnabled, state?.audioEnabled, state?.selectedCamera, state?.selectedMic,
-    maxBitrate, qualitySettings, screenShareOptions,
+    maxBitrate, qualitySettings, screenShareOptions, livekitUrl,
   ]);
+
+  const handleConnected = useCallback(() => {
+    setConnected(true);
+    
+    // Register meeting in history for moderators
+    if ((state?.role === 'host' || state?.role === 'moderator' || state?.role === 'cohost') && roomName) {
+      roomsApi.startMeeting(roomName).catch((error) => {
+        logger.warn('[RoomPage] Failed to register meeting in history:', error);
+      });
+    }
+    
+    if (import.meta.env.DEV) {
+      logger.info('✅ Connected to room:', roomName);
+      logger.info('Initial state - Video:', state?.videoEnabled, 'Audio:', state?.audioEnabled);
+    }
+  }, [setConnected, state?.role, state?.videoEnabled, state?.audioEnabled, roomName]);
+
+  const handleDisconnected = useCallback(() => {
+    logger.info('[RoomPage] Disconnected from room');
+    setConnected(false);
+  }, [setConnected]);
+
+  const handleError = useCallback((error: Error) => {
+    if (import.meta.env.DEV) {
+      logger.error('❌ Room error:', error);
+    }
+  }, []);
 
   if (!state?.token) {
     return (
@@ -665,32 +751,6 @@ export default function RoomPage() {
       </div>
     );
   }
-
-  const handleConnected = useCallback(() => {
-    setConnected(true);
-    
-    // Register meeting in history for moderators
-    if (state.role === 'moderator' && roomName) {
-      roomsApi.startMeeting(roomName).catch((error) => {
-        logger.warn('[RoomPage] Failed to register meeting in history:', error);
-      });
-    }
-    
-    if (import.meta.env.DEV) {
-      logger.info('✅ Connected to room:', roomName);
-      logger.info('Initial state - Video:', state.videoEnabled, 'Audio:', state.audioEnabled);
-    }
-  }, [state.role, state.videoEnabled, state.audioEnabled, roomName]);
-
-  const handleDisconnected = useCallback(() => {
-    logger.info('[RoomPage] Disconnected from room');
-  }, []);
-
-  const handleError = useCallback((error: Error) => {
-    if (import.meta.env.DEV) {
-      logger.error('❌ Room error:', error);
-    }
-  }, []);
 
   if (import.meta.env.DEV) {
     logger.info('🎬 LiveKitRoom options:', { 

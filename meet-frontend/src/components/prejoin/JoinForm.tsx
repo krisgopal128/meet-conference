@@ -8,33 +8,45 @@ import { User, Lock, Check, ArrowRight } from 'lucide-react';
 import type { Room } from '../../types';
 
 interface JoinFormProps {
-  isGuest: boolean;
+  showGuestFields: boolean;
+  showModeratorLinkPrompt?: boolean;
   isCreateMode: boolean;
   displayName: string;
   password: string;
   room: Room | null;
   loading: boolean;
   creatingRoom: boolean;
+  disabled?: boolean;
   onDisplayNameChange: (name: string) => void;
   onPasswordChange: (password: string) => void;
   onJoin: () => void;
 }
 
 export function JoinForm({
-  isGuest,
+  showGuestFields,
+  showModeratorLinkPrompt = false,
   isCreateMode,
   displayName,
   password,
   room,
   loading,
   creatingRoom,
+  disabled = false,
   onDisplayNameChange,
   onPasswordChange,
   onJoin,
 }: JoinFormProps) {
   return (
     <>
-      {isGuest ? (
+      {showModeratorLinkPrompt && (
+        <div className="p-4 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 rounded-lg mb-4">
+          <p className="text-sm text-warning-700 dark:text-warning-300">
+            This is a moderator link. Please sign in to continue as moderator, or you can join as a guest below.
+          </p>
+        </div>
+      )}
+
+      {showGuestFields ? (
         <div className="space-y-4">
           <div>
             <label htmlFor="displayName">Your Name</label>
@@ -81,7 +93,7 @@ export function JoinForm({
 
       <button 
         onClick={onJoin} 
-        disabled={loading || creatingRoom || (isGuest && !displayName.trim())}
+        disabled={disabled || loading || creatingRoom || (showGuestFields && !displayName.trim())}
         className="btn-primary w-full mt-6"
       >
         {creatingRoom ? (
