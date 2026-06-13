@@ -464,6 +464,29 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
 
   const isMobile = useIsMobile();
 
+  // Mobile: enforce single-panel exclusivity (desktop allows side-by-side panels)
+  const prevPanelState = useRef({ chat: chatOpen, participants: participantsOpen, settings: settingsOpen });
+  useEffect(() => {
+    if (!isMobile) {
+      prevPanelState.current = { chat: chatOpen, participants: participantsOpen, settings: settingsOpen };
+      return;
+    }
+    const chatJustOpened = chatOpen && !prevPanelState.current.chat;
+    const participantsJustOpened = participantsOpen && !prevPanelState.current.participants;
+    const settingsJustOpened = settingsOpen && !prevPanelState.current.settings;
+    if (chatJustOpened) {
+      if (participantsOpen) toggleParticipants();
+      if (settingsOpen) toggleSettings();
+    } else if (participantsJustOpened) {
+      if (chatOpen) toggleChat();
+      if (settingsOpen) toggleSettings();
+    } else if (settingsJustOpened) {
+      if (chatOpen) toggleChat();
+      if (participantsOpen) toggleParticipants();
+    }
+    prevPanelState.current = { chat: chatOpen, participants: participantsOpen, settings: settingsOpen };
+  }, [chatOpen, participantsOpen, settingsOpen, isMobile, toggleChat, toggleParticipants, toggleSettings]);
+
   const renderLayout = () => {
     switch (layout) {
       case 'grid': return <GridLayout />;

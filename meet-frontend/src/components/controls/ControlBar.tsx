@@ -640,7 +640,7 @@ export function ControlBar() {
             >
               <MoreVertical size={20} aria-hidden="true" />
             </button>
-            <MoreMenu show={showMore} onClose={() => setShowMore(false)} items={mobileMoreMenuItems} />
+            <MoreMenu show={showMore} onClose={() => setShowMore(false)} items={mobileMoreMenuItems} isRecording={isRecording} />
           </div>
         </div>
       </div>

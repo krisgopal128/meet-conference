@@ -248,7 +248,7 @@ export default function PrashasakahLayout() {
       {/* Main Content */}
       <div className={`flex-1 ml-0 md:ml-64 flex flex-col transition-all duration-200 ${collapsed ? 'md:ml-16' : ''}`}>
         {/* Header */}
-        <header className="bg-white border-b border-surface-200 px-6 py-4">
+        <header className="bg-white border-b border-surface-200 px-4 md:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {/* Hamburger menu button - mobile only */}
@@ -276,7 +276,7 @@ export default function PrashasakahLayout() {
               {/* User Menu — hidden on desktop when sidebar is collapsed (sign out moved there) */}
               <button
                 onClick={logout}
-                className={`text-sm text-surface-500 hover:text-surface-700 transition-colors ${collapsed ? 'md:hidden' : ''}`}
+                className={`text-sm text-surface-500 hover:text-surface-700 transition-colors px-3 py-2 rounded-lg hover:bg-surface-100 ${collapsed ? 'md:hidden' : ''}`}
               >
                 Sign Out
               </button>
@@ -285,13 +285,13 @@ export default function PrashasakahLayout() {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-6 overflow-auto">
+        <main className="flex-1 p-4 md:p-6 overflow-auto">
           <Outlet />
         </main>
 
         {/* Footer */}
-        <footer className="bg-white border-t border-surface-200 px-6 py-3">
-          <div className="flex items-center justify-between text-sm text-surface-500">
+        <footer className="bg-white border-t border-surface-200 px-4 md:px-6 py-3">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-1 text-sm text-surface-500">
             <span>Meet Conference Admin Panel v1.0.0</span>
             <span className="flex items-center gap-2">
               <span className="w-2 h-2 bg-success-500 rounded-full"></span>

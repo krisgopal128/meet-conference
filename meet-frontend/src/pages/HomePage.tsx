@@ -502,23 +502,23 @@ function HomePageContent() {
                       <button
                         onClick={(e) => handleCopyLink(room.name, e)}
                         className={cn(
-                          'p-1.5 rounded-lg transition',
+                          'p-2.5 rounded-lg transition',
                           copied === room.name
                             ? 'text-success-500 bg-success-50 dark:bg-success-900/20'
-                            : 'text-surface-400 hover:text-surface-600 hover:bg-surface-100 dark:hover:bg-surface-700 opacity-0 group-hover:opacity-100'
+                            : 'text-surface-400 hover:text-surface-600 hover:bg-surface-100 dark:hover:bg-surface-700 md:opacity-0 md:group-hover:opacity-100'
                         )}
                         aria-label="Copy room link"
                         title="Copy link"
                       >
-                        {copied === room.name ? <Check size={14} /> : <Link size={14} />}
+                        {copied === room.name ? <Check size={16} /> : <Link size={16} />}
                       </button>
                       <button
                         onClick={(e) => handleDeleteRoom(room.name, e)}
-                        className="p-1.5 rounded-lg text-surface-400 hover:text-error-500 hover:bg-error-50 dark:hover:bg-error-900/20 transition opacity-0 group-hover:opacity-100"
+                        className="p-2.5 rounded-lg text-surface-400 hover:text-error-500 hover:bg-error-50 dark:hover:bg-error-900/20 transition md:opacity-0 md:group-hover:opacity-100"
                         aria-label="Delete room"
                         title="Delete room"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={16} />
                       </button>
                       <ArrowRight
                         size={14}

@@ -508,7 +508,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
         className={`absolute top-2 left-2 p-1.5 transition-all ${
           isPinned 
             ? 'opacity-100 bg-brand-500 text-white' 
-            : 'opacity-0 group-hover:opacity-100 bg-black/50 hover:bg-black/70 text-white'
+            : 'opacity-100 md:opacity-0 md:group-hover:opacity-100 bg-black/50 hover:bg-black/70 text-white'
         }`}
         title={isPinned ? 'Unpin' : 'Pin'}
       >
@@ -517,7 +517,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
       {meetingRoomConfig.features.fullscreenTileView && (
         <button
           onClick={() => { void toggleFullscreen(); }}
-          className="absolute top-2 left-11 p-1.5 opacity-0 group-hover:opacity-100 bg-black/50 hover:bg-black/70 text-white transition-all"
+          className="absolute top-2 left-11 p-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 bg-black/50 hover:bg-black/70 text-white transition-all"
           title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
         >
           {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
