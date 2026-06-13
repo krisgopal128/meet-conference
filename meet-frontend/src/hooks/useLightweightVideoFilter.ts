@@ -4,13 +4,11 @@ import logger from '../utils/logger';
 // Type declarations for Insertable Streams API (Chrome 94+)
 // Conditionally declared only if not already in lib.dom.d.ts
 declare global {
-  // @ts-expect-error - may already exist in newer TypeScript/lib.dom
   class MediaStreamTrackProcessor {
     constructor(options: { track: MediaStreamTrack });
     readonly readable: ReadableStream<VideoFrame>;
   }
 
-  // @ts-expect-error - may already exist in newer TypeScript/lib.dom
   class MediaStreamTrackGenerator {
     constructor(options: { kind: 'video' | 'audio' });
     readonly writable: WritableStream<VideoFrame>;
