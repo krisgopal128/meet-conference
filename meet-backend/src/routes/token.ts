@@ -111,7 +111,6 @@ tokenRouter.post('/', authenticate, tokenLimiter, async (req: AuthRequest, res: 
     const accessToken = await createAccessToken(roomName, participantIdentity, actualRole as ParticipantRole, {
       name: participantName,
       metadata: JSON.stringify({
-        email: req.user!.email,
         role: actualRole,
         inLobby,
       }),
@@ -177,7 +176,13 @@ tokenRouter.post('/guest', tokenLimiter, async (req, res: Response) => {
     }
 
     // Check if this guest name was recently kicked from this room
-    const kickedTTL = await isGuestNameKicked(roomName, name);
+    // Redis is best-effort here — if it's temporarily unavailable, allow the join
+    let kickedTTL = 0;
+    try {
+      kickedTTL = await isGuestNameKicked(roomName, name);
+    } catch {
+      logger.warn('[Token] Redis unavailable for kick check, allowing guest join');
+    }
     if (kickedTTL > 0) {
       return res.status(429).json({ 
         error: `You were recently removed from this meeting. Please wait ${kickedTTL} seconds before rejoining.`,
@@ -189,7 +194,12 @@ tokenRouter.post('/guest', tokenLimiter, async (req, res: Response) => {
     const guestIdentity = `guest_${crypto.randomBytes(16).toString('hex')}`;
 
     // Check if this guest was previously admitted (auto-admit on rejoin)
-    const wasPreviouslyAdmitted = await isGuestNameAdmitted(roomName, name);
+    let wasPreviouslyAdmitted = 0;
+    try {
+      wasPreviouslyAdmitted = await isGuestNameAdmitted(roomName, name);
+    } catch {
+      logger.warn('[Token] Redis unavailable for admit check, treating as new guest');
+    }
     
     // If waiting room is enabled, guests go to lobby for moderator approval
     // UNLESS they were previously admitted (reconnecting after disconnect)

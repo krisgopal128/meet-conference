@@ -16,6 +16,7 @@ vi.mock('../../services/redis.js', () => ({
   cacheSet: vi.fn().mockResolvedValue(undefined),
   cacheDel: vi.fn().mockResolvedValue(undefined),
   cacheTTL: vi.fn().mockResolvedValue(0),
+  cacheIncrWithExpire: vi.fn().mockResolvedValue(1),
   blacklistToken: vi.fn().mockResolvedValue(undefined),
 }));
 

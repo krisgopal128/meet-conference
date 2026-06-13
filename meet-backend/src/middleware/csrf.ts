@@ -47,7 +47,7 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction):
 
   const path = req.path.toLowerCase();
   for (const skipPath of CSRF_SKIP_PATHS) {
-    if (path.startsWith(skipPath)) return next();
+    if (path === skipPath || path.startsWith(skipPath + '/')) return next();
   }
 
   const cookieToken = req.cookies?.[CSRF_COOKIE_NAME];

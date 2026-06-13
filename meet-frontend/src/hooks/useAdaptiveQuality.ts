@@ -106,8 +106,8 @@ export function useAdaptiveQuality(config: Partial<AdaptiveQualityConfig> = {}) 
     }
   }, [determineMode, fullConfig]);
 
-  // Build network info
-  const networkInfo = getQualityLevelInfo(networkQuality.level);
+  // Build network info — memoized on the primitive level to avoid new object per render
+  const networkInfo = useMemo(() => getQualityLevelInfo(networkQuality.level), [networkQuality.level]);
 
   const state: AdaptiveQualityState = useMemo((): AdaptiveQualityState => ({
     effectiveMode,

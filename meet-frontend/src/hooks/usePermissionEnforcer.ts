@@ -14,6 +14,10 @@ export function usePermissionEnforcer() {
 
   const canPublishSources = localParticipant.permissions?.canPublishSources;
   const canPublishSourcesKey = canPublishSources ? canPublishSources.join(',') : '';
+  const cameraEnabled = localParticipant.isCameraEnabled;
+  const micEnabled = localParticipant.isMicrophoneEnabled;
+  const screenShareEnabled = localParticipant.isScreenShareEnabled;
+  const enforcementKey = `${canPublishSourcesKey}|${cameraEnabled ? 1 : 0}|${micEnabled ? 1 : 0}|${screenShareEnabled ? 1 : 0}`;
 
   useEffect(() => {
     const permission = localParticipant.permissions;
@@ -36,7 +40,8 @@ export function usePermissionEnforcer() {
         logger.error('[RoomPage] Failed to enforce screen share disable from permissions:', error);
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    canPublishSourcesKey,
+    enforcementKey,
   ]);
 }

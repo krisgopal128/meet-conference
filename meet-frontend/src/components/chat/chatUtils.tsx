@@ -5,12 +5,20 @@ import { sanitizeDisplayText } from '../../utils/security';
 const formattedCache = new Map<string, { raw: string; formatted: React.ReactNode }>();
 const MAX_CACHE_SIZE = 200;
 
+// Shared mention regex — allows dots, hyphens, apostrophes, and CJK in names.
+// Stops at whitespace, end-of-string, @, or sentence punctuation (comma/!/?/:).
+// Dots are NOT in the stop set so "John.Smith" matches as one mention.
+const mentionRegex = new RegExp(
+  '@([a-zA-Z0-9_\\-.\'\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+)(?=\\s|$|@|[,!?:])',
+  'g'
+);
+
 // Mention parsing utilities
 export function parseMentions(text: string): string[] {
-  const mentionRegex = /@([a-zA-Z0-9_\-.\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\s]+?)(?=\s|$|@|[.,!?;:])/g;
+  const regex = new RegExp(mentionRegex.source, mentionRegex.flags);
   const mentions: string[] = [];
   let match;
-  while ((match = mentionRegex.exec(text)) !== null) {
+  while ((match = regex.exec(text)) !== null) {
     mentions.push(match[1].trim());
   }
   return mentions;
@@ -27,13 +35,13 @@ export function renderMessageWithMentions(text: string): React.ReactNode {
   // Security: Sanitize text to prevent XSS (defense in depth with React's escaping)
   const sanitized = sanitizeDisplayText(text, 5000);
 
-  const mentionRegex = /@([a-zA-Z0-9_\-.\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\s]+?)(?=\s|$|@|[.,!?;:])/g;
+  const regex = new RegExp(mentionRegex.source, mentionRegex.flags);
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
   let match;
   let key = 0;
 
-  while ((match = mentionRegex.exec(sanitized)) !== null) {
+  while ((match = regex.exec(sanitized)) !== null) {
     // Add text before mention
     if (match.index > lastIndex) {
       parts.push(sanitized.slice(lastIndex, match.index));

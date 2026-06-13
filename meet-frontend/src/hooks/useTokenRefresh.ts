@@ -90,40 +90,42 @@ export function useTokenRefresh() {
     };
   }, [token, refreshToken]);
 
+  const refreshTokenRef = useRef(refreshToken);
+  refreshTokenRef.current = refreshToken;
+
   // Also refresh on window focus (user returns to tab)
   useEffect(() => {
-    let lastFocusTime = Date.now();
-    
-    const handleFocus = () => {
-      if (!token) return;
-      
-      // Only refresh if tab was hidden for more than 2 minutes
-      const timeSinceLastFocus = Date.now() - lastFocusTime;
-      if (timeSinceLastFocus < 2 * 60 * 1000) return;
-      
-      const secondsUntilExpiry = getSecondsUntilExpiry(token);
+    let hiddenAt: number | null = null;
+
+    const checkAndRefresh = () => {
+      const currentToken = useAuthStore.getState().token;
+      if (!currentToken) return;
+
+      const secondsUntilExpiry = getSecondsUntilExpiry(currentToken);
       if (secondsUntilExpiry !== null && secondsUntilExpiry <= REFRESH_BUFFER_SECONDS * 2) {
-        // Token will expire soon, refresh it
-        refreshToken();
+        refreshTokenRef.current();
       }
-      
-      lastFocusTime = Date.now();
     };
 
-    // Also handle visibility change (more reliable than focus for tab switching)
     const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        handleFocus();
+      if (document.hidden) {
+        hiddenAt = Date.now();
+      } else {
+        if (hiddenAt !== null) {
+          const hiddenDuration = Date.now() - hiddenAt;
+          hiddenAt = null;
+          if (hiddenDuration >= 2 * 60 * 1000) {
+            checkAndRefresh();
+          }
+        }
       }
     };
 
-    window.addEventListener('focus', handleFocus);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
-      window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [token, refreshToken]);
+  }, []);
 }
 
 export default useTokenRefresh;

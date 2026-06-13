@@ -346,6 +346,21 @@ export async function cacheTTL(key: string): Promise<number> {
   return mainClient.ttl(key);
 }
 
+/**
+ * Atomically increment a counter and set its expiry.
+ * Uses MULTI/EXEC so concurrent callers cannot race the read-then-write pattern.
+ * Returns the new value after increment.
+ */
+export async function cacheIncrWithExpire(key: string, ttlSeconds: number): Promise<number> {
+  await ensureConnected();
+  if (!mainClient) throw new Error('Redis not initialized');
+  const multi = mainClient.multi();
+  multi.incr(key);
+  multi.expire(key, ttlSeconds);
+  const results = await multi.exec();
+  return Number(results[0]);
+}
+
 // ============================================
 // PIPELINE OPERATIONS (Batch)
 // ============================================
@@ -616,6 +631,13 @@ const KICK_COOLDOWN_SECONDS = 10;
 export async function addKickedParticipant(roomName: string, identity: string, guestName?: string): Promise<void> {
   await ensureConnected();
   if (!mainClient) throw new Error('Redis not initialized');
+
+  // Clear admitted status so kicked participants must pass through the lobby on rejoin
+  await mainClient.del(`admitted:${roomName}:${identity}`);
+  if (guestName) {
+    const normalizedName = guestName.toLowerCase().trim();
+    await mainClient.del(`admitted_guest:${roomName}:${normalizedName}`);
+  }
 
   await mainClient.setEx(
     `kicked:${roomName}:${identity}`,

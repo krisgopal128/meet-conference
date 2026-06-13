@@ -377,6 +377,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
     if (roomName) {
       whiteboardSceneCache.set(roomName, {
         scene: [...currentSceneRef.current],
+        files: ((excalidrawAPIRef.current as any)?.files || undefined) as Record<string, unknown> | undefined,
         locked: next,
       });
     }

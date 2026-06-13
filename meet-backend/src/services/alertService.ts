@@ -7,7 +7,7 @@
 
 import { query } from './database.js';
 
-export type AlertSeverity = 'info' | 'warning' | 'error' | 'critical';
+export type AlertSeverity = 'info' | 'warning' | 'critical';
 export type AlertType = 'server_load' | 'failed_recording' | 'user_report' | 'system' | 'security' | 'meeting';
 
 export interface CreateAlertParams {
@@ -67,7 +67,7 @@ export async function createFailedRecordingAlert(
 ): Promise<string> {
   return createAlert({
     type: 'failed_recording',
-    severity: 'error',
+    severity: 'critical',
     title: `Recording Failed: ${roomName}`,
     message: error || 'Recording failed to complete for an active meeting.',
     data: {

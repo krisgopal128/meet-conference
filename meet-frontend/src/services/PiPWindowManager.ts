@@ -92,7 +92,7 @@ class PiPWindowManager {
         pipOptions.disallowReturnToOpener = options.disallowReturnToOpener;
       }
       if (options?.preferInitialWindowPlacement !== undefined) {
-        pipOptions.preferInitialWindowPlacement = 1; // API expects number
+        pipOptions.preferInitialWindowPlacement = options.preferInitialWindowPlacement ? 1 : 0;
       }
 
       const docPip = (window as unknown as { documentPictureInPicture?: { requestWindow: (opts: Record<string, number | boolean | undefined>) => Promise<Window> } }).documentPictureInPicture;

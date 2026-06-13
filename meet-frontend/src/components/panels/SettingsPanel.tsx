@@ -109,8 +109,9 @@ export function SettingsPanel() {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
   
-  // Debounce timer for saving room settings
-  const saveSettingsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Debounce timers for saving room settings (separate per setting to avoid clobbering)
+  const saveAspectRatioTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveVideoFitModeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Persist aspect ratio to backend when changed (moderators only)
   const handleAspectRatioChange = async (ratio: '16:9' | '9:16' | '1:1' | '4:3') => {
@@ -120,11 +121,11 @@ export function SettingsPanel() {
     if (!isModerator || !roomName) return;
     
     // Debounce the API call
-    if (saveSettingsTimerRef.current) {
-      clearTimeout(saveSettingsTimerRef.current);
+    if (saveAspectRatioTimerRef.current) {
+      clearTimeout(saveAspectRatioTimerRef.current);
     }
     
-    saveSettingsTimerRef.current = setTimeout(async () => {
+    saveAspectRatioTimerRef.current = setTimeout(async () => {
       try {
         await updateRoomSettings(roomName, { gridAspectRatio: ratio });
         toast.success('Aspect ratio saved');
@@ -159,11 +160,11 @@ export function SettingsPanel() {
     
     // Moderators can save to backend (debounced)
     if (roomName && isModerator) {
-      if (saveSettingsTimerRef.current) {
-        clearTimeout(saveSettingsTimerRef.current);
+      if (saveVideoFitModeTimerRef.current) {
+        clearTimeout(saveVideoFitModeTimerRef.current);
       }
       
-      saveSettingsTimerRef.current = setTimeout(() => {
+      saveVideoFitModeTimerRef.current = setTimeout(() => {
         updateRoomSettings(roomName, { videoFitMode: mode })
           .then(() => toast.success('Video fit mode saved'))
           .catch((error) => {
@@ -416,7 +417,7 @@ export function SettingsPanel() {
                           <span className="text-[10px] px-1 py-0.5 rounded bg-surface-700 text-surface-400">Host default</span>
                         </label>
                         <select
-                          value={qualityMode}
+                          value={autoFallbackActive ? selectedQualityMode : qualityMode}
                           onChange={(e) => setQualityMode(e.target.value as QualityModeName)}
                           className="w-full bg-surface-700 text-surface-100 rounded-lg px-3 py-2.5 text-sm border border-surface-600 focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 focus:outline-none"
                         >

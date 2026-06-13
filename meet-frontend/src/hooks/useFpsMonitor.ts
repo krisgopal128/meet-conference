@@ -62,8 +62,8 @@ export function useFpsMonitor(options: {
         }
 
         const avgFrameTime = frameTimesRef.current.reduce((a, b) => a + b, 0) / frameTimesRef.current.length;
-        const currentFps = Math.round(1000 / avgFrameTime);
-        setFps(currentFps);
+        const currentFps = avgFrameTime > 0 ? Math.min(Math.round(1000 / avgFrameTime), 120) : 0;
+        setFps(prev => (prev === currentFps ? prev : currentFps));
 
         if (currentFps < lowFpsThreshold) {
           if (!lowSinceRef.current) {

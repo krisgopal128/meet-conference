@@ -366,7 +366,16 @@ roomsRouter.delete('/:name/participants/:identity', authenticate, async (req: Au
       return res.status(403).json({ error: 'Only moderators can remove participants' });
     }
 
+    // Get participant info to extract name for guest tracking
+    const participants = await listParticipants(name);
+    const participant = participants.find(p => p.identity === identity);
+    const guestName = participant?.name || undefined;
+
     await removeParticipant(name, identity);
+
+    // Add to kicked list with cooldown (consistent with POST /kick/:identity)
+    await addKickedParticipant(name, identity, guestName);
+
     res.json({ message: 'Participant removed' });
   } catch (error) {
     logger.error('Kick participant error:', error);
@@ -805,7 +814,9 @@ roomsRouter.post('/:name/chat', authenticate, async (req: AuthRequest, res: Resp
     const user = requireUser(req);
     if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { name } = req.params;
-    const { content, messageType = 'text' } = req.body;
+    const { content } = req.body;
+    const validMessageTypes = ['text', 'system', 'file', 'emoji'];
+    const messageType = validMessageTypes.includes(req.body.messageType) ? req.body.messageType : 'text';
 
     // Sanitize chat message
     let sanitizedContent: string;

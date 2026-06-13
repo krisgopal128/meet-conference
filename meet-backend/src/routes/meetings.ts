@@ -503,7 +503,9 @@ meetingsRouter.post('/:id/chat', authenticate, async (req: AuthRequest, res: Res
     const user = requireUser(req);
     if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { id } = req.params;
-    const { content, messageType = 'text' } = req.body;
+    const { content } = req.body;
+    const validMessageTypes = ['text', 'system', 'file', 'emoji'];
+    const messageType = validMessageTypes.includes(req.body.messageType) ? req.body.messageType : 'text';
 
     if (!content || typeof content !== 'string' || content.trim().length === 0) {
       return res.status(400).json({ error: 'Message content is required' });

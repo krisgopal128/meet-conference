@@ -129,12 +129,13 @@ export function ParticipantsPanel() {
 
   // Filter participants
   const activeParticipants = participants.filter((p) => p.permissions?.canPublish !== false);
+  const activeIdentitiesKey = activeParticipants.map((p) => p.identity).join(',');
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
   useEffect(() => {
     if (!isModerator) return;
 
-    const admittedIdentities = new Set(activeParticipants.map((participant) => participant.identity));
+    const admittedIdentities = new Set(activeIdentitiesKey.split(',').filter(Boolean));
     setLobbyParticipants((prev) => {
       const next = prev.filter((participant) => !admittedIdentities.has(participant.identity));
       if (next.length !== prev.length) {
@@ -142,7 +143,7 @@ export function ParticipantsPanel() {
       }
       return next;
     });
-  }, [activeParticipants, isModerator, setLobbyCount]);
+  }, [activeIdentitiesKey, isModerator, setLobbyCount]);
   
   const filteredLobbyParticipants = lobbyParticipants.filter((participant) => {
     if (!normalizedQuery) return true;

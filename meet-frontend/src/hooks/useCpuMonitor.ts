@@ -240,7 +240,7 @@ export function useCpuMonitor(options: CpuMonitorOptions = {}): CpuMonitorState 
               ...prev,
               cpuPercent,
               status,
-              shouldDegrade: false,
+              shouldDegrade: degradedRef.current,
               fps,
               ...computeDerivedState(status),
             }));

@@ -23,7 +23,7 @@ egressRouter.post('/start', authenticate, async (req: AuthRequest, res: Response
     const { roomName } = startRecordingSchema.parse(req.body);
 
     // Verify user is the host
-    const [room] = await query<{ host_id: string }>(
+    const room = await queryOne<{ host_id: string }>(
       'SELECT host_id FROM rooms WHERE name = $1',
       [roomName]
     );
@@ -140,7 +140,7 @@ egressRouter.get('/status/:roomName', authenticate, async (req: AuthRequest, res
     const { roomName } = req.params;
 
     // Verify user is host or participant of this room
-    const [room] = await query<{ host_id: string }>(
+    const room = await queryOne<{ host_id: string }>(
       'SELECT host_id FROM rooms WHERE name = $1',
       [roomName]
     );

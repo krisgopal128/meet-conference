@@ -78,11 +78,8 @@ async function isAccountLocked(email: string): Promise<{ locked: boolean; remain
  */
 async function recordFailedAttempt(email: string): Promise<void> {
   const key = `lockout:${email}`;
-  const { cacheGet, cacheSet } = await import('../services/redis.js');
-  const attempts = await cacheGet<number>(key);
-  const newAttempts = (attempts || 0) + 1;
-  
-  await cacheSet(key, newAttempts, LOCKOUT_DURATION_SECONDS);
+  const { cacheIncrWithExpire } = await import('../services/redis.js');
+  await cacheIncrWithExpire(key, LOCKOUT_DURATION_SECONDS);
 }
 
 /**
@@ -215,6 +212,9 @@ authRouter.post('/register', authLimiter, async (req, res: Response) => {
     if (error instanceof Error && error.message.includes('Invalid')) {
       return res.status(400).json({ error: error.message });
     }
+    if (error instanceof Error && 'code' in error && (error as { code: string }).code === '23505') {
+      return res.status(409).json({ error: 'Unable to complete registration' });
+    }
     logger.error('Register error:', error);
     res.status(500).json({ error: 'Registration failed' });
   }
@@ -318,9 +318,13 @@ authRouter.post('/refresh', async (req, res: Response) => {
     }
 
     const refreshTokenHash = hashToken(refreshToken);
+    // Atomically revoke the token and retrieve the user_id.
+    // The conditional UPDATE (revoked = false) ensures only one concurrent
+    // request can succeed — preventing refresh token replay races.
     const storedRefreshToken = await queryOne<{ user_id: string }>(
-      `SELECT user_id FROM refresh_tokens
-       WHERE token_hash = $1 AND revoked = false AND expires_at > NOW()`,
+      `UPDATE refresh_tokens SET revoked = true
+       WHERE token_hash = $1 AND revoked = false AND expires_at > NOW()
+       RETURNING user_id`,
       [refreshTokenHash]
     );
 
@@ -353,8 +357,6 @@ authRouter.post('/refresh', async (req, res: Response) => {
         logger.error('Failed to blacklist old access token on refresh:', blacklistError);
       }
     }
-
-    await query('UPDATE refresh_tokens SET revoked = true WHERE token_hash = $1', [refreshTokenHash]);
 
     const rememberMe = (() => {
       const decoded = jwt.decode(refreshToken) as { exp?: number } | null;

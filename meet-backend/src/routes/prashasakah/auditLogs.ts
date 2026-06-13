@@ -31,12 +31,12 @@ router.get('/audit-logs', requireAdmin(), async (req: AuthRequest, res: Response
 
     if (actionType && (VALID_ACTION_TYPES as readonly string[]).includes(actionType)) {
       params.push(actionType);
-      conditions.push(`action_type = $${params.length}`);
+      conditions.push(`aal.action_type = $${params.length}`);
     }
 
     if (adminId) {
       params.push(adminId);
-      conditions.push(`admin_id = $${params.length}`);
+      conditions.push(`aal.admin_id = $${params.length}`);
     }
 
     if (conditions.length > 0) {
@@ -44,7 +44,7 @@ router.get('/audit-logs', requireAdmin(), async (req: AuthRequest, res: Response
     }
 
     const countResult = await query<{ count: string }>(
-      `SELECT COUNT(*) as count FROM admin_audit_logs ${whereClause}`,
+      `SELECT COUNT(*) as count FROM admin_audit_logs aal ${whereClause}`,
       params
     );
     const total = parseInt(countResult[0]?.count || '0', 10);
@@ -63,8 +63,8 @@ router.get('/audit-logs', requireAdmin(), async (req: AuthRequest, res: Response
       `SELECT aal.id, aal.admin_id, u.email as actor_email, aal.action_type, aal.target_type, aal.target_id, aal.details, aal.ip_address, aal.created_at
        FROM admin_audit_logs aal
        LEFT JOIN users u ON u.id = aal.admin_id
-       ${whereClause.replaceAll('action_type', 'aal.action_type').replaceAll('admin_id', 'aal.admin_id')}
-       ORDER BY created_at DESC
+       ${whereClause}
+       ORDER BY aal.created_at DESC
        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
       [...params, limit, offset]
     );

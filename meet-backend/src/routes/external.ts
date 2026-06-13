@@ -129,11 +129,17 @@ async function verifyAPIKey(req: Request, res: Response, next: NextFunction) {
       return res.status(403).json({ error: 'Invalid or expired API key' });
     }
     
-    // Update last_used_at
-    await query(
-      'UPDATE api_keys SET last_used_at = NOW() WHERE id = $1',
-      [dbKey.id]
-    );
+    // Throttle last_used_at update to once per minute per key (avoids write contention)
+    const throttleKey = `apikey:lastused:${dbKey.id}`;
+    const { cacheGet, cacheSet } = await import('../services/redis.js');
+    const recentlyUpdated = await cacheGet<number>(throttleKey);
+    if (!recentlyUpdated) {
+      await query(
+        'UPDATE api_keys SET last_used_at = NOW() WHERE id = $1',
+        [dbKey.id]
+      );
+      cacheSet(throttleKey, 1, 60).catch(() => {});
+    }
     
      // Attach key info to request for later use
      (req as ExternalApiRequest).apiKey = {
@@ -312,22 +318,28 @@ router.post('/token', async (req: Request, res: Response) => {
     
     // Verify room exists
     const roomData = await queryOne<{
-      id: string
+      id: string;
+      host_id: string;
     }>(
-      'SELECT id FROM rooms WHERE name = $1',
+      'SELECT id, host_id FROM rooms WHERE name = $1',
       [room]
     );
     
     if (!roomData) {
       return res.status(404).json({ error: 'Room not found' });
     }
-    
+   
      // Check API key permissions
      const apiKeyInfo = (req as ExternalApiRequest).apiKey;
      const permissions = apiKeyInfo?.permissions || {};
     const tokenPerms = (permissions.token || {}) as Record<string, unknown>;
     const canGenerateToken = tokenPerms.generate === true;
     
+    // Verify API key owns this room
+    if (roomData.host_id !== apiKeyInfo?.userId) {
+      return res.status(403).json({ error: 'Not authorized to generate tokens for this room' });
+    }
+
     // Get the requested role
     const requestedRole = role || 'attendee';
     const isElevatedRole = requestedRole === 'moderator' || requestedRole === 'teacher';
@@ -338,6 +350,11 @@ router.post('/token', async (req: Request, res: Response) => {
         error: 'API key does not have permission to generate moderator/teacher tokens',
         requires_permission: 'token.generate'
       });
+    }
+
+    // Prevent identity collision with room host (privilege escalation via lobby bypass)
+    if (identity === roomData.host_id && !isElevatedRole) {
+      return res.status(403).json({ error: 'Identity cannot match room host for non-moderator roles' });
     }
     
     // Cap permissions based on API key capabilities
@@ -496,8 +513,8 @@ router.get('/rooms/:name/links', async (req: Request, res: Response) => {
     const { teacher_identity, teacher_name, expires_in } = req.query;
     
     // Verify room exists
-    const room = await queryOne<{ id: string; name: string; title: string }>(
-      'SELECT id, name, title FROM rooms WHERE name = $1',
+    const room = await queryOne<{ id: string; name: string; title: string; host_id: string }>(
+      'SELECT id, name, title, host_id FROM rooms WHERE name = $1',
       [name]
     );
     
@@ -510,6 +527,11 @@ router.get('/rooms/:name/links', async (req: Request, res: Response) => {
     const permissions = apiKeyInfo?.permissions || {};
     if (!permissions.token || !(permissions.token as Record<string, unknown>).generate) {
       return res.status(403).json({ error: 'API key does not have permission to generate join links' });
+    }
+
+    // Verify API key owns this room
+    if (room.host_id !== apiKeyInfo?.userId) {
+      return res.status(403).json({ error: 'Not authorized to generate links for this room' });
     }
     
     // Generate teacher token with moderator privileges

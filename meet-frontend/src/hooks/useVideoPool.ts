@@ -142,11 +142,10 @@ export function useVideoPool(
       return element;
     }
 
-    // Pool is full - evict oldest unused from available set
+    // Pool is full - evict least-recently-used element from the entire pool
     let oldest: { id: string; lastUsed: number } | null = null;
-    for (const id of availableVideosRef.current) {
-      const pooled = poolRef.current.get(id);
-      if (pooled && (!oldest || pooled.lastUsed < oldest.lastUsed)) {
+    for (const [id, pooled] of poolRef.current) {
+      if (!oldest || pooled.lastUsed < oldest.lastUsed) {
         oldest = { id, lastUsed: pooled.lastUsed };
       }
     }
@@ -154,8 +153,18 @@ export function useVideoPool(
     if (oldest) {
       const pooled = poolRef.current.get(oldest.id);
       if (pooled) {
-        pooled.inUse = true;
+        // Clean up the previous assignment so the old participant's release is a no-op
+        if (pooled.assignedTo) {
+          participantToVideoRef.current.delete(pooled.assignedTo);
+        }
+        // Clear any pending recycle timer
+        const timer = recycleTimersRef.current.get(oldest.id);
+        if (timer) {
+          window.clearTimeout(timer);
+          recycleTimersRef.current.delete(oldest.id);
+        }
         pooled.assignedTo = participantIdentity;
+        pooled.inUse = true;
         pooled.lastUsed = Date.now();
         availableVideosRef.current.delete(oldest.id);
         participantToVideoRef.current.set(participantIdentity, oldest.id);

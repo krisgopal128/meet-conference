@@ -5,6 +5,10 @@ import { meetingRoomConfig, type QualityModeName, type ScreenShareModeName } fro
 
 const DEVTOOLS_ENABLED = import.meta.env.DEV && import.meta.env.MODE !== 'test';
 
+function safeGetTime(date: Date | string): number {
+  return date instanceof Date ? date.getTime() : new Date(date).getTime();
+}
+
 export type SettingsView = 'devices' | 'call-health' | 'video-effects';
 export type QualityOverrideReason = 'network' | 'cpu' | 'battery' | null;
 export type GridAspectRatio = '16:9' | '9:16' | '1:1' | '4:3';
@@ -157,6 +161,7 @@ const initialUIState: UIState = {
   videoFitMode: 'cover',
   backgroundBlurEnabled: false,
   backgroundBlurLevel: 10,
+  _prevLayout: undefined,
   diagnosticsLog: [],
 };
 
@@ -314,7 +319,7 @@ export const useRoomStore = create<RoomStore>()(
           toggleWhiteboard: () => set((state) => {
             const closing = state.whiteboardOpen;
             const prev = closing ? (state._prevLayout ?? 'speaker') : state.layout;
-            const validPrev = prev === 'screenshare' && !state.screenShareMode ? 'speaker' : prev;
+            const validPrev = prev === 'screenshare' ? 'speaker' : prev;
             return closing
               ? { whiteboardOpen: false, whiteboardFullscreen: false, layout: validPrev as LayoutMode, _prevLayout: undefined }
               : { whiteboardOpen: true, layout: 'whiteboard' as LayoutMode, _prevLayout: state.layout };
@@ -390,10 +395,10 @@ export const useRoomStore = create<RoomStore>()(
             }
             // Insert in sorted order (binary search) instead of full sort - O(n) vs O(n log n)
             const messages = [...state.messages];
-            const msgTime = msg.sentAt.getTime();
+            const msgTime = safeGetTime(msg.sentAt);
             let insertIdx = messages.length;
             for (let i = messages.length - 1; i >= 0; i--) {
-              if (messages[i].sentAt.getTime() <= msgTime) {
+              if (safeGetTime(messages[i].sentAt) <= msgTime) {
                 insertIdx = i + 1;
                 break;
               }
@@ -419,7 +424,7 @@ export const useRoomStore = create<RoomStore>()(
             if (newMessages.length === 0) return {};
             
             const allMessages = [...state.messages, ...newMessages].sort(
-              (a, b) => a.sentAt.getTime() - b.sentAt.getTime()
+              (a, b) => safeGetTime(a.sentAt) - safeGetTime(b.sentAt)
             );
             
             // Prune old messages to prevent unbounded growth
@@ -470,13 +475,13 @@ export const useRoomStore = create<RoomStore>()(
                 : o.votes,
             }));
             
-            // Add vote to selected option
+            // Add vote to selected option (toggle off if already voted)
             updatedOptions = updatedOptions.map(o =>
               o.id === optionId
                 ? {
                     ...o,
                     votes: o.votes.includes(voterIdentity)
-                      ? o.votes
+                      ? o.votes.filter(v => v !== voterIdentity)
                       : [...o.votes, voterIdentity],
                   }
                 : o

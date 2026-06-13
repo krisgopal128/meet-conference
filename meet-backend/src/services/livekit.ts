@@ -301,14 +301,6 @@ async function withParticipantLock<T>(roomName: string, identity: string, fn: ()
     if (participantLocks.get(key) === next) {
       participantLocks.delete(key);
     }
-    // Size guard: prevent unbounded growth from stale entries
-    if (participantLocks.size > 100) {
-      for (const [k, v] of participantLocks) {
-        if (v !== participantLocks.get(k)) {
-          participantLocks.delete(k);
-        }
-      }
-    }
   }
 }
 

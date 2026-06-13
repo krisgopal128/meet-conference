@@ -66,6 +66,9 @@ export function useNetworkQuality(config: Partial<NetworkQualityConfig> = {}) {
   const isMountedRef = useRef(true);
   /** Always-updated raw stats for programmatic access (independent of React renders). */
   const rawStatsRef = useRef<NetworkQualityScore>(quality);
+  /** Previous cumulative packet counters for delta-based loss calculation. */
+  const prevPacketsLostRef = useRef(0);
+  const prevPacketsReceivedRef = useRef(0);
 
   const calculateLevel = useCallback((score: number): NetworkQualityLevel => {
     if (score >= finalConfig.scoreThresholds.excellent) return 'excellent';
@@ -142,23 +145,28 @@ export function useNetworkQuality(config: Partial<NetworkQualityConfig> = {}) {
             const stats = await track.getRTCStatsReport?.();
             if (!isMountedRef.current) return;
             if (stats) {
-              stats.forEach((stat) => {
-                const s = stat as Record<string, unknown>;
-                if (stat.type === 'candidate-pair' && s.state === 'succeeded') {
-                  if (typeof s.currentRoundTripTime === 'number') {
-                    rtts.push(s.currentRoundTripTime * 1000);
+                stats.forEach((stat) => {
+                  const s = stat as Record<string, unknown>;
+                  if (stat.type === 'candidate-pair' && s.state === 'succeeded') {
+                    if (typeof s.currentRoundTripTime === 'number') {
+                      rtts.push(s.currentRoundTripTime * 1000);
+                    }
+                    if (typeof s.availableIncomingBitrate === 'number') {
+                      availableBitrate = Math.max(availableBitrate, s.availableIncomingBitrate as number);
+                    }
                   }
-                }
-                if (stat.type === 'outbound-rtp' && s.bitrate) {
-                  availableBitrate = Math.max(availableBitrate, s.bitrate as number);
-                }
-              });
+                });
             }
           }
         }
 
-        const packetLoss = totalPacketsReceived > 0 
-          ? (totalPacketsLost / (totalPacketsLost + totalPacketsReceived)) * 100 
+        const deltaLost = Math.max(0, totalPacketsLost - prevPacketsLostRef.current);
+        const deltaReceived = Math.max(0, totalPacketsReceived - prevPacketsReceivedRef.current);
+        prevPacketsLostRef.current = totalPacketsLost;
+        prevPacketsReceivedRef.current = totalPacketsReceived;
+
+        const packetLoss = deltaLost + deltaReceived > 0
+          ? (deltaLost / (deltaLost + deltaReceived)) * 100
           : 0;
         const avgRtt = rtts.length > 0 
           ? rtts.reduce((a, b) => a + b, 0) / rtts.length 

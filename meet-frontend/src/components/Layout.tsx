@@ -2,6 +2,7 @@ import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useUser, useAuthActions } from '../store/authStore';
+import { authApi } from '../services/api';
 import { useTokenRefresh } from '../hooks/useTokenRefresh';
 import { 
   Video, 
@@ -58,12 +59,13 @@ export default function Layout() {
 
   const handleLogout = useCallback(async () => {
     try {
-      await logout();
-      toast.success('Logged out successfully');
-      navigate('/login');
+      await authApi.logout();
     } catch {
-      toast.error('Failed to logout');
+      // Ignore API errors - still clear local state
     }
+    logout();
+    toast.success('Logged out successfully');
+    navigate('/login');
   }, [logout, navigate]);
 
   const isActive = useCallback((path: string) => {

@@ -266,6 +266,22 @@ router.post('/users/:id/ban', adminActionLimiter, requireModerator(), async (req
     const { id } = req.params;
     const { reason } = req.body;
 
+    // Prevent self-ban
+    if (id === req.user?.id) {
+      return res.status(400).json({ error: 'Cannot ban your own account' });
+    }
+
+    // Moderators cannot ban admin users
+    if (req.user!.role === 'moderator') {
+      const targetUser = await queryOne<{ role: string; is_banned: boolean }>('SELECT role, is_banned FROM users WHERE id = $1', [id]);
+      if (!targetUser) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      if (targetUser.role === 'admin') {
+        return res.status(403).json({ error: 'Moderators cannot ban admin users' });
+      }
+    }
+
     const banReason = typeof reason === 'string' && reason.trim() ? reason.trim().substring(0, 500) : null;
     await query('UPDATE users SET is_banned = true, ban_reason = $2, banned_at = NOW(), banned_by = $3 WHERE id = $1', [id, banReason, req.user!.id]);
     logger.info(`[Admin] User ${id} banned by ${req.user?.id}${banReason ? ` - Reason: ${banReason}` : ''}`);
@@ -299,6 +315,17 @@ router.post('/users/:id/ban', adminActionLimiter, requireModerator(), async (req
 router.post('/users/:id/unban', adminActionLimiter, requireModerator(), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+
+    // Moderators cannot unban admin users
+    if (req.user!.role === 'moderator') {
+      const targetUser = await queryOne<{ role: string; is_banned: boolean }>('SELECT role, is_banned FROM users WHERE id = $1', [id]);
+      if (!targetUser) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      if (targetUser.role === 'admin') {
+        return res.status(403).json({ error: 'Moderators cannot modify admin users' });
+      }
+    }
 
     await query('UPDATE users SET is_banned = false, ban_reason = NULL, banned_at = NULL, banned_by = NULL WHERE id = $1', [id]);
     logger.info(`[Admin] User ${id} unbanned by ${req.user?.id}`);
@@ -358,7 +385,7 @@ router.post('/users/:id/reset-password', requireAdmin(), async (req: AuthRequest
     const { id } = req.params;
 
     // Generate temporary password
-    const tempPassword = crypto.randomBytes(8).toString('hex');
+    const tempPassword = crypto.randomBytes(16).toString('hex');
     const passwordHash = await bcrypt.hash(tempPassword, 12);
 
     await query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, id]);

@@ -34,6 +34,7 @@ export function usePictureInPicture(): PiPSupport {
   });
 
   useEffect(() => {
+    let cancelled = false;
     async function detectPiP() {
       // Check for Document PiP API
       const hasDocumentPiP = 'documentPictureInPicture' in window;
@@ -43,14 +44,16 @@ export function usePictureInPicture(): PiPSupport {
       let permissionState: PiPPermissionState = 'unsupported';
       if (hasDocumentPiP) {
         try {
-          // Query permission state (Chrome 116+)
           const permissionStatus = await navigator.permissions.query({ name: 'picture-in-picture' as PermissionName });
           permissionState = permissionStatus.state as PiPPermissionState;
         } catch {
-          // Permission API not supported
           permissionState = 'prompt';
         }
+      } else if (hasVideoPiP) {
+        permissionState = 'prompt';
       }
+
+      if (cancelled) return;
 
       // Debug logging
       logger.info('[usePictureInPicture] Detection:', {
@@ -68,6 +71,7 @@ export function usePictureInPicture(): PiPSupport {
       });
     }
     detectPiP();
+    return () => { cancelled = true; };
   }, []);
 
   return support;

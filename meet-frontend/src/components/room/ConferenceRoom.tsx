@@ -96,10 +96,12 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
   const [activeSpeakers, setActiveSpeakers] = useState<Participant[]>([]);
   const screenShareTracks = useTracks([Track.Source.ScreenShare]);
   const hasActiveScreenShare = screenShareTracks.some((track) => track.publication?.isSubscribed);
-  const isModerator = role === 'host' || role === 'cohost' || identity === hostId;
+  const isModerator = role === 'host' || role === 'cohost' || role === 'moderator' || identity === hostId;
   const activeSpeakerPromoteTimerRef = useRef<number | null>(null);
   const activeSpeakerDemoteTimerRef = useRef<number | null>(null);
   const layoutBeforeScreenshare = useRef<LayoutMode>('grid');
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
   const previousLobbyCountRef = useRef(0);
   const hasSeenInitialLobbyCountRef = useRef(false);
 
@@ -179,15 +181,15 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
     };
   }, [room]);
 
-  // Auto-switch to screenshare layout
+  // Auto-switch to screenshare layout (only reacts to hasActiveScreenShare changes)
   useEffect(() => {
-    if (hasActiveScreenShare && layout !== 'screenshare') {
-      layoutBeforeScreenshare.current = layout;
+    if (hasActiveScreenShare && layoutRef.current !== 'screenshare') {
+      layoutBeforeScreenshare.current = layoutRef.current;
       setLayout('screenshare');
-    } else if (!hasActiveScreenShare && layout === 'screenshare') {
+    } else if (!hasActiveScreenShare && layoutRef.current === 'screenshare') {
       setLayout(layoutBeforeScreenshare.current);
     }
-  }, [hasActiveScreenShare, setLayout, layout]);
+  }, [hasActiveScreenShare, setLayout]);
 
   // Data channel, join/leave sounds, and quality monitoring are handled by extracted hooks
 

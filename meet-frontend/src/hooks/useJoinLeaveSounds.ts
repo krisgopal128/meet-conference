@@ -11,11 +11,20 @@ export function useJoinLeaveSounds(room: Room, localParticipant: Participant, en
   useEffect(() => {
     if (!enabled) return;
 
-    const playTone = (frequency: number) => {
-      const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AudioContextCtor) return;
+    const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextCtor) return;
 
-      const audioContext = new AudioContextCtor();
+    let sharedContext: AudioContext | null = null;
+
+    const getContext = (): AudioContext => {
+      if (!sharedContext || sharedContext.state === 'closed') {
+        sharedContext = new AudioContextCtor();
+      }
+      return sharedContext;
+    };
+
+    const playTone = (frequency: number) => {
+      const audioContext = getContext();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
 
@@ -27,8 +36,6 @@ export function useJoinLeaveSounds(room: Room, localParticipant: Participant, en
       gainNode.connect(audioContext.destination);
       oscillator.start();
       oscillator.stop(audioContext.currentTime + 0.12);
-
-      oscillator.onended = () => { void audioContext.close(); };
     };
 
     const handleParticipantConnected = (participant: Participant) => {
@@ -45,6 +52,9 @@ export function useJoinLeaveSounds(room: Room, localParticipant: Participant, en
     return () => {
       room.off(RoomEvent.ParticipantConnected, handleParticipantConnected);
       room.off(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
+      if (sharedContext && sharedContext.state !== 'closed') {
+        void sharedContext.close();
+      }
     };
   }, [room, localParticipant, enabled]);
 }

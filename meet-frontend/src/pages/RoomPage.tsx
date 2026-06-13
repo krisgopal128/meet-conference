@@ -526,13 +526,26 @@ export default function RoomPage() {
 
   // Check for token in location state OR in sessionStorage (for teacher links from external apps)
   const stateFromLocation = location.state as LocationState | null;
-  const tokenFromSession = roomName ? sessionStorage.getItem(`token_${roomName}`) : null;
-  const roleFromSession = roomName ? sessionStorage.getItem(`role_${roomName}`) : null;
+  // Read session token once into refs so clearing sessionStorage doesn't invalidate derived state
+  const sessionTokenRef = useRef<string | null | undefined>(undefined);
+  const sessionRoleRef = useRef<string | null | undefined>(undefined);
+  if (sessionTokenRef.current === undefined) {
+    sessionTokenRef.current = roomName ? sessionStorage.getItem(`token_${roomName}`) : null;
+    sessionRoleRef.current = roomName ? sessionStorage.getItem(`role_${roomName}`) : null;
+  }
+  const tokenFromSession = sessionTokenRef.current ?? null;
+  const roleFromSession = sessionRoleRef.current ?? null;
   // Use useMemo to ensure consistent hook call order
   const state = useMemo<LocationState | null>(() => {
     if (tokenFromSession) {
       const role = roleFromSession || stateFromLocation?.role || 'attendee';
-      return { token: tokenFromSession, videoEnabled: true, audioEnabled: true, role };
+      return {
+        ...stateFromLocation,
+        token: tokenFromSession,
+        videoEnabled: stateFromLocation?.videoEnabled ?? true,
+        audioEnabled: stateFromLocation?.audioEnabled ?? true,
+        role,
+      };
     }
     return stateFromLocation;
   }, [tokenFromSession, roleFromSession, stateFromLocation]);
@@ -675,8 +688,8 @@ export default function RoomPage() {
     }),
     audioCaptureDefaults: buildAudioCaptureOptions(
       undefined,
-      meetingRoomConfig.prejoin.noiseSuppression,
-      meetingRoomConfig.prejoin.echoCancellation,
+      state?.noiseSuppression ?? meetingRoomConfig.prejoin.noiseSuppression,
+      state?.echoCancellation ?? meetingRoomConfig.prejoin.echoCancellation,
       state?.micLevel,
     ),
     videoCaptureDefaults: buildCameraCaptureOptions(undefined, effectiveQualityMode, currentGridAspectRatio, state?.cameraHardwareCaps),

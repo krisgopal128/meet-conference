@@ -8,7 +8,6 @@ import { PiPVideoGrid } from './PiPVideoGrid';
 import { PiPControls } from './PiPControls';
 import { PiPScreenShare } from './PiPScreenShare';
 import { useLocalParticipant, useParticipants, useTracks } from '@livekit/components-react';
-import type { Participant } from 'livekit-client';
 import { Track } from 'livekit-client';
 import {
   useUserIdentity,
@@ -49,7 +48,6 @@ function copyStylesToPiPWindow(pipWindow: Window): void {
 export function PiPContainer() {
   const [pipWindow, setPipWindow] = useState<Window | null>(null);
   const [container, setContainer] = useState<HTMLElement | null>(null);
-  const [activeSpeaker] = useState<Participant | null>(null);
   const pipWindowRef = useRef<Window | null>(null);
 
   const isPiPOpen = useIsPiPOpen();
@@ -65,7 +63,7 @@ export function PiPContainer() {
   const participantsCanShareScreen = useParticipantsCanShareScreen();
   const participantsCanUnmute = useParticipantsCanUnmute();
   const participantsCanTurnOnCamera = useParticipantsCanTurnOnCamera();
-  const isModerator = role === 'host' || role === 'cohost' || identity === hostId;
+  const isModerator = role === 'host' || role === 'cohost' || role === 'moderator' || identity === hostId;
 
   const openPiPWindow = useCallback(async () => {
     if (!('documentPictureInPicture' in window)) {
@@ -156,7 +154,7 @@ export function PiPContainer() {
       <div className="pip-video-grid">
         <PiPVideoGrid
           participants={participants}
-          activeSpeaker={activeSpeaker}
+          activeSpeaker={null}
           localParticipant={localParticipant}
           isModerator={isModerator}
         />

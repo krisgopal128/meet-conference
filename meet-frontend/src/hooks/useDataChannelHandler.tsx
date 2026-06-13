@@ -97,11 +97,9 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
           
           // Check if current user is mentioned (don't notify for own messages)
           if (senderIdentity !== localParticipant.identity && message.mentions) {
-            const localName = localParticipant.name?.toLowerCase().trim();
             const localIdentity = localParticipant.identity?.toLowerCase().trim();
             const isMentioned = message.mentions.some(
-              (m: string) => m.toLowerCase().trim() === localIdentity || 
-                             (localName && m.toLowerCase().trim() === localName)
+              (m: string) => m.toLowerCase().trim() === localIdentity
             );
             
             if (isMentioned) {

@@ -75,8 +75,12 @@ router.get('/config', requireModerator(), async (_req: AuthRequest, res: Respons
     res.json({ config });
   } catch (error) {
     logger.error('[Admin] Error fetching config:', error);
-    // Fall back to defaults if DB query fails
-    res.json({ config: { ...DEFAULTS } });
+    // Fall back to defaults if DB query fails (strip prefix to match success-path format)
+    const fallback: Record<string, unknown> = {};
+    for (const [dbKey, val] of Object.entries(DEFAULTS)) {
+      fallback[dbKey.replace(CONFIG_PREFIX, '')] = val;
+    }
+    res.json({ config: fallback });
   }
 });
 

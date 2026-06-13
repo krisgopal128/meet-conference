@@ -16,6 +16,8 @@ export function useLobbyManager({ initialInLobby }: UseLobbyManagerProps) {
   const [inLobby, setInLobby] = useState(initialInLobby);
   const [isConnecting, setIsConnecting] = useState(true);
 
+  const canPublishPerm = localParticipant.permissions?.canPublish;
+
   useEffect(() => {
     const checkLobbyStatus = () => {
       const permissions = localParticipant.permissions;
@@ -34,7 +36,8 @@ export function useLobbyManager({ initialInLobby }: UseLobbyManagerProps) {
 
     const timer = setTimeout(checkLobbyStatus, 500);
     return () => clearTimeout(timer);
-  }, [localParticipant.permissions, initialInLobby]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canPublishPerm, initialInLobby]);
 
   useEffect(() => {
     const handlePermissionChange = () => {

@@ -67,7 +67,8 @@ export function useQualityMonitoring({ room, localParticipant, selectedQualityMo
 
     let lastQuality = String(localParticipant.connectionQuality ?? '').toLowerCase();
 
-    const handleConnectionQualityChanged = () => {
+    const handleConnectionQualityChanged = (_quality?: unknown, participant?: Participant) => {
+      if (participant && participant !== localParticipant) return;
       const nextQuality = String(localParticipant.connectionQuality ?? '').toLowerCase();
       setConnectionQualityLabelRef.current(nextQuality || 'unknown');
       if (nextQuality === lastQuality) return;
@@ -104,7 +105,9 @@ export function useQualityMonitoring({ room, localParticipant, selectedQualityMo
           }
         }
       } else if (lastQuality && (nextQuality === 'good' || nextQuality === 'excellent')) {
-        scheduleRecovery('network');
+        if (qualityOverrideReasonRef.current) {
+          scheduleRecovery('network');
+        }
       }
 
       lastQuality = nextQuality;

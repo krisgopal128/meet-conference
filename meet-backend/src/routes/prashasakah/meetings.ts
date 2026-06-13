@@ -234,7 +234,7 @@ router.get('/meetings/:id/chat', requireModerator(), async (req: AuthRequest, re
     const before = req.query.before as string | undefined;
 
     let whereClause = 'WHERE meeting_id = $1';
-    const params: (string | number)[] = [id, limit];
+    const params: (string | number)[] = [id];
     let paramIndex = 2;
 
     if (before) {
@@ -243,6 +243,9 @@ router.get('/meetings/:id/chat', requireModerator(), async (req: AuthRequest, re
       paramIndex++;
     }
 
+    params.push(limit);
+    const limitParam = `$${paramIndex}`;
+
     const messages = await query<ChatMessageRow>(`
       SELECT c.id, c.content, c.created_at, c.message_type, c.user_id,
         u.name as user_name, u.email as user_email
@@ -250,7 +253,7 @@ router.get('/meetings/:id/chat', requireModerator(), async (req: AuthRequest, re
       LEFT JOIN users u ON u.id = c.user_id
       ${whereClause}
       ORDER BY created_at DESC
-      LIMIT $2
+      LIMIT ${limitParam}
     `, params);
 
      res.json({

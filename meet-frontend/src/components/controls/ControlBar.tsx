@@ -188,7 +188,8 @@ export function ControlBar() {
     if (!room || !isModerator) {
       setLobbyCount(0);
     }
-  }, [room, isModerator, setLobbyCount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room, setLobbyCount]);
 
   useLobbyPolling(room?.name, !!room && isModerator, useCallback((lobby) => {
     setLobbyCount(lobby.length);
@@ -314,7 +315,8 @@ export function ControlBar() {
       participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera,
     });
     try {
-      await roomsApi.update(room!.name, { waitingRoomEnabled: newVal });
+      if (!room?.name) return;
+      await roomsApi.update(room.name, { waitingRoomEnabled: newVal });
     } catch (err) {
       logger.error('Failed to persist lobby toggle:', err);
     }

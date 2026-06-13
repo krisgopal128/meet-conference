@@ -66,6 +66,9 @@ export function useAutoPiP({
       if (document.hidden) {
         // Tab is hidden - trigger PiP
         handleTrigger();
+      } else {
+        // Tab became visible again - reset so next hide can trigger
+        pipOpenedRef.current = false;
       }
     };
 

@@ -84,7 +84,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
   const [sendPrivateToModerators, setSendPrivateToModerators] = useState(cachedDraft?.sendPrivateToModerators || false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<number | null>(null);
-  const isModerator = role === 'host' || role === 'cohost' || localParticipant?.identity === hostId;
+  const isModerator = role === 'host' || role === 'cohost' || role === 'moderator' || localParticipant?.identity === hostId;
   const chatDisabled = !isModerator && !participantsCanChat;
 
   // Mention autocomplete state
@@ -95,6 +95,8 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const inputValueRef = useRef(input);
   inputValueRef.current = input;
+  const localParticipantRef = useRef(localParticipant);
+  localParticipantRef.current = localParticipant;
   const mentionListRef = useRef<HTMLDivElement>(null);
 
   // Poll creation state
@@ -120,7 +122,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
       .filter((p) => p.identity !== localParticipant?.identity)
       .map((p) => {
         const participantRole = getParticipantRole(p.metadata, hostId, p.identity);
-        const isParticipantModerator = participantRole === 'host' || participantRole === 'cohost';
+        const isParticipantModerator = participantRole === 'host' || participantRole === 'cohost' || participantRole === 'moderator';
         return {
           identity: p.identity,
           name: p.name || p.identity,
@@ -148,7 +150,8 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
   // Handle mention selection
   const selectMention = useCallback((participant: MentionableParticipant) => {
     const beforeMention = input.slice(0, mentionStartPos);
-    const afterMention = input.slice(input.indexOf(mentionQuery, mentionStartPos) + mentionQuery.length);
+    const queryIndex = mentionQuery ? input.indexOf(mentionQuery, mentionStartPos) : mentionStartPos;
+    const afterMention = input.slice(queryIndex + mentionQuery.length);
     const newText = `${beforeMention}@${participant.name} ${afterMention}`;
     setInput(newText);
     setShowMentionList(false);
@@ -297,20 +300,21 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
         window.clearTimeout(typingTimeoutRef.current);
       }
 
-      if (localParticipant) {
-        setTypingParticipant(localParticipant.identity, localParticipant.name || localParticipant.identity, false);
-        void localParticipant.publishData(
+      const lp = localParticipantRef.current;
+      if (lp) {
+        setTypingParticipant(lp.identity, lp.name || lp.identity, false);
+        void lp.publishData(
           new TextEncoder().encode(JSON.stringify({
             type: 'typing',
-            identity: localParticipant.identity,
-            senderName: localParticipant.name || localParticipant.identity,
+            identity: lp.identity,
+            senderName: lp.name || lp.identity,
             isTyping: false,
           })),
           { reliable: true }
         ).catch(() => undefined);
       }
     };
-  }, [localParticipant, setTypingParticipant]);
+  }, [setTypingParticipant]);
 
   async function publishTyping(isTyping: boolean) {
     if (!localParticipant || chatDisabled) {
