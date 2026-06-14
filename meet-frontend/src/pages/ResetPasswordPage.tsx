@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { authApi } from '../services/api';
 import { cn } from '../utils/cn';
@@ -14,6 +14,12 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [tokenError, setTokenError] = useState('');
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   // Form validation state
   const [passwordTouched, setPasswordTouched] = useState(false);
@@ -54,13 +60,14 @@ export default function ResetPasswordPage() {
 
     try {
       await authApi.resetPassword(token, password);
-      // Redirect to login with success message
+      if (!mountedRef.current) return;
       navigate('/login?reset=success');
     } catch (err: unknown) {
+      if (!mountedRef.current) return;
       const axiosErr = err as { response?: { data?: { error?: string } } };
       setError(axiosErr.response?.data?.error || 'Failed to reset password. Please try again.');
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   }
 

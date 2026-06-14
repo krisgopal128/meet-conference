@@ -78,9 +78,20 @@ function HomePageContent() {
     mountedRef.current = true;
     loadCriticalData();
     const deferredTimer = setTimeout(loadDeferredData, 1000);
+
+    // Refresh data when user returns to the dashboard tab (e.g., after ending a meeting)
+    const handleFocus = () => {
+      if (mountedRef.current) {
+        loadCriticalData();
+        loadDeferredData();
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+
     return () => {
       mountedRef.current = false;
       clearTimeout(deferredTimer);
+      window.removeEventListener('focus', handleFocus);
     };
   }, []);
 
@@ -91,11 +102,14 @@ function HomePageContent() {
     }
   }, [roomName, roomNameTouched]);
 
-  // Lightweight room reload (for after create/delete)
+  // Lightweight room + stats reload (for after create/delete)
   const reloadRooms = async () => {
     try {
       const response = await getMyRooms();
+      if (!mountedRef.current) return;
       setRooms(response?.data?.rooms || []);
+      // Also refresh stats after room changes
+      if (mountedRef.current) loadDeferredData();
     } catch (err) {
       logger.error('Failed to reload rooms:', err);
     }
@@ -106,11 +120,12 @@ function HomePageContent() {
     setLoadingRooms(true);
     try {
       const response = await getMyRooms();
+      if (!mountedRef.current) return;
       setRooms(response?.data?.rooms || []);
     } catch (err) {
       logger.error('Failed to load rooms:', err);
     } finally {
-      setLoadingRooms(false);
+      if (mountedRef.current) setLoadingRooms(false);
     }
   };
 
@@ -200,6 +215,15 @@ function HomePageContent() {
       }
     }
   };
+
+  // Reload all data (rooms + stats) — used after create/delete and on focus
+  const reloadAll = useCallback(async () => {
+    if (!mountedRef.current) return;
+    await loadCriticalData();
+    if (mountedRef.current) await loadDeferredData();
+  }, []);
+
+  void reloadAll;
 
   // Start instant meeting
   const handleStartMeeting = useCallback(async () => {

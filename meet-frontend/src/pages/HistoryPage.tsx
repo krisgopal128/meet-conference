@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { meetingsApi } from '../services/api';
 import { PageErrorBoundary } from '../components/shared/PageErrorBoundary';
@@ -109,6 +109,7 @@ function HistoryPageContent() {
   const [dateFilter, setDateFilter] = useState<{ start?: string; end?: string }>({});
   const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null);
   // Error state removed — using toast.error for user feedback
+  const mountedRef = useRef(true);
 
   // Update URL params when state changes
   useEffect(() => {
@@ -131,7 +132,20 @@ function HistoryPageContent() {
   }, [searchQuery]);
 
   useEffect(() => {
+    mountedRef.current = true;
     loadMeetings();
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // Refresh data when user returns to the tab
+  useEffect(() => {
+    const handleFocus = () => {
+      if (mountedRef.current) loadMeetings();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   const loadMeetings = async () => {
@@ -139,6 +153,7 @@ function HistoryPageContent() {
       setLoading(true);
       // setError removed: // (null);
       const response = await meetingsApi.getHistory(1000, 0);
+      if (!mountedRef.current) return;
       // Normalize field names
       const normalized = (response?.data?.meetings || []).map(m => ({
         ...m,
@@ -151,12 +166,13 @@ function HistoryPageContent() {
       }));
       setAllMeetings(normalized);
     } catch (err) {
+      if (!mountedRef.current) return;
       logger.error('Failed to load meetings:', err);
       setAllMeetings([]);
       // setError removed: // ('Failed to load meeting history. Please try again later.');
       toast.error('Failed to load meeting history');
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   };
 

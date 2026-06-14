@@ -2,7 +2,7 @@
  * Settings Page - System Configuration (Admin Only)
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useUser } from '../../store/authStore';
 import { prashasakahApi, SystemSettings } from '../../services/prashasakahApi';
@@ -96,26 +96,39 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (isAdmin) {
-      fetchSettings();
-    } else {
-      setLoading(false);
-    }
-  }, [isAdmin]);
+  // Track mount status to prevent state updates after unmount
+  const mountedRef = useRef(true);
 
   const fetchSettings = async () => {
     try {
       setLoading(true);
       const response = await prashasakahApi.getSettings();
-      setSettings(response?.data?.settings || null);
+      if (mountedRef.current) {
+        setSettings(response?.data?.settings || null);
+      }
     } catch (err) {
-      logger.error('Failed to load settings:', err);
-      toast.error('Failed to load settings');
+      if (mountedRef.current) {
+        logger.error('Failed to load settings:', err);
+        toast.error('Failed to load settings');
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
   };
+
+  useEffect(() => {
+    mountedRef.current = true;
+    if (isAdmin) {
+      fetchSettings();
+    } else {
+      setLoading(false);
+    }
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [isAdmin]);
 
   const updateField = (section: SettingsKeys, field: string, value: unknown) => {
     if (!settings) return;

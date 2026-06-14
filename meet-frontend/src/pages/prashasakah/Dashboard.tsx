@@ -110,6 +110,15 @@ export function Dashboard() {
   // Auto-refresh interval
   const [autoRefresh, setAutoRefresh] = useState(false);
 
+  // Track mount status to prevent state updates after unmount
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   // Fetch stats data
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
@@ -121,13 +130,19 @@ export function Dashboard() {
         to: debouncedRange.to.toISOString(),
       };
       const response = await prashasakahApi.getStatsDetailed(params);
-      // Backend returns stats directly in response.data
-      setStats(response?.data || null);
+      if (mountedRef.current) {
+        // Backend returns stats directly in response.data
+        setStats(response?.data || null);
+      }
     } catch (error) {
-      logger.error('Failed to fetch stats:', error);
-      setStatsError('Failed to load statistics. Please try again.');
+      if (mountedRef.current) {
+        logger.error('Failed to fetch stats:', error);
+        setStatsError('Failed to load statistics. Please try again.');
+      }
     } finally {
-      setStatsLoading(false);
+      if (mountedRef.current) {
+        setStatsLoading(false);
+      }
     }
   }, [debouncedRange]);
 
@@ -139,12 +154,18 @@ export function Dashboard() {
     try {
       const days = Math.ceil((debouncedRange.to.getTime() - debouncedRange.from.getTime()) / (1000 * 60 * 60 * 24));
       const response = await prashasakahApi.getBandwidthStats(days);
-      setBandwidthData(response.data);
+      if (mountedRef.current) {
+        setBandwidthData(response.data);
+      }
     } catch (error) {
-      logger.error('Failed to fetch bandwidth:', error);
-      setBandwidthError('Failed to load bandwidth data.');
+      if (mountedRef.current) {
+        logger.error('Failed to fetch bandwidth:', error);
+        setBandwidthError('Failed to load bandwidth data.');
+      }
     } finally {
-      setBandwidthLoading(false);
+      if (mountedRef.current) {
+        setBandwidthLoading(false);
+      }
     }
   }, [debouncedRange]);
 
@@ -156,12 +177,18 @@ export function Dashboard() {
     try {
       const days = Math.ceil((debouncedRange.to.getTime() - debouncedRange.from.getTime()) / (1000 * 60 * 60 * 24));
       const response = await prashasakahApi.getPeakUsersStats(days);
-      setPeakUsersData(response.data);
+      if (mountedRef.current) {
+        setPeakUsersData(response.data);
+      }
     } catch (error) {
-      logger.error('Failed to fetch peak users:', error);
-      setPeakUsersError('Failed to load peak users data.');
+      if (mountedRef.current) {
+        logger.error('Failed to fetch peak users:', error);
+        setPeakUsersError('Failed to load peak users data.');
+      }
     } finally {
-      setPeakUsersLoading(false);
+      if (mountedRef.current) {
+        setPeakUsersLoading(false);
+      }
     }
   }, [debouncedRange]);
 

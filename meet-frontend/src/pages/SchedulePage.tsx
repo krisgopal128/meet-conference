@@ -93,12 +93,26 @@ function SchedulePageContent() {
 
   // Modal refs
   const deleteModalRef = useRef<HTMLDivElement>(null);
+  const mountedRef = useRef(true);
 
   // Timezone options
   const timezoneOptions = useMemo(() => getCommonTimezones(), []);
 
   useEffect(() => {
+    mountedRef.current = true;
     loadMeetings();
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // Refresh data when user returns to the tab
+  useEffect(() => {
+    const handleFocus = () => {
+      if (mountedRef.current) loadMeetings();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   // Validate title
@@ -130,12 +144,14 @@ function SchedulePageContent() {
   const loadMeetings = async () => {
     try {
       const response = await meetingsApi.getScheduled();
+      if (!mountedRef.current) return;
       setMeetings(response?.data?.meetings || []);
     } catch (error) {
+      if (!mountedRef.current) return;
       logger.error('Failed to load meetings:', error);
       toast.error('Failed to load scheduled meetings. Please try again.');
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   };
 

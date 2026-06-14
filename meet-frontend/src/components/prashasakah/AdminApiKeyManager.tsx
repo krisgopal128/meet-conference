@@ -5,7 +5,7 @@
  * audit usage, and revoke/delete keys if needed.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { prashasakahApi, AdminApiKey } from '../../services/prashasakahApi';
 import { useUser } from '../../store/authStore';
@@ -41,6 +41,16 @@ export default function AdminApiKeyManager() {
   // Only admins can access this
   const isAdmin = user?.role === 'admin';
 
+  // Track mount status to prevent state updates after unmount
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   useEffect(() => {
     if (isAdmin) {
       fetchKeys();
@@ -54,14 +64,20 @@ export default function AdminApiKeyManager() {
       if (appliedSearchQuery) params.search = appliedSearchQuery;
       if (filterActive !== 'all') params.is_active = filterActive;
       if (filterRole !== 'all') params.role = filterRole;
-      
+
       const response = await prashasakahApi.getAllApiKeys(params);
-      setKeys(response?.data?.keys || []);
+      if (mountedRef.current) {
+        setKeys(response?.data?.keys || []);
+      }
     } catch (err) {
-      logger.error('Failed to fetch API keys:', err);
-      toast.error('Failed to load API keys');
+      if (mountedRef.current) {
+        logger.error('Failed to fetch API keys:', err);
+        toast.error('Failed to load API keys');
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
   };
 

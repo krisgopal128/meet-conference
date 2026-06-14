@@ -88,6 +88,7 @@ function MeetingDetailContent() {
         // Fetch chat messages from API
         try {
           const chatRes = await meetingsApi.getChat(id, 50);
+          if (cancelled) return;
           const messages = (chatRes?.data as { messages?: Array<{ id: string; content: string; user_name?: string; userName?: string; created_at?: string; createdAt?: string }> })?.messages || [];
           
           if (messages.length > 0) {
@@ -114,8 +115,12 @@ function MeetingDetailContent() {
 
     fetchMeeting();
 
+    const handleFocus = () => fetchMeeting();
+    window.addEventListener('focus', handleFocus);
+
     return () => {
       cancelled = true;
+      window.removeEventListener('focus', handleFocus);
       if (copiedTimeoutRef.current) {
         clearTimeout(copiedTimeoutRef.current);
       }

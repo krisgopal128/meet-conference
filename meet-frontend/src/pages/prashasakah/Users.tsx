@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useUser } from '../../store/authStore';
@@ -41,6 +41,9 @@ export default function Users() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Track mount status to prevent state updates after unmount
+  const cancelledRef = useRef(false);
+
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -58,7 +61,7 @@ export default function Users() {
         limit,
         offset: (page - 1) * limit,
       };
-      
+
       if (debouncedSearch) {
         params.search = debouncedSearch;
       }
@@ -68,20 +71,30 @@ export default function Users() {
       if (statusFilter) {
         params.status = statusFilter;
       }
-      
+
       const response = await prashasakahApi.getUsers(params);
-      setUsers(response?.data?.users || []);
-      setTotal(response?.data?.total || 0);
+      if (!cancelledRef.current) {
+        setUsers(response?.data?.users || []);
+        setTotal(response?.data?.total || 0);
+      }
     } catch (error) {
-      logger.error('Failed to fetch users:', error);
-      toast.error('Failed to load users');
+      if (!cancelledRef.current) {
+        logger.error('Failed to fetch users:', error);
+        toast.error('Failed to load users');
+      }
     } finally {
-      setLoading(false);
+      if (!cancelledRef.current) {
+        setLoading(false);
+      }
     }
   }, [limit, page, debouncedSearch, roleFilter, statusFilter]);
 
   useEffect(() => {
+    cancelledRef.current = false;
     fetchUsers();
+    return () => {
+      cancelledRef.current = true;
+    };
   }, [fetchUsers]);
 
   // Handlers
@@ -134,13 +147,14 @@ export default function Users() {
 
   const handleConfirmDelete = async () => {
     if (!deleteUser) return;
-    
+
     setIsDeleting(true);
     try {
       await prashasakahApi.deleteUser(deleteUser.id);
       toast.success(`User ${deleteUser.name || deleteUser.email} has been deleted`);
       setIsDeleteModalOpen(false);
       setDeleteUser(null);
+      setPage(1);
       fetchUsers();
     } catch (error) {
       logger.error('Failed to delete user:', error);

@@ -5,7 +5,7 @@
  * Only shows for users with moderator or admin role.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { apiKeysApi, ApiKey, ApiKeyWithSecret } from '../../services/apiKeysApi';
 import { useUser } from '../../store/authStore';
@@ -33,26 +33,43 @@ export default function ApiKeyManager({ className = '' }: ApiKeyManagerProps) {
   const [showKey, setShowKey] = useState(false);
   const [copied, setCopied] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Check if user is moderator or admin
   const canManageKeys = user?.role === 'moderator' || user?.role === 'admin';
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
     if (canManageKeys) {
       fetchKeys();
     }
+    const handleFocus = () => {
+      if (canManageKeys) fetchKeys();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, [canManageKeys]);
 
   const fetchKeys = async () => {
     try {
       setLoading(true);
       const response = await apiKeysApi.list();
+      if (!mountedRef.current) return;
       setKeys(response?.data?.keys || []);
     } catch (err) {
+      if (!mountedRef.current) return;
       logger.error('Failed to fetch API keys:', err);
       toast.error('Failed to load API keys');
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   };
 
@@ -96,9 +113,13 @@ export default function ApiKeyManager({ className = '' }: ApiKeyManagerProps) {
     
     try {
       await navigator.clipboard.writeText(generatedKey.key);
+      if (!mountedRef.current) return;
       setCopied(true);
       toast.success('API key copied to clipboard!');
-      setTimeout(() => setCopied(false), 2000);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => {
+        if (mountedRef.current) setCopied(false);
+      }, 2000);
     } catch (err) {
       logger.error('Failed to copy:', err);
       toast.error('Failed to copy to clipboard');

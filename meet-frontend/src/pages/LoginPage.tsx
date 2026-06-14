@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { authApi } from '../services/api';
 import { useAuthActions } from '../store/authStore';
@@ -16,6 +16,12 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   // Check if redirected due to expired token
   const sessionExpired = searchParams.get('reason') === 'expired';
@@ -49,13 +55,15 @@ export default function LoginPage() {
 
     try {
       const res = await authApi.login(email, password, rememberMe);
+      if (!mountedRef.current) return;
       login(res.data.user, res.data.token);
       navigate('/');
     } catch (err: unknown) {
+      if (!mountedRef.current) return;
       const axiosErr = err as { response?: { data?: { error?: string } } };
       setError(axiosErr.response?.data?.error || 'Login failed. Please try again.');
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   }
 

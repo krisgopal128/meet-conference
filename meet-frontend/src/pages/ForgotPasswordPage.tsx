@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { authApi } from '../services/api';
 import { cn } from '../utils/cn';
@@ -10,6 +10,12 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   // Form validation state
   const [emailTouched, setEmailTouched] = useState(false);
@@ -35,12 +41,14 @@ export default function ForgotPasswordPage() {
 
     try {
       await authApi.forgotPassword(email);
+      if (!mountedRef.current) return;
       setSuccess(true);
     } catch (err: unknown) {
+      if (!mountedRef.current) return;
       const axiosErr = err as { response?: { data?: { error?: string } } };
       setError(axiosErr.response?.data?.error || 'Failed to send reset link. Please try again.');
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   }
 

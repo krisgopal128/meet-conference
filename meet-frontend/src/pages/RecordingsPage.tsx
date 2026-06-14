@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { roomsApi } from '../services/api';
 import toast from 'react-hot-toast';
 import { sanitizeUrl } from '../utils/security';
@@ -53,24 +53,40 @@ export default function RecordingsPage() {
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const limit = 20;
+  const mountedRef = useRef(true);
 
   const fetchRecordings = useCallback(async (newOffset = 0) => {
     setLoading(true);
     try {
       const res = await roomsApi.listRecordings(limit, newOffset);
+      if (!mountedRef.current) return;
       setRecordings(res.data.recordings || []);
       setTotal(res.data.total ?? 0);
       setOffset(newOffset);
     } catch {
+      if (!mountedRef.current) return;
       toast.error('Failed to load recordings');
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
     fetchRecordings();
+    return () => {
+      mountedRef.current = false;
+    };
   }, [fetchRecordings]);
+
+  // Refresh data when user returns to the tab (re-fetch current page)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (mountedRef.current) fetchRecordings(offset);
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [offset, fetchRecordings]);
 
   if (loading && recordings.length === 0) {
     return (

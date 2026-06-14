@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../services/api';
 import { useAuthActions } from '../store/authStore';
@@ -18,6 +18,12 @@ export default function RegisterPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   // Form validation state
   const [nameTouched, setNameTouched] = useState(false);
@@ -62,13 +68,15 @@ export default function RegisterPage() {
 
     try {
       const res = await authApi.register(email, password, name, rememberMe);
+      if (!mountedRef.current) return;
       login(res.data.user, res.data.token);
       navigate('/');
     } catch (err: unknown) {
+      if (!mountedRef.current) return;
       const axiosErr = err as { response?: { data?: { error?: string } } };
       setError(axiosErr.response?.data?.error || 'Registration failed. Please try again.');
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   }
 
