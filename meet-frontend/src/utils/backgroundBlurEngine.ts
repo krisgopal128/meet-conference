@@ -72,7 +72,6 @@ export class BackgroundBlurEngine {
 
   // FPS throttling
   private lastProcess = 0;
-  private frameCounter = 0;
 
   constructor(options: Partial<BackgroundBlurOptions> = {}) {
     this.optionsRef = { ...DEFAULT_BLUR_OPTIONS, ...options };
@@ -182,9 +181,8 @@ export class BackgroundBlurEngine {
     const opts = this.optionsRef;
 
     try {
-      // 1. Segment
-      this.frameCounter += 1;
-      const result = this.segmenter.segmentForVideo(source, this.frameCounter);
+      // 1. Segment — must pass monotonically increasing timestamp in milliseconds
+      const result = this.segmenter.segmentForVideo(source, performance.now());
       const categoryMask = result.categoryMask;
 
       if (!categoryMask || !categoryMask.hasUint8Array?.()) {
@@ -245,7 +243,7 @@ export class BackgroundBlurEngine {
     const data = imageData.data;
 
     for (let i = 0; i < maskPixels.length; i++) {
-      const isPerson = maskPixels[i] === 0; // 0 = person in selfie segmenter
+      const isPerson = maskPixels[i] !== 0; // non-zero = person (0 = background in selfie segmenter)
       const idx = i * 4;
       if (isPerson) {
         data[idx] = 255;
