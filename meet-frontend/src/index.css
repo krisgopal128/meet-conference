@@ -756,6 +756,22 @@ body.scroll-locked {
   }
 }
 
+/* Mic voice-activity animation — replaces the tile border ring */
+@keyframes micVoicePulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 1;
+  }
+}
+
+.animate-mic-voice {
+  animation: micVoicePulse 0.7s ease-in-out infinite;
+}
+
 /* Fade-in animation for lazy-loaded content */
 @keyframes fadeIn {
   from {

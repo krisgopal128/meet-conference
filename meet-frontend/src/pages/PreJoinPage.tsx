@@ -274,7 +274,7 @@ export default function PreJoinPage() {
     feather: 3,
     bgColor: backgroundBgColor,
     bgImage: backgroundImagePath ? (() => { const img = new Image(); img.src = backgroundImagePath; return img; })() : null,
-  }, mirrorCamera);
+  }, mirrorCamera, videoFitMode === 'contain' ? 'contain' : 'cover');
 
   // Update video element ref - runs once on mount
   useEffect(() => {

@@ -434,9 +434,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
   return (
     <div
       ref={tileRef}
-      className={`relative bg-surface-800 group ${
-        isSpeaking ? 'ring-[3px] ring-brand-400' : 'ring-[3px] ring-transparent'
-      } ${className}`}
+      className={`relative bg-surface-800 group ring-[3px] ring-transparent ${className}`}
     >
       {/* Video or avatar */}
       <div className="absolute inset-0 overflow-hidden">
@@ -477,7 +475,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
           {isMicMuted ? (
             <MicOff size={isMobile ? 10 : 14} className="text-danger-400 shrink-0" />
           ) : (
-            <Mic size={isMobile ? 10 : 14} className={`${isSpeaking ? 'text-brand-400' : 'text-surface-300'} shrink-0`} />
+            <Mic size={isMobile ? 10 : 14} className={`${isSpeaking ? 'text-brand-400 animate-mic-voice' : 'text-surface-300'} shrink-0`} />
           )}
           <span className={`${isMobile ? 'text-[9px]' : 'text-xs'} text-white truncate`}>
             {participant.isLocal && !participant.name && localDisplayName 

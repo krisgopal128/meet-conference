@@ -15,6 +15,7 @@ export function useBackgroundBlurPreview(
   videoElement: HTMLVideoElement | null,
   options: BackgroundBlurOptions,
   mirror: boolean = false,
+  fitMode: 'cover' | 'contain' = 'cover',
 ) {
   const engineRef = useRef<BackgroundBlurEngine | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -24,6 +25,8 @@ export function useBackgroundBlurPreview(
   optionsRef.current = options;
   const mirrorRef = useRef(mirror);
   mirrorRef.current = mirror;
+  const fitModeRef = useRef(fitMode);
+  fitModeRef.current = fitMode;
 
   // Initialize engine lazily
   const ensureEngine = useCallback(async () => {
@@ -67,6 +70,7 @@ export function useBackgroundBlurPreview(
       canvas.style.inset = '0';
       canvas.style.width = '100%';
       canvas.style.height = '100%';
+      canvas.style.objectFit = fitModeRef.current;
       canvas.style.pointerEvents = 'none';
       canvas.style.display = 'none'; // hidden until first processed frame
       videoElement.parentElement?.appendChild(canvas);
@@ -98,17 +102,15 @@ export function useBackgroundBlurPreview(
 
       // Apply mirror transform to match the video element's CSS flip
       canvas.style.transform = mirrorRef.current ? 'scaleX(-1)' : 'none';
+      canvas.style.objectFit = fitModeRef.current;
 
-      // Match canvas to container size
-      const container = videoElement.parentElement;
-      if (container) {
-        const rect = container.getBoundingClientRect();
-        const cw = Math.floor(rect.width);
-        const ch = Math.floor(rect.height);
-        if (cw > 0 && ch > 0 && (canvas.width !== cw || canvas.height !== ch)) {
-          canvas.width = cw;
-          canvas.height = ch;
-        }
+      // Match canvas to video's native resolution (not container size).
+      // CSS object-fit handles the display scaling, preventing stretch.
+      const vw = videoElement.videoWidth;
+      const vh = videoElement.videoHeight;
+      if (vw > 0 && vh > 0 && (canvas.width !== vw || canvas.height !== vh)) {
+        canvas.width = vw;
+        canvas.height = vh;
       }
 
       if (canvas.style.display === 'none') {
