@@ -1,10 +1,7 @@
 /**
- * backgroundEffectsManager — Manages the SelfieSegmentationTransformer lifecycle
- * for the room's transmitted video track.
- *
- * Provides the same API shape as blurProcessorManager (enable/disable/toggle)
- * but uses MediaPipe Selfie Segmentation with the full GPU compositing pipeline
- * from the Camera_BG_Blur sample.
+ * backgroundEffectsManager — background-effect lifecycle (enable/disable/
+ * toggle/update) for the room's transmitted video track, using MediaPipe
+ * Selfie Segmentation with the full GPU compositing pipeline.
  *
  * The processor is wrapped in @livekit/track-processors' ProcessorWrapper,
  * which adapts our VideoTransformer to LiveKit's TrackProcessor interface.
@@ -254,7 +251,7 @@ export async function cleanupBackgroundEffect(track?: VideoTrack): Promise<void>
   state.isApplying = false;
 }
 
-// ─── Performance helpers (reused from blurProcessorManager) ─────────
+// ─── Performance helpers ─────────
 
 const AUTO_DISABLE_THRESHOLD = 9;
 

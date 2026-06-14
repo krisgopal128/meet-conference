@@ -547,7 +547,7 @@ const fallbackConfig: MeetingRoomConfig = {
     deviceSwitchingImplementation: 'livekit_room_switchActiveDevice',
     livekitServerCodecReference: 'audio/opus, video/vp8, video/h264, video/vp9, video/av1',
     livekitServerRoomDefaults: 'auto_create=false, empty_timeout=300, departure_timeout=20, max_participants=50',
-    backgroundBlurImplementation: 'blurProcessorManager.ts uses BackgroundProcessor with switchTo() method - keeps TF.js loaded',
+    backgroundBlurImplementation: 'backgroundEffectsManager.ts uses SelfieSegmentationTransformer (MediaPipe) via @livekit/track-processors ProcessorWrapper',
     meetingRestartBehavior: 'Host restart sets room status to waiting immediately to prevent race condition',
     cameraAspectRatioSystem: 'Auto-detects native ratio, calculates optimal crop resolution for selected aspect',
   },

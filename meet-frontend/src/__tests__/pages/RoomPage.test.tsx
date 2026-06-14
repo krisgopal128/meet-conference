@@ -87,11 +87,6 @@ vi.mock('../../services/api', () => ({
   getRoomSettings: vi.fn().mockResolvedValue({ data: { settings: {} } }),
 }));
 
-vi.mock('../../utils/blurProcessorManager', () => ({
-  enableBlur: vi.fn().mockResolvedValue(true),
-  disableBlur: vi.fn().mockResolvedValue(true),
-}));
-
 vi.mock('../../store/roomStore', () => ({
   useConnectionActions: () => ({
     setConnected: vi.fn(),
