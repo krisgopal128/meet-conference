@@ -189,15 +189,15 @@ export async function enableBackgroundEffect(
  * which can freeze the video under load.
  */
 export async function disableBackgroundEffect(track: VideoTrack): Promise<boolean> {
-  if (state.isApplying) {
-    logger.warn('[BgEffects] Already applying effect, ignoring disable call');
-    return false;
-  }
   if (!state.transformer && !state.processor) {
     state.isEnabled = false;
     return true;
   }
 
+  // Wait for any in-flight enable/update to complete before disabling.
+  // Do NOT early-return on isApplying — that causes the disable to be silently
+  // skipped when a previous operation hasn't finished, leaving the processor
+  // attached and freezing the video.
   const releaseLock = await acquireLock();
   state.isApplying = true;
   state.lastToggleTime = Date.now();
