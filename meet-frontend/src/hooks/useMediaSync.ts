@@ -10,6 +10,7 @@ import {
   buildCameraCaptureOptions,
   buildAudioCaptureOptions,
 } from '../config/meetingRoomConfig';
+import { withOperationTimeout } from '../utils/asyncTimeout';
 import type { QualityModeName, CameraHardwareCaps } from '../config/meetingRoomConfig';
 import logger from '../utils/logger';
 
@@ -54,9 +55,13 @@ export function useMediaSync({
     const syncInitialMedia = async () => {
       try {
         if (videoEnabled !== localParticipant.isCameraEnabled) {
-          await localParticipant.setCameraEnabled(videoEnabled, videoEnabled
-            ? buildCameraCaptureOptions(selectedCamera, qualityMode, currentGridAspectRatio, cameraHardwareCaps)
-            : undefined);
+          await withOperationTimeout(
+            localParticipant.setCameraEnabled(videoEnabled, videoEnabled
+              ? buildCameraCaptureOptions(selectedCamera, qualityMode, currentGridAspectRatio, cameraHardwareCaps)
+              : undefined),
+            'MEDIA_TOGGLE',
+            'Sync camera state'
+          );
         }
       } catch (e) {
         logger.error('[RoomPage] Failed to sync camera state:', e);
@@ -67,9 +72,13 @@ export function useMediaSync({
 
       try {
         if (audioEnabled !== localParticipant.isMicrophoneEnabled) {
-          await localParticipant.setMicrophoneEnabled(audioEnabled, audioEnabled
-            ? buildAudioCaptureOptions(selectedMic, noiseSuppression, echoCancellation, micLevel)
-            : undefined);
+          await withOperationTimeout(
+            localParticipant.setMicrophoneEnabled(audioEnabled, audioEnabled
+              ? buildAudioCaptureOptions(selectedMic, noiseSuppression, echoCancellation, micLevel)
+              : undefined),
+            'MEDIA_TOGGLE',
+            'Sync microphone state'
+          );
         }
       } catch (e) {
         logger.error('[RoomPage] Failed to sync microphone state:', e);

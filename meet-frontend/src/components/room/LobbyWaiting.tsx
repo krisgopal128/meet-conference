@@ -3,6 +3,7 @@ import { useRoomContext, useLocalParticipant } from '@livekit/components-react';
 import { RoomEvent } from 'livekit-client';
 import { useNavigate, Link } from 'react-router-dom';
 import { Video, Clock, LogOut } from 'lucide-react';
+import { withOperationTimeout } from '../../utils/asyncTimeout';
 import logger from '../../utils/logger';
 
 interface LobbyWaitingProps {
@@ -49,7 +50,11 @@ export function LobbyWaiting({ roomName }: LobbyWaitingProps) {
 
   const handleLeave = async () => {
     try {
-      await room.disconnect();
+      await withOperationTimeout(
+        room.disconnect(),
+        'DISCONNECT',
+        'Disconnect from room'
+      );
     } catch (e) {
       // Best-effort — may already be disconnected
     }

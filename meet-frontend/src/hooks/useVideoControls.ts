@@ -11,6 +11,7 @@ import type { QualityModeName } from '../config/meetingRoomConfig';
 import type { GridAspectRatio } from '../store/roomStore';
 import { buildCameraCaptureOptions, isAudioOnlyMode, meetingRoomConfig } from '../config/meetingRoomConfig';
 import { usePrejoinCameraId } from '../store/roomStore';
+import { withOperationTimeout } from '../utils/asyncTimeout';
 import toast from 'react-hot-toast';
 import logger from '../utils/logger';
 
@@ -65,9 +66,13 @@ export function useVideoControls(
         return;
       }
       const currentlyEnabled = localParticipant.isCameraEnabled;
-      await localParticipant.setCameraEnabled(
-        !currentlyEnabled,
-        !currentlyEnabled ? buildCameraCaptureOptions(activeCameraId || undefined, qualityMode, gridAspectRatio) : undefined,
+      await withOperationTimeout(
+        localParticipant.setCameraEnabled(
+          !currentlyEnabled,
+          !currentlyEnabled ? buildCameraCaptureOptions(activeCameraId || undefined, qualityMode, gridAspectRatio) : undefined,
+        ),
+        'MEDIA_TOGGLE',
+        'Toggle camera'
       );
     } catch (error) {
       logger.error('Failed to toggle camera:', error);
@@ -80,7 +85,11 @@ export function useVideoControls(
   const switchCamera = useCallback(async (deviceId: string) => {
     if (!room) return;
     try {
-      await room.switchActiveDevice('videoinput', deviceId || 'default');
+      await withOperationTimeout(
+        room.switchActiveDevice('videoinput', deviceId || 'default'),
+        'DEVICE_SWITCH',
+        'Switch camera device'
+      );
       setActiveCameraId(deviceId);
     } catch (error) {
       logger.error('Failed to switch camera:', error);

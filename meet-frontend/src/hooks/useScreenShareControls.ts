@@ -8,6 +8,7 @@ import { useCallback, useRef } from 'react';
 import type { LocalParticipant } from 'livekit-client';
 import type { QualityModeName, ScreenShareModeName } from '../config/meetingRoomConfig';
 import { getScreenShareOptions } from '../config/meetingRoomConfig';
+import { withOperationTimeout } from '../utils/asyncTimeout';
 import toast from 'react-hot-toast';
 import logger from '../utils/logger';
 
@@ -25,10 +26,14 @@ export function useScreenShareControls(
     try {
       const currentlyEnabled = localParticipant.isScreenShareEnabled;
       const options = getScreenShareOptions(qualityMode, screenShareMode);
-      await localParticipant.setScreenShareEnabled(
-        !currentlyEnabled,
-        currentlyEnabled ? { audio: false } : { audio: options.audio },
-        currentlyEnabled ? undefined : { screenShareEncoding: options.encoding },
+      await withOperationTimeout(
+        localParticipant.setScreenShareEnabled(
+          !currentlyEnabled,
+          currentlyEnabled ? { audio: false } : { audio: options.audio },
+          currentlyEnabled ? undefined : { screenShareEncoding: options.encoding },
+        ),
+        'MEDIA_TOGGLE',
+        'Toggle screen share'
       );
     } catch (error) {
       logger.error('Screen share error:', error);

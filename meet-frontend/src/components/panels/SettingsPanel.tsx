@@ -31,6 +31,7 @@ import { X, Video, Volume2, Activity, FlipHorizontal, Users, Grid3X3, Maximize2,
 import toast from 'react-hot-toast';
 import { meetingRoomConfig, type QualityModeName, type ScreenShareModeName } from '../../config/meetingRoomConfig';
 import { meetingsApi, updateRoomSettings } from '../../services/api';
+import { withOperationTimeout } from '../../utils/asyncTimeout';
 import logger from '../../utils/logger';
 
 let persistedSpeakerVolume = 100;
@@ -133,7 +134,11 @@ export function SettingsPanel() {
     
     saveAspectRatioTimerRef.current = setTimeout(async () => {
       try {
-        await updateRoomSettings(roomName, { gridAspectRatio: ratio });
+        await withOperationTimeout(
+          updateRoomSettings(roomName, { gridAspectRatio: ratio }),
+          'SETTINGS',
+          'Save grid aspect ratio'
+        );
         toast.success('Aspect ratio saved');
       } catch (error) {
         logger.error('Failed to save aspect ratio:', error);
@@ -171,7 +176,11 @@ export function SettingsPanel() {
       }
       
       saveVideoFitModeTimerRef.current = setTimeout(() => {
-        updateRoomSettings(roomName, { videoFitMode: mode })
+        withOperationTimeout(
+          updateRoomSettings(roomName, { videoFitMode: mode }),
+          'SETTINGS',
+          'Save video fit mode'
+        )
           .then(() => toast.success('Video fit mode saved'))
           .catch((error) => {
             logger.error('Failed to save video fit mode:', error);
@@ -222,7 +231,11 @@ export function SettingsPanel() {
   async function handleCameraChange(deviceId: string) {
     setSelectedCamera(deviceId);
     try {
-      await room.switchActiveDevice('videoinput', deviceId || 'default');
+      await withOperationTimeout(
+        room.switchActiveDevice('videoinput', deviceId || 'default'),
+        'DEVICE_SWITCH',
+        'Switch camera device'
+      );
     } catch (error) {
       logger.error('Failed to switch camera:', error);
       toast.error('Failed to switch camera');
@@ -232,7 +245,11 @@ export function SettingsPanel() {
   async function handleMicChange(deviceId: string) {
     setSelectedMic(deviceId);
     try {
-      await room.switchActiveDevice('audioinput', deviceId || 'default');
+      await withOperationTimeout(
+        room.switchActiveDevice('audioinput', deviceId || 'default'),
+        'DEVICE_SWITCH',
+        'Switch microphone device'
+      );
     } catch (error) {
       logger.error('Failed to switch microphone:', error);
       toast.error('Failed to switch microphone');

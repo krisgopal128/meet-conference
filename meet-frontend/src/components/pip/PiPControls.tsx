@@ -22,6 +22,7 @@ import {
   PhoneOff,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { withOperationTimeout } from '../../utils/asyncTimeout';
 import logger from '../../utils/logger';
 import toast from 'react-hot-toast';
 
@@ -153,7 +154,11 @@ export function PiPControls({
       return;
     }
     try {
-      await localParticipant.setMicrophoneEnabled(!localParticipant.isMicrophoneEnabled);
+      await withOperationTimeout(
+        localParticipant.setMicrophoneEnabled(!localParticipant.isMicrophoneEnabled),
+        'MEDIA_TOGGLE',
+        'Toggle microphone'
+      );
     } catch (error) {
       logger.error('[PiPControls] Failed to toggle microphone:', error);
       toast.error('Failed to toggle microphone');
@@ -167,7 +172,11 @@ export function PiPControls({
       return;
     }
     try {
-      await localParticipant.setCameraEnabled(!localParticipant.isCameraEnabled);
+      await withOperationTimeout(
+        localParticipant.setCameraEnabled(!localParticipant.isCameraEnabled),
+        'MEDIA_TOGGLE',
+        'Toggle camera'
+      );
     } catch (error) {
       logger.error('[PiPControls] Failed to toggle camera:', error);
       toast.error('Failed to toggle camera');
@@ -181,7 +190,11 @@ export function PiPControls({
       return;
     }
     try {
-      await localParticipant.setScreenShareEnabled(!localParticipant.isScreenShareEnabled);
+      await withOperationTimeout(
+        localParticipant.setScreenShareEnabled(!localParticipant.isScreenShareEnabled),
+        'MEDIA_TOGGLE',
+        'Toggle screen share'
+      );
     } catch (error) {
       logger.error('[PiPControls] Failed to toggle screen share:', error);
       toast.error('Failed to toggle screen share');
@@ -195,13 +208,25 @@ export function PiPControls({
     // Stop all tracks
     try {
       if (localParticipant.isScreenShareEnabled) {
-        await localParticipant.setScreenShareEnabled(false);
+        await withOperationTimeout(
+          localParticipant.setScreenShareEnabled(false),
+          'MEDIA_TOGGLE',
+          'Stop screen share'
+        );
       }
       if (localParticipant.isCameraEnabled) {
-        await localParticipant.setCameraEnabled(false);
+        await withOperationTimeout(
+          localParticipant.setCameraEnabled(false),
+          'MEDIA_TOGGLE',
+          'Stop camera'
+        );
       }
       if (localParticipant.isMicrophoneEnabled) {
-        await localParticipant.setMicrophoneEnabled(false);
+        await withOperationTimeout(
+          localParticipant.setMicrophoneEnabled(false),
+          'MEDIA_TOGGLE',
+          'Stop microphone'
+        );
       }
     } catch (error) {
       logger.error('[PiPControls] Failed to stop tracks:', error);

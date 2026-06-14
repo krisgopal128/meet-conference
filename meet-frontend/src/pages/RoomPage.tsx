@@ -7,6 +7,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { LobbyWaiting } from '../components/room/LobbyWaiting';
 import { useConnectionActions, useQualityMode, useScreenShareMode, useUIActions, useGridAspectRatio, useBackgroundBlurEnabled, useBackgroundBlurIntensity, useBackgroundMode, useBackgroundBgColor, useBackgroundImagePath, useMeetingControlsActions } from '../store/roomStore';
 import { enableBackgroundEffect, disableBackgroundEffect, updateBackgroundEffect } from '../utils/backgroundEffectsManager';
+import { withOperationTimeout } from '../utils/asyncTimeout';
 import { getRoomSettings, roomsApi } from '../services/api';
 import {
   buildAudioCaptureOptions,
@@ -417,7 +418,11 @@ function RoomContent({
         const cameraTrack = localParticipant.getTrackPublication(Track.Source.Camera);
         if (cameraTrack?.track) {
           const newOptions = buildCameraCaptureOptions(state.selectedCamera, qualityMode, currentGridAspectRatio, state.cameraHardwareCaps);
-          await localParticipant.setCameraEnabled(true, newOptions);
+          await withOperationTimeout(
+            localParticipant.setCameraEnabled(true, newOptions),
+            'MEDIA_TOGGLE',
+            'Camera reconfiguration'
+          );
           logger.info(`[RoomPage] Camera reconfigured for quality mode: ${qualityMode}`);
         }
       } catch (error) {

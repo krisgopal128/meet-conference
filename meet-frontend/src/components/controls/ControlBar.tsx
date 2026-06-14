@@ -48,6 +48,7 @@ import {
   useIsPiPOpen,
 } from '../../store/roomStore';
 import { roomsApi } from '../../services/api';
+import { withOperationTimeout } from '../../utils/asyncTimeout';
 import { updateRoomSettings } from '../../services/api';
 import { meetingRoomConfig } from '../../config/meetingRoomConfig';
 import toast from 'react-hot-toast';
@@ -238,7 +239,11 @@ export function ControlBar() {
     setIsRecordingLoading(true);
     try {
       if (isRecording && egressId) {
-        await roomsApi.stopRecording(egressId);
+        await withOperationTimeout(
+          roomsApi.stopRecording(egressId),
+          'RECORDING',
+          'Stop recording'
+        );
         setRecording(false);
         toast.success('Recording stopped');
         try {
@@ -246,7 +251,11 @@ export function ControlBar() {
           localParticipant.publishData(new TextEncoder().encode(msg), { reliable: true, topic: 'meeting' });
         } catch {}
       } else {
-        const res = await roomsApi.startRecording(room.name);
+        const res = await withOperationTimeout(
+          roomsApi.startRecording(room.name),
+          'RECORDING',
+          'Start recording'
+        );
         const newEgressId = res.data.egressId;
         setRecording(true, newEgressId ?? undefined);
         try {

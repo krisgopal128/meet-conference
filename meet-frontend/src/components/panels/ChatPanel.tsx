@@ -11,6 +11,7 @@ import {
   useHostId,
 } from '../../store/roomStore';
 import { isAuthenticated, roomsApi } from '../../services/api';
+import { withOperationTimeout } from '../../utils/asyncTimeout';
 import { meetingRoomConfig } from '../../config/meetingRoomConfig';
 import type { PollData } from '../../types';
 import { ChatHeader } from '../chat/ChatHeader';
@@ -322,14 +323,18 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
     }
 
     setTypingParticipant(localParticipant.identity, localParticipant.name || localParticipant.identity, isTyping);
-    await localParticipant.publishData(
-      new TextEncoder().encode(JSON.stringify({
-        type: 'typing',
-        identity: localParticipant.identity,
-        senderName: localParticipant.name || localParticipant.identity,
-        isTyping,
-      })),
-      { reliable: true }
+    await withOperationTimeout(
+      localParticipant.publishData(
+        new TextEncoder().encode(JSON.stringify({
+          type: 'typing',
+          identity: localParticipant.identity,
+          senderName: localParticipant.name || localParticipant.identity,
+          isTyping,
+        })),
+        { reliable: true }
+      ),
+      'PUBLISH_DATA',
+      'Send typing indicator'
     );
   }
 
@@ -385,9 +390,13 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
     };
 
     try {
-      await localParticipant.publishData(
-        new TextEncoder().encode(JSON.stringify(payload)),
-        { reliable: true }
+      await withOperationTimeout(
+        localParticipant.publishData(
+          new TextEncoder().encode(JSON.stringify(payload)),
+          { reliable: true }
+        ),
+        'PUBLISH_DATA',
+        'Send chat message'
       );
     } catch (err) {
       logger.error('Failed to send chat message:', err);
@@ -456,9 +465,13 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
     };
 
     try {
-      await localParticipant.publishData(
-        new TextEncoder().encode(JSON.stringify(payload)),
-        { reliable: true }
+      await withOperationTimeout(
+        localParticipant.publishData(
+          new TextEncoder().encode(JSON.stringify(payload)),
+          { reliable: true }
+        ),
+        'PUBLISH_DATA',
+        'Send poll'
       );
     } catch (err) {
       logger.error('Failed to send poll:', err);
@@ -492,14 +505,18 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
 
     // Broadcast vote to other participants
     try {
-      await localParticipant.publishData(
-        new TextEncoder().encode(JSON.stringify({
-          type: 'poll_vote',
-          pollId,
-          optionId,
-          voterIdentity: localParticipant.identity,
-        })),
-        { reliable: true }
+      await withOperationTimeout(
+        localParticipant.publishData(
+          new TextEncoder().encode(JSON.stringify({
+            type: 'poll_vote',
+            pollId,
+            optionId,
+            voterIdentity: localParticipant.identity,
+          })),
+          { reliable: true }
+        ),
+        'PUBLISH_DATA',
+        'Send poll vote'
       );
     } catch (err) {
       logger.error('Failed to send vote:', err);
@@ -514,12 +531,16 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
 
     // Broadcast poll close
     try {
-      await localParticipant.publishData(
-        new TextEncoder().encode(JSON.stringify({
-          type: 'poll_close',
-          pollId,
-        })),
-        { reliable: true }
+      await withOperationTimeout(
+        localParticipant.publishData(
+          new TextEncoder().encode(JSON.stringify({
+            type: 'poll_close',
+            pollId,
+          })),
+          { reliable: true }
+        ),
+        'PUBLISH_DATA',
+        'Close poll'
       );
     } catch (err) {
       logger.error('Failed to close poll:', err);

@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Room } from 'livekit-client';
 import { useLocalParticipant, useMaybeRoomContext } from '@livekit/components-react';
 import { roomsApi } from '../services/api';
+import { withOperationTimeout } from '../utils/asyncTimeout';
 
 // Module-level registry for whiteboard force-save callbacks
 // Registered by WhiteboardLayout/WhiteboardPanel via useWhiteboardAutoSave
@@ -37,9 +38,9 @@ function getDuration(room: Room): number {
 
 async function stopLocalTracks(localParticipant: { isScreenShareEnabled: boolean; isCameraEnabled: boolean; isMicrophoneEnabled: boolean; setScreenShareEnabled: (v: boolean) => Promise<unknown>; setCameraEnabled: (v: boolean) => Promise<unknown>; setMicrophoneEnabled: (v: boolean) => Promise<unknown> }) {
   try {
-    if (localParticipant.isScreenShareEnabled) await localParticipant.setScreenShareEnabled(false);
-    if (localParticipant.isCameraEnabled) await localParticipant.setCameraEnabled(false);
-    if (localParticipant.isMicrophoneEnabled) await localParticipant.setMicrophoneEnabled(false);
+    if (localParticipant.isScreenShareEnabled) await withOperationTimeout(localParticipant.setScreenShareEnabled(false), 'MEDIA_TOGGLE', 'Stop screen share');
+    if (localParticipant.isCameraEnabled) await withOperationTimeout(localParticipant.setCameraEnabled(false), 'MEDIA_TOGGLE', 'Stop camera');
+    if (localParticipant.isMicrophoneEnabled) await withOperationTimeout(localParticipant.setMicrophoneEnabled(false), 'MEDIA_TOGGLE', 'Stop microphone');
   } catch (error) {
     logger.error('Failed to stop local media before disconnect:', error);
   }
