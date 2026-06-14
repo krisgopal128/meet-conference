@@ -31,7 +31,7 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
   private engine: BackgroundBlurEngine | null = null;
   private workCanvas: HTMLCanvasElement;
   private workCtx: CanvasRenderingContext2D;
-  private outputCtx: CanvasRenderingContext2D | null = null;
+  private outputCtx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null = null;
   private bgImageEl: HTMLImageElement | null = null;
 
   constructor(options: Partial<SelfieSegmentationOptions> = {}) {
@@ -58,8 +58,10 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
   }): Promise<void> {
     await super.init({ outputCanvas, inputElement });
 
-    if (outputCanvas instanceof HTMLCanvasElement) {
-      this.outputCtx = outputCanvas.getContext('2d', { alpha: false });
+    // Get 2D context from either HTMLCanvasElement or OffscreenCanvas
+    this.outputCtx = (this.canvas as any)?.getContext('2d', { alpha: false }) ?? null;
+    if (!this.outputCtx) {
+      logger.error('[SelfieSegmentationTransformer] Failed to get 2D context from output canvas');
     }
 
     this.engine = new BackgroundBlurEngine({
@@ -128,7 +130,7 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
     // Size canvases to match frame
     if (this.workCanvas.width !== w) this.workCanvas.width = w;
     if (this.workCanvas.height !== h) this.workCanvas.height = h;
-    const canvas = this.canvas as HTMLCanvasElement;
+    const canvas = this.canvas as (HTMLCanvasElement | OffscreenCanvas);
     if (canvas.width !== w) canvas.width = w;
     if (canvas.height !== h) canvas.height = h;
 
@@ -137,7 +139,7 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
       this.workCtx.drawImage(frame, 0, 0);
 
       // Process through engine (segmentation + compositing)
-      await this.engine.processToCanvas(this.workCanvas, canvas, this.outputCtx);
+      await this.engine.processToCanvas(this.workCanvas, canvas as HTMLCanvasElement, this.outputCtx as CanvasRenderingContext2D);
 
       // Create new VideoFrame from processed canvas
       const newFrame = new VideoFrame(canvas, {
