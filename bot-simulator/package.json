@@ -1,0 +1,21 @@
+{
+  "name": "meet-bot-simulator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Simulate LiveKit meeting participants (virtual-camera bots) joining/leaving a room on a schedule.",
+  "bin": {
+    "meet-sim": "./simulate.mjs"
+  },
+  "scripts": {
+    "start": "node simulate.mjs",
+    "test": "node self-test.mjs",
+    "install-browser": "playwright install chromium"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "playwright": "^1.48.0"
+  }
+}
