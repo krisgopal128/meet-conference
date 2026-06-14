@@ -355,6 +355,7 @@ function RoomContent({
 
   // Track whether camera was on before audioOnly kicked in
   const cameraWasOnBeforeAudioOnly = useRef(false);
+  const lastCameraConfigRef = useRef('');
   const localParticipantRef = useRef(localParticipant);
   localParticipantRef.current = localParticipant;
 
@@ -379,10 +380,18 @@ function RoomContent({
 
   // Reconfigure camera when quality mode changes (e.g., highQuality -> dataSaver)
   useEffect(() => {
-    // Skip if camera is not enabled or we're in audio-only mode (handled above)
     if (!localParticipant.isCameraEnabled || isAudioOnlyMode(qualityMode)) {
       return;
     }
+
+    // Only reconfigure when the capture config actually changes. The localParticipant
+    // reference churns on unrelated LiveKit events (stats/track updates); without this
+    // guard the camera gets re-published constantly, which restarts the background-effect
+    // processor and aborts its playback ("failed to play processor element").
+    const caps = state.cameraHardwareCaps;
+    const configKey = `${qualityMode}|${state.selectedCamera ?? ''}|${currentGridAspectRatio}|${caps?.maxWidth ?? ''}x${caps?.maxHeight ?? ''}`;
+    if (lastCameraConfigRef.current === configKey) return;
+    lastCameraConfigRef.current = configKey;
 
     // Reconfigure camera with new quality settings
     const reconfigureCamera = async () => {
