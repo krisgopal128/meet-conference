@@ -161,7 +161,7 @@ export async function listParticipants(roomName: string) {
   return roomService.listParticipants(roomName);
 }
 
-async function getParticipantInfo(roomName: string, identity: string): Promise<ParticipantInfo> {
+export async function getParticipantInfo(roomName: string, identity: string): Promise<ParticipantInfo> {
   const participant = await roomService.getParticipant(roomName, identity);
   if (!participant) {
     throw new Error('Participant not found');

@@ -9,6 +9,7 @@ import {
   getRoomInfo,
   deleteRoom,
   listParticipants,
+  getParticipantInfo,
   removeParticipant,
   participantCanModerate,
   isModeratorParticipant,
@@ -367,9 +368,13 @@ roomsRouter.delete('/:name/participants/:identity', authenticate, async (req: Au
     }
 
     // Get participant info to extract name for guest tracking
-    const participants = await listParticipants(name);
-    const participant = participants.find(p => p.identity === identity);
-    const guestName = participant?.name || undefined;
+    let guestName: string | undefined;
+    try {
+      const participant = await getParticipantInfo(name, identity);
+      guestName = participant.name || undefined;
+    } catch {
+      // Participant may have already left
+    }
 
     await removeParticipant(name, identity);
 
@@ -493,9 +498,13 @@ roomsRouter.post('/:name/kick/:identity', authenticate, async (req: AuthRequest,
     }
 
     // Get participant info to extract name for guest tracking
-    const participants = await listParticipants(name);
-    const participant = participants.find(p => p.identity === identity);
-    const guestName = participant?.name || undefined;
+    let guestName: string | undefined;
+    try {
+      const participant = await getParticipantInfo(name, identity);
+      guestName = participant.name || undefined;
+    } catch {
+      // Participant may have already left
+    }
     
     await removeParticipant(name, identity);
     

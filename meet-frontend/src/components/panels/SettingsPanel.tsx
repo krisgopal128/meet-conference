@@ -190,6 +190,14 @@ export function SettingsPanel() {
     }
   };
 
+  // Clear debounce timers on unmount to prevent setState on unmounted component
+  useEffect(() => {
+    return () => {
+      if (saveAspectRatioTimerRef.current) clearTimeout(saveAspectRatioTimerRef.current);
+      if (saveVideoFitModeTimerRef.current) clearTimeout(saveVideoFitModeTimerRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     // Load devices
     navigator.mediaDevices.enumerateDevices().then(devices => {

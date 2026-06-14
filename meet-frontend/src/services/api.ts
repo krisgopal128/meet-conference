@@ -111,9 +111,9 @@ api.interceptors.request.use(async (config) => {
         config.headers.Authorization = `Bearer ${newToken}`;
         return config;
       }
-      // Refresh also failed - clear auth
+      // Refresh also failed — let the response interceptor handle the redirect
+      // (it has public-page guards and avoids kicking users from active meetings)
       useAuthStore.setState({ user: null, token: null, isAuthenticated: false, initialized: true });
-      window.location.href = '/login?reason=expired';
       return Promise.reject(new Error('Token expired'));
     }
     config.headers.Authorization = `Bearer ${token}`;

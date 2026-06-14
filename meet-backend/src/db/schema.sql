@@ -83,7 +83,8 @@ CREATE TABLE IF NOT EXISTS meeting_participants (
 );
 
 CREATE INDEX IF NOT EXISTS idx_meeting_participants_meeting_id ON meeting_participants(meeting_id);
-CREATE INDEX idx_meeting_participants_identity ON meeting_participants(identity);
+CREATE INDEX IF NOT EXISTS idx_meeting_participants_identity ON meeting_participants(identity);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_meeting_participants_meeting_identity ON meeting_participants(meeting_id, identity) WHERE left_at IS NULL;
 
 -- ============================================
 -- SCHEDULED MEETINGS TABLE

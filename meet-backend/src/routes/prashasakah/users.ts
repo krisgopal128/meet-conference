@@ -396,8 +396,7 @@ router.post('/users/:id/reset-password', requireAdmin(), async (req: AuthRequest
     invalidateUserAuth(id);
 
     res.json({
-      message: 'Password reset successfully',
-      temporaryPassword: tempPassword,
+      message: 'Password reset successfully. The temporary password has been logged for the admin.',
     });
   } catch (error) {
     logger.error('[Admin] Error resetting password:', error);

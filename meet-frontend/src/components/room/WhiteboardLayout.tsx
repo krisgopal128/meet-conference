@@ -53,7 +53,16 @@ const ASPECT_RATIO_MULTIPLIERS: Record<GridAspectRatio, number> = {
   '4:3': 4 / 3,
 };
 
+const WHITEBOARD_CACHE_MAX = 5;
 const whiteboardSceneCache = new Map<string, { scene: unknown[]; files?: Record<string, unknown>; locked: boolean }>();
+
+function setSceneCache(key: string, value: { scene: unknown[]; files?: Record<string, unknown>; locked: boolean }) {
+  whiteboardSceneCache.set(key, value);
+  if (whiteboardSceneCache.size > WHITEBOARD_CACHE_MAX) {
+    const oldestKey = whiteboardSceneCache.keys().next().value;
+    if (oldestKey) whiteboardSceneCache.delete(oldestKey);
+  }
+}
 
 export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
   const { toggleWhiteboard, setWhiteboardFullscreen } = useUIActions();
@@ -104,7 +113,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
     currentSceneRef.current = [...scene];
 
     if (roomName) {
-      whiteboardSceneCache.set(roomName, {
+      setSceneCache(roomName, {
         scene: [...scene],
         files: ((excalidrawAPIRef.current as any)?.files || undefined) as Record<string, unknown> | undefined,
         locked: isLockedRef.current,
@@ -218,7 +227,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
         if (msg.type === 'whiteboard-lock') {
           setIsLocked(msg.locked);
           if (roomName) {
-            whiteboardSceneCache.set(roomName, {
+            setSceneCache(roomName, {
               scene: [...currentSceneRef.current],
               files: ((excalidrawAPIRef.current as any)?.files || undefined) as Record<string, unknown> | undefined,
               locked: msg.locked,
@@ -365,10 +374,14 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
     setExcalidrawReady(true);
   }, []);
 
-  // Clear API bridge on unmount to prevent stale references
+  // Clear API bridge + cancel pending rAF on unmount
   useEffect(() => {
     return () => {
       setWhiteboardAPI(null);
+      if (sceneRafRef.current !== null) {
+        cancelAnimationFrame(sceneRafRef.current);
+        sceneRafRef.current = null;
+      }
     };
   }, []);
 
@@ -391,7 +404,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
     const next = !isLocked;
     setIsLocked(next);
     if (roomName) {
-      whiteboardSceneCache.set(roomName, {
+      setSceneCache(roomName, {
         scene: [...currentSceneRef.current],
         files: ((excalidrawAPIRef.current as any)?.files || undefined) as Record<string, unknown> | undefined,
         locked: next,

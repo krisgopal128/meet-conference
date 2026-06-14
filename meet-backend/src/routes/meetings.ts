@@ -271,7 +271,7 @@ meetingsRouter.get('/:id', authenticate, async (req: AuthRequest, res: Response)
         if (!meeting) return null;
 
         const participants = await query(
-          `SELECT mp.*, u.name as user_name, u.email as user_email
+          `SELECT mp.id, mp.identity, mp.role, mp.joined_at, mp.left_at, u.name as user_name
            FROM meeting_participants mp
            LEFT JOIN users u ON mp.user_id = u.id
            WHERE mp.meeting_id = $1
@@ -471,7 +471,7 @@ meetingsRouter.get('/:id/chat', authenticate, async (req: AuthRequest, res: Resp
     
     let chatQuery = `
       SELECT cm.id, cm.content, cm.created_at, cm.message_type,
-             u.id as user_id, u.name as user_name, u.email as user_email
+             u.id as user_id, u.name as user_name
       FROM chat_messages cm
       LEFT JOIN users u ON cm.user_id = u.id
       WHERE cm.meeting_id = $1

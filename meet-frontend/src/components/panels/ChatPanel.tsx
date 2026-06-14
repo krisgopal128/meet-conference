@@ -26,6 +26,7 @@ const PollCreator = lazy(() =>
   import('../chat/PollCreator').then((mod) => ({ default: mod.PollCreator }))
 );
 
+const DRAFT_CACHE_MAX = 10;
 const chatPanelDraftCache = new Map<string, {
   input: string;
   sendPrivateToModerators: boolean;
@@ -34,6 +35,23 @@ const chatPanelDraftCache = new Map<string, {
   pollOptions: string[];
   allowMultiple: boolean;
 }>();
+
+function setDraftCache(key: string, value: ChatPanelDraft) {
+  chatPanelDraftCache.set(key, value);
+  if (chatPanelDraftCache.size > DRAFT_CACHE_MAX) {
+    const oldest = chatPanelDraftCache.keys().next().value;
+    if (oldest) chatPanelDraftCache.delete(oldest);
+  }
+}
+
+type ChatPanelDraft = {
+  input: string;
+  sendPrivateToModerators: boolean;
+  showPollCreator: boolean;
+  pollQuestion: string;
+  pollOptions: string[];
+  allowMultiple: boolean;
+};
 
 // API response type for chat history messages
 interface ChatHistoryMessage {
@@ -107,7 +125,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
   const [allowMultiple, setAllowMultiple] = useState(cachedDraft?.allowMultiple || false);
 
   useEffect(() => {
-    chatPanelDraftCache.set(draftKey, {
+    setDraftCache(draftKey, {
       input,
       sendPrivateToModerators,
       showPollCreator,
@@ -488,7 +506,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
     setPollOptions(['', '']);
     setAllowMultiple(false);
     setShowPollCreator(false);
-    chatPanelDraftCache.set(draftKey, {
+    setDraftCache(draftKey, {
       input: '',
       sendPrivateToModerators,
       showPollCreator: false,
