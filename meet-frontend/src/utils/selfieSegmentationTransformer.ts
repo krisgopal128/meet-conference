@@ -31,7 +31,9 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
   private engine: BackgroundBlurEngine | null = null;
   private workCanvas: HTMLCanvasElement;
   private workCtx: CanvasRenderingContext2D;
-  private outputCtx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null = null;
+  // Separate canvas for 2D output — this.canvas is claimed by WebGL in super.init()
+  private outputCanvas: HTMLCanvasElement;
+  private outputCtx: CanvasRenderingContext2D;
   private bgImageEl: HTMLImageElement | null = null;
 
   constructor(options: Partial<SelfieSegmentationOptions> = {}) {
@@ -47,6 +49,8 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
     };
     this.workCanvas = document.createElement('canvas');
     this.workCtx = this.workCanvas.getContext('2d', { alpha: false })!;
+    this.outputCanvas = document.createElement('canvas');
+    this.outputCtx = this.outputCanvas.getContext('2d', { alpha: false })!;
   }
 
   override async init({
@@ -56,13 +60,10 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
     outputCanvas: OffscreenCanvas | HTMLCanvasElement;
     inputElement: HTMLVideoElement;
   }): Promise<void> {
+    // Call super.init to set up TransformStream + this.canvas
+    // Note: super.init calls setupWebGL on this.canvas, so we CANNOT use
+    // this.canvas for 2D rendering — that's why we have our own outputCanvas.
     await super.init({ outputCanvas, inputElement });
-
-    // Get 2D context from either HTMLCanvasElement or OffscreenCanvas
-    this.outputCtx = (this.canvas as any)?.getContext('2d', { alpha: false }) ?? null;
-    if (!this.outputCtx) {
-      logger.error('[SelfieSegmentationTransformer] Failed to get 2D context from output canvas');
-    }
 
     this.engine = new BackgroundBlurEngine({
       enabled: this.options.enabled,
@@ -114,7 +115,7 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
     frame: VideoFrame,
     controller: TransformStreamDefaultController<VideoFrame>,
   ): Promise<void> {
-    if (!this.engine || !this.canvas || !this.outputCtx) {
+    if (!this.engine) {
       controller.enqueue(frame);
       return;
     }
@@ -130,19 +131,18 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
     // Size canvases to match frame
     if (this.workCanvas.width !== w) this.workCanvas.width = w;
     if (this.workCanvas.height !== h) this.workCanvas.height = h;
-    const canvas = this.canvas as (HTMLCanvasElement | OffscreenCanvas);
-    if (canvas.width !== w) canvas.width = w;
-    if (canvas.height !== h) canvas.height = h;
+    if (this.outputCanvas.width !== w) this.outputCanvas.width = w;
+    if (this.outputCanvas.height !== h) this.outputCanvas.height = h;
 
     try {
       // Draw incoming VideoFrame to work canvas
       this.workCtx.drawImage(frame, 0, 0);
 
-      // Process through engine (segmentation + compositing)
-      await this.engine.processToCanvas(this.workCanvas, canvas as HTMLCanvasElement, this.outputCtx as CanvasRenderingContext2D);
+      // Process through engine → outputCanvas (our own 2D canvas, not this.canvas which has WebGL)
+      await this.engine.processToCanvas(this.workCanvas, this.outputCanvas, this.outputCtx);
 
-      // Create new VideoFrame from processed canvas
-      const newFrame = new VideoFrame(canvas, {
+      // Create new VideoFrame from our processed canvas
+      const newFrame = new VideoFrame(this.outputCanvas, {
         timestamp: frame.timestamp,
         duration: frame.duration ?? undefined,
       });
@@ -182,7 +182,6 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
       this.engine.destroy();
       this.engine = null;
     }
-    this.outputCtx = null;
     logger.info('[SelfieSegmentationTransformer] Destroyed');
   }
 }
