@@ -14,28 +14,15 @@
 import { useParticipants, useLocalParticipant } from '@livekit/components-react';
 import { Participant } from 'livekit-client';
 import { SafeParticipantTile as ParticipantTile } from './ParticipantTile';
-import { usePinnedIdentity, useGridAspectRatio, type GridAspectRatio } from '../../store/roomStore';
+import { usePinnedIdentity, useGridAspectRatio } from '../../store/roomStore';
 import { useMemo } from 'react';
 import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { ASPECT_RATIO_MULTIPLIERS, ASPECT_RATIO_CSS } from '../../utils/aspectRatio';
 
 interface SpeakerLayoutProps {
   activeSpeakers: Participant[];
 }
-
-const ASPECT_RATIO_MULTIPLIERS: Record<GridAspectRatio, number> = {
-  '16:9': 16 / 9,
-  '9:16': 9 / 16,
-  '1:1': 1,
-  '4:3': 4 / 3,
-};
-
-const ASPECT_RATIO_CSS: Record<GridAspectRatio, string> = {
-  '16:9': '16/9',
-  '9:16': '9/16',
-  '1:1': '1/1',
-  '4:3': '4/3',
-};
 
 export function SpeakerLayout({ activeSpeakers }: SpeakerLayoutProps) {
   const participants = useParticipants();

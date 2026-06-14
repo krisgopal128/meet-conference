@@ -10,9 +10,7 @@ import { PiPScreenShare } from './PiPScreenShare';
 import { useLocalParticipant, useParticipants, useTracks } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import {
-  useUserIdentity,
-  useUserRole,
-  useHostId,
+  useIsModerator,
   useIsPiPOpen,
   usePiPActions,
   useParticipantsCanShareScreen,
@@ -57,13 +55,10 @@ export function PiPContainer() {
   const participants = useParticipants();
   const screenShareTracks = useTracks([Track.Source.ScreenShare, Track.Source.ScreenShareAudio]);
 
-  const identity = useUserIdentity();
-  const role = useUserRole();
-  const hostId = useHostId();
+  const isModerator = useIsModerator();
   const participantsCanShareScreen = useParticipantsCanShareScreen();
   const participantsCanUnmute = useParticipantsCanUnmute();
   const participantsCanTurnOnCamera = useParticipantsCanTurnOnCamera();
-  const isModerator = role === 'host' || role === 'cohost' || role === 'moderator' || identity === hostId;
 
   const openPiPWindow = useCallback(async () => {
     if (!('documentPictureInPicture' in window)) {

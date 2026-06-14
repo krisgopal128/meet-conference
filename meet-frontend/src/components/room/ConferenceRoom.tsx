@@ -14,9 +14,7 @@ import {
   useSettingsOpen,
   useSettingsView,
   useLobbyCount,
-  useUserIdentity,
-  useUserRole,
-  useHostId,
+  useIsModerator,
   useJoinLeaveSoundsEnabled,
   useSelectedQualityMode,
   useUIActions,
@@ -70,9 +68,7 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
   const participantsOpen = useParticipantsOpen();
   const settingsOpen = useSettingsOpen();
   const lobbyCount = useLobbyCount();
-  const identity = useUserIdentity();
-  const role = useUserRole();
-  const hostId = useHostId();
+  const isModerator = useIsModerator();
   const joinLeaveSoundsEnabled = useJoinLeaveSoundsEnabled();
   const selectedQualityMode = useSelectedQualityMode();
   const isPiPOpen = useIsPiPOpen();
@@ -91,7 +87,6 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
   const [activeSpeakers, setActiveSpeakers] = useState<Participant[]>([]);
   const screenShareTracks = useTracks([Track.Source.ScreenShare]);
   const hasActiveScreenShare = screenShareTracks.some((track) => track.publication?.isSubscribed);
-  const isModerator = role === 'host' || role === 'cohost' || role === 'moderator' || identity === hostId;
   const activeSpeakerPromoteTimerRef = useRef<number | null>(null);
   const activeSpeakerDemoteTimerRef = useRef<number | null>(null);
   const layoutBeforeScreenshare = useRef<LayoutMode>('grid');

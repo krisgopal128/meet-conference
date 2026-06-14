@@ -1,4 +1,4 @@
-import { Video } from 'lucide-react';
+import { ChevronDown, ChevronRight, Video } from 'lucide-react';
 import type { DeviceSettingsProps } from './types';
 
 export function DeviceSettings({
@@ -27,7 +27,7 @@ export function DeviceSettings({
           <Video size={14} />
           Devices
         </h3>
-        <span className="text-xs text-surface-400">{isExpanded ? '▼' : '▶'}</span>
+        <span className="text-xs text-surface-400">{isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</span>
       </button>
       {isExpanded && (
         <div className="mt-3 space-y-3">

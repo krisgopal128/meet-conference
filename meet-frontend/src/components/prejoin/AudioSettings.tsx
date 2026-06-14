@@ -1,4 +1,4 @@
-import { Mic } from 'lucide-react';
+import { ChevronDown, ChevronRight, Mic } from 'lucide-react';
 import type { AudioSettingsProps } from './types';
 
 export function AudioSettings({
@@ -20,7 +20,7 @@ export function AudioSettings({
           <Mic size={14} />
           Audio Settings
         </h3>
-        <span className="text-xs text-surface-400">{isExpanded ? '▼' : '▶'}</span>
+        <span className="text-xs text-surface-400">{isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</span>
       </button>
       {isExpanded && (
         <div className="mt-3 space-y-2">

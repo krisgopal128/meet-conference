@@ -275,7 +275,8 @@ meetingsRouter.get('/:id', authenticate, async (req: AuthRequest, res: Response)
            FROM meeting_participants mp
            LEFT JOIN users u ON mp.user_id = u.id
            WHERE mp.meeting_id = $1
-           ORDER BY mp.joined_at`,
+           ORDER BY mp.joined_at
+           LIMIT 500`,
           [id]
         );
 

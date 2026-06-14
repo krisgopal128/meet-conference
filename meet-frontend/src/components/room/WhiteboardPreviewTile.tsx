@@ -114,15 +114,6 @@ export const WhiteboardPreviewTile = memo(function WhiteboardPreviewTile({
     void renderPreview();
   }, [sceneVersion, excalidrawAPI, renderPreview]);
 
-  // Slow poll for remote changes not reflected in sceneVersion
-  useEffect(() => {
-    if (!excalidrawAPI) return;
-    const timer = setInterval(() => {
-      void renderPreview();
-    }, 2000);
-    return () => clearInterval(timer);
-  }, [excalidrawAPI, renderPreview]);
-
   return (
     <div
       className="w-full h-full rounded-2xl bg-surface-900 relative overflow-hidden flex items-center justify-center"

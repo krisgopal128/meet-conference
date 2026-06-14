@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRoomContext } from '@livekit/components-react';
+import { RoomEvent } from 'livekit-client';
 import { meetingRoomConfig } from '../config/meetingRoomConfig';
 
 export interface CallSizeConfig {
@@ -41,12 +42,12 @@ export function useCallSizeConfig(): CallSizeConfig {
     updateCount();
 
     // Listen for participant changes
-    room.on('participantConnected', updateCount);
-    room.on('participantDisconnected', updateCount);
+    room.on(RoomEvent.ParticipantConnected, updateCount);
+    room.on(RoomEvent.ParticipantDisconnected, updateCount);
 
     return () => {
-      room.off('participantConnected', updateCount);
-      room.off('participantDisconnected', updateCount);
+      room.off(RoomEvent.ParticipantConnected, updateCount);
+      room.off(RoomEvent.ParticipantDisconnected, updateCount);
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }

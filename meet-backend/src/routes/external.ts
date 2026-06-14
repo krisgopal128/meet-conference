@@ -13,6 +13,7 @@ import { sanitizeRoomName } from '../utils/validation.js';
 import { config } from '../config.js';
 import rateLimit from 'express-rate-limit';
 import { query, queryOne } from '../services/database.js';
+import { cacheGet, cacheSet } from '../services/redis.js';
 import logger from '../utils/logger.js';
 import type { AuthRequest } from '../middleware/authenticate.js';
 
@@ -104,18 +105,32 @@ async function verifyAPIKey(req: Request, res: Response, next: NextFunction) {
   try {
     const keyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
     
-     const dbKey = await queryOne<{
-       id: string;
-       user_id: string;
-       is_active: boolean;
-       permissions: Record<string, unknown>;
-       expires_at: Date | null;
-     }>(
-      `SELECT id, user_id, is_active, permissions, expires_at 
-       FROM api_keys 
-       WHERE key_hash = $1`,
-      [keyHash]
-    );
+    let dbKey = await cacheGet<{
+      id: string;
+      user_id: string;
+      is_active: boolean;
+      permissions: Record<string, unknown>;
+      expires_at: Date | null;
+    }>('apikey:' + keyHash);
+    
+    if (!dbKey) {
+      dbKey = await queryOne<{
+        id: string;
+        user_id: string;
+        is_active: boolean;
+        permissions: Record<string, unknown>;
+        expires_at: Date | null;
+      }>(
+        `SELECT id, user_id, is_active, permissions, expires_at 
+         FROM api_keys 
+         WHERE key_hash = $1`,
+        [keyHash]
+      );
+      
+      if (dbKey) {
+        await cacheSet('apikey:' + keyHash, dbKey, 60);
+      }
+    }
     
     if (!dbKey) {
       return res.status(403).json({ error: 'Invalid or expired API key' });
@@ -131,7 +146,6 @@ async function verifyAPIKey(req: Request, res: Response, next: NextFunction) {
     
     // Throttle last_used_at update to once per minute per key (avoids write contention)
     const throttleKey = `apikey:lastused:${dbKey.id}`;
-    const { cacheGet, cacheSet } = await import('../services/redis.js');
     const recentlyUpdated = await cacheGet<number>(throttleKey);
     if (!recentlyUpdated) {
       await query(

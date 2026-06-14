@@ -4,7 +4,7 @@ import {
   useMessages,
   useShowChatTimestamps,
   useTypingParticipants,
-  useUserRole,
+  useIsModerator,
   useParticipantsCanChat,
   useUIActions,
   useChatActions,
@@ -88,7 +88,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
   const messages = useMessages();
   const showChatTimestamps = useShowChatTimestamps();
   const typingParticipants = useTypingParticipants();
-  const role = useUserRole();
+  const isModerator = useIsModerator();
   const participantsCanChat = useParticipantsCanChat();
   const hostId = useHostId();
 
@@ -103,7 +103,6 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
   const [sendPrivateToModerators, setSendPrivateToModerators] = useState(cachedDraft?.sendPrivateToModerators || false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<number | null>(null);
-  const isModerator = role === 'host' || role === 'cohost' || role === 'moderator' || localParticipant?.identity === hostId;
   const chatDisabled = !isModerator && !participantsCanChat;
 
   // Mention autocomplete state

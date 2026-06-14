@@ -8,7 +8,7 @@ import { config } from '../config.js';
 import { query, queryOne } from '../services/database.js';
 import { AuthRequest, authenticate } from '../middleware/authenticate.js';
 import { authLimiter } from '../middleware/rateLimiter.js';
-import { blacklistToken, cacheGet, cacheSet } from '../services/redis.js';
+import { blacklistToken, cacheGet, cacheSet, cacheTTL, cacheIncrWithExpire, cacheDel } from '../services/redis.js';
 import { invalidateTokenAuth } from '../middleware/authenticate.js';
 import { 
   sanitizeEmail, 
@@ -65,8 +65,6 @@ async function isAccountLocked(email: string): Promise<{ locked: boolean; remain
   const key = `lockout:${email}`;
   const attempts = await cacheGet<number>(key);
   if (attempts !== null && attempts >= MAX_FAILED_ATTEMPTS) {
-    // Get remaining TTL directly from Redis key
-    const { cacheTTL } = await import('../services/redis.js');
     const remainingTTL = await cacheTTL(key);
     return { locked: true, remainingSeconds: remainingTTL > 0 ? remainingTTL : LOCKOUT_DURATION_SECONDS };
   }
@@ -78,7 +76,6 @@ async function isAccountLocked(email: string): Promise<{ locked: boolean; remain
  */
 async function recordFailedAttempt(email: string): Promise<void> {
   const key = `lockout:${email}`;
-  const { cacheIncrWithExpire } = await import('../services/redis.js');
   await cacheIncrWithExpire(key, LOCKOUT_DURATION_SECONDS);
 }
 
@@ -87,7 +84,6 @@ async function recordFailedAttempt(email: string): Promise<void> {
  */
 async function clearFailedAttempts(email: string): Promise<void> {
   const key = `lockout:${email}`;
-  const { cacheDel } = await import('../services/redis.js');
   await cacheDel(key);
 }
 
@@ -466,8 +462,7 @@ authRouter.post('/forgot-password', authLimiter, async (req, res: Response) => {
     );
     
     // Store token hash in Redis for revocation capability
-    const { createHash } = await import('crypto');
-    const tokenHash = createHash('sha256').update(resetToken).digest('hex');
+    const tokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
     await cacheSet(`password-reset:${tokenHash}`, { userId: user.id }, 3600);
     
     logger.info(`[Auth] Password reset requested for user ${user.id}`);
@@ -513,15 +508,13 @@ authRouter.post('/reset-password', authLimiter, async (req, res: Response) => {
     }
     
     // Verify token exists in Redis (not already used)
-    const { createHash: ch } = await import('crypto');
-    const resetTokenHash = ch('sha256').update(token).digest('hex');
+    const resetTokenHash = crypto.createHash('sha256').update(token).digest('hex');
     const resetEntry = await cacheGet<{ userId: string }>(`password-reset:${resetTokenHash}`);
     if (!resetEntry) {
       return res.status(400).json({ error: 'Reset token has already been used or expired' });
     }
     
     // Delete the reset token from Redis to prevent reuse
-    const { cacheDel } = await import('../services/redis.js');
     await cacheDel(`password-reset:${resetTokenHash}`);
 
     

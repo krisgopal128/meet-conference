@@ -120,10 +120,11 @@ router.get('/meetings', requireModerator(), async (req: AuthRequest, res: Respon
           SELECT m.id, m.room_id, r.name as room_name, r.title as room_title,
             r.host_id, u.name as host_name, m.started_at, m.ended_at,
             m.status, m.recording_url,
-            (SELECT COUNT(*) FROM meeting_participants WHERE meeting_id = m.id) as participant_count
+            COALESCE(pc.cnt, 0) as participant_count
           FROM meetings m
           LEFT JOIN rooms r ON r.id = m.room_id
           LEFT JOIN users u ON u.id = r.host_id
+          LEFT JOIN (SELECT meeting_id, COUNT(*) AS cnt FROM meeting_participants GROUP BY meeting_id) pc ON pc.meeting_id = m.id
           ${whereClause}
           ORDER BY m.started_at DESC
           LIMIT $${paramIndex} OFFSET $${paramIndex + 1}

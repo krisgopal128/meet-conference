@@ -26,12 +26,14 @@ export function useSpeakerManager({ selectedSpeaker, speakerLevel }: UseSpeakerM
   }, [room, selectedSpeaker]);
 
   useEffect(() => {
+    if (!room) return;
     const volume = Math.max(0, Math.min(1, (speakerLevel ?? 100) / 100));
-
-    document.querySelectorAll<HTMLMediaElement>('audio, video').forEach((element) => {
-      if (!element.muted) {
-        element.volume = volume;
-      }
+    room.remoteParticipants.forEach((participant) => {
+      participant.audioTrackPublications.forEach((pub) => {
+        if (pub.track) {
+          (pub.track as any).setVolume?.(volume);
+        }
+      });
     });
-  }, [speakerLevel]);
+  }, [room, speakerLevel]);
 }

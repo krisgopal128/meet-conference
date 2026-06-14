@@ -51,6 +51,9 @@ export function useAdaptiveQuality(config: Partial<AdaptiveQualityConfig> = {}) 
   
   const lastNotifiedModeRef = useRef<QualityMode>('auto');
 
+  const onModeChangeRef = useRef(fullConfig.onModeChange);
+  onModeChangeRef.current = fullConfig.onModeChange;
+
   const determineMode = useCallback((): { mode: QualityMode; reason: string } => {
     // If user explicitly set a mode (not auto), respect it
     if (fullConfig.userPreferredMode && fullConfig.userPreferredMode !== 'auto') {
@@ -102,9 +105,9 @@ export function useAdaptiveQuality(config: Partial<AdaptiveQualityConfig> = {}) 
       setIsAutoAdjusted(isAdjusted);
 
       lastNotifiedModeRef.current = mode;
-      fullConfig.onModeChange?.(mode, modeReason);
+      onModeChangeRef.current?.(mode, modeReason);
     }
-  }, [determineMode, fullConfig]);
+  }, [determineMode, fullConfig.enabled, fullConfig.userPreferredMode]);
 
   // Build network info — memoized on the primitive level to avoid new object per render
   const networkInfo = useMemo(() => getQualityLevelInfo(networkQuality.level), [networkQuality.level]);

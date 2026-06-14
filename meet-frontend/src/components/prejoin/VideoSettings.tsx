@@ -1,5 +1,5 @@
 import { useRef, type ChangeEvent } from 'react';
-import { Crop, Grid3X3, Maximize2, Eye, FlipHorizontal, Palette, Image as ImageIcon, Upload } from 'lucide-react';
+import { ChevronDown, ChevronRight, Crop, Grid3X3, Maximize2, Eye, FlipHorizontal, Palette, Image as ImageIcon, Upload } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import type { VideoSettingsProps } from './types';
 
@@ -50,7 +50,7 @@ export function VideoSettings({
           <Crop size={14} />
           Video Settings
         </h3>
-        <span className="text-xs text-surface-400">{isExpanded ? '▼' : '▶'}</span>
+        <span className="text-xs text-surface-400">{isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</span>
       </button>
       {isExpanded && (
         <div className="mt-3 space-y-3">

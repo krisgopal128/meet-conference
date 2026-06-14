@@ -18,7 +18,6 @@ import {
   useIsModerator,
   useWhiteboardFullscreen,
   useGridAspectRatio,
-  type GridAspectRatio,
 } from '../../store/roomStore';
 import {
   useWhiteboardSync,
@@ -33,6 +32,7 @@ import { FloatingParticipantPanel } from './FloatingParticipantPanel';
 import { WhiteboardPreviewTile } from './WhiteboardPreviewTile';
 import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { ASPECT_RATIO_MULTIPLIERS } from '../../utils/aspectRatio';
 import logger from '../../utils/logger';
 
 import '@excalidraw/excalidraw/index.css';
@@ -45,13 +45,6 @@ interface WhiteboardLayoutProps {
   room: Room | null;
   roomName?: string;
 }
-
-const ASPECT_RATIO_MULTIPLIERS: Record<GridAspectRatio, number> = {
-  '16:9': 16 / 9,
-  '9:16': 9 / 16,
-  '1:1': 1,
-  '4:3': 4 / 3,
-};
 
 const WHITEBOARD_CACHE_MAX = 5;
 const whiteboardSceneCache = new Map<string, { scene: unknown[]; files?: Record<string, unknown>; locked: boolean }>();

@@ -195,9 +195,9 @@ export async function updateRoomSettings(
  * Delete room by name
  */
 export async function deleteRoomByName(name: string): Promise<void> {
-  const room = await getRoomByName(name);
-  if (room) {
-    await query('DELETE FROM rooms WHERE id = $1', [room.id]);
+  const result = await query<{ id: string }>('DELETE FROM rooms WHERE name = $1 RETURNING id', [name]);
+  if (!result.length) {
+    logger.warn(`[roomService] deleteRoomByName: no room found with name "${name}"`);
   }
 }
 

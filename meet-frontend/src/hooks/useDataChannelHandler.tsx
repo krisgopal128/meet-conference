@@ -36,6 +36,10 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
     setParticipantsCanTurnOnCamera,
   } = useMeetingControlsActions();
   const hostId = useHostId();
+  const localParticipantRef = useRef(localParticipant);
+  localParticipantRef.current = localParticipant;
+  const hostIdRef = useRef(hostId);
+  hostIdRef.current = hostId;
 
   const getSenderRole = (metadata: string | undefined): string => {
     if (!metadata) return 'attendee';
@@ -58,7 +62,7 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
         const senderName = participant?.name || senderIdentity;
         const senderRole = getSenderRole(participant?.metadata);
         const isPrivilegedSender = !!senderIdentity && (
-          senderIdentity === hostId ||
+          senderIdentity === hostIdRef.current ||
           senderRole === 'host' ||
           senderRole === 'cohost' ||
           senderRole === 'moderator'
@@ -82,7 +86,7 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
           return;
         }
 
-        if (payload.type === 'private_chat' && !isModerator && senderIdentity !== localParticipant.identity) {
+        if (payload.type === 'private_chat' && !isModerator && senderIdentity !== localParticipantRef.current.identity) {
           return;
         }
 
@@ -96,8 +100,8 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
           addMessage(message);
           
           // Check if current user is mentioned (don't notify for own messages)
-          if (senderIdentity !== localParticipant.identity && message.mentions) {
-            const localIdentity = localParticipant.identity?.toLowerCase().trim();
+          if (senderIdentity !== localParticipantRef.current.identity && message.mentions) {
+            const localIdentity = localParticipantRef.current.identity?.toLowerCase().trim();
             const isMentioned = message.mentions.some(
               (m: string) => m.toLowerCase().trim() === localIdentity
             );
@@ -147,14 +151,14 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
           if (!isPrivilegedSender) return;
           // Sync whiteboard state for all participants except the sender
           // (sender already toggled locally before publishing)
-          if (senderIdentity !== localParticipant.identity) {
+          if (senderIdentity !== localParticipantRef.current.identity) {
             if (payload.active !== whiteboardOpenRef.current) {
               toggleWhiteboard();
             }
           }
         } else if (payload.type === 'meeting_settings_update') {
           if (!isPrivilegedSender) return;
-          if (senderIdentity !== localParticipant.identity) {
+          if (senderIdentity !== localParticipantRef.current.identity) {
             if (typeof payload.meetingLocked === 'boolean') setMeetingLocked(payload.meetingLocked);
             if (typeof payload.lobbyEnabled === 'boolean') setLobbyEnabled(payload.lobbyEnabled);
             if (typeof payload.participantsCanShareScreen === 'boolean') setParticipantsCanShareScreen(payload.participantsCanShareScreen);
@@ -164,17 +168,17 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
           }
         } else if (payload.type === 'settings_sync') {
           if (!isPrivilegedSender) return;
-          if (senderIdentity !== localParticipant.identity && payload.setting === 'videoFitMode' && (payload.value === 'cover' || payload.value === 'contain')) {
+          if (senderIdentity !== localParticipantRef.current.identity && payload.setting === 'videoFitMode' && (payload.value === 'cover' || payload.value === 'contain')) {
             setVideoFitMode(payload.value);
           }
-        } else if (payload.type === 'moderation_control' && payload.targetIdentity === localParticipant.identity) {
+        } else if (payload.type === 'moderation_control' && payload.targetIdentity === localParticipantRef.current.identity) {
           if (!isPrivilegedSender) return;
-          if (payload.action === 'disable_camera' && localParticipant.isCameraEnabled) {
-            await localParticipant.setCameraEnabled(false);
-          } else if (payload.action === 'mute_microphone' && localParticipant.isMicrophoneEnabled) {
-            await localParticipant.setMicrophoneEnabled(false);
-          } else if (payload.action === 'disable_screenshare' && localParticipant.isScreenShareEnabled) {
-            await localParticipant.setScreenShareEnabled(false);
+          if (payload.action === 'disable_camera' && localParticipantRef.current.isCameraEnabled) {
+            await localParticipantRef.current.setCameraEnabled(false);
+          } else if (payload.action === 'mute_microphone' && localParticipantRef.current.isMicrophoneEnabled) {
+            await localParticipantRef.current.setMicrophoneEnabled(false);
+          } else if (payload.action === 'disable_screenshare' && localParticipantRef.current.isScreenShareEnabled) {
+            await localParticipantRef.current.setScreenShareEnabled(false);
           }
         }
       } catch (err) {
@@ -186,5 +190,6 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
     };
     room.on(RoomEvent.DataReceived, handleData);
     return () => { room.off(RoomEvent.DataReceived, handleData); };
-  }, [room, addMessage, raiseHand, lowerHand, setTypingParticipant, isModerator, votePoll, closePoll, localParticipant, toggleWhiteboard, setVideoFitMode, setMeetingLocked, setLobbyEnabled, setParticipantsCanShareScreen, setParticipantsCanChat, setParticipantsCanUnmute, setParticipantsCanTurnOnCamera, setRecording, incrementMentionCount, onMeetingEnded, hostId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room, addMessage, raiseHand, lowerHand, setTypingParticipant, isModerator, votePoll, closePoll, toggleWhiteboard, setVideoFitMode, setMeetingLocked, setLobbyEnabled, setParticipantsCanShareScreen, setParticipantsCanChat, setParticipantsCanUnmute, setParticipantsCanTurnOnCamera, setRecording, incrementMentionCount, onMeetingEnded]);
 }
