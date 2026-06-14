@@ -40,8 +40,12 @@ const state: ManagerState = {
   lastToggleTime: 0,
 };
 
-const DEBOUNCE_MS = 300;
-const LOCK_TIMEOUT_MS = 10000;
+// Debounce for continuous updates (slider changes, etc.), NOT for toggle
+const UPDATE_DEBOUNCE_MS = 300;
+// Lock timeout for preventing concurrent operations
+const LOCK_TIMEOUT_MS = 3000;
+// Timeout for individual async operations like setProcessor
+const OPERATION_TIMEOUT_MS = 5000;
 
 async function acquireLock(): Promise<() => void> {
   while (state.lockPromise) {
@@ -64,7 +68,7 @@ async function acquireLock(): Promise<() => void> {
     };
     safetyTimeout = setTimeout(() => {
       if (state.lockPromise) {
-        logger.warn('[BgEffects] Lock timeout, forcing release');
+        logger.warn('[BgEffects] Lock timeout (3s), forcing release');
         state.isApplying = false;
         safetyTimeout = null;
         resolve();
@@ -75,23 +79,37 @@ async function acquireLock(): Promise<() => void> {
   return releaseLock;
 }
 
-function canToggle(): boolean {
+// Debounce for continuous updates (slider, color picker), NOT toggle
+function canContinueUpdating(): boolean {
   const now = Date.now();
-  if (now - state.lastToggleTime < DEBOUNCE_MS) {
+  if (now - state.lastToggleTime < UPDATE_DEBOUNCE_MS) {
     return false;
   }
   return true;
 }
 
+// Wrap promise with timeout
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Operation timeout after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
 /**
  * Enable background effect on a video track.
+ * NOTE: Debounce is NOT applied to toggle actions - only to continuous updates
  */
 export async function enableBackgroundEffect(
   track: VideoTrack,
   options?: Partial<SelfieSegmentationOptions>,
 ): Promise<boolean> {
-  if (!canToggle()) return false;
-  if (state.isApplying) return false;
+  if (state.isApplying) {
+    logger.warn('[BgEffects] Already applying effect, ignoring call');
+    return false;
+  }
 
   const releaseLock = await acquireLock();
   state.isApplying = true;
@@ -103,10 +121,13 @@ export async function enableBackgroundEffect(
     // If processor exists on same track, just update options
     if (state.transformer && state.currentTrack === track) {
       logger.info('[BgEffects] Reusing existing transformer');
-      await state.transformer.update({
-        enabled: true,
-        ...options,
-      });
+      await withTimeout(
+        state.transformer.update({
+          enabled: true,
+          ...options,
+        }),
+        OPERATION_TIMEOUT_MS
+      );
       state.isEnabled = true;
       return true;
     }
@@ -114,9 +135,9 @@ export async function enableBackgroundEffect(
     // Clean up old processor
     if (state.processor && state.currentTrack) {
       try {
-        await state.currentTrack.stopProcessor();
-      } catch {
-        // Ignore
+        await withTimeout(state.currentTrack.stopProcessor(), OPERATION_TIMEOUT_MS);
+      } catch (err) {
+        logger.warn('[BgEffects] Error stopping old processor:', err);
       }
       state.processor = null;
       state.transformer = null;
@@ -134,7 +155,7 @@ export async function enableBackgroundEffect(
     });
     const processor = new ProcessorWrapper(transformer, 'selfie-segmentation');
 
-    await track.setProcessor(processor);
+    await withTimeout(track.setProcessor(processor), OPERATION_TIMEOUT_MS);
 
     state.transformer = transformer;
     state.processor = processor;
@@ -145,6 +166,7 @@ export async function enableBackgroundEffect(
     return true;
   } catch (err) {
     logger.error('[BgEffects] Failed to enable:', err);
+    state.isEnabled = false;
     return false;
   } finally {
     state.isApplying = false;
@@ -154,10 +176,13 @@ export async function enableBackgroundEffect(
 
 /**
  * Disable background effect (switch to passthrough).
+ * NOTE: Debounce is NOT applied to toggle actions - only to continuous updates
  */
 export async function disableBackgroundEffect(_track: VideoTrack): Promise<boolean> {
-  if (!canToggle()) return false;
-  if (state.isApplying) return false;
+  if (state.isApplying) {
+    logger.warn('[BgEffects] Already applying effect, ignoring call');
+    return false;
+  }
   if (!state.transformer) {
     state.isEnabled = false;
     return true;
@@ -168,7 +193,7 @@ export async function disableBackgroundEffect(_track: VideoTrack): Promise<boole
   state.lastToggleTime = Date.now();
 
   try {
-    await state.transformer.update({ enabled: false });
+    await withTimeout(state.transformer.update({ enabled: false }), OPERATION_TIMEOUT_MS);
     state.isEnabled = false;
     logger.info('[BgEffects] Background effect disabled');
     return true;
@@ -184,13 +209,23 @@ export async function disableBackgroundEffect(_track: VideoTrack): Promise<boole
 
 /**
  * Update background effect settings at runtime (mode, blur radius, etc).
+ * This DOES apply debounce to prevent excessive updates from sliders/pickers
  */
 export async function updateBackgroundEffect(
   options: Partial<SelfieSegmentationOptions>,
 ): Promise<void> {
   if (!state.transformer) return;
+  
+  // Apply debounce for continuous updates (slider changes)
+  if (!canContinueUpdating()) {
+    logger.debug('[BgEffects] Skipping update due to debounce');
+    return;
+  }
+  
+  state.lastToggleTime = Date.now();
+
   try {
-    await state.transformer.update(options);
+    await withTimeout(state.transformer.update(options), OPERATION_TIMEOUT_MS);
   } catch (err) {
     logger.warn('[BgEffects] Failed to update options:', err);
   }

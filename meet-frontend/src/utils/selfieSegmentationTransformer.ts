@@ -88,12 +88,19 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
   private async loadBackgroundImage(path: string): Promise<void> {
     return new Promise((resolve) => {
       const img = new Image();
+      const timeout = setTimeout(() => {
+        logger.warn('[SelfieSegmentationTransformer] Image load timeout:', path);
+        resolve();
+      }, 5000);
+      
       img.onload = () => {
+        clearTimeout(timeout);
         this.bgImageEl = img;
         this.engine?.updateOptions({ bgImage: img });
         resolve();
       };
       img.onerror = () => {
+        clearTimeout(timeout);
         logger.warn('[SelfieSegmentationTransformer] Failed to load bg image:', path);
         resolve();
       };
