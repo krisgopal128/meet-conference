@@ -100,6 +100,10 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
   const [echoCancellation, setEchoCancellation] = useState(meetingRoomConfig.prejoin.echoCancellation);
   const [backgroundBlur, setBackgroundBlur] = useState(false);
   const [backgroundBlurLevel, setBackgroundBlurLevel] = useState(10);
+  const [backgroundMode, setBackgroundMode] = useState<'blur' | 'image' | 'color' | 'none'>('blur');
+  const [backgroundBgColor, setBackgroundBgColor] = useState('#1e1e2e');
+  const [backgroundImagePath, setBackgroundImagePath] = useState<string | null>(null);
+  const [mirrorCamera, setMirrorCamera] = useState(true);
   const [videoFilter, setVideoFilter] = useState<'none' | 'lightweight'>('none'); // Default OFF
   const [qualityMode, setQualityMode] = useState<QualityModeName>(getQualityModeConfig().name);
   const [screenShareMode, setScreenShareMode] = useState<ScreenShareModeName>(meetingRoomConfig.media.screenShare.defaultMode);
@@ -437,6 +441,14 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
     setBackgroundBlur,
     backgroundBlurLevel,
     setBackgroundBlurLevel,
+    backgroundMode,
+    setBackgroundMode,
+    backgroundBgColor,
+    setBackgroundBgColor,
+    backgroundImagePath,
+    setBackgroundImagePath,
+    mirrorCamera,
+    setMirrorCamera,
     videoFilter,
     setVideoFilter,
     qualityMode,

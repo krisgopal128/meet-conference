@@ -81,6 +81,14 @@ export default function PreJoinPage() {
     setBackgroundBlur,
     backgroundBlurLevel,
     setBackgroundBlurLevel,
+    backgroundMode,
+    setBackgroundMode,
+    backgroundBgColor,
+    setBackgroundBgColor,
+    backgroundImagePath,
+    setBackgroundImagePath,
+    mirrorCamera,
+    setMirrorCamera,
     videoFilter,
     setVideoFilter,
     qualityMode,
@@ -213,6 +221,10 @@ export default function PreJoinPage() {
           echoCancellation,
           backgroundBlur,
           backgroundBlurLevel,
+          backgroundMode,
+          backgroundBgColor,
+          backgroundImagePath,
+          mirrorCamera,
           videoFilter,
           qualityMode,
           screenShareMode,
@@ -256,12 +268,12 @@ export default function PreJoinPage() {
   });
 
   useBackgroundBlurPreview(videoElement, {
-    enabled: backgroundBlur && videoEnabled,
-    mode: 'blur',
+    enabled: backgroundBlur && videoEnabled && backgroundMode !== 'none',
+    mode: backgroundMode,
     blurRadius: backgroundBlurLevel,
     feather: 3,
-    bgColor: '#1e1e2e',
-    bgImage: null,
+    bgColor: backgroundBgColor,
+    bgImage: backgroundImagePath ? (() => { const img = new Image(); img.src = backgroundImagePath; return img; })() : null,
   });
 
   // Update video element ref - runs once on mount
@@ -330,7 +342,8 @@ export default function PreJoinPage() {
                   playsInline
                   style={{ objectPosition: 'center' }}
                   className={cn(
-                    'w-full h-full scale-x-[-1]',
+                    'w-full h-full',
+                    mirrorCamera && 'scale-x-[-1]',
                     videoFitMode === 'contain' ? 'object-contain' : 'object-cover',
                     !videoEnabled && 'invisible'
                   )}
@@ -411,12 +424,20 @@ export default function PreJoinPage() {
                   videoFilter={videoFilter}
                   backgroundBlur={backgroundBlur}
                   backgroundBlurLevel={backgroundBlurLevel}
+                  backgroundMode={backgroundMode}
+                  backgroundBgColor={backgroundBgColor}
+                  backgroundImagePath={backgroundImagePath}
+                  mirrorCamera={mirrorCamera}
                   isGuest={isGuest}
                   onAspectRatioChange={setGridAspectRatio}
                   onVideoFitModeChange={setVideoFitMode}
                   onVideoFilterChange={setVideoFilter}
                   onBackgroundBlurChange={setBackgroundBlur}
                   onBackgroundBlurLevelChange={setBackgroundBlurLevel}
+                  onBackgroundModeChange={setBackgroundMode}
+                  onBackgroundBgColorChange={setBackgroundBgColor}
+                  onBackgroundImagePathChange={setBackgroundImagePath}
+                  onMirrorCameraChange={setMirrorCamera}
                   isExpanded={expandedSections.video}
                   onToggle={() => toggleSection('video')}
                 />

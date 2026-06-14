@@ -1,4 +1,4 @@
-import { Crop, Grid3X3, Maximize2, Eye } from 'lucide-react';
+import { Crop, Grid3X3, Maximize2, Eye, FlipHorizontal, Palette, Image as ImageIcon } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import type { VideoSettingsProps } from './types';
 
@@ -8,12 +8,20 @@ export function VideoSettings({
   videoFilter,
   backgroundBlur,
   backgroundBlurLevel,
+  backgroundMode,
+  backgroundBgColor,
+  backgroundImagePath,
+  mirrorCamera,
   isGuest,
   onAspectRatioChange,
   onVideoFitModeChange,
   onVideoFilterChange,
   onBackgroundBlurChange,
   onBackgroundBlurLevelChange,
+  onBackgroundModeChange,
+  onBackgroundBgColorChange,
+  onBackgroundImagePathChange,
+  onMirrorCameraChange,
   isExpanded,
   onToggle,
 }: VideoSettingsProps) {
@@ -32,7 +40,7 @@ export function VideoSettings({
       </button>
       {isExpanded && (
         <div className="mt-3 space-y-3">
-          {/* Video Aspect Ratio - Available to ALL authenticated users (inside Video Settings) */}
+          {/* Video Aspect Ratio */}
           {!isGuest && (
             <div>
               <label className="flex items-center gap-2 text-xs text-surface-500 dark:text-surface-400 mb-2">
@@ -66,7 +74,7 @@ export function VideoSettings({
             </div>
           )}
 
-          {/* Video Fit Mode - Available to all */}
+          {/* Video Fit Mode */}
           <div>
             <label className="flex items-center gap-2 text-xs text-surface-500 dark:text-surface-400 mb-2">
               <Crop size={14} />
@@ -107,15 +115,28 @@ export function VideoSettings({
             </p>
           </div>
 
-          {/* Video filter - Available to ALL users (personal preference) */}
+          {/* Mirror Camera */}
+          <button
+            type="button"
+            onClick={() => onMirrorCameraChange(!mirrorCamera)}
+            className="w-full flex items-center justify-between rounded-lg border border-surface-200 dark:border-surface-700 px-3 py-2.5 transition hover:bg-surface-50 dark:hover:bg-surface-700/50"
+          >
+            <div className="flex items-center gap-2">
+              <FlipHorizontal size={14} className="text-surface-500 dark:text-surface-400" />
+              <div className="text-left">
+                <p className="text-sm font-medium text-surface-700 dark:text-surface-200">Mirror Camera</p>
+                <p className="text-xs text-surface-500 dark:text-surface-400">Flip video horizontally (selfie view)</p>
+              </div>
+            </div>
+            <span className={cn('text-xs font-medium', mirrorCamera ? 'text-brand-500' : 'text-surface-400')}>
+              {mirrorCamera ? 'On' : 'Off'}
+            </span>
+          </button>
+
+          {/* Video filter */}
           <label className="flex items-center justify-between rounded-lg border border-surface-200 dark:border-surface-700 px-3 py-2.5">
             <div>
-              <p className="text-sm font-medium text-surface-700 dark:text-surface-200 flex items-center gap-2">
-                Video filter
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-100 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400">
-                  Personal
-                </span>
-              </p>
+              <p className="text-sm font-medium text-surface-700 dark:text-surface-200">Video filter</p>
               <p className="text-xs text-surface-500 dark:text-surface-400">Reduces rolling shutter artifacts</p>
             </div>
             <select
@@ -128,53 +149,118 @@ export function VideoSettings({
             </select>
           </label>
 
-          {/* Background Blur */}
-          <label className="flex items-center justify-between rounded-lg border border-surface-200 dark:border-surface-700 px-3 py-2.5 cursor-pointer">
-            <div>
-              <p className="text-sm font-medium text-surface-700 dark:text-surface-200 flex items-center gap-2">
-                <Eye size={14} />
-                Background Blur
-              </p>
-              <p className="text-xs text-surface-500 dark:text-surface-400">Blur your background for privacy</p>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={backgroundBlur}
-              onClick={() => onBackgroundBlurChange(!backgroundBlur)}
-              className={cn(
-                'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                backgroundBlur ? 'bg-brand-500' : 'bg-surface-300 dark:bg-surface-600'
-              )}
-            >
-              <span
+          {/* Background Effect */}
+          <div className="rounded-lg border border-surface-200 dark:border-surface-700 px-3 py-2.5 space-y-3">
+            {/* Master toggle */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Eye size={14} className="text-surface-500 dark:text-surface-400" />
+                <div>
+                  <p className="text-sm font-medium text-surface-700 dark:text-surface-200">Background Effect</p>
+                  <p className="text-xs text-surface-500 dark:text-surface-400">Modify your camera background</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={backgroundBlur}
+                onClick={() => onBackgroundBlurChange(!backgroundBlur)}
                 className={cn(
+                  'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                  backgroundBlur ? 'bg-brand-500' : 'bg-surface-300 dark:bg-surface-600'
+                )}
+              >
+                <span className={cn(
                   'inline-block h-4 w-4 rounded-full bg-white transition-transform',
                   backgroundBlur ? 'translate-x-6' : 'translate-x-1'
-                )}
-              />
-            </button>
-          </label>
-          {backgroundBlur && (
-            <div className="rounded-lg border border-surface-200 dark:border-surface-700 px-3 py-2.5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-surface-700 dark:text-surface-200">Blur Level</p>
-                  <p className="text-xs text-surface-500 dark:text-surface-400">Controls how strongly the background is blurred</p>
-                </div>
-                <span className="text-xs font-medium text-surface-500 dark:text-surface-300">{backgroundBlurLevel}</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={40}
-                step={1}
-                value={backgroundBlurLevel}
-                onChange={(e) => onBackgroundBlurLevelChange(Number(e.target.value))}
-                className="mt-3 w-full accent-brand-500"
-              />
+                )} />
+              </button>
             </div>
-          )}
+
+            {/* Mode selector + contextual controls */}
+            {backgroundBlur && (
+              <div className="space-y-3 pt-1">
+                {/* Mode buttons */}
+                <div className="grid grid-cols-4 gap-1.5">
+                  {([
+                    { mode: 'blur' as const, label: 'Blur', icon: Eye },
+                    { mode: 'color' as const, label: 'Color', icon: Palette },
+                    { mode: 'image' as const, label: 'Image', icon: ImageIcon },
+                    { mode: 'none' as const, label: 'None', icon: Crop },
+                  ]).map(({ mode, label, icon: Icon }) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => onBackgroundModeChange(mode)}
+                      className={cn(
+                        'flex flex-col items-center gap-1 rounded-lg px-1 py-2 text-xs font-medium transition',
+                        backgroundMode === mode
+                          ? 'bg-brand-500 text-white'
+                          : 'bg-surface-100 dark:bg-surface-700 text-surface-700 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-600'
+                      )}
+                    >
+                      <Icon size={14} />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Blur intensity slider */}
+                {backgroundMode === 'blur' && (
+                  <div>
+                    <div className="flex items-center justify-between text-xs text-surface-500 dark:text-surface-400">
+                      <span>Blur intensity</span>
+                      <span>{backgroundBlurLevel}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={40}
+                      step={1}
+                      value={backgroundBlurLevel}
+                      onChange={(e) => onBackgroundBlurLevelChange(Number(e.target.value))}
+                      className="mt-2 w-full accent-brand-500"
+                    />
+                  </div>
+                )}
+
+                {/* Color picker */}
+                {backgroundMode === 'color' && (
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={backgroundBgColor}
+                      onChange={(e) => onBackgroundBgColorChange(e.target.value)}
+                      className="h-9 w-12 rounded-lg border border-surface-300 dark:border-surface-600 bg-transparent cursor-pointer"
+                    />
+                    <div>
+                      <p className="text-xs font-medium text-surface-700 dark:text-surface-200">Solid Color</p>
+                      <p className="text-xs text-surface-400 font-mono">{backgroundBgColor}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Image URL input */}
+                {backgroundMode === 'image' && (
+                  <div>
+                    <p className="text-xs text-surface-500 dark:text-surface-400 mb-1.5">Background image URL</p>
+                    <input
+                      type="url"
+                      value={backgroundImagePath ?? ''}
+                      onChange={(e) => onBackgroundImagePathChange(e.target.value || null)}
+                      placeholder="https://example.com/bg.jpg"
+                      className="w-full rounded-lg border border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-700 px-3 py-2 text-sm text-surface-700 dark:text-surface-100 placeholder-surface-400 focus:border-brand-500 focus:outline-none"
+                    />
+                  </div>
+                )}
+
+                {/* None — passthrough */}
+                {backgroundMode === 'none' && (
+                  <p className="text-xs text-surface-400">Raw camera feed — no background processing</p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

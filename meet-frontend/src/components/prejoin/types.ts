@@ -1,4 +1,4 @@
-import type { GridAspectRatio, VideoFitMode } from '../../store/roomStore';
+import type { GridAspectRatio, VideoFitMode, BackgroundMode } from '../../store/roomStore';
 
 export interface DeviceList {
   cameras: MediaDeviceInfo[];
@@ -37,12 +37,20 @@ export interface VideoSettingsProps {
   videoFilter: 'none' | 'lightweight';
   backgroundBlur: boolean;
   backgroundBlurLevel: number;
+  backgroundMode: BackgroundMode;
+  backgroundBgColor: string;
+  backgroundImagePath: string | null;
+  mirrorCamera: boolean;
   isGuest: boolean;
   onAspectRatioChange: (ratio: GridAspectRatio) => void;
   onVideoFitModeChange: (mode: VideoFitMode) => void;
   onVideoFilterChange: (filter: 'none' | 'lightweight') => void;
   onBackgroundBlurChange: (enabled: boolean) => void;
   onBackgroundBlurLevelChange: (level: number) => void;
+  onBackgroundModeChange: (mode: BackgroundMode) => void;
+  onBackgroundBgColorChange: (color: string) => void;
+  onBackgroundImagePathChange: (path: string | null) => void;
+  onMirrorCameraChange: (enabled: boolean) => void;
   isExpanded: boolean;
   onToggle: () => void;
 }
