@@ -115,10 +115,13 @@ export class BackgroundBlurEngine {
         );
       }
 
+      // NOTE: Must use CPU delegate. GPU delegate produces a WebGL texture
+      // mask (not Uint8Array), which this 2D-canvas pipeline cannot read.
+      // hasUint8Array() returns false for GPU → blur silently skipped.
       const opts: any = {
         baseOptions: {
           modelAssetPath: '/models/selfie_segmenter.tflite',
-          delegate: 'GPU',
+          delegate: 'CPU',
         },
         outputCategoryMask: true,
         runningMode: 'VIDEO',
