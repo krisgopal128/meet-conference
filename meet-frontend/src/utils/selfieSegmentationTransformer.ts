@@ -1,16 +1,20 @@
 /**
  * SelfieSegmentationTransformer — extends VideoTransformer from
- * @livekit/track-processors to provide a LiveKit-compatible video processor
- * that uses MediaPipe Selfie Segmentation (the sample's approach) with
- * the BackgroundBlurEngine's full GPU compositing pipeline.
+ * @livekit/track-processors to provide a LiveKit-compatible video processor.
  *
- * Pipeline: VideoFrame → drawImage → engine.processToCanvas → new VideoFrame
+ * ARCHITECTURE: Segmentation runs in a Web Worker to prevent main-thread
+ * freezes. Each frame is pipelined:
  *
- * Usage:
- *   const transformer = new SelfieSegmentationTransformer({ ... });
- *   const processor = new ProcessorWrapper(transformer, 'selfie-segmentation');
- *   await track.setProcessor(processor);
- *   processor.updateTransformerOptions({ blurRadius: 20 });
+ *   Frame N arrives
+ *     ├─► createImageBitmap(frame) → postMessage to worker (non-blocking)
+ *     ├─► composite(outputCanvas, lastMaskFromWorker)  [~3ms, main thread]
+ *     └─► new VideoFrame(outputCanvas) → enqueue
+ *
+ *   Worker (parallel, ~15-30ms):
+ *     segmentForVideo(bitmap) → mask Uint8Array → postMessage back
+ *
+ * The main thread is never blocked by inference. There is a 1-frame
+ * latency on the mask which is visually imperceptible.
  */
 
 import { VideoTransformer } from '@livekit/track-processors';
@@ -26,16 +30,26 @@ export interface SelfieSegmentationOptions extends Record<string, unknown> {
   bgImagePath: string | null;
 }
 
+interface MaskData {
+  pixels: Uint8Array;
+  w: number;
+  h: number;
+}
+
 export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmentationOptions> {
   declare options: SelfieSegmentationOptions;
   private engine: BackgroundBlurEngine | null = null;
   private workCanvas: HTMLCanvasElement;
   private workCtx: CanvasRenderingContext2D;
-  // Separate canvas for 2D output — this.canvas is claimed by WebGL in super.init()
   private outputCanvas: HTMLCanvasElement;
   private outputCtx: CanvasRenderingContext2D;
   private bgImageEl: HTMLImageElement | null = null;
-  private isProcessing = false;
+
+  // Worker pipeline state
+  private worker: Worker | null = null;
+  private workerReady = false;
+  private lastMask: MaskData | null = null;
+  private isFrameInFlight = false;
 
   constructor(options: Partial<SelfieSegmentationOptions> = {}) {
     super();
@@ -61,9 +75,6 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
     outputCanvas: OffscreenCanvas | HTMLCanvasElement;
     inputElement: HTMLVideoElement;
   }): Promise<void> {
-    // Call super.init to set up TransformStream + this.canvas
-    // Note: super.init calls setupWebGL on this.canvas, so we CANNOT use
-    // this.canvas for 2D rendering — that's why we have our own outputCanvas.
     await super.init({ outputCanvas, inputElement });
 
     this.engine = new BackgroundBlurEngine({
@@ -75,17 +86,31 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
       bgImage: this.bgImageEl,
     });
 
-    try {
-      await this.engine.init();
-      logger.info('[SelfieSegmentationTransformer] Engine initialized');
+    // Spawn the segmentation worker
+    this.worker = new Worker(new URL('./segmentationWorker.ts', import.meta.url), { type: 'module' });
 
-      // Load background image if specified
-      if (this.options.bgImagePath) {
-        await this.loadBackgroundImage(this.options.bgImagePath);
+    this.worker.onmessage = (e: MessageEvent) => {
+      const msg = e.data;
+      if (msg.type === 'ready') {
+        this.workerReady = true;
+        logger.info('[SelfieSegmentationTransformer] Worker ready');
+      } else if (msg.type === 'mask') {
+        this.lastMask = {
+          pixels: new Uint8Array(msg.mask),
+          w: msg.maskW,
+          h: msg.maskH,
+        };
+        this.isFrameInFlight = false;
+      } else if (msg.type === 'error') {
+        logger.warn('[SelfieSegmentationTransformer] Worker error:', msg.error);
+        this.isFrameInFlight = false;
       }
-    } catch (err) {
-      logger.error('[SelfieSegmentationTransformer] Failed to init engine:', err);
-      this.engine = null;
+    };
+
+    this.worker.postMessage({ type: 'init' });
+
+    if (this.options.bgImagePath) {
+      await this.loadBackgroundImage(this.options.bgImagePath);
     }
   }
 
@@ -96,7 +121,7 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
         logger.warn('[SelfieSegmentationTransformer] Image load timeout:', path);
         resolve();
       }, 5000);
-      
+
       img.onload = () => {
         clearTimeout(timeout);
         this.bgImageEl = img;
@@ -121,13 +146,6 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
       return;
     }
 
-    // Skip processing if previous frame is still being processed.
-    // This prevents the TransformStream from backing up and freezing the video.
-    if (this.isProcessing) {
-      controller.enqueue(frame);
-      return;
-    }
-
     const w = frame.displayWidth;
     const h = frame.displayHeight;
 
@@ -136,34 +154,59 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
       return;
     }
 
-    this.isProcessing = true;
-
-    // Size canvases to match frame
+    // Size canvases
     if (this.workCanvas.width !== w) this.workCanvas.width = w;
     if (this.workCanvas.height !== h) this.workCanvas.height = h;
     if (this.outputCanvas.width !== w) this.outputCanvas.width = w;
     if (this.outputCanvas.height !== h) this.outputCanvas.height = h;
 
+    // Draw incoming frame to work canvas
+    this.workCtx.drawImage(frame, 0, 0);
+
+    // Send frame to worker for segmentation (non-blocking, pipelined)
+    if (this.workerReady && !this.isFrameInFlight) {
+      this.isFrameInFlight = true;
+      this.createImageBitmapAndSend(w, h);
+    }
+
+    // Composite using the last available mask
+    if (this.lastMask) {
+      this.engine.compositeWithMask(
+        this.workCanvas,
+        this.outputCanvas,
+        this.outputCtx,
+        this.lastMask.pixels,
+        this.lastMask.w,
+        this.lastMask.h,
+      );
+    } else {
+      // No mask yet — pass through
+      this.outputCtx.drawImage(this.workCanvas, 0, 0);
+    }
+
+    const newFrame = new VideoFrame(this.outputCanvas, {
+      timestamp: frame.timestamp,
+      duration: frame.duration ?? undefined,
+    });
+
+    frame.close();
+    controller.enqueue(newFrame);
+  }
+
+  private async createImageBitmapAndSend(w: number, h: number): Promise<void> {
     try {
-      // Draw incoming VideoFrame to work canvas
-      this.workCtx.drawImage(frame, 0, 0);
-
-      // Process through engine → outputCanvas (our own 2D canvas, not this.canvas which has WebGL)
-      await this.engine.processToCanvas(this.workCanvas, this.outputCanvas, this.outputCtx);
-
-      // Create new VideoFrame from our processed canvas
-      const newFrame = new VideoFrame(this.outputCanvas, {
-        timestamp: frame.timestamp,
-        duration: frame.duration ?? undefined,
-      });
-
-      frame.close();
-      controller.enqueue(newFrame);
-    } catch (err) {
-      logger.warn('[SelfieSegmentationTransformer] Transform error, passing through:', err);
-      controller.enqueue(frame);
-    } finally {
-      this.isProcessing = false;
+      const bitmap = await createImageBitmap(this.workCanvas, 0, 0, w, h);
+      if (this.worker && this.workerReady) {
+        this.worker.postMessage(
+          { type: 'segment', bitmap, timestamp: performance.now() },
+          [bitmap],
+        );
+      } else {
+        bitmap.close();
+        this.isFrameInFlight = false;
+      }
+    } catch {
+      this.isFrameInFlight = false;
     }
   }
 
@@ -171,7 +214,6 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
     const oldImagePath = this.options.bgImagePath;
     this.options = { ...this.options, ...options };
 
-    // Load new background image if changed
     if (options.bgImagePath && options.bgImagePath !== oldImagePath) {
       await this.loadBackgroundImage(options.bgImagePath);
     }
@@ -190,10 +232,20 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
 
   override async destroy(): Promise<void> {
     await super.destroy();
+
+    if (this.worker) {
+      this.worker.postMessage({ type: 'destroy' });
+      this.worker.terminate();
+      this.worker = null;
+    }
+
     if (this.engine) {
       this.engine.destroy();
       this.engine = null;
     }
+
+    this.lastMask = null;
+    this.workerReady = false;
     logger.info('[SelfieSegmentationTransformer] Destroyed');
   }
 }

@@ -237,18 +237,7 @@ function RoomContent({
   }, [localParticipant, localParticipant.isCameraEnabled]);
 
   useEffect(() => {
-    const blurEnabled = storeBlurEnabled || state.backgroundBlur;
-    if (import.meta.env.DEV) {
-      logger.info('[RoomPage] Blur effect triggered:', {
-        storeBlurEnabled,
-        stateBackgroundBlur: state.backgroundBlur,
-        blurEnabled,
-        cameraEnabled: localParticipant.isCameraEnabled,
-        cameraTrack: !!cameraTrack,
-        backgroundMode,
-        backgroundBlurIntensity,
-      });
-    }
+    const blurEnabled = storeBlurEnabled;
     if (!blurEnabled || !localParticipant.isCameraEnabled) {
       if (cameraTrack && 'setProcessor' in cameraTrack) {
         void disableBackgroundEffect(cameraTrack as Parameters<typeof disableBackgroundEffect>[0]);
@@ -290,7 +279,7 @@ function RoomContent({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [storeBlurEnabled, state.backgroundBlur, cameraTrack, backgroundBlurIntensity, backgroundMode, backgroundBgColor, backgroundImagePath, localParticipant.isCameraEnabled]);
+  }, [storeBlurEnabled, cameraTrack, backgroundBlurIntensity, backgroundMode, backgroundBgColor, backgroundImagePath, localParticipant.isCameraEnabled]);
 
   // Update effect settings at runtime — debounced to prevent rapid option spam during slider drag
   const updateEffectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

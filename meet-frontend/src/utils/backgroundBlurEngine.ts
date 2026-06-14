@@ -1,10 +1,14 @@
 /**
- * BackgroundBlurEngine — Core segmentation + compositing pipeline.
+ * BackgroundBlurEngine — Canvas compositing pipeline for background effects.
  *
- * Uses @mediapipe/tasks-vision (ImageSegmenter) with local WASM + model files.
- * Ports the Camera_BG_Blur sample's GPU-only compositing techniques:
+ * Segmentation (MediaPipe inference) has been moved to a Web Worker
+ * (segmentationWorker.ts) to prevent main-thread freezes. This engine
+ * receives the mask Uint8Array from the worker and does ONLY the
+ * canvas compositing (fast, ~3ms per frame).
+ *
+ * Compositing techniques:
  *  - Anti-halo knockout (person removed before blurring)
- *  - Anti-shadow 8x stacking (converges to opaque background)
+ *  - Anti-shadow 3x stacking (converges to opaque background)
  *  - Temporal EMA mask stabilization (prevents flicker)
  *  - Edge vignette (forces frame borders to background)
  *  - Edge feather (smooth subject cutout)
@@ -38,14 +42,11 @@ export const DEFAULT_BLUR_OPTIONS: BackgroundBlurOptions = {
 
 const MASK_EMA = 0.5;
 const MASK_EDGE_MARGIN = 0.08;
-const MAX_FPS = 30;
-const FRAME_INTERVAL = 1000 / MAX_FPS;
 const STACK_COUNT = 3;
 
 // ─── Engine ──────────────────────────────────────────
 
 export class BackgroundBlurEngine {
-  private segmenter: any = null;
   private optionsRef: BackgroundBlurOptions;
 
   // Offscreen working canvases
@@ -69,9 +70,6 @@ export class BackgroundBlurEngine {
   private maskW = 0;
   private maskH = 0;
   private maskInit = false;
-
-  // FPS throttling
-  private lastProcess = 0;
 
   constructor(options: Partial<BackgroundBlurOptions> = {}) {
     this.optionsRef = { ...DEFAULT_BLUR_OPTIONS, ...options };
@@ -97,81 +95,18 @@ export class BackgroundBlurEngine {
   }
 
   /**
-   * Initialize the MediaPipe ImageSegmenter with local WASM + model.
+   * Composite a frame using a pre-computed segmentation mask.
+   * The mask comes from the Web Worker (segmentationWorker.ts).
    */
-  async init(): Promise<void> {
-    if (this.segmenter) return;
-
-    try {
-      const vision = await import('@mediapipe/tasks-vision');
-
-      let wasmFileset: any;
-      try {
-        wasmFileset = await vision.FilesetResolver.forVisionTasks('/wasm');
-      } catch {
-        wasmFileset = await vision.FilesetResolver.forVisionTasks(
-          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
-        );
-      }
-
-      // NOTE: Must use CPU delegate. GPU delegate produces a WebGL texture
-      // mask (not Uint8Array), which this 2D-canvas pipeline cannot read.
-      // hasUint8Array() returns false for GPU → blur silently skipped.
-      const opts: any = {
-        baseOptions: {
-          modelAssetPath: '/models/selfie_segmenter.tflite',
-          delegate: 'CPU',
-        },
-        outputCategoryMask: true,
-        runningMode: 'VIDEO',
-      };
-
-      try {
-        this.segmenter = await vision.ImageSegmenter.createFromOptions(wasmFileset, opts);
-      } catch {
-        opts.baseOptions.modelAssetPath =
-          'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite';
-        this.segmenter = await vision.ImageSegmenter.createFromOptions(wasmFileset, opts);
-      }
-
-      logger.info('[BackgroundBlurEngine] ImageSegmenter initialized');
-    } catch (err) {
-      logger.error('[BackgroundBlurEngine] Failed to init:', err);
-      throw err;
-    }
-  }
-
-  /**
-   * Process a frame from a video element. Throttled to 30 FPS.
-   */
-  async processFrame(
-    video: HTMLVideoElement,
-    output: HTMLCanvasElement,
-    outputCtx: CanvasRenderingContext2D,
-    now: number,
-  ): Promise<void> {
-    if (!this.segmenter || !this.optionsRef.enabled) {
-      outputCtx.drawImage(video, 0, 0, output.width, output.height);
-      return;
-    }
-
-    if (now - this.lastProcess < FRAME_INTERVAL) return;
-    this.lastProcess = now;
-
-    if (video.readyState < 2) return;
-
-    await this.processToCanvas(video, output, outputCtx);
-  }
-
-  /**
-   * Core processing: segment → stabilize mask → composite. No throttling.
-   */
-  async processToCanvas(
+  compositeWithMask(
     source: HTMLCanvasElement | HTMLVideoElement,
     output: HTMLCanvasElement,
     outputCtx: CanvasRenderingContext2D,
-  ): Promise<void> {
-    if (!this.segmenter || !this.optionsRef.enabled) {
+    maskPixels: Uint8Array,
+    maskW: number,
+    maskH: number,
+  ): void {
+    if (!this.optionsRef.enabled) {
       outputCtx.drawImage(source, 0, 0, output.width, output.height);
       return;
     }
@@ -181,25 +116,10 @@ export class BackgroundBlurEngine {
     const opts = this.optionsRef;
 
     try {
-      // 1. Segment — must pass monotonically increasing timestamp in milliseconds
-      const result = this.segmenter.segmentForVideo(source, performance.now());
-      const categoryMask = result.categoryMask;
-
-      if (!categoryMask || !categoryMask.hasUint8Array?.()) {
-        outputCtx.drawImage(source, 0, 0, w, h);
-        result.close?.();
-        return;
-      }
-
-      const maskPixels = categoryMask.getAsUint8Array();
-      const maskW = categoryMask.width ?? 256;
-      const maskH = categoryMask.height ?? 256;
-      result.close?.();
-
-      // 2. Convert mask to canvas (person=white opaque, bg=transparent)
+      // 1. Convert mask to canvas (person=white opaque, bg=transparent)
       this.convertMaskToCanvas(maskPixels, maskW, maskH);
 
-      // 3. Stabilize mask (EMA temporal + edge vignette)
+      // 2. Stabilize mask (EMA temporal + edge vignette)
       const mask = this.stabilizeMask(this.maskCanvas);
 
       // Size working canvases
@@ -208,10 +128,10 @@ export class BackgroundBlurEngine {
         if (c.height !== h) c.height = h;
       }
 
-      // 4. Render background (anti-halo knockout → blur → 8x stack)
+      // 3. Render background (anti-halo knockout → blur → stack)
       this.renderBackground(source, mask, w, h);
 
-      // 5. Sharp person cutout with feather
+      // 4. Sharp person cutout with feather
       this.personCtx.save();
       this.personCtx.clearRect(0, 0, w, h);
       this.personCtx.drawImage(source, 0, 0, w, h);
@@ -223,12 +143,12 @@ export class BackgroundBlurEngine {
       this.personCtx.filter = 'none';
       this.personCtx.restore();
 
-      // 6. Composite to output
+      // 5. Composite to output
       outputCtx.clearRect(0, 0, w, h);
       outputCtx.drawImage(this.bgCanvas, 0, 0);
       outputCtx.drawImage(this.personCanvas, 0, 0);
     } catch (err) {
-      logger.warn('[BackgroundBlurEngine] Frame failed:', err);
+      logger.warn('[BackgroundBlurEngine] Composite failed:', err);
       outputCtx.drawImage(source, 0, 0, w, h);
     }
   }
@@ -428,13 +348,5 @@ export class BackgroundBlurEngine {
 
   destroy(): void {
     this.resetMaskSmoother();
-    if (this.segmenter) {
-      try {
-        this.segmenter.close?.();
-      } catch {
-        // ignore
-      }
-      this.segmenter = null;
-    }
   }
 }

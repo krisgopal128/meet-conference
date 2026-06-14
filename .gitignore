@@ -48,6 +48,7 @@ logs/
 # ============================================
 .idea/
 .vscode/
+opencode.json
 *.swp
 *.swo
 .DS_Store

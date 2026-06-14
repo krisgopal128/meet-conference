@@ -1,15 +1,18 @@
 /**
  * useBackgroundBlurPreview — React hook for PreJoin canvas-based blur preview.
  *
- * Uses BackgroundBlurEngine to render processed video to a canvas overlay
- * positioned on top of the raw <video> element. The raw video is hidden
- * (opacity:0) and the canvas shows the composited result.
- *
- * Replaces the old usePreviewBackgroundBlur hook with GPU-only compositing.
+ * Uses a Web Worker for segmentation + BackgroundBlurEngine for compositing.
+ * Segmentation runs off the main thread to prevent UI freezes.
  */
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { BackgroundBlurEngine, type BackgroundBlurOptions } from '../utils/backgroundBlurEngine';
+
+interface MaskData {
+  pixels: Uint8Array;
+  w: number;
+  h: number;
+}
 
 export function useBackgroundBlurPreview(
   videoElement: HTMLVideoElement | null,
@@ -18,6 +21,8 @@ export function useBackgroundBlurPreview(
   fitMode: 'cover' | 'contain' = 'cover',
 ) {
   const engineRef = useRef<BackgroundBlurEngine | null>(null);
+  const workerRef = useRef<Worker | null>(null);
+  const workerReadyRef = useRef(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -27,20 +32,8 @@ export function useBackgroundBlurPreview(
   mirrorRef.current = mirror;
   const fitModeRef = useRef(fitMode);
   fitModeRef.current = fitMode;
-
-  // Initialize engine lazily
-  const ensureEngine = useCallback(async () => {
-    if (engineRef.current) return engineRef.current;
-    const engine = new BackgroundBlurEngine(optionsRef.current);
-    await engine.init();
-    engineRef.current = engine;
-    return engine;
-  }, []);
-
-  useEffect(() => {
-    if (!videoElement) return;
-    void ensureEngine();
-  }, [videoElement, ensureEngine]);
+  const lastMaskRef = useRef<MaskData | null>(null);
+  const isFrameInFlightRef = useRef(false);
 
   useEffect(() => {
     if (!videoElement) return;
@@ -72,7 +65,7 @@ export function useBackgroundBlurPreview(
       canvas.style.height = '100%';
       canvas.style.objectFit = fitModeRef.current;
       canvas.style.pointerEvents = 'none';
-      canvas.style.display = 'none'; // hidden until first processed frame
+      canvas.style.display = 'none';
       videoElement.parentElement?.appendChild(canvas);
       canvasRef.current = canvas;
 
@@ -89,9 +82,38 @@ export function useBackgroundBlurPreview(
     const ctx = ctxRef.current;
     if (!ctx) return;
 
-    void ensureEngine();
+    // Create engine (compositing only, no segmentation)
+    if (!engineRef.current) {
+      engineRef.current = new BackgroundBlurEngine(optionsRef.current);
+    }
 
-    const processLoop = () => {
+    // Create worker for segmentation
+    if (!workerRef.current) {
+      workerRef.current = new Worker(
+        new URL('../utils/segmentationWorker.ts', import.meta.url),
+        { type: 'module' },
+      );
+
+      workerRef.current.onmessage = (e: MessageEvent) => {
+        const msg = e.data;
+        if (msg.type === 'ready') {
+          workerReadyRef.current = true;
+        } else if (msg.type === 'mask') {
+          lastMaskRef.current = {
+            pixels: new Uint8Array(msg.mask),
+            w: msg.maskW,
+            h: msg.maskH,
+          };
+          isFrameInFlightRef.current = false;
+        } else if (msg.type === 'error') {
+          isFrameInFlightRef.current = false;
+        }
+      };
+
+      workerRef.current.postMessage({ type: 'init' });
+    }
+
+    const processLoop = async () => {
       const engine = engineRef.current;
       const opts = optionsRef.current;
 
@@ -100,12 +122,9 @@ export function useBackgroundBlurPreview(
         return;
       }
 
-      // Apply mirror transform to match the video element's CSS flip
       canvas.style.transform = mirrorRef.current ? 'scaleX(-1)' : 'none';
       canvas.style.objectFit = fitModeRef.current;
 
-      // Match canvas to video's native resolution (not container size).
-      // CSS object-fit handles the display scaling, preventing stretch.
       const vw = videoElement.videoWidth;
       const vh = videoElement.videoHeight;
       if (vw > 0 && vh > 0 && (canvas.width !== vw || canvas.height !== vh)) {
@@ -118,11 +137,34 @@ export function useBackgroundBlurPreview(
         videoElement.style.opacity = '0';
       }
 
-      // Sync options to engine
       engine.updateOptions(opts);
 
-      // Process frame (throttled internally to 30 FPS)
-      void engine.processFrame(videoElement, canvas, ctx, performance.now());
+      // Send frame to worker for segmentation (non-blocking)
+      if (workerReadyRef.current && !isFrameInFlightRef.current) {
+        try {
+          isFrameInFlightRef.current = true;
+          const bitmap = await createImageBitmap(videoElement, 0, 0, vw, vh);
+          if (workerRef.current && workerReadyRef.current) {
+            workerRef.current.postMessage(
+              { type: 'segment', bitmap, timestamp: performance.now() },
+              [bitmap],
+            );
+          } else {
+            bitmap.close();
+            isFrameInFlightRef.current = false;
+          }
+        } catch {
+          isFrameInFlightRef.current = false;
+        }
+      }
+
+      // Composite with last available mask
+      const mask = lastMaskRef.current;
+      if (mask) {
+        engine.compositeWithMask(videoElement, canvas, ctx, mask.pixels, mask.w, mask.h);
+      } else {
+        ctx.drawImage(videoElement, 0, 0);
+      }
 
       rafRef.current = requestAnimationFrame(processLoop);
     };
@@ -130,15 +172,23 @@ export function useBackgroundBlurPreview(
     rafRef.current = requestAnimationFrame(processLoop);
 
     return cleanup;
-  }, [videoElement, options.enabled, ensureEngine]);
+  }, [videoElement, options.enabled]);
 
-  // Cleanup engine on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (workerRef.current) {
+        workerRef.current.postMessage({ type: 'destroy' });
+        workerRef.current.terminate();
+        workerRef.current = null;
+      }
       if (engineRef.current) {
         engineRef.current.destroy();
         engineRef.current = null;
       }
+      workerReadyRef.current = false;
+      lastMaskRef.current = null;
     };
   }, []);
 }
