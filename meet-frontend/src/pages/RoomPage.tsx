@@ -6,7 +6,7 @@ import { ConferenceRoom } from '../components/room/ConferenceRoom';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { LobbyWaiting } from '../components/room/LobbyWaiting';
 import { useConnectionActions, useQualityMode, useScreenShareMode, useUIActions, useGridAspectRatio, useBackgroundBlurEnabled, useBackgroundBlurIntensity, useBackgroundMode, useBackgroundBgColor, useBackgroundImagePath, useMeetingControlsActions } from '../store/roomStore';
-import { enableBackgroundEffect, disableBackgroundEffect, updateBackgroundEffect, cleanupBackgroundEffect } from '../utils/backgroundEffectsManager';
+import { enableBackgroundEffect, disableBackgroundEffect, updateBackgroundEffect } from '../utils/backgroundEffectsManager';
 import { withOperationTimeout } from '../utils/asyncTimeout';
 import { getRoomSettings, roomsApi } from '../services/api';
 import {
@@ -242,9 +242,6 @@ function RoomContent({
       if (cameraTrack && 'setProcessor' in cameraTrack) {
         void disableBackgroundEffect(cameraTrack as Parameters<typeof disableBackgroundEffect>[0]);
       }
-      if (!localParticipant.isCameraEnabled) {
-        void cleanupBackgroundEffect();
-      }
       return;
     }
 
@@ -273,11 +270,10 @@ function RoomContent({
       }
     };
 
-    const timer = setTimeout(() => { void applyBlur(); }, 100);
+    void applyBlur();
 
     return () => {
       cancelled = true;
-      clearTimeout(timer);
     };
   }, [storeBlurEnabled, cameraTrack, backgroundBlurIntensity, backgroundMode, backgroundBgColor, backgroundImagePath, localParticipant.isCameraEnabled]);
 

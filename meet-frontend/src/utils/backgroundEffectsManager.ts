@@ -178,15 +178,16 @@ export async function enableBackgroundEffect(
 }
 
 /**
- * Disable background effect — puts the transformer into passthrough mode
- * WITHOUT removing the processor from the track. This prevents the video
- * freeze that occurs when stopProcessor() disconnects the TransformStream
- * mid-flight (stranding the last frame).
+ * Disable background effect — removes the processor from the track.
  *
- * The processor stays attached but passes frames through unmodified.
- * Full removal only happens via cleanupBackgroundEffect() on room leave.
+ * CRITICAL ORDERING: stopProcessor() MUST be called BEFORE transformer.destroy().
+ * If destroy() runs first, it breaks the TransformStream while frames are
+ * still in-flight, stranding the last VideoFrame and freezing the video.
+ *
+ * stopProcessor() properly disconnects the LiveKit ProcessorWrapper,
+ * restores the raw camera track, and THEN we clean up the transformer.
  */
-export async function disableBackgroundEffect(_track: VideoTrack): Promise<boolean> {
+export async function disableBackgroundEffect(track: VideoTrack): Promise<boolean> {
   if (!state.transformer && !state.processor) {
     state.isEnabled = false;
     return true;
@@ -197,20 +198,30 @@ export async function disableBackgroundEffect(_track: VideoTrack): Promise<boole
   state.lastToggleTime = Date.now();
 
   try {
+    // 1. Stop the processor FIRST — restores raw camera track
+    logger.info('[BgEffects] Stopping processor on track...');
+    try {
+      await withTimeout(track.stopProcessor(), OPERATION_TIMEOUT_MS);
+    } catch (err) {
+      logger.warn('[BgEffects] stopProcessor error (non-fatal):', err);
+    }
+
+    // 2. NOW destroy the transformer — safe because the TransformStream
+    //    is already disconnected, no frames are in-flight
     if (state.transformer) {
-      logger.info('[BgEffects] Setting transformer to passthrough mode...');
       try {
-        await withTimeout(
-          state.transformer.update({ enabled: false, mode: 'none' }),
-          OPERATION_TIMEOUT_MS,
-        );
+        await withTimeout(state.transformer.destroy(), OPERATION_TIMEOUT_MS);
       } catch (err) {
-        logger.warn('[BgEffects] Passthrough update error (non-fatal):', err);
+        logger.warn('[BgEffects] Transformer destroy error (non-fatal):', err);
       }
     }
 
+    state.transformer = null;
+    state.processor = null;
+    state.currentTrack = null;
     state.isEnabled = false;
-    logger.info('[BgEffects] Passthrough mode active — frames flow unmodified');
+
+    logger.info('[BgEffects] Processor fully removed — raw camera track restored');
     return true;
   } catch (err) {
     logger.error('[BgEffects] Failed to disable:', err);
