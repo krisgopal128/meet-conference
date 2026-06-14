@@ -29,3 +29,23 @@ interface DocumentPictureInPictureWindow extends Window {
 interface ExtendedWindow extends Window {
   documentPictureInPicture?: DocumentPictureInPicture;
 }
+
+// Insertable Streams API (Chrome/Edge) — not yet in TS lib.dom.d.ts
+declare var MediaStreamTrackProcessor: {
+  prototype: MediaStreamTrackProcessor;
+  new (options: { track: MediaStreamTrack; maxBufferSize?: number }): MediaStreamTrackProcessor;
+};
+
+interface MediaStreamTrackProcessor {
+  readable: ReadableStream<VideoFrame>;
+  writable?: WritableStream<VideoFrame>;
+}
+
+declare var MediaStreamTrackGenerator: {
+  prototype: MediaStreamTrackGenerator;
+  new (options: { kind: 'audio' | 'video' }): MediaStreamTrackGenerator;
+};
+
+interface MediaStreamTrackGenerator extends MediaStreamTrack {
+  writable: WritableStream<VideoFrame>;
+}
