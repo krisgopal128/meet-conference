@@ -45,6 +45,7 @@ export function usePreJoinAuth({ roomName, isCreateMode, searchParams }: UsePreJ
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     // Check for token parameter - teacher one-click join
     // Read token from hash fragment (not sent to server) with query param fallback
     const hashParams = new URLSearchParams(window.location.hash.slice(1));
@@ -78,6 +79,7 @@ export function usePreJoinAuth({ roomName, isCreateMode, searchParams }: UsePreJ
     if (roomName && !isCreateMode) {
       getRoom(roomName)
         .then((r) => {
+          if (cancelled) return;
           if (!r.data?.room) {
             // Room doesn't exist - redirect to 404
             navigate('/404', { replace: true });
@@ -86,10 +88,15 @@ export function usePreJoinAuth({ roomName, isCreateMode, searchParams }: UsePreJ
           setRoom(r.data.room);
         })
         .catch(() => {
+          if (cancelled) return;
           // Room not found - redirect to 404
           navigate('/404', { replace: true });
         });
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [roomName, isCreateMode, requestedRole, isAuthenticatedFromStore, navigate, searchParams, stripSensitiveTokenParams]);
 
   return {

@@ -1,7 +1,4 @@
 import dotenv from 'dotenv';
-import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
 dotenv.config(); // MUST be before other imports that read process.env
 
 import express from 'express';
@@ -133,8 +130,6 @@ app.get('/health', async (_req, res) => {
     res.json({
       status: 'ok',
       time: new Date().toISOString(),
-      env: config.nodeEnv,
-      version: JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../package.json'), 'utf-8')).version,
     });
   } catch {
     res.status(503).json({

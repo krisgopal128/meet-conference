@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { mkdir, writeFile } from 'fs/promises';
+import { mkdir, writeFile, readdir, stat, unlink } from 'fs/promises';
 import { join } from 'path';
 import { z } from 'zod';
 import { AuthRequest, authenticate, optionalAuth } from '../middleware/authenticate.js';
@@ -12,6 +12,7 @@ import { getCached, invalidatePattern, TTL_MEDIUM, TTL_SHORT } from '../services
 import logger from '../utils/logger.js';
 
 export const meetingsRouter = Router();
+let diagnosticsDirReady = false;
 
 // Interface for meeting with participant count
 interface MeetingWithParticipants {
@@ -113,7 +114,10 @@ meetingsRouter.post('/diagnostics', optionalAuth, async (req: AuthRequest, res: 
   try {
     const payload = diagnosticsPayloadSchema.parse(req.body);
     const diagnosticsDir = join(process.cwd(), 'runtime', 'diagnostics');
-    await mkdir(diagnosticsDir, { recursive: true });
+    if (!diagnosticsDirReady) {
+      await mkdir(diagnosticsDir, { recursive: true });
+      diagnosticsDirReady = true;
+    }
 
     const safeRoomName = (payload.roomName || 'unknown-room').replace(/[^a-zA-Z0-9-_]+/g, '-').slice(0, 80);
     const safeIdentity = (payload.participantIdentity || req.user?.id || 'anonymous').replace(/[^a-zA-Z0-9-_]+/g, '-').slice(0, 80);
@@ -129,6 +133,19 @@ meetingsRouter.post('/diagnostics', optionalAuth, async (req: AuthRequest, res: 
       }, null, 2),
       'utf8',
     );
+
+    // Cleanup old diagnostics files (> 24h)
+    try {
+      const files = await readdir(diagnosticsDir);
+      const now = Date.now();
+      for (const file of files) {
+        const filePath = join(diagnosticsDir, file);
+        const stats = await stat(filePath);
+        if (now - stats.mtimeMs > 24 * 60 * 60 * 1000) {
+          await unlink(filePath).catch(() => {});
+        }
+      }
+    } catch { /* ignore cleanup errors */ }
 
     res.status(202).json({
       message: 'Diagnostics accepted',

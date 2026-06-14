@@ -34,8 +34,6 @@ import { meetingsApi, updateRoomSettings } from '../../services/api';
 import { withOperationTimeout } from '../../utils/asyncTimeout';
 import logger from '../../utils/logger';
 
-let persistedSpeakerVolume = 100;
-
 export function SettingsPanel() {
   const room = useRoomContext();
   const { localParticipant } = useLocalParticipant();
@@ -69,8 +67,9 @@ export function SettingsPanel() {
   // Action hooks
   const { toggleSettings, openSettingsView, toggleMirrorLocalVideo, toggleBackgroundBlur, setBackgroundBlurLevel, setBackgroundBlurIntensity, setBackgroundMode, setBackgroundBgColor, setBackgroundImagePath, setQualityMode, setScreenShareMode, setGridAspectRatio, setVideoFitMode, clearDiagnosticsLog } = useUIActions();
   
-  const [speakerVolume, setSpeakerVolume] = useState(() => persistedSpeakerVolume);
-  const speakerVolumeRef = useRef(persistedSpeakerVolume);
+  const persistedSpeakerVolumeRef = useRef(100);
+  const [speakerVolume, setSpeakerVolume] = useState(() => persistedSpeakerVolumeRef.current);
+  const speakerVolumeRef = useRef(persistedSpeakerVolumeRef.current);
 
   const applyVolumeToAllRemoteParticipants = useCallback((volume: number) => {
     const normalizedVolume = volume / 100;
@@ -86,7 +85,7 @@ export function SettingsPanel() {
   const handleSpeakerVolumeChange = (value: number) => {
     setSpeakerVolume(value);
     speakerVolumeRef.current = value;
-    persistedSpeakerVolume = value;
+    persistedSpeakerVolumeRef.current = value;
     applyVolumeToAllRemoteParticipants(value);
   };
 
@@ -263,11 +262,6 @@ export function SettingsPanel() {
       toast.error('Failed to switch microphone');
     }
   }
-
-  // Keep reference for connection info display
-  const _room = room;
-  const _participant = localParticipant;
-  void _room; void _participant;
 
   const remoteParticipantCount = room.remoteParticipants.size;
   const connectionState = String(room.state);

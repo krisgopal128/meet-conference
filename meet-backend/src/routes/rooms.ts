@@ -9,79 +9,17 @@ import {
   getRoomInfo,
   deleteRoom,
   listParticipants,
-  getParticipantInfo,
-  removeParticipant,
   participantCanModerate,
-  isModeratorParticipant,
-  muteAllAudioTracks,
-  muteVideoTrack,
-  disableScreenShareTrack,
 } from '../services/livekit.js';
-import { addKickedParticipant } from '../services/redis.js';
 import { getCached, invalidatePattern, TTL_SHORT } from '../services/cache.js';
-import { processLobbyParticipants } from '../services/lobbyService.js';
-import { sanitizeRoomName, sanitizeDescription, sanitizeChatMessage } from '../utils/validation.js';
+import { sanitizeRoomName, sanitizeDescription } from '../utils/validation.js';
 import logger from '../utils/logger.js';
-import { query, queryOne } from '../services/database.js';
 import * as roomService from '../services/roomService.js';
 import type { RoomRow } from '../services/roomService.js';
+import { participantsRouter } from './roomsParticipants.js';
+import { chatRouter } from './roomsChat.js';
 
 export const roomsRouter = Router();
-
-async function requireModeratorRoomAccess(roomName: string, userId: string) {
-  const room = await roomService.getRoomByName(roomName);
-
-  if (!room) {
-    return { room: null, allowed: false as const };
-  }
-
-  const allowed = await participantCanModerate(roomName, userId, room.host_id);
-  return { room, allowed };
-}
-
-async function assertModerator(res: Response, name: string, userId: string, action = 'perform this action') {
-  const { room, allowed } = await requireModeratorRoomAccess(name, userId);
-  if (!room) { res.status(404).json({ error: 'Room not found' }); return null; }
-  if (!allowed) { res.status(403).json({ error: `Only moderators can ${action}` }); return null; }
-  return room;
-}
-
-async function executeKick(name: string, identity: string) {
-  let guestName: string | undefined;
-  try {
-    const participant = await getParticipantInfo(name, identity);
-    guestName = participant.name || undefined;
-  } catch { /* participant may have left */ }
-  await removeParticipant(name, identity);
-  await addKickedParticipant(name, identity, guestName);
-}
-
-async function canAccessRoomChat(roomName: string, userId: string) {
-  const room = await roomService.getRoomByName(roomName);
-
-  if (!room) {
-    return { room: null, allowed: false as const };
-  }
-
-  if (room.host_id === userId) {
-    return { room, allowed: true as const };
-  }
-
-  // Check DB for active meeting participation instead of LiveKit API call
-  const participant = await queryOne<{ identity: string }>(
-    `SELECT mp.identity 
-     FROM meeting_participants mp
-     JOIN meetings m ON m.id = mp.meeting_id
-     WHERE m.room_id = $1 AND mp.user_id = $2 AND mp.left_at IS NULL
-     ORDER BY m.started_at DESC LIMIT 1`,
-    [room.id, userId]
-  );
-
-  return {
-    room,
-    allowed: !!participant,
-  };
-}
 
 // Enriched room with active status
 interface EnrichedRoom extends RoomRow {
@@ -141,86 +79,86 @@ const updateRoomSchema = z.object({
        return res.status(409).json({ error: 'Room name already exists' });
      }
 
-     // Create room in database
+      // Create room in database
       const room = await roomService.createRoom(
-         roomName,
-         req.user!.id,
-         data.title || null,
-        description,
-        roomPasswordHash,
-        data.maxParticipants,
-        data.emptyTimeout,
-        data.startsAt ? new Date(data.startsAt) : null,
-        data.endsAt ? new Date(data.endsAt) : null,
-        data.settings || null,
-        data.waitingRoomEnabled
+          roomName,
+          req.user!.id,
+          data.title || null,
+         description,
+         roomPasswordHash,
+         data.maxParticipants,
+         data.emptyTimeout,
+         data.startsAt ? new Date(data.startsAt) : null,
+         data.endsAt ? new Date(data.endsAt) : null,
+         data.settings || null,
+         data.waitingRoomEnabled
       );
 
-     // Optionally create room in LiveKit (auto_create: false in config)
-     // We create it here to set limits
+      // Optionally create room in LiveKit (auto_create: false in config)
+      // We create it here to set limits
+      try {
+        await createLiveKitRoom(roomName, {
+          maxParticipants: data.maxParticipants,
+          emptyTimeout: data.emptyTimeout,
+           metadata: JSON.stringify({ title: data.title, hostId: req.user!.id }),
+        });
+      } catch (lkError) {
+        logger.warn('LiveKit room creation failed (may already exist):', lkError);
+      }
+
+       res.status(201).json({ room });
+
+       // Invalidate room list caches
+       invalidatePattern('cache:rooms:*').catch(() => {});
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ error: 'Validation error', details: error.errors });
+        }
+        if (error instanceof roomService.RoomServiceError && error.code === 'DUPLICATE_NAME') {
+          return res.status(409).json({ error: 'Room name already exists' });
+        }
+        logger.error('Create room error:', error);
+        res.status(500).json({ error: 'Failed to create room' });
+      }
+   });
+
+   // GET /rooms - List all rooms (user's rooms or all active)
+   roomsRouter.get('/', authenticate, async (req: AuthRequest, res: Response) => {
      try {
-       await createLiveKitRoom(roomName, {
-         maxParticipants: data.maxParticipants,
-         emptyTimeout: data.emptyTimeout,
-          metadata: JSON.stringify({ title: data.title, hostId: req.user!.id }),
-       });
-     } catch (lkError) {
-       logger.warn('LiveKit room creation failed (may already exist):', lkError);
-     }
+       const { all } = req.query;
+       const allFlag = all === 'true' ? 'true' : 'false';
 
-      res.status(201).json({ room });
+       const result = await getCached<{ rooms: unknown[] }>(
+          `cache:rooms:list:${req.user!.id}:${allFlag}`,
+         TTL_SHORT,
+         async () => {
+           let rooms: RoomRow[];
+           if (all === 'true') {
+             rooms = await roomService.getAllRooms();
+           } else {
+             rooms = await roomService.getUserRooms(req.user!.id);
+           }
 
-      // Invalidate room list caches
-      invalidatePattern('cache:rooms:*').catch(() => {});
+           // Get active rooms from LiveKit
+           const activeRooms = await listRooms();
+           const activeRoomNames = new Set(activeRooms.map(r => r.name));
+
+           // Merge with database rooms
+           const enrichedRooms: EnrichedRoom[] = rooms.map((room) => ({
+             ...room,
+             isActive: activeRoomNames.has(room.name),
+           }));
+
+           return { rooms: enrichedRooms };
+         },
+       );
+
+       res.json(result);
      } catch (error) {
-       if (error instanceof z.ZodError) {
-         return res.status(400).json({ error: 'Validation error', details: error.errors });
-       }
-       if (error instanceof roomService.RoomServiceError && error.code === 'DUPLICATE_NAME') {
-         return res.status(409).json({ error: 'Room name already exists' });
-       }
-       logger.error('Create room error:', error);
-       res.status(500).json({ error: 'Failed to create room' });
+       logger.error('List rooms error:', error);
+       res.status(500).json({ error: 'Failed to list rooms' });
      }
-  });
-
-  // GET /rooms - List all rooms (user's rooms or all active)
-  roomsRouter.get('/', authenticate, async (req: AuthRequest, res: Response) => {
-    try {
-      const { all } = req.query;
-      const allFlag = all === 'true' ? 'true' : 'false';
-
-      const result = await getCached<{ rooms: unknown[] }>(
-         `cache:rooms:list:${req.user!.id}:${allFlag}`,
-        TTL_SHORT,
-        async () => {
-          let rooms: RoomRow[];
-          if (all === 'true') {
-            rooms = await roomService.getAllRooms();
-          } else {
-            rooms = await roomService.getUserRooms(req.user!.id);
-          }
-
-          // Get active rooms from LiveKit
-          const activeRooms = await listRooms();
-          const activeRoomNames = new Set(activeRooms.map(r => r.name));
-
-          // Merge with database rooms
-          const enrichedRooms: EnrichedRoom[] = rooms.map((room) => ({
-            ...room,
-            isActive: activeRoomNames.has(room.name),
-          }));
-
-          return { rooms: enrichedRooms };
-        },
-      );
-
-      res.json(result);
-    } catch (error) {
-      logger.error('List rooms error:', error);
-      res.status(500).json({ error: 'Failed to list rooms' });
-    }
-  });
+   });
 
  // GET /rooms/:name - Get room details (authenticated - protects room metadata)
  roomsRouter.get('/:name', optionalAuth, async (req: AuthRequest, res: Response) => {
@@ -300,7 +238,7 @@ const updateRoomSchema = z.object({
 
       if (room.host_id !== req.user!.id) {
         return res.status(403).json({ error: 'Only the host can update this room' });
-     }
+      }
 
       const updated = await roomService.updateRoom(name, {
         title: data.title,
@@ -336,283 +274,32 @@ const updateRoomSchema = z.object({
 
       if (room.host_id !== req.user!.id) {
         return res.status(403).json({ error: 'Only the host can delete this room' });
-     }
+      }
 
-     // Delete from LiveKit
-     try {
-       await deleteRoom(name);
-     } catch {
-       // Room may not exist
-     }
+      // Delete from LiveKit
+      try {
+        await deleteRoom(name);
+      } catch {
+        // Room may not exist
+      }
 
-      // Delete from database
-      await roomService.deleteRoomByName(name);
+       // Delete from database
+       await roomService.deleteRoomByName(name);
 
-      // Invalidate room caches
-      await invalidatePattern('cache:rooms:*');
-      await invalidatePattern('cache:meetings:*');
+       // Invalidate room caches
+       await invalidatePattern('cache:rooms:*');
+       await invalidatePattern('cache:meetings:*');
 
-      res.json({ message: 'Room deleted' });
-   } catch (error) {
-     logger.error('Delete room error:', error);
-     res.status(500).json({ error: 'Failed to delete room' });
-   }
- });
-
-// DELETE /rooms/:name/participants/:identity - Remove participant from room
-roomsRouter.delete('/:name/participants/:identity', authenticate, async (req: AuthRequest, res: Response) => {
-  try {
-    const user = requireUser(req);
-    if (!user) return res.status(401).json({ error: 'Authentication required' });
-    const { name, identity } = req.params;
-
-    const { room, allowed } = await requireModeratorRoomAccess(name, user.id);
-
-    if (!room) {
-      return res.status(404).json({ error: 'Room not found' });
+       res.json({ message: 'Room deleted' });
+    } catch (error) {
+      logger.error('Delete room error:', error);
+      res.status(500).json({ error: 'Failed to delete room' });
     }
+  });
 
-    if (!allowed) {
-      return res.status(403).json({ error: 'Only moderators can remove participants' });
-    }
-
-    await executeKick(name, identity);
-
-    res.json({ message: 'Participant removed' });
-  } catch (error) {
-    logger.error('Kick participant error:', error);
-    res.status(500).json({ error: 'Failed to remove participant' });
-  }
-});
-
-// POST /rooms/:name/mute/:identity - Mute participant's audio
-roomsRouter.post('/:name/mute/:identity', authenticate, async (req: AuthRequest, res: Response) => {
-  try {
-    const { name, identity } = req.params;
-
-    const room = await assertModerator(res, name, req.user!.id, 'mute participants');
-    if (!room) return;
-
-    await muteAllAudioTracks(name, identity);
-    res.json({ message: 'Participant muted' });
-  } catch (error) {
-    logger.error('Mute participant error:', error);
-    res.status(500).json({ error: 'Failed to mute participant' });
-  }
-});
-
-// POST /rooms/:name/mute-video/:identity - Mute participant's video (camera)
-roomsRouter.post('/:name/mute-video/:identity', authenticate, async (req: AuthRequest, res: Response) => {
-  try {
-    const { name, identity } = req.params;
-
-    const room = await assertModerator(res, name, req.user!.id, 'disable cameras');
-    if (!room) return;
-
-    await muteVideoTrack(name, identity);
-    res.json({ message: 'Participant camera disabled' });
-  } catch (error) {
-    logger.error('Mute video error:', error);
-    res.status(500).json({ error: 'Failed to disable camera' });
-  }
-});
-
-// POST /rooms/:name/mute-all - Mute all participants
-roomsRouter.post('/:name/mute-all', authenticate, async (req: AuthRequest, res: Response) => {
-  try {
-    const { name } = req.params;
-
-    const room = await assertModerator(res, name, req.user!.id, 'mute all participants');
-    if (!room) return;
-
-    // Mute everyone except moderators in parallel
-    const participants = await listParticipants(name);
-    const nonModerators = participants.filter(p => !isModeratorParticipant(p, room.host_id));
-    
-    const results = await Promise.allSettled(
-      nonModerators.map(p => muteAllAudioTracks(name, p.identity))
-    );
-    
-    const muted = results.filter(r => r.status === 'fulfilled').length;
-    const failed = results.filter(r => r.status === 'rejected').length;
-    if (failed > 0) {
-      logger.warn(`[Mute All] ${failed}/${nonModerators.length} mutes failed`);
-    }
-    res.json({ message: 'All participants muted', muted, failed });
-  } catch (error) {
-    logger.error('Mute all error:', error);
-    res.status(500).json({ error: 'Failed to mute all participants' });
-  }
-});
-
-// POST /rooms/:name/kick/:identity - Remove participant from room (alias)
-roomsRouter.post('/:name/kick/:identity', authenticate, async (req: AuthRequest, res: Response) => {
-  try {
-    const user = requireUser(req);
-    if (!user) return res.status(401).json({ error: 'Authentication required' });
-    const { name, identity } = req.params;
-
-    const { room, allowed } = await requireModeratorRoomAccess(name, user.id);
-
-    if (!room) {
-      return res.status(404).json({ error: 'Room not found' });
-    }
-
-    if (process.env.NODE_ENV === 'development') {
-      logger.info(`[KICK] User ${user.id} trying to kick ${identity} from room ${name}`);
-      logger.info(`[KICK] Room host_id: ${room.host_id}, User id: ${user.id}`);
-    }
-
-    if (!allowed) {
-      return res.status(403).json({ error: 'Only moderators can remove participants' });
-    }
-
-    await executeKick(name, identity);
-    
-    res.json({ message: 'Participant removed' });
-  } catch (error) {
-    logger.error('Kick participant error:', error);
-    res.status(500).json({ error: 'Failed to remove participant' });
-  }
-});
-
- // POST /rooms/:name/admit/:identity - Admit participant from lobby
- roomsRouter.post('/:name/admit/:identity', authenticate, async (req: AuthRequest, res: Response) => {
-   try {
-     const user = requireUser(req);
-    if (!user) return res.status(401).json({ error: 'Authentication required' });
-     const { name, identity } = req.params;
-
-     const room = await roomService.getRoomByName(name);
-
-     if (!room) {
-       return res.status(404).json({ error: 'Room not found' });
-     }
-
-     const allowed = await participantCanModerate(name, user.id, room.host_id);
-     if (!allowed) {
-       return res.status(403).json({ error: 'Only moderators can admit participants' });
-     }
-
-     await processLobbyParticipants(name, [{ identity }], 'admit');
-     res.json({ message: 'Participant admitted' });
-   } catch (error) {
-     logger.error('Admit participant error:', error);
-     res.status(500).json({ error: 'Failed to admit participant' });
-   }
- });
-
- // POST /rooms/:name/admit-all - Admit every participant currently waiting in the lobby
- roomsRouter.post('/:name/admit-all', authenticate, async (req: AuthRequest, res: Response) => {
-   try {
-     const user = requireUser(req);
-    if (!user) return res.status(401).json({ error: 'Authentication required' });
-     const { name } = req.params;
-
-     const room = await roomService.getRoomByName(name);
-
-     if (!room) {
-       return res.status(404).json({ error: 'Room not found' });
-     }
-
-     const allowed = await participantCanModerate(name, user.id, room.host_id);
-     if (!allowed) {
-       return res.status(403).json({ error: 'Only moderators can admit participants' });
-     }
-
-     const participants = await listParticipants(name);
-     const admitted = await processLobbyParticipants(name, participants, 'admit');
-
-     res.json({ message: 'All lobby participants admitted', count: admitted });
-   } catch (error) {
-     logger.error('Admit all participants error:', error);
-     res.status(500).json({ error: 'Failed to admit all participants' });
-   }
- });
-
- // POST /rooms/:name/deny-all - Remove every participant currently waiting in the lobby
- roomsRouter.post('/:name/deny-all', authenticate, async (req: AuthRequest, res: Response) => {
-   try {
-     const user = requireUser(req);
-    if (!user) return res.status(401).json({ error: 'Authentication required' });
-     const { name } = req.params;
-
-     const room = await roomService.getRoomByName(name);
-
-     if (!room) {
-       return res.status(404).json({ error: 'Room not found' });
-     }
-
-     const allowed = await participantCanModerate(name, user.id, room.host_id);
-     if (!allowed) {
-       return res.status(403).json({ error: 'Only moderators can deny participants' });
-     }
-
-     const participants = await listParticipants(name);
-     const denied = await processLobbyParticipants(name, participants, 'deny');
-
-     res.json({ message: 'All lobby participants denied', count: denied });
-   } catch (error) {
-     logger.error('Deny all participants error:', error);
-     res.status(500).json({ error: 'Failed to deny all participants' });
-   }
- });
-
-// POST /rooms/:name/disable-screen/:identity - Stop participant screen share
-roomsRouter.post('/:name/disable-screen/:identity', authenticate, async (req: AuthRequest, res: Response) => {
-  try {
-    const user = requireUser(req);
-    if (!user) return res.status(401).json({ error: 'Authentication required' });
-    const { name, identity } = req.params;
-
-    const { room, allowed } = await requireModeratorRoomAccess(name, user.id);
-    if (!room) {
-      return res.status(404).json({ error: 'Room not found' });
-    }
-
-    if (!allowed) {
-      return res.status(403).json({ error: 'Only moderators can disable screen share' });
-    }
-
-    await disableScreenShareTrack(name, identity);
-    res.json({ message: 'Participant screen share disabled' });
-  } catch (error) {
-    logger.error('Disable screen share error:', error);
-    res.status(500).json({ error: 'Failed to disable screen share' });
-  }
-});
-
-// POST /rooms/:name/disable-all-cameras - Disable cameras for all non-moderator participants
-roomsRouter.post('/:name/disable-all-cameras', authenticate, async (req: AuthRequest, res: Response) => {
-  try {
-    const user = requireUser(req);
-    if (!user) return res.status(401).json({ error: 'Authentication required' });
-    const { name } = req.params;
-
-    const { room, allowed } = await requireModeratorRoomAccess(name, user.id);
-    if (!room) {
-      return res.status(404).json({ error: 'Room not found' });
-    }
-
-    if (!allowed) {
-      return res.status(403).json({ error: 'Only moderators can disable all cameras' });
-    }
-
-    const participants = await listParticipants(name);
-    const nonModerators = participants.filter(p => !isModeratorParticipant(p, room.host_id));
-
-    // Disable all cameras in parallel
-    const results = await Promise.allSettled(
-      nonModerators.map(p => muteVideoTrack(name, p.identity))
-    );
-    const disabled = results.filter(r => r.status === 'fulfilled').length;
-
-    res.json({ message: 'All participant cameras disabled', count: disabled });
-  } catch (error) {
-    logger.error('Disable all cameras error:', error);
-    res.status(500).json({ error: 'Failed to disable all participant cameras' });
-  }
-});
+// Mount participant management and chat sub-routers (paths remain relative to /rooms)
+roomsRouter.use(participantsRouter);
+roomsRouter.use(chatRouter);
 
  // POST /rooms/:name/start - Start the meeting (host only)
  roomsRouter.post('/:name/start', authenticate, async (req: AuthRequest, res: Response) => {
@@ -643,20 +330,20 @@ roomsRouter.post('/:name/disable-all-cameras', authenticate, async (req: AuthReq
      // Update room status to active
      await roomService.setRoomActive(room.id);
 
-      // Create a new meeting record
-      const meetingId = await roomService.createMeeting(room.id);
+       // Create a new meeting record
+       const meetingId = await roomService.createMeeting(room.id);
 
-      // Invalidate caches on meeting start
-      invalidatePattern('cache:rooms:*').catch(() => {});
-      invalidatePattern('cache:meetings:*').catch(() => {});
-      invalidatePattern('cache:stats:*').catch(() => {});
+       // Invalidate caches on meeting start
+       invalidatePattern('cache:rooms:*').catch(() => {});
+       invalidatePattern('cache:meetings:*').catch(() => {});
+       invalidatePattern('cache:stats:*').catch(() => {});
 
-      res.json({ message: 'Meeting started', status: 'active', meetingId });
-   } catch (error) {
-     logger.error('Start meeting error:', error);
-     res.status(500).json({ error: 'Failed to start meeting' });
-   }
- });
+       res.json({ message: 'Meeting started', status: 'active', meetingId });
+    } catch (error) {
+      logger.error('Start meeting error:', error);
+      res.status(500).json({ error: 'Failed to start meeting' });
+    }
+  });
 
  // POST /rooms/:name/end - End the meeting (host only)
  roomsRouter.post('/:name/end', authenticate, async (req: AuthRequest, res: Response) => {
@@ -692,203 +379,17 @@ roomsRouter.post('/:name/disable-all-cameras', authenticate, async (req: AuthReq
        // Room may not exist
      }
 
-      res.json({ message: 'Meeting ended', status: 'ended' });
+       res.json({ message: 'Meeting ended', status: 'ended' });
 
-      // Invalidate caches on meeting end
-      invalidatePattern('cache:rooms:*').catch(() => {});
-      invalidatePattern('cache:meetings:*').catch(() => {});
-      invalidatePattern('cache:stats:*').catch(() => {});
-   } catch (error) {
-     logger.error('End meeting error:', error);
-     res.status(500).json({ error: 'Failed to end meeting' });
-   }
- });
-
- // GET /rooms/:name/lobby - List participants in lobby
- roomsRouter.get('/:name/lobby', authenticate, async (req: AuthRequest, res: Response) => {
-   try {
-     const user = requireUser(req);
-    if (!user) return res.status(401).json({ error: 'Authentication required' });
-     const { name } = req.params;
-
-     const room = await roomService.getRoomByName(name);
-
-     if (!room) {
-       return res.status(404).json({ error: 'Room not found' });
-     }
-
-     const allowed = await participantCanModerate(name, user.id, room.host_id);
-     if (!allowed) {
-       return res.status(403).json({ error: 'Only moderators can view lobby' });
-     }
-
-     // Get all participants and filter those in lobby (can't publish)
-     const participants = await listParticipants(name);
-     const lobbyParticipants = participants.filter(p => !p.permission?.canPublish);
-
-     res.json({ lobby: lobbyParticipants });
-   } catch (error) {
-     logger.error('List lobby error:', error);
-     res.status(500).json({ error: 'Failed to list lobby' });
-   }
- });
-
-// GET /rooms/:name/chat - Get room chat history across all sessions of the room
-roomsRouter.get('/:name/chat', authenticate, async (req: AuthRequest, res: Response) => {
-  try {
-    const user = requireUser(req);
-    if (!user) return res.status(401).json({ error: 'Authentication required' });
-    const { name } = req.params;
-    const { limit = 200 } = req.query;
-    const parsedLimit = Math.min(parseInt(limit as string, 10) || 200, 500);
-
-    const { room, allowed } = await canAccessRoomChat(name, user.id);
-    if (!room) {
-      return res.status(404).json({ error: 'Room not found' });
+       // Invalidate caches on meeting end
+       invalidatePattern('cache:rooms:*').catch(() => {});
+       invalidatePattern('cache:meetings:*').catch(() => {});
+       invalidatePattern('cache:stats:*').catch(() => {});
+    } catch (error) {
+      logger.error('End meeting error:', error);
+      res.status(500).json({ error: 'Failed to end meeting' });
     }
-
-    if (!allowed) {
-      return res.status(403).json({ error: 'Only active participants or the host can view room chat history' });
-    }
-
-    const messages = await query(
-      `SELECT cm.id,
-              cm.content,
-              cm.created_at,
-              cm.message_type,
-              COALESCE(u.id::text, mp.identity) as sender_identity,
-              COALESCE(u.name, mp.identity) as sender_name
-       FROM chat_messages cm
-       JOIN meetings m ON m.id = cm.meeting_id
-       LEFT JOIN users u ON u.id = cm.user_id
-       LEFT JOIN meeting_participants mp ON mp.meeting_id = cm.meeting_id AND mp.user_id = cm.user_id
-       WHERE m.room_id = $1
-       ORDER BY cm.created_at ASC
-       LIMIT $2`,
-      [room.id, parsedLimit]
-    );
-
-    res.json({ messages });
-  } catch (error) {
-    logger.error('Get room chat history error:', error);
-    res.status(500).json({ error: 'Failed to get room chat history' });
-  }
-});
-
-// POST /rooms/:name/chat - Persist a chat message for the latest room session
-roomsRouter.post('/:name/chat', authenticate, async (req: AuthRequest, res: Response) => {
-  try {
-    const user = requireUser(req);
-    if (!user) return res.status(401).json({ error: 'Authentication required' });
-    const { name } = req.params;
-    const { content } = req.body;
-    const validMessageTypes = ['text', 'system', 'file', 'emoji'];
-    const messageType = validMessageTypes.includes(req.body.messageType) ? req.body.messageType : 'text';
-
-    // Sanitize chat message
-    let sanitizedContent: string;
-    try {
-      sanitizedContent = sanitizeChatMessage(content);
-    } catch (validationError) {
-      return res.status(400).json({ 
-        error: validationError instanceof Error ? validationError.message : 'Invalid message content' 
-      });
-    }
-
-    const { room, allowed } = await canAccessRoomChat(name, user.id);
-    if (!room) {
-      return res.status(404).json({ error: 'Room not found' });
-    }
-
-    if (!allowed) {
-      return res.status(403).json({ error: 'Only active participants or the host can send room chat messages' });
-    }
-
-    if (room.settings?.participantsCanChat === false && room.host_id !== user.id) {
-      return res.status(403).json({ error: 'Chat is disabled for participants in this room' });
-    }
-
-    const latestMeeting = await queryOne<{ id: string }>(
-      `SELECT id
-       FROM meetings
-       WHERE room_id = $1
-       ORDER BY started_at DESC
-       LIMIT 1`,
-      [room.id]
-    );
-
-    if (!latestMeeting) {
-      return res.status(409).json({ error: 'No active or historical meeting session found for this room yet' });
-    }
-
-    const [message] = await query<{
-      id: string;
-      content: string;
-      created_at: Date;
-      message_type: string;
-    }>(
-      `INSERT INTO chat_messages (meeting_id, user_id, content, message_type)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, content, created_at, message_type`,
-      [latestMeeting.id, user.id, sanitizedContent, messageType]
-    );
-
-    res.status(201).json({
-      message: {
-        id: message.id,
-        content: message.content,
-        createdAt: message.created_at,
-        messageType: message.message_type,
-        senderIdentity: user.id,
-        senderName: user.name ?? user.email.split('@')[0],
-      },
-    });
-  } catch (error) {
-    logger.error('Persist room chat message error:', error);
-    res.status(500).json({ error: 'Failed to persist room chat message' });
-  }
-});
-
- // GET /rooms/:name/participants - List all participants in room (authenticated only)
- roomsRouter.get('/:name/participants', authenticate, async (req: AuthRequest, res: Response) => {
-   try {
-     const user = requireUser(req);
-    if (!user) return res.status(401).json({ error: 'Authentication required' });
-     const { name } = req.params;
-
-     // Check if room exists in database
-     const room = await roomService.getRoomByName(name);
-
-     if (!room) {
-       return res.status(404).json({ error: 'Room not found' });
-     }
-
-     // Only host and participants can view the participant list
-     if (room.host_id !== user.id) {
-       // Check if user is an active participant
-       const isParticipant = await queryOne<{ identity: string }>(
-         `SELECT mp.identity 
-          FROM meeting_participants mp
-          JOIN meetings m ON m.id = mp.meeting_id
-          WHERE m.room_id = $1 AND mp.user_id = $2 AND mp.left_at IS NULL
-          ORDER BY m.started_at DESC LIMIT 1`,
-         [room.id, user.id]
-       );
-
-       if (!isParticipant) {
-         return res.status(403).json({ error: 'Only participants can view the participant list' });
-       }
-     }
-
-     // Get participants from LiveKit
-     const participants = await listParticipants(name);
-
-     res.json({ participants });
-   } catch (error) {
-     logger.error('List participants error:', error);
-     res.status(500).json({ error: 'Failed to list participants' });
-   }
- });
+  });
 
 // Room settings schema
 const roomSettingsSchema = z.object({
@@ -918,27 +419,27 @@ const roomSettingsSchema = z.object({
      }
 
      // Return settings or defaults
-      const settings = room.settings || {
-        gridAspectRatio: '16:9',
-        videoFitMode: 'cover',
-        meetingLocked: false,
-        participantsCanShareScreen: true,
-        participantsCanChat: true,
-        participantsCanUnmute: true,
-        participantsCanTurnOnCamera: true,
-        faceCrop: {
-          enabled: false,
-          aspectRatio: '16:9',
-          model: 'tiny',
-        },
-     };
+       const settings = room.settings || {
+         gridAspectRatio: '16:9',
+         videoFitMode: 'cover',
+         meetingLocked: false,
+         participantsCanShareScreen: true,
+         participantsCanChat: true,
+         participantsCanUnmute: true,
+         participantsCanTurnOnCamera: true,
+         faceCrop: {
+           enabled: false,
+           aspectRatio: '16:9',
+           model: 'tiny',
+         },
+      };
 
-     res.json({ settings });
-   } catch (error) {
-     logger.error('Get room settings error:', error);
-     res.status(500).json({ error: 'Failed to get room settings' });
-   }
- });
+      res.json({ settings });
+    } catch (error) {
+      logger.error('Get room settings error:', error);
+      res.status(500).json({ error: 'Failed to get room settings' });
+    }
+  });
 
  // PUT /rooms/:name/settings - Update room settings (moderator only)
  roomsRouter.put('/:name/settings', authenticate, async (req: AuthRequest, res: Response) => {

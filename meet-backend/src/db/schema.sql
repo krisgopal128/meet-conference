@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
 -- ============================================
 -- ROOMS TABLE
@@ -47,9 +47,9 @@ CREATE TABLE IF NOT EXISTS rooms (
     ends_at TIMESTAMPTZ
 );
 
-CREATE INDEX idx_rooms_name ON rooms(name);
-CREATE INDEX idx_rooms_host_id ON rooms(host_id);
-CREATE INDEX idx_rooms_status ON rooms(status);
+CREATE INDEX IF NOT EXISTS idx_rooms_name ON rooms(name);
+CREATE INDEX IF NOT EXISTS idx_rooms_host_id ON rooms(host_id);
+CREATE INDEX IF NOT EXISTS idx_rooms_status ON rooms(status);
 
 -- ============================================
 -- MEETINGS TABLE (Session records)
@@ -65,9 +65,9 @@ CREATE TABLE IF NOT EXISTS meetings (
     status VARCHAR(50) DEFAULT 'ongoing' -- ongoing, ended
 );
 
-CREATE INDEX idx_meetings_room_id ON meetings(room_id);
-CREATE INDEX idx_meetings_started_at ON meetings(started_at);
-CREATE UNIQUE INDEX idx_meetings_one_active_per_room ON meetings(room_id) WHERE ended_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_meetings_room_id ON meetings(room_id);
+CREATE INDEX IF NOT EXISTS idx_meetings_started_at ON meetings(started_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_meetings_one_active_per_room ON meetings(room_id) WHERE ended_at IS NULL;
 
 -- ============================================
 -- MEETING PARTICIPANTS TABLE
@@ -108,8 +108,8 @@ CREATE TABLE IF NOT EXISTS scheduled_meetings (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_scheduled_meetings_host_id ON scheduled_meetings(host_id);
-CREATE INDEX idx_scheduled_meetings_scheduled_start ON scheduled_meetings(scheduled_start);
+CREATE INDEX IF NOT EXISTS idx_scheduled_meetings_host_id ON scheduled_meetings(host_id);
+CREATE INDEX IF NOT EXISTS idx_scheduled_meetings_scheduled_start ON scheduled_meetings(scheduled_start);
 
 -- ============================================
 -- REFRESH TOKENS TABLE
@@ -123,8 +123,8 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
     revoked BOOLEAN DEFAULT FALSE
 );
 
-CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
-CREATE INDEX idx_refresh_tokens_token_hash ON refresh_tokens(token_hash);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token_hash ON refresh_tokens(token_hash);
 
 -- ============================================
 -- UPDATE TRIGGER FUNCTION

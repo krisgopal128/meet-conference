@@ -1028,9 +1028,9 @@ export const MoreMenu = memo(function MoreMenu({
         className="absolute bottom-full right-0 mb-2 mr-2 bg-surface-700 rounded-xl shadow-lg border border-surface-600 py-1 min-w-[160px] max-w-[calc(100vw-2rem)] max-h-[70vh] overflow-y-auto z-50 animate-fade-in"
         role="menu"
       >
-        {items.map((item, i) => (
+        {items.map((item) => (
           <button
-            key={i}
+            key={item.label}
             onClick={() => { item.onClick(); onClose(); }}
             className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white hover:bg-surface-600 transition-colors cursor-pointer whitespace-nowrap"
             role="menuitem"

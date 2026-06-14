@@ -31,6 +31,7 @@ import { MobileSheet } from '../MobileSheet';
 import { useDataChannelHandler } from '../../hooks/useDataChannelHandler';
 import { useJoinLeaveSounds } from '../../hooks/useJoinLeaveSounds';
 import { useQualityMonitoring } from '../../hooks/useQualityMonitoring';
+import { useCallHealthMonitor } from '../../hooks/useCallHealthMonitor';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { Users, Loader2 } from 'lucide-react';
 import { meetingRoomConfig } from '../../config/meetingRoomConfig';
@@ -213,142 +214,17 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
   // Polls every 2 seconds for responsive diagnostics display
   const settingsView = useSettingsView();
   
-  useEffect(() => {
-    if (!settingsOpen || settingsView !== 'call-health') {
-      return;
-    }
-
-    let cancelled = false;
-
-    const sampleStats = async () => {
-      const reports = await Promise.all([
-        ...Array.from(room.remoteParticipants.values()).flatMap((participant) =>
-          Array.from(participant.trackPublications.values()).map((publication) =>
-            publication.track?.getRTCStatsReport?.(),
-          ),
-        ),
-        ...Array.from(room.localParticipant.trackPublications.values()).map((publication) =>
-          publication.track?.getRTCStatsReport?.(),
-        ),
-      ]);
-
-      if (cancelled) {
-        return;
-      }
-
-      const packetCounters = { lost: 0, received: 0 };
-      const rtts: number[] = [];
-      const jitters: number[] = [];
-      const bitrates: number[] = [];
-
-      reports.forEach((report) => {
-        report?.forEach((stat: RTCStats) => {
-          const candidatePair = stat as RTCStats & { currentRoundTripTime?: number; availableOutgoingBitrate?: number; state?: string };
-          const inbound = stat as RTCStats & { packetsLost?: number; packetsReceived?: number; jitter?: number; kind?: string };
-          const remoteInbound = stat as RTCStats & { roundTripTime?: number; jitter?: number };
-
-          if (stat.type === 'candidate-pair' && candidatePair.state === 'succeeded') {
-            if (typeof candidatePair.currentRoundTripTime === 'number') {
-              rtts.push(candidatePair.currentRoundTripTime * 1000);
-            }
-            if (typeof candidatePair.availableOutgoingBitrate === 'number') {
-              bitrates.push(candidatePair.availableOutgoingBitrate / 1000);
-            }
-          }
-
-          if (stat.type === 'inbound-rtp' || stat.type === 'remote-inbound-rtp') {
-            if (typeof inbound.packetsLost === 'number') {
-              packetCounters.lost += inbound.packetsLost;
-            }
-            if (typeof inbound.packetsReceived === 'number') {
-              packetCounters.received += inbound.packetsReceived;
-            }
-            if (typeof inbound.jitter === 'number') {
-              jitters.push(inbound.jitter * 1000);
-            }
-            if (typeof remoteInbound.roundTripTime === 'number') {
-              rtts.push(remoteInbound.roundTripTime * 1000);
-            }
-          }
-        });
-      });
-
-      const packetLossPercent = packetCounters.received + packetCounters.lost > 0
-        ? (packetCounters.lost / (packetCounters.received + packetCounters.lost)) * 100
-        : null;
-      const rttMs = rtts.length ? Math.max(...rtts) : null;
-      const jitterMs = jitters.length ? Math.max(...jitters) : null;
-      const availableBitrateKbps = bitrates.length ? Math.min(...bitrates) : null;
-
-      setCallMetrics({
-        packetLossPercent,
-        rttMs,
-        jitterMs,
-        availableBitrateKbps,
-      });
-
-      const warning =
-        (packetLossPercent != null && packetLossPercent >= meetingRoomConfig.network.packetLossWarningPercent) ||
-        (rttMs != null && rttMs >= meetingRoomConfig.network.rttWarningMs) ||
-        (jitterMs != null && jitterMs >= meetingRoomConfig.network.jitterWarningMs) ||
-        (availableBitrateKbps != null && availableBitrateKbps * 1000 <= meetingRoomConfig.network.availableBitrateWarningBps);
-
-      const critical =
-        (packetLossPercent != null && packetLossPercent >= meetingRoomConfig.network.packetLossPoorPercent) ||
-        (rttMs != null && rttMs >= meetingRoomConfig.network.rttPoorMs) ||
-        (jitterMs != null && jitterMs >= meetingRoomConfig.network.jitterPoorMs) ||
-        (availableBitrateKbps != null && availableBitrateKbps * 1000 <= meetingRoomConfig.network.availableBitrateWarningBps / 2);
-      const bitrateRecovered =
-        availableBitrateKbps == null ||
-        availableBitrateKbps * 1000 >= meetingRoomConfig.network.availableBitrateGoodBps;
-
-      // Only apply automatic quality override if user selected 'auto' mode
-      const shouldAutoAdjust = selectedQualityMode === 'auto';
-      
-      // Use ref to get current value and avoid dependency loop
-      const currentOverrideReason = qualityOverrideReasonRef.current;
-
-      if (critical) {
-        if (shouldAutoAdjust) {
-          if (currentOverrideReason !== 'network') {
-            addDiagnosticsEvent({
-              type: 'network',
-              message: `Critical transport stats: loss=${packetLossPercent?.toFixed(1) ?? 'n/a'}% rtt=${rttMs ? Math.round(rttMs) : 'n/a'}ms jitter=${jitterMs ? Math.round(jitterMs) : 'n/a'}ms bitrate=${availableBitrateKbps ? Math.round(availableBitrateKbps) : 'n/a'}kbps; forcing audioOnly`,
-            });
-            if (meetingRoomConfig.features.networkRecoveryToasts) {
-              toast(meetingRoomConfig.feedback.networkDegradedMessage, { id: 'network-quality' });
-            }
-          }
-          setQualityOverride('audioOnly', 'network');
-        }
-      } else if (warning) {
-        if (shouldAutoAdjust) {
-          if (currentOverrideReason !== 'network') {
-            addDiagnosticsEvent({
-              type: 'network',
-              message: `Warning transport stats: loss=${packetLossPercent?.toFixed(1) ?? 'n/a'}% rtt=${rttMs ? Math.round(rttMs) : 'n/a'}ms jitter=${jitterMs ? Math.round(jitterMs) : 'n/a'}ms bitrate=${availableBitrateKbps ? Math.round(availableBitrateKbps) : 'n/a'}kbps; forcing dataSaver`,
-            });
-            if (meetingRoomConfig.features.networkRecoveryToasts) {
-              toast(meetingRoomConfig.feedback.networkDegradedMessage, { id: 'network-quality' });
-            }
-          }
-          setQualityOverride('dataSaver', 'network');
-        }
-      } else if (currentOverrideReason === 'network' && bitrateRecovered) {
-        scheduleRecovery('network');
-      }
-    };
-
-    void sampleStats();
-    const interval = window.setInterval(() => {
-      void sampleStats();
-    }, 2000); // 2 seconds - optimal for 2 moderate users viewing diagnostics
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-    };
-  }, [room, selectedQualityMode, settingsOpen, settingsView, scheduleRecovery, setCallMetrics, setQualityOverride, addDiagnosticsEvent]);
+  useCallHealthMonitor({
+    room,
+    localParticipant,
+    isActive: settingsOpen && settingsView === 'call-health',
+    selectedQualityMode,
+    setCallMetrics,
+    setQualityOverride,
+    addDiagnosticsEvent,
+    qualityOverrideReasonRef,
+    scheduleRecovery,
+  });
 
   // Battery monitoring
   useEffect(() => {

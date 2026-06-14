@@ -23,20 +23,6 @@ const gunzip = promisify(gunzipCb);
 // Compression threshold: compress values larger than 1KB
 const COMPRESSION_THRESHOLD = 1024;
 
-// Pool configuration
-const POOL_SIZE = 3; // Number of connections in pool
-
-// Connection pool for high-throughput scenarios
-interface PooledConnection {
-  client: RedisClientType;
-  inUse: boolean;
-  lastUsed: number;
-}
-
-const connectionPool: PooledConnection[] = [];
-let poolInitialized = false;
-let poolHealthCheckInterval: ReturnType<typeof setInterval> | null = null;
-
 // Main client for backwards compatibility and simple operations
 let mainClient: RedisClientType | null = null;
 let isConnected = false;
@@ -68,132 +54,7 @@ function createOptimizedClient(): RedisClientType {
 }
 
 /**
- * Initialize connection pool (called in background)
- */
-async function initPool(): Promise<void> {
-  if (poolInitialized) return;
-
-  logger.info(`🔄 Initializing Redis connection pool (${POOL_SIZE} connections)...`);
-
-  const initPromises = [];
-
-  for (let i = 0; i < POOL_SIZE; i++) {
-    const client = createOptimizedClient();
-    client.on('error', (err) => logger.error(`Redis pool[${i}] error:`, err));
-
-    initPromises.push(
-      client.connect().then(() => {
-        connectionPool.push({
-          client,
-          inUse: false,
-          lastUsed: Date.now(),
-        });
-        logger.info(`✅ Redis pool[${i}] connected`);
-      })
-    );
-  }
-
-  await Promise.all(initPromises);
-  poolInitialized = true;
-  logger.info(`✅ Redis connection pool ready (${connectionPool.length} connections)`);
-
-  // Start periodic health checks for pool connections (every 30s)
-  poolHealthCheckInterval = setInterval(async () => {
-    for (let i = 0; i < connectionPool.length; i++) {
-      const conn = connectionPool[i];
-      if (!conn.inUse && !conn.client.isOpen) {
-        try {
-          const newClient = createOptimizedClient();
-          newClient.on('error', (err) => logger.error(`Redis pool[${i}] error:`, err));
-          await newClient.connect();
-          conn.client = newClient;
-          logger.info(`✅ Redis pool[${i}] reconnected`);
-        } catch (err) {
-          logger.error(`Redis pool[${i}] reconnection failed:`, err);
-        }
-      }
-    }
-  }, 30_000);
-}
-
-/**
- * Get a connection from the pool (event-based, no busy-wait)
- */
-export async function getPooledConnection(): Promise<RedisClientType> {
-  if (!poolInitialized || connectionPool.length === 0) {
-    if (!mainClient) throw new Error('Redis not initialized');
-    return mainClient;
-  }
-
-  // Find available connection (not in use and open)
-  for (const conn of connectionPool) {
-    if (!conn.inUse && conn.client.isOpen) {
-      conn.inUse = true;
-      conn.lastUsed = Date.now();
-      // Auto-release after MAX_HOLD_MS to prevent connection leaks
-      const timer = setTimeout(() => {
-        if (conn.inUse) {
-          logger.warn(`[Redis] Auto-releasing pool connection held too long (>${MAX_HOLD_MS}ms)`);
-          conn.inUse = false;
-          connectionTimers.delete(conn.client);
-        }
-      }, MAX_HOLD_MS);
-      connectionTimers.set(conn.client, timer);
-      return conn.client;
-    }
-  }
-
-  // No available connections - wait briefly and retry, then fall back to main
-  await new Promise(resolve => setTimeout(resolve, 50));
-  for (const conn of connectionPool) {
-    if (!conn.inUse && conn.client.isOpen) {
-      conn.inUse = true;
-      conn.lastUsed = Date.now();
-      // Auto-release after MAX_HOLD_MS to prevent connection leaks
-      const timer = setTimeout(() => {
-        if (conn.inUse) {
-          logger.warn(`[Redis] Auto-releasing pool connection held too long (>${MAX_HOLD_MS}ms)`);
-          conn.inUse = false;
-          connectionTimers.delete(conn.client);
-        }
-      }, MAX_HOLD_MS);
-      connectionTimers.set(conn.client, timer);
-      return conn.client;
-    }
-  }
-
-  // All pool connections busy - fall back to main client (single-connection bottleneck)
-  if (mainClient) {
-    logger.warn('[Redis] All pool connections busy, falling back to main client');
-    return mainClient;
-  }
-
-  throw new Error('No Redis connections available');
-}
-
-/**
- * Release a connection back to the pool.
- * Also clears the auto-release timer set by getPooledConnection.
- */
-export function releaseConnection(client: RedisClientType): void {
-  const conn = connectionPool.find(c => c.client === client);
-  if (conn) {
-    conn.inUse = false;
-    // Clear auto-release timer if present
-    const timer = connectionTimers.get(client);
-    if (timer) {
-      clearTimeout(timer);
-      connectionTimers.delete(client);
-    }
-  }
-}
-
-// Track auto-release timers to prevent connection leaks
-const connectionTimers = new Map<RedisClientType, ReturnType<typeof setTimeout>>();
-const MAX_HOLD_MS = 30_000; // 30 seconds max hold time
-
-/**
- * Initialize Redis - creates main client and connection pool
+ * Initialize Redis - creates the main client
  */
 export async function initRedis(): Promise<void> {
   mainClient = createOptimizedClient();
@@ -212,11 +73,6 @@ export async function initRedis(): Promise<void> {
   });
 
   await mainClient.connect();
-
-  // Initialize pool in background (non-blocking)
-  initPool().catch(err => {
-    logger.warn('Redis pool initialization failed, using single connection:', err);
-  });
 }
 
 // Connection promise singleton to prevent concurrent connect() calls
@@ -542,139 +398,8 @@ export async function getRedisInfo(): Promise<{
   }
 }
 
-// ============================================
-// ADMITTED PARTICIPANTS (Auto-admit on rejoin)
-// ============================================
-
-// Admitted participants stay valid for 4 hours (longer than a typical meeting)
-const ADMITTED_TTL_SECONDS = 4 * 60 * 60;
-
-/**
- * Add a participant to the admitted list for a room.
- * They will be auto-admitted if they rejoin within the TTL.
- */
-export async function addAdmittedParticipant(roomName: string, identity: string, guestName?: string): Promise<void> {
-  await ensureConnected();
-  if (!mainClient) throw new Error('Redis not initialized');
-
-  // Store by identity
-  await mainClient.setEx(
-    `admitted:${roomName}:${identity}`,
-    ADMITTED_TTL_SECONDS,
-    JSON.stringify({ identity, guestName, admittedAt: Date.now() })
-  );
-  logger.info(`[ADMIT] Added ${identity} to admitted list for room ${roomName}, TTL: ${ADMITTED_TTL_SECONDS}s`);
-
-  // Also store by guest name for name-based lookup
-  if (guestName) {
-    const normalizedName = guestName.toLowerCase().trim();
-    await mainClient.setEx(
-      `admitted_guest:${roomName}:${normalizedName}`,
-      ADMITTED_TTL_SECONDS,
-      identity
-    );
-    logger.info(`[ADMIT] Also tracking guest "${guestName}" for room ${roomName}`);
-  }
-}
-
-/**
- * Check if a participant was previously admitted (by identity).
- * Returns the TTL remaining (0 if not admitted).
- */
-export async function isParticipantAdmitted(roomName: string, identity: string): Promise<number> {
-  await ensureConnected();
-  if (!mainClient) throw new Error('Redis not initialized');
-  return Math.max(0, await mainClient.ttl(`admitted:${roomName}:${identity}`));
-}
-
-/**
- * Check if a guest name was previously admitted.
- * Returns the TTL remaining (0 if not admitted).
- */
-export async function isGuestNameAdmitted(roomName: string, guestName: string): Promise<number> {
-  await ensureConnected();
-  if (!mainClient) throw new Error('Redis not initialized');
-  const normalizedName = guestName.toLowerCase().trim();
-  return Math.max(0, await mainClient.ttl(`admitted_guest:${roomName}:${normalizedName}`));
-}
-
-/**
- * Get admitted participant info by identity.
- */
-export async function getAdmittedParticipant(roomName: string, identity: string): Promise<{ identity: string; guestName?: string; admittedAt: number } | null> {
-  await ensureConnected();
-  if (!mainClient) throw new Error('Redis not initialized');
-  const data = await mainClient.get(`admitted:${roomName}:${identity}`);
-  if (!data) return null;
-  try {
-    return JSON.parse(data);
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Remove participant from admitted list (e.g., when kicked).
- */
-export async function removeAdmittedParticipant(roomName: string, identity: string): Promise<void> {
-  await ensureConnected();
-  if (!mainClient) throw new Error('Redis not initialized');
-  await mainClient.del(`admitted:${roomName}:${identity}`);
-}
-
-// ============================================
-// KICKED PARTICIPANTS (Cooldown)
-// ============================================
-
-const KICK_COOLDOWN_SECONDS = 10;
-
-export async function addKickedParticipant(roomName: string, identity: string, guestName?: string): Promise<void> {
-  await ensureConnected();
-  if (!mainClient) throw new Error('Redis not initialized');
-
-  // Clear admitted status so kicked participants must pass through the lobby on rejoin
-  await mainClient.del(`admitted:${roomName}:${identity}`);
-  if (guestName) {
-    const normalizedName = guestName.toLowerCase().trim();
-    await mainClient.del(`admitted_guest:${roomName}:${normalizedName}`);
-  }
-
-  await mainClient.setEx(
-    `kicked:${roomName}:${identity}`,
-    KICK_COOLDOWN_SECONDS,
-    Date.now().toString()
-  );
-  logger.info(`[KICK] Added ${identity} to kicked list for room ${roomName}, cooldown: ${KICK_COOLDOWN_SECONDS}s`);
-
-  if (guestName) {
-    const normalizedName = guestName.toLowerCase().trim();
-    await mainClient.setEx(
-      `kicked_guest:${roomName}:${normalizedName}`,
-      KICK_COOLDOWN_SECONDS,
-      identity
-    );
-    logger.info(`[KICK] Also tracking guest "${guestName}" for room ${roomName}`);
-  }
-}
-
-export async function isParticipantKicked(roomName: string, identity: string): Promise<number> {
-  await ensureConnected();
-  if (!mainClient) throw new Error('Redis not initialized');
-  return Math.max(0, await mainClient.ttl(`kicked:${roomName}:${identity}`));
-}
-
-export async function isGuestNameKicked(roomName: string, guestName: string): Promise<number> {
-  await ensureConnected();
-  if (!mainClient) throw new Error('Redis not initialized');
-  const normalizedName = guestName.toLowerCase().trim();
-  return Math.max(0, await mainClient.ttl(`kicked_guest:${roomName}:${normalizedName}`));
-}
-
-export async function removeKickedParticipant(roomName: string, identity: string): Promise<void> {
-  await ensureConnected();
-  if (!mainClient) throw new Error('Redis not initialized');
-  await mainClient.del(`kicked:${roomName}:${identity}`);
-}
+// Admitted/kicked participant presence moved to participantPresence.ts.
+// Re-exported below for backwards compatibility.
 
 // ============================================
 // TOKEN BLACKLIST (Logout/Invalidation)
@@ -709,26 +434,26 @@ export async function isTokenBlacklisted(token: string): Promise<boolean> {
 // ============================================
 
 export async function closeRedis(): Promise<void> {
-  // Stop health check interval
-  if (poolHealthCheckInterval) {
-    clearInterval(poolHealthCheckInterval);
-    poolHealthCheckInterval = null;
-  }
-
-  // Close all pooled connections
-  for (const conn of connectionPool) {
-    try {
-      await conn.client.quit();
-    } catch {
-      // Ignore errors during shutdown
-    }
-  }
-  connectionPool.length = 0;
-  poolInitialized = false;
-
   // Close main client
   if (mainClient && isConnected) {
     await mainClient.quit();
     isConnected = false;
   }
 }
+
+// ============================================
+// RE-EXPORTS (Admitted/Kicked participant presence)
+// ============================================
+// These functions were extracted to participantPresence.ts for separation of
+// concerns. Re-exported here so existing imports from redis.js keep working.
+export {
+  addAdmittedParticipant,
+  isParticipantAdmitted,
+  isGuestNameAdmitted,
+  getAdmittedParticipant,
+  removeAdmittedParticipant,
+  addKickedParticipant,
+  isParticipantKicked,
+  isGuestNameKicked,
+  removeKickedParticipant,
+} from './participantPresence.js';

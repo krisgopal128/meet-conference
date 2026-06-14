@@ -660,6 +660,9 @@ function HomePageContent() {
 // Upcoming meeting card component
 function UpcomingMeetingCard({ meeting }: { meeting: ScheduledMeeting }) {
   const [copied, setCopied] = useState(false);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current); }, []);
   
   const scheduledStart = meeting.scheduledStart || meeting.scheduled_start;
   const roomName = meeting.roomName || meeting.room_name;
@@ -674,7 +677,8 @@ function UpcomingMeetingCard({ meeting }: { meeting: ScheduledMeeting }) {
       await navigator.clipboard.writeText(meetingUrl);
       setCopied(true);
       toast.success('Meeting link copied!');
-      setTimeout(() => setCopied(false), 2000);
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+      copiedTimerRef.current = setTimeout(() => setCopied(false), 2000);
     } catch {
       const textArea = document.createElement('textarea');
       textArea.value = meetingUrl;
@@ -684,7 +688,8 @@ function UpcomingMeetingCard({ meeting }: { meeting: ScheduledMeeting }) {
       document.body.removeChild(textArea);
       setCopied(true);
       toast.success('Meeting link copied!');
-      setTimeout(() => setCopied(false), 2000);
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+      copiedTimerRef.current = setTimeout(() => setCopied(false), 2000);
     }
   };
   

@@ -178,7 +178,8 @@ export function ControlBar() {
   const [showControls, setShowControls] = useState(false);
   const [isRecordingLoading, setIsRecordingLoading] = useState(false);
 
-  const moreButtonRef = useRef<HTMLButtonElement>(null);
+  const moreButtonRefDesktop = useRef<HTMLButtonElement>(null);
+  const moreButtonRefMobile = useRef<HTMLButtonElement>(null);
   const controlsButtonRef = useRef<HTMLButtonElement>(null);
 
   // Derived state
@@ -595,7 +596,7 @@ export function ControlBar() {
           {/* More options */}
           <div className="relative">
             <button
-              ref={moreButtonRef}
+              ref={moreButtonRefDesktop}
               onClick={() => setShowMore(!showMore)}
               aria-label="More options"
               aria-expanded={showMore}
@@ -644,7 +645,7 @@ export function ControlBar() {
           )}
           <div className="relative">
             <button
-              ref={moreButtonRef}
+              ref={moreButtonRefMobile}
               onClick={() => setShowMore(!showMore)}
               className="flex flex-col items-center justify-center p-2.5 rounded-xl text-xs font-medium transition-all min-w-[48px] min-h-[48px] bg-surface-700/60 hover:bg-surface-600 text-surface-300"
               aria-label="More options"

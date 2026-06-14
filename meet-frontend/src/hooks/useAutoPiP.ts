@@ -48,7 +48,7 @@ export function useAutoPiP({
   onTriggerRef.current = onTrigger;
 
   const handleTrigger = useCallback(() => {
-    const now = Date.now();
+    const now = performance.now();
     if (now - lastTriggerRef.current >= cooldown && !pipOpenedRef.current) {
       lastTriggerRef.current = now;
       pipOpenedRef.current = true;

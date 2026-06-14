@@ -30,7 +30,9 @@ export function useVideoFitModeSync() {
       const data = encoder.encode(JSON.stringify(message));
 
       room.localParticipant.publishData(data, { reliable: true });
-      logger.info('[useSettingsSync] Broadcasted videoFitMode:', mode);
+      if (import.meta.env.DEV) {
+        logger.info('[useSettingsSync] Broadcasted videoFitMode:', mode);
+      }
     },
     [room, localParticipant]
   );

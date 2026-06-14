@@ -278,6 +278,12 @@ type AudioCaptureOptionsWithVolume = AudioCaptureOptions & {
   volume?: number;
 };
 
+/**
+ * ⚠️ FALLBACK CONFIG — DUPLICATES meeting-room.config.jsonc
+ * If you change the JSONC config, you MUST update this fallback too.
+ * The fallback ensures the app works even if the config file is
+ * missing or corrupt. See loadConfig() for the merge logic.
+ */
 const fallbackConfig: MeetingRoomConfig = {
   app: {
     apiBaseUrl: '/api',

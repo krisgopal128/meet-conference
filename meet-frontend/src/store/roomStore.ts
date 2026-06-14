@@ -16,8 +16,22 @@ export type QualityOverrideReason = 'network' | 'cpu' | 'battery' | null;
 export type GridAspectRatio = '16:9' | '9:16' | '1:1' | '4:3';
 export type VideoFitMode = 'cover' | 'contain';
 
+// ═══════════════════════════════════════════════════════════
+// SLICE ARCHITECTURE
+// This store contains 5 logical slices kept in one file for
+// cross-slice selector efficiency. Do NOT split into separate
+// stores — Zustand selectors would need cross-store subscriptions.
+// ═══════════════════════════════════════════════════════════
+// Slice 1: Connection State (roomName, token, identity, role...)
+// Slice 2: UI State (layout, panels, quality, background effects...)
+// Slice 3: Chat State (messages, polls, typing...)
+// Slice 4: Room Features State (raised hands, recording, pinning...)
+// Slice 5: Meeting Controls State (moderator locks, permissions...)
+// ═══════════════════════════════════════════════════════════
+
 // ============================================
-// SLICE 1: Connection State
+// SLICE 1: Connection State (roomName, token, identity, role,
+// connection lifecycle, PiP, prejoin device selection)
 // ============================================
 interface ConnectionState {
   roomName: string | null;
@@ -65,7 +79,8 @@ const initialConnectionState: ConnectionState = {
 };
 
 // ============================================
-// SLICE 2: UI State
+// SLICE 2: UI State (layout, panels, quality mode, metrics,
+// background effects, diagnostics log, grid/video preferences)
 // ============================================
 interface UIState {
   layout: LayoutMode;
@@ -183,7 +198,8 @@ const initialUIState: UIState = {
 };
 
 // ============================================
-// SLICE 3: Chat State
+// SLICE 3: Chat State (messages, unread/mention counts,
+// typing participants, polls)
 // ============================================
 interface ChatState {
   messages: ChatMessage[];
@@ -213,7 +229,8 @@ const initialChatState: ChatState = {
 };
 
 // ============================================
-// SLICE 4: Room Features State
+// SLICE 4: Room Features State (raised hands, recording/egress,
+// pinned participant)
 // ============================================
 interface FeaturesState {
   raisedHands: string[]; // Array instead of Set for serializability
@@ -223,7 +240,8 @@ interface FeaturesState {
 }
 
 // ============================================
-// SLICE 5: Meeting Controls State (Moderator)
+// SLICE 5: Meeting Controls State — Moderator
+// (meeting lock, lobby, participant permissions)
 // ============================================
 interface MeetingControlsState {
   meetingLocked: boolean;

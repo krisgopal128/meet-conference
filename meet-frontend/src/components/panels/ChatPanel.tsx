@@ -103,6 +103,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
   const [sendPrivateToModerators, setSendPrivateToModerators] = useState(cachedDraft?.sendPrivateToModerators || false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<number | null>(null);
+  const draftCacheTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatDisabled = !isModerator && !participantsCanChat;
 
   // Mention autocomplete state
@@ -124,14 +125,17 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
   const [allowMultiple, setAllowMultiple] = useState(cachedDraft?.allowMultiple || false);
 
   useEffect(() => {
-    setDraftCache(draftKey, {
-      input,
-      sendPrivateToModerators,
-      showPollCreator,
-      pollQuestion,
-      pollOptions,
-      allowMultiple,
-    });
+    if (draftCacheTimerRef.current) clearTimeout(draftCacheTimerRef.current);
+    draftCacheTimerRef.current = setTimeout(() => {
+      setDraftCache(draftKey, {
+        input,
+        sendPrivateToModerators,
+        showPollCreator,
+        pollQuestion,
+        pollOptions,
+        allowMultiple,
+      });
+    }, 300);
   }, [allowMultiple, draftKey, input, pollOptions, pollQuestion, sendPrivateToModerators, showPollCreator]);
 
   // Build participant list for mentions with roles
@@ -317,6 +321,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
       if (typingTimeoutRef.current) {
         window.clearTimeout(typingTimeoutRef.current);
       }
+      if (draftCacheTimerRef.current) clearTimeout(draftCacheTimerRef.current);
 
       const lp = localParticipantRef.current;
       if (lp) {

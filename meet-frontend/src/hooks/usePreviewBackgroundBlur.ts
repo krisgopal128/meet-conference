@@ -84,6 +84,8 @@ export function usePreviewBackgroundBlur(
       blurCanvasRef.current = null;
       sharpCanvasRef.current = null;
       segCanvasRef.current = null;
+      segmenterRef.current?.close?.();
+      segmenterRef.current = null;
     };
 
     if (!optionsRef.current.enabled) {

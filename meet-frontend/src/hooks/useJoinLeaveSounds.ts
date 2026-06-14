@@ -7,6 +7,11 @@
 import { useEffect } from 'react';
 import { RoomEvent, type Room, type Participant } from 'livekit-client';
 
+const JOIN_TONE_HZ = 740;
+const LEAVE_TONE_HZ = 520;
+const TONE_DURATION_S = 0.12;
+const TONE_GAIN = 0.03;
+
 export function useJoinLeaveSounds(room: Room, localParticipant: Participant, enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
@@ -30,20 +35,20 @@ export function useJoinLeaveSounds(room: Room, localParticipant: Participant, en
 
       oscillator.type = 'sine';
       oscillator.frequency.value = frequency;
-      gainNode.gain.value = 0.03;
+      gainNode.gain.value = TONE_GAIN;
 
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
       oscillator.start();
-      oscillator.stop(audioContext.currentTime + 0.12);
+      oscillator.stop(audioContext.currentTime + TONE_DURATION_S);
     };
 
     const handleParticipantConnected = (participant: Participant) => {
-      if (participant.identity !== localParticipant.identity) playTone(740);
+      if (participant.identity !== localParticipant.identity) playTone(JOIN_TONE_HZ);
     };
 
     const handleParticipantDisconnected = (participant: Participant) => {
-      if (participant.identity !== localParticipant.identity) playTone(520);
+      if (participant.identity !== localParticipant.identity) playTone(LEAVE_TONE_HZ);
     };
 
     room.on(RoomEvent.ParticipantConnected, handleParticipantConnected);

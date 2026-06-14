@@ -4,7 +4,7 @@
  * Extracted from PreJoinPage.tsx to reduce component complexity.
  */
 
-import { Edit3, Video, Lock, RefreshCw, Copy, Users, VideoOff } from 'lucide-react';
+import { Edit3, Video, Lock, RefreshCw, Copy, Users, EyeOff, Eye } from 'lucide-react';
 
 interface CreateMeetingFormProps {
   meetingTitle: string;
@@ -103,7 +103,7 @@ export function CreateMeetingForm({
             onClick={onShowPasswordToggle}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600"
           >
-            {showPassword ? <VideoOff size={16} /> : <Video size={16} />}
+            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
         </div>
         <p className="text-xs text-surface-400 mt-1">Protect your meeting with a password</p>

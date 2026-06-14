@@ -56,12 +56,14 @@ export function usePictureInPicture(): PiPSupport {
       if (cancelled) return;
 
       // Debug logging
-      logger.info('[usePictureInPicture] Detection:', {
-        isSupported: hasDocumentPiP || hasVideoPiP,
-        isDocumentPiPSupported: hasDocumentPiP,
-        isVideoPiPSupported: hasVideoPiP,
-        permission: permissionState,
-      });
+      if (import.meta.env.DEV) {
+        logger.info('[usePictureInPicture] Detection:', {
+          isSupported: hasDocumentPiP || hasVideoPiP,
+          isDocumentPiPSupported: hasDocumentPiP,
+          isVideoPiPSupported: hasVideoPiP,
+          permission: permissionState,
+        });
+      }
 
       setSupport({
         isSupported: hasDocumentPiP || hasVideoPiP,

@@ -5,6 +5,14 @@
  *
  * The processor is wrapped in @livekit/track-processors' ProcessorWrapper,
  * which adapts our VideoTransformer to LiveKit's TrackProcessor interface.
+ *
+ * Module-level singleton — acceptable here because:
+ * 1. Only one camera track per participant (no multi-camera support)
+ * 2. Track processor lifecycle is tied to the room session
+ * 3. Manager state is cleared via cleanupBackgroundEffect() on leave
+ *
+ * If multi-camera support is added, refactor to a class instance
+ * per track (passed via React context or factory function).
  */
 
 import { ProcessorWrapper } from '@livekit/track-processors';
