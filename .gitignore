@@ -99,5 +99,6 @@ Caddyfile.new
 test-screenshots/
 build_tree.py
 bot-simulator/
+Camera_BG_Blur/
 
 testsprite_tests/tmp/config.json
