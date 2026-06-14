@@ -114,11 +114,6 @@ export async function enableBackgroundEffect(
   track: VideoTrack,
   options?: Partial<SelfieSegmentationOptions>,
 ): Promise<boolean> {
-  if (state.isApplying) {
-    logger.warn('[BgEffects] Already applying effect, ignoring call');
-    return false;
-  }
-
   const releaseLock = await acquireLock();
   state.isApplying = true;
   state.lastToggleTime = Date.now();

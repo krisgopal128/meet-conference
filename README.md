@@ -30,7 +30,7 @@ A real-time video conferencing platform built with React, Express, and LiveKit �
 ### Roles & Permissions
 - 👑 **Moderator**: Full control — admit/deny from lobby, kick participants, mute others, end meeting
 - 👤 **Participant**: Join meetings, chat, share screen (if allowed)
-- 🔒 Lobby/waiting room with moderator approval
+- 🔒 Security hardening: CSRF protection, rate limiting, input sanitization, audit logging
 - 🛡️ Role-based route protection
 
 ### Admin Panel (Prashasakah)
@@ -43,11 +43,14 @@ A real-time video conferencing platform built with React, Express, and LiveKit �
 
 ### Advanced Features
 - 🖼️ **Picture-in-Picture** (Chrome 116+) — floating mini window with participant tiles
+- 🎨 **Background Effects** — blur, solid color, image replacement, or passthrough (MediaPipe Selfie Segmentation, runs on-device)
+- 🪞 **Camera Mirror** — toggle selfie-view mirroring on/off
+- 🎤 **Voice Level Meter** — real-time microphone input indicator on PreJoin page
 - 📐 Video fit mode sync (letterbox/crop) across participants
-- 🎨 Background blur support (ready to enable)
 - 📱 Fully responsive — mobile-first design with bottom nav
 - 🔐 JWT authentication with token refresh
 - ⏱️ Remember me (30-day sessions)
+- 📋 **Collaborative Whiteboard** — real-time drawing with Excalidraw, lock/unlock for moderators
 
 ### External API (SDK)
 - REST API for third-party integrations
@@ -106,18 +109,21 @@ meet-conference/
 ├── meet-frontend/          # React + Vite frontend
 │   ├── src/
 │   │   ├── components/     # UI components (chat, controls, room, pip, etc.)
-│   │   ├── hooks/          # 23 custom React hooks
-│   │   ├── pages/          # 13 pages (Home, Login, Room, Schedule, etc.)
+│   │   ├── hooks/          # 30+ custom React hooks
+│   │   ├── pages/          # 15 pages (Home, Login, Room, Schedule, etc.)
 │   │   ├── services/       # API client services
-│   │   ├── store/          # Zustand state management
+│   │   ├── store/          # Zustand state management (5 slices)
 │   │   ├── types/          # TypeScript type definitions
-│   │   └── utils/          # Utility functions
-│   └── docs/               # Frontend documentation
+│   │   ├── utils/          # Utilities (blur engine, aspect ratios, livekit data)
+│   │   └── config/         # Meeting room configuration
+│   └── public/
+│       ├── models/         # MediaPipe selfie segmenter model
+│       └── wasm/           # MediaPipe tasks-vision WASM runtime
 │
 ├── meet-backend/           # Express + TypeScript backend
 │   ├── src/
-│   │   ├── routes/         # API routes (auth, rooms, meetings, external, etc.)
-│   │   ├── services/       # Business logic (database, redis, livekit, etc.)
+│   │   ├── routes/         # API routes (auth, rooms, roomsParticipants, roomsChat, external, webhook, etc.)
+│   │   ├── services/       # Business logic (database, redis, participantPresence, livekit, webhookService, etc.)
 │   │   ├── middleware/     # Auth, rate limiting, role checks
 │   │   ├── db/             # Database schema
 │   │   └── migrations/     # SQL migrations

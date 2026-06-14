@@ -17,29 +17,39 @@ export function useScreenShareControls(
   qualityMode: QualityModeName,
   screenShareMode: ScreenShareModeName,
 ) {
-  const isTogglingScreen = useRef(false);
+  const pendingTargetRef = useRef<boolean | null>(null);
 
   const toggleScreenShare = useCallback(async () => {
-    if (isTogglingScreen.current) return;
     if (!localParticipant) return;
-    isTogglingScreen.current = true;
+
+    // If a toggle is in progress, queue a reversal of the pending target
+    if (pendingTargetRef.current !== null) {
+      pendingTargetRef.current = !pendingTargetRef.current;
+      return;
+    }
+
+    pendingTargetRef.current = !localParticipant.isScreenShareEnabled;
+
     try {
-      const currentlyEnabled = localParticipant.isScreenShareEnabled;
-      const options = getScreenShareOptions(qualityMode, screenShareMode);
-      await withOperationTimeout(
-        localParticipant.setScreenShareEnabled(
-          !currentlyEnabled,
-          currentlyEnabled ? { audio: false } : { audio: options.audio },
-          currentlyEnabled ? undefined : { screenShareEncoding: options.encoding },
-        ),
-        'MEDIA_TOGGLE',
-        'Toggle screen share'
-      );
+      let lastApplied: boolean | null = null;
+      while (lastApplied !== pendingTargetRef.current) {
+        lastApplied = pendingTargetRef.current;
+        const options = getScreenShareOptions(qualityMode, screenShareMode);
+        await withOperationTimeout(
+          localParticipant.setScreenShareEnabled(
+            lastApplied,
+            lastApplied ? { audio: options.audio } : { audio: false },
+            lastApplied ? { screenShareEncoding: options.encoding } : undefined,
+          ),
+          'MEDIA_TOGGLE',
+          'Toggle screen share',
+        );
+      }
     } catch (error) {
       logger.error('Screen share error:', error);
       toast.error('Screen share was cancelled or not supported.');
     } finally {
-      isTogglingScreen.current = false;
+      pendingTargetRef.current = null;
     }
   }, [localParticipant, qualityMode, screenShareMode]);
 

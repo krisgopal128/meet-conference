@@ -172,6 +172,11 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
 
   // Load persisted scene once when API is ready
   const hasLoadedRef = useRef(false);
+
+  useEffect(() => {
+    hasLoadedRef.current = false;
+  }, [roomName]);
+
   useEffect(() => {
     if (!roomName || !excalidrawReady || !excalidrawAPIRef.current || hasLoadedRef.current) return;
     hasLoadedRef.current = true;
@@ -550,12 +555,10 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
                   try { await document.exitFullscreen(); } catch {}
                   setWhiteboardFullscreen(false);
                 }
+                // Save in background — don't block close
                 if (roomName && currentSceneRef.current.length > 0) {
-                  try {
-                    await whiteboardApi.saveScene(roomName, currentSceneRef.current as object[], (excalidrawAPIRef.current as any)?.files);
-                  } catch (err) {
-                    logger.warn('[Whiteboard] Failed to save on close', { error: err });
-                  }
+                  whiteboardApi.saveScene(roomName, currentSceneRef.current as object[], (excalidrawAPIRef.current as any)?.files)
+                    .catch((err) => logger.warn('[Whiteboard] Background save failed', { error: err }));
                 }
                 broadcastActivate(false);
                 toggleWhiteboard();

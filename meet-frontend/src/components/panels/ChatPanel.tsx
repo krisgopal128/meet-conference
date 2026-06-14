@@ -103,6 +103,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
   const [sendPrivateToModerators, setSendPrivateToModerators] = useState(cachedDraft?.sendPrivateToModerators || false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<number | null>(null);
+  const lastTypingSentRef = useRef(0);
   const draftCacheTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatDisabled = !isModerator && !participantsCanChat;
 
@@ -345,6 +346,17 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
     }
 
     setTypingParticipant(localParticipant.identity, localParticipant.name || localParticipant.identity, isTyping);
+
+    // Debounce "typing" sends to at most once per 3 seconds over the network.
+    // "stopped typing" (isTyping=false) always goes through immediately.
+    if (isTyping) {
+      const now = Date.now();
+      if (now - lastTypingSentRef.current < 3000) {
+        return;
+      }
+      lastTypingSentRef.current = now;
+    }
+
     await withOperationTimeout(
       localParticipant.publishData(
         new TextEncoder().encode(JSON.stringify({

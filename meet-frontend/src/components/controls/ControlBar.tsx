@@ -6,13 +6,7 @@
  */
 
 import { useLocalParticipant, useMaybeRoomContext } from '@livekit/components-react';
-import {
-  Mic, Monitor, Users,
-  Hand, LayoutGrid, MoreVertical,
-  Link2, Bell, BellOff, FlipHorizontal, Activity, Sparkles,
-  SquarePlay, Lock, Unlock, DoorOpen, PictureInPicture2, Pencil,
-  ScreenShare, MessageCircle, Camera
-} from 'lucide-react';
+import { MoreVertical, Lock } from 'lucide-react';
 import {
   useLayout,
   useChatOpen,
@@ -79,12 +73,13 @@ import {
   MobileChatButton,
   MobileLeaveButton,
   ControlsMenu,
-  MoreMenu,
   MoreIcon,
   ControlsIcon,
   ControlsIconUnlocked,
   RecordingButton,
   MobileRecordingButton,
+  MemoizedMoreMenu,
+  MemoizedMobileMoreMenu,
 } from './ControlBarButtons';
 
 export function ControlBar() {
@@ -282,6 +277,14 @@ export function ControlBar() {
     setLayout(effectiveLayout === 'grid' ? 'speaker' : 'grid');
   }, [layout, setLayout]);
 
+  const handleToggleWhiteboard = useCallback(() => {
+    toggleWhiteboard();
+    if (room) {
+      const msg = JSON.stringify({ type: 'whiteboard-activate', active: !whiteboardOpen });
+      room.localParticipant.publishData(new TextEncoder().encode(msg), { reliable: true, topic: 'whiteboard' }).catch(() => {});
+    }
+  }, [toggleWhiteboard, room, whiteboardOpen]);
+
   const broadcastMeetingSettings = useCallback(async (settings: {
     meetingLocked: boolean;
     lobbyEnabled: boolean;
@@ -306,6 +309,7 @@ export function ControlBar() {
   }, [localParticipant]);
 
   const handleToggleLock = useCallback(async () => {
+    const prevVal = meetingLocked;
     const newVal = !meetingLocked;
     setMeetingLocked(newVal);
     await broadcastMeetingSettings({
@@ -317,11 +321,18 @@ export function ControlBar() {
         await updateRoomSettings(room.name, { meetingLocked: newVal });
       } catch (err) {
         logger.error('Failed to persist meeting lock:', err);
+        setMeetingLocked(prevVal);
+        await broadcastMeetingSettings({
+          meetingLocked: prevVal, lobbyEnabled, participantsCanShareScreen,
+          participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera,
+        });
+        toast.error('Failed to update setting — reverted');
       }
     }
   }, [room, meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setMeetingLocked, broadcastMeetingSettings]);
 
   const handleToggleLobby = useCallback(async () => {
+    const prevVal = lobbyEnabled;
     const newVal = !lobbyEnabled;
     setLobbyEnabled(newVal);
     await broadcastMeetingSettings({
@@ -333,10 +344,17 @@ export function ControlBar() {
       await roomsApi.update(room.name, { waitingRoomEnabled: newVal });
     } catch (err) {
       logger.error('Failed to persist lobby toggle:', err);
+      setLobbyEnabled(prevVal);
+      await broadcastMeetingSettings({
+        meetingLocked, lobbyEnabled: prevVal, participantsCanShareScreen,
+        participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera,
+      });
+      toast.error('Failed to update setting — reverted');
     }
   }, [room, meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setLobbyEnabled, broadcastMeetingSettings]);
 
   const handleToggleParticipantScreenShare = useCallback(async () => {
+    const prevVal = participantsCanShareScreen;
     const newVal = !participantsCanShareScreen;
     setParticipantsCanShareScreen(newVal);
     await broadcastMeetingSettings({
@@ -348,11 +366,18 @@ export function ControlBar() {
         await updateRoomSettings(room.name, { participantsCanShareScreen: newVal });
       } catch (err) {
         logger.error('Failed to persist screen share control:', err);
+        setParticipantsCanShareScreen(prevVal);
+        await broadcastMeetingSettings({
+          meetingLocked, lobbyEnabled, participantsCanShareScreen: prevVal,
+          participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera,
+        });
+        toast.error('Failed to update setting — reverted');
       }
     }
   }, [room, meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setParticipantsCanShareScreen, broadcastMeetingSettings]);
 
   const handleToggleParticipantChat = useCallback(async () => {
+    const prevVal = participantsCanChat;
     const newVal = !participantsCanChat;
     setParticipantsCanChat(newVal);
     await broadcastMeetingSettings({
@@ -364,11 +389,18 @@ export function ControlBar() {
         await updateRoomSettings(room.name, { participantsCanChat: newVal });
       } catch (err) {
         logger.error('Failed to persist chat control:', err);
+        setParticipantsCanChat(prevVal);
+        await broadcastMeetingSettings({
+          meetingLocked, lobbyEnabled, participantsCanShareScreen,
+          participantsCanChat: prevVal, participantsCanUnmute, participantsCanTurnOnCamera,
+        });
+        toast.error('Failed to update setting — reverted');
       }
     }
   }, [room, meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setParticipantsCanChat, broadcastMeetingSettings]);
 
   const handleToggleParticipantUnmute = useCallback(async () => {
+    const prevVal = participantsCanUnmute;
     const newVal = !participantsCanUnmute;
     setParticipantsCanUnmute(newVal);
     await broadcastMeetingSettings({
@@ -380,11 +412,18 @@ export function ControlBar() {
         await updateRoomSettings(room.name, { participantsCanUnmute: newVal });
       } catch (err) {
         logger.error('Failed to persist unmute control:', err);
+        setParticipantsCanUnmute(prevVal);
+        await broadcastMeetingSettings({
+          meetingLocked, lobbyEnabled, participantsCanShareScreen,
+          participantsCanChat, participantsCanUnmute: prevVal, participantsCanTurnOnCamera,
+        });
+        toast.error('Failed to update setting — reverted');
       }
     }
   }, [room, meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setParticipantsCanUnmute, broadcastMeetingSettings]);
 
   const handleToggleParticipantCamera = useCallback(async () => {
+    const prevVal = participantsCanTurnOnCamera;
     const newVal = !participantsCanTurnOnCamera;
     setParticipantsCanTurnOnCamera(newVal);
     await broadcastMeetingSettings({
@@ -396,89 +435,15 @@ export function ControlBar() {
         await updateRoomSettings(room.name, { participantsCanTurnOnCamera: newVal });
       } catch (err) {
         logger.error('Failed to persist camera control:', err);
+        setParticipantsCanTurnOnCamera(prevVal);
+        await broadcastMeetingSettings({
+          meetingLocked, lobbyEnabled, participantsCanShareScreen,
+          participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera: prevVal,
+        });
+        toast.error('Failed to update setting — reverted');
       }
     }
   }, [room, meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setParticipantsCanTurnOnCamera, broadcastMeetingSettings]);
-
-  // More menu items
-  const moreMenuItems = [
-    { icon: <Link2 size={16} />, label: 'Copy Meeting Link', onClick: copyRoomLink },
-    ...(isPiPSupported ? [{
-      icon: <PictureInPicture2 size={16} />,
-      label: isPiPOpen ? 'Close Picture-in-Picture' : 'Open Picture-in-Picture',
-      onClick: () => togglePiP(),
-    }] : []),
-    ...(meetingRoomConfig.features.joinLeaveSoundToggle ? [{
-      icon: joinLeaveSoundsEnabled ? <Bell size={16} /> : <BellOff size={16} />,
-      label: joinLeaveSoundsEnabled ? 'Mute Sounds' : 'Enable Sounds',
-      onClick: toggleJoinLeaveSounds,
-    }] : []),
-    ...(meetingRoomConfig.features.mirrorLocalVideoToggle ? [{
-      icon: <FlipHorizontal size={16} />,
-      label: mirrorLocalVideo ? 'Unmirror My Tile' : 'Mirror My Tile',
-      onClick: toggleMirrorLocalVideo,
-    }] : []),
-    ...(meetingRoomConfig.features.settingsPanelDeviceFallback ? [{
-      icon: <Mic size={16} />,
-      label: settingsOpen ? 'Close Device Settings' : 'Device Settings',
-      onClick: () => openSettingsView('devices'),
-    }] : []),
-    { icon: <Activity size={16} />, label: 'Call Health', onClick: () => openSettingsView('call-health') },
-    { icon: <Sparkles size={16} />, label: 'Video Effects', onClick: () => openSettingsView('video-effects') },
-  ];
-
-  // Mobile more menu items (extended)
-  const mobileMoreMenuItems = [
-    { icon: <Monitor size={16} />, label: isScreenSharing ? 'Stop Share' : 'Share Screen', onClick: handleToggleScreenShare },
-    { icon: <Hand size={16} className={handRaised ? 'text-warning-500' : ''} />, label: handRaised ? 'Lower Hand' : 'Raise Hand', onClick: toggleHandRaise },
-    { icon: layout === 'grid' ? <SquarePlay size={16} /> : <LayoutGrid size={16} />, label: layout === 'grid' ? 'Speaker View' : 'Grid View', onClick: toggleLayout },
-    ...(isPiPSupported ? [{
-      icon: <PictureInPicture2 size={16} />,
-      label: isPiPOpen ? 'Close Picture-in-Picture' : 'Open Picture-in-Picture',
-      onClick: () => togglePiP(),
-    }] : []),
-    ...(meetingRoomConfig.features.joinLeaveSoundToggle ? [{
-      icon: joinLeaveSoundsEnabled ? <Bell size={16} /> : <BellOff size={16} />,
-      label: joinLeaveSoundsEnabled ? 'Mute Sounds' : 'Enable Sounds',
-      onClick: toggleJoinLeaveSounds,
-    }] : []),
-    ...(meetingRoomConfig.features.mirrorLocalVideoToggle ? [{
-      icon: <FlipHorizontal size={16} />,
-      label: mirrorLocalVideo ? 'Unmirror My Tile' : 'Mirror My Tile',
-      onClick: toggleMirrorLocalVideo,
-    }] : []),
-    ...(meetingRoomConfig.features.settingsPanelDeviceFallback ? [{
-      icon: <Mic size={16} />,
-      label: settingsOpen ? 'Close Device Settings' : 'Device Settings',
-      onClick: () => openSettingsView('devices'),
-    }] : []),
-    { icon: <Activity size={16} />, label: 'Call Health', onClick: () => openSettingsView('call-health') },
-    { icon: <Sparkles size={16} />, label: 'Video Effects', onClick: () => openSettingsView('video-effects') },
-    {
-      icon: <Users size={16} />,
-      label: 'People',
-      onClick: () => {
-        toggleParticipants();
-      },
-    },
-    { icon: <Link2 size={16} />, label: 'Copy Link', onClick: copyRoomLink },
-    { icon: <Pencil size={16} />, label: whiteboardOpen ? 'Close Whiteboard' : 'Whiteboard', onClick: () => {
-      toggleWhiteboard();
-      // Broadcast to other participants so they also switch layout
-      if (room) {
-        const msg = JSON.stringify({ type: 'whiteboard-activate', active: !whiteboardOpen });
-        room.localParticipant.publishData(new TextEncoder().encode(msg), { reliable: true, topic: 'whiteboard' }).catch(() => {});
-      }
-    }},
-    ...(isModerator ? [
-      { icon: meetingLocked ? <Lock size={16} className="text-warning-400" /> : <Unlock size={16} />, label: meetingLocked ? 'Unlock Meeting' : 'Lock Meeting', onClick: handleToggleLock },
-      { icon: <DoorOpen size={16} />, label: lobbyEnabled ? 'Disable Lobby' : 'Enable Lobby', onClick: handleToggleLobby },
-      { icon: <ScreenShare size={16} className={participantsCanShareScreen ? 'text-brand-400' : ''} />, label: participantsCanShareScreen ? 'Disallow Screen Share' : 'Allow Screen Share', onClick: handleToggleParticipantScreenShare },
-      { icon: <MessageCircle size={16} className={participantsCanChat ? 'text-brand-400' : ''} />, label: participantsCanChat ? 'Mute Participant Chat' : 'Allow Participant Chat', onClick: handleToggleParticipantChat },
-      { icon: <Mic size={16} className={participantsCanUnmute ? 'text-brand-400' : ''} />, label: participantsCanUnmute ? 'Mute All Participants' : 'Allow Unmute', onClick: handleToggleParticipantUnmute },
-      { icon: <Camera size={16} className={participantsCanTurnOnCamera ? 'text-brand-400' : ''} />, label: participantsCanTurnOnCamera ? 'Disable Cameras' : 'Allow Cameras', onClick: handleToggleParticipantCamera },
-    ] : []),
-  ];
 
   return (
     <div className="relative">
@@ -542,13 +507,7 @@ export function ControlBar() {
         <div className="flex items-center gap-2">
           <ChatButton isOpen={chatOpen} unreadCount={unreadCount} mentionCount={mentionCount} onToggle={toggleChat} />
           <ParticipantsButton isOpen={participantsOpen} lobbyCount={lobbyCount} isModerator={isModerator} onToggle={toggleParticipants} />
-          <WhiteboardButton isOpen={whiteboardOpen} onToggle={() => {
-            toggleWhiteboard();
-            if (room) {
-              const msg = JSON.stringify({ type: 'whiteboard-activate', active: !whiteboardOpen });
-              room.localParticipant.publishData(new TextEncoder().encode(msg), { reliable: true, topic: 'whiteboard' }).catch(() => {});
-            }
-          }} />
+          <WhiteboardButton isOpen={whiteboardOpen} onToggle={handleToggleWhiteboard} />
 
           {/* Controls - Moderators only */}
           {isModerator && (
@@ -606,7 +565,21 @@ export function ControlBar() {
               <MoreIcon size={18} />
               <span>More</span>
             </button>
-            <MoreMenu show={showMore} onClose={() => setShowMore(false)} items={moreMenuItems} isRecording={isRecording} />
+            <MemoizedMoreMenu
+              show={showMore}
+              onClose={() => setShowMore(false)}
+              isRecording={isRecording}
+              isPiPSupported={isPiPSupported}
+              isPiPOpen={isPiPOpen}
+              onTogglePiP={togglePiP}
+              joinLeaveSoundsEnabled={joinLeaveSoundsEnabled}
+              onToggleJoinLeaveSounds={toggleJoinLeaveSounds}
+              mirrorLocalVideo={mirrorLocalVideo}
+              onToggleMirrorLocalVideo={toggleMirrorLocalVideo}
+              settingsOpen={settingsOpen}
+              onOpenSettings={openSettingsView}
+              onCopyLink={copyRoomLink}
+            />
           </div>
         </div>
 
@@ -653,7 +626,43 @@ export function ControlBar() {
             >
               <MoreVertical size={20} aria-hidden="true" />
             </button>
-            <MoreMenu show={showMore} onClose={() => setShowMore(false)} items={mobileMoreMenuItems} isRecording={isRecording} />
+            <MemoizedMobileMoreMenu
+              show={showMore}
+              onClose={() => setShowMore(false)}
+              isRecording={isRecording}
+              isScreenSharing={isScreenSharing}
+              onToggleScreenShare={handleToggleScreenShare}
+              handRaised={handRaised}
+              onToggleHandRaise={toggleHandRaise}
+              layout={layout}
+              onToggleLayout={toggleLayout}
+              isPiPSupported={isPiPSupported}
+              isPiPOpen={isPiPOpen}
+              onTogglePiP={togglePiP}
+              joinLeaveSoundsEnabled={joinLeaveSoundsEnabled}
+              onToggleJoinLeaveSounds={toggleJoinLeaveSounds}
+              mirrorLocalVideo={mirrorLocalVideo}
+              onToggleMirrorLocalVideo={toggleMirrorLocalVideo}
+              settingsOpen={settingsOpen}
+              onOpenSettings={openSettingsView}
+              onToggleParticipants={toggleParticipants}
+              onCopyLink={copyRoomLink}
+              whiteboardOpen={whiteboardOpen}
+              onToggleWhiteboard={handleToggleWhiteboard}
+              isModerator={isModerator}
+              meetingLocked={meetingLocked}
+              lobbyEnabled={lobbyEnabled}
+              participantsCanShareScreen={participantsCanShareScreen}
+              participantsCanChat={participantsCanChat}
+              participantsCanUnmute={participantsCanUnmute}
+              participantsCanTurnOnCamera={participantsCanTurnOnCamera}
+              onToggleLock={handleToggleLock}
+              onToggleLobby={handleToggleLobby}
+              onToggleParticipantScreenShare={handleToggleParticipantScreenShare}
+              onToggleParticipantChat={handleToggleParticipantChat}
+              onToggleParticipantUnmute={handleToggleParticipantUnmute}
+              onToggleParticipantCamera={handleToggleParticipantCamera}
+            />
           </div>
         </div>
       </div>

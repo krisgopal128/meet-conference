@@ -70,6 +70,25 @@ export function useWhiteboardSync(
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingElements = useRef<readonly unknown[]>([]);
   const lastViewportBroadcast = useRef(0);
+  const seenFiles = useRef<Map<string, string>>(new Map());
+
+  function deduplicateFiles(files: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+    if (!files) return files;
+    const result: Record<string, unknown> = {};
+    for (const [id, file] of Object.entries(files)) {
+      const dataURL = (file as { dataURL?: string })?.dataURL;
+      if (!dataURL) {
+        result[id] = file;
+        continue;
+      }
+      const hash = dataURL.substring(0, 100);
+      if (!seenFiles.current.has(hash)) {
+        seenFiles.current.set(hash, id);
+        result[id] = file;
+      }
+    }
+    return result;
+  }
 
   // Broadcast drawing changes with throttle
   const broadcastChange = useCallback(
@@ -198,7 +217,8 @@ export function useWhiteboardSync(
             elements: msg.elements.length,
             commit: msg.commit,
           });
-          api.updateScene({ elements: msg.elements as any[], files: msg.files as any } as any);
+          const dedupedFiles = deduplicateFiles(msg.files as Record<string, unknown> | undefined);
+          api.updateScene({ elements: msg.elements as any[], files: dedupedFiles as any } as any);
           onSceneElements?.(msg.elements as unknown[]);
           onSceneUpdate?.();
 

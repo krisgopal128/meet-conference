@@ -35,9 +35,11 @@ function getEntry(roomName: string): LobbyPollingEntry {
 async function fetchLobby(roomName: string, entry: LobbyPollingEntry): Promise<void> {
   if (entry.fetching || document.hidden) return;
   entry.fetching = true;
-
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
     const res = await roomsApi.getLobby(roomName);
+    clearTimeout(timeout);
     entry.latestLobby = res.data.lobby || [];
     entry.consecutiveErrors = 0;
     entry.subscribers.forEach((subscriber) => subscriber(entry.latestLobby));
@@ -61,8 +63,11 @@ function schedulePoll(roomName: string, entry: LobbyPollingEntry): void {
 
   const delay = entry.consecutiveErrors > 2 ? BACKOFF_POLL_MS : SHORT_POLL_MS;
   entry.timer = setTimeout(async () => {
-    await fetchLobby(roomName, entry);
-    schedulePoll(roomName, entry);
+    try {
+      await fetchLobby(roomName, entry);
+    } finally {
+      schedulePoll(roomName, entry);
+    }
   }, delay);
 }
 

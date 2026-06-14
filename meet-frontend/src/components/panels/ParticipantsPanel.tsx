@@ -72,7 +72,6 @@ export function ParticipantsPanel() {
 
   // Wire up extracted participant actions hook
   const {
-    admitting,
     pendingParticipantActions,
     muteAllPending,
     bulkActionPending,
@@ -312,7 +311,7 @@ export function ParticipantsPanel() {
                 <div className="flex gap-1">
                   <button
                     onClick={() => handleAdmit(p.identity)}
-                    disabled={admitting === p.identity}
+                    disabled={pendingParticipantActions.has(p.identity)}
                     className="p-1.5 bg-success-600 hover:bg-success-700 rounded-lg transition-colors disabled:opacity-50"
                     title="Admit"
                   >
@@ -320,7 +319,8 @@ export function ParticipantsPanel() {
                   </button>
                   <button
                     onClick={() => handleDeny(p.identity)}
-                    className="p-1.5 bg-danger-600 hover:bg-danger-700 rounded-lg transition-colors"
+                    disabled={pendingParticipantActions.has(p.identity)}
+                    className="p-1.5 bg-danger-600 hover:bg-danger-700 rounded-lg transition-colors disabled:opacity-50"
                     title="Deny"
                   >
                     <UserX size={14} className="text-white" />

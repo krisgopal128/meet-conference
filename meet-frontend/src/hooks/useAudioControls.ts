@@ -54,23 +54,33 @@ export function useAudioControls(
     };
   }, [room, prejoinMicId]);
 
-  const isTogglingMic = useRef(false);
+  const pendingTargetRef = useRef<boolean | null>(null);
 
   const toggleMic = useCallback(async () => {
-    if (isTogglingMic.current) return;
     if (!localParticipant) return;
-    isTogglingMic.current = true;
+
+    // If a toggle is in progress, queue a reversal of the pending target
+    if (pendingTargetRef.current !== null) {
+      pendingTargetRef.current = !pendingTargetRef.current;
+      return;
+    }
+
+    pendingTargetRef.current = !localParticipant.isMicrophoneEnabled;
+
     try {
-      const currentlyEnabled = localParticipant.isMicrophoneEnabled;
-      await localParticipant.setMicrophoneEnabled(
-        !currentlyEnabled,
-        !currentlyEnabled ? buildAudioCaptureOptions(activeMicId || undefined) : undefined,
-      );
+      let lastApplied: boolean | null = null;
+      while (lastApplied !== pendingTargetRef.current) {
+        lastApplied = pendingTargetRef.current;
+        await localParticipant.setMicrophoneEnabled(
+          lastApplied,
+          lastApplied ? buildAudioCaptureOptions(activeMicId || undefined) : undefined,
+        );
+      }
     } catch (error) {
       logger.error('Failed to toggle microphone:', error);
       toast.error('Failed to toggle microphone');
     } finally {
-      isTogglingMic.current = false;
+      pendingTargetRef.current = null;
     }
   }, [localParticipant, activeMicId]);
 

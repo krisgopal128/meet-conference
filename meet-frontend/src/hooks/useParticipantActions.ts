@@ -23,7 +23,6 @@ export function useParticipantActions(
   setLobbyParticipants: React.Dispatch<React.SetStateAction<LobbyParticipantState[]>>,
   lobbyParticipants: LobbyParticipantState[],
 ) {
-  const [admitting, setAdmitting] = useState<string | null>(null);
   const [pendingParticipantActions, setPendingParticipantActions] = useState<Set<string>>(new Set());
   const [muteAllPending, setMuteAllPending] = useState(false);
   const [bulkActionPending, setBulkActionPending] = useState<string | null>(null);
@@ -52,38 +51,37 @@ export function useParticipantActions(
 
   // Admit participant from lobby
   const handleAdmit = useCallback(async (participantIdentity: string) => {
-    setAdmitting(participantIdentity);
-    try {
-      await roomsApi.admitParticipant(room.name, participantIdentity);
-      setLobbyParticipants((prev) => {
-        const next = prev.filter((p) => p.identity !== participantIdentity);
-        setLobbyCount(next.length);
-        return next;
-      });
-      logger.info('[ParticipantsPanel] Participant admitted:', participantIdentity);
-    } catch (err) {
-      logger.error('Failed to admit participant:', err);
-      toast.error('Failed to admit participant');
-    } finally {
-      setAdmitting(null);
-    }
-  }, [room.name, setLobbyCount, setLobbyParticipants]);
+    await withParticipantAction(participantIdentity, async () => {
+      try {
+        await roomsApi.admitParticipant(room.name, participantIdentity);
+        setLobbyParticipants((prev) => {
+          const next = prev.filter((p) => p.identity !== participantIdentity);
+          setLobbyCount(next.length);
+          return next;
+        });
+      } catch (err) {
+        toast.error('Failed to admit participant');
+      }
+    });
+  }, [room.name, setLobbyCount, setLobbyParticipants, withParticipantAction]);
 
   // Deny participant
   const handleDeny = useCallback(async (participantIdentity: string) => {
-    try {
-      await roomsApi.kickParticipant(room.name, participantIdentity);
-      setLobbyParticipants((prev) => {
-        const next = prev.filter((p) => p.identity !== participantIdentity);
-        setLobbyCount(next.length);
-        return next;
-      });
-      logger.info('[ParticipantsPanel] Participant denied:', participantIdentity);
-    } catch (err) {
-      logger.error('Failed to deny participant:', err);
-      toast.error('Failed to deny participant');
-    }
-  }, [room.name, setLobbyCount, setLobbyParticipants]);
+    await withParticipantAction(participantIdentity, async () => {
+      try {
+        await roomsApi.kickParticipant(room.name, participantIdentity);
+        setLobbyParticipants((prev) => {
+          const next = prev.filter((p) => p.identity !== participantIdentity);
+          setLobbyCount(next.length);
+          return next;
+        });
+        logger.info('[ParticipantsPanel] Participant denied:', participantIdentity);
+      } catch (err) {
+        logger.error('Failed to deny participant:', err);
+        toast.error('Failed to deny participant');
+      }
+    });
+  }, [room.name, withParticipantAction, setLobbyCount, setLobbyParticipants]);
 
   // Mute participant
   const handleMute = useCallback(async (participantIdentity: string) => {
@@ -202,7 +200,6 @@ export function useParticipantActions(
   }, [room.name, bulkActionPending, lobbyParticipants.length, setLobbyCount, setLobbyParticipants]);
 
   return {
-    admitting,
     pendingParticipantActions,
     muteAllPending,
     bulkActionPending,

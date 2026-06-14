@@ -47,6 +47,7 @@ export function PiPContainer() {
   const [pipWindow, setPipWindow] = useState<Window | null>(null);
   const [container, setContainer] = useState<HTMLElement | null>(null);
   const pipWindowRef = useRef<Window | null>(null);
+  const isOpeningRef = useRef(false);
 
   const isPiPOpen = useIsPiPOpen();
   const { setPiPOpen } = usePiPActions();
@@ -65,6 +66,8 @@ export function PiPContainer() {
       logger.warn('[PiPContainer] Document Picture-in-Picture is not supported');
       return null;
     }
+    if (isOpeningRef.current || pipWindowRef.current) return null;
+    isOpeningRef.current = true;
 
     try {
       const docPip = window.documentPictureInPicture as {
@@ -110,6 +113,8 @@ export function PiPContainer() {
       logger.error('[PiPContainer] Failed to open PiP window:', error);
       setPiPOpen(false);
       return null;
+    } finally {
+      isOpeningRef.current = false;
     }
   }, [setPiPOpen]);
 

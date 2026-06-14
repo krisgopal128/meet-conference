@@ -54,31 +54,42 @@ export function useVideoControls(
     };
   }, [room, prejoinCameraId]);
 
-  const isTogglingCamera = useRef(false);
+  const pendingTargetRef = useRef<boolean | null>(null);
 
   const toggleCamera = useCallback(async () => {
-    if (isTogglingCamera.current) return;
     if (!localParticipant) return;
-    isTogglingCamera.current = true;
+
+    if (isAudioOnlyMode(qualityMode)) {
+      toast.error(meetingRoomConfig.feedback.audioOnlyMessage);
+      return;
+    }
+
+    // If a toggle is in progress, queue a reversal of the pending target
+    if (pendingTargetRef.current !== null) {
+      pendingTargetRef.current = !pendingTargetRef.current;
+      return;
+    }
+
+    pendingTargetRef.current = !localParticipant.isCameraEnabled;
+
     try {
-      if (isAudioOnlyMode(qualityMode)) {
-        toast.error(meetingRoomConfig.feedback.audioOnlyMessage);
-        return;
+      let lastApplied: boolean | null = null;
+      while (lastApplied !== pendingTargetRef.current) {
+        lastApplied = pendingTargetRef.current;
+        await withOperationTimeout(
+          localParticipant.setCameraEnabled(
+            lastApplied,
+            lastApplied ? buildCameraCaptureOptions(activeCameraId || undefined, qualityMode, gridAspectRatio) : undefined,
+          ),
+          'MEDIA_TOGGLE',
+          'Toggle camera',
+        );
       }
-      const currentlyEnabled = localParticipant.isCameraEnabled;
-      await withOperationTimeout(
-        localParticipant.setCameraEnabled(
-          !currentlyEnabled,
-          !currentlyEnabled ? buildCameraCaptureOptions(activeCameraId || undefined, qualityMode, gridAspectRatio) : undefined,
-        ),
-        'MEDIA_TOGGLE',
-        'Toggle camera'
-      );
     } catch (error) {
       logger.error('Failed to toggle camera:', error);
       toast.error('Failed to toggle camera');
     } finally {
-      isTogglingCamera.current = false;
+      pendingTargetRef.current = null;
     }
   }, [localParticipant, qualityMode, gridAspectRatio, activeCameraId]);
 

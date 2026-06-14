@@ -245,6 +245,7 @@ export function SettingsPanel() {
       );
     } catch (error) {
       logger.error('Failed to switch camera:', error);
+      setSelectedCamera(room.getActiveDevice('videoinput') || '');
       toast.error('Failed to switch camera');
     }
   }
@@ -259,6 +260,7 @@ export function SettingsPanel() {
       );
     } catch (error) {
       logger.error('Failed to switch microphone:', error);
+      setSelectedMic(room.getActiveDevice('audioinput') || '');
       toast.error('Failed to switch microphone');
     }
   }

@@ -83,6 +83,7 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
   const previewStreamRef = useRef<MediaStream | null>(null);
   const isMountedRef = useRef(true);
   const hasRequestedPermissionsRef = useRef(false);
+  const togglingRef = useRef(false);
 
   const [videoEnabled, setVideoEnabled] = useState(meetingRoomConfig.prejoin.videoEnabledByDefault);
   const [audioEnabled, setAudioEnabled] = useState(meetingRoomConfig.prejoin.audioEnabledByDefault);
@@ -248,27 +249,33 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
   }
 
   const toggleVideo = useCallback(async () => {
-    if (videoEnabled) {
-      stopPreview();
-      setVideoEnabled(false);
-    } else {
-      try {
+    if (togglingRef.current) return;
+    togglingRef.current = true;
+    try {
+      if (videoEnabled) {
         stopPreview();
-        const constraints = buildCameraConstraints(selectedCamera, qualityMode, gridAspectRatio, cameraHardwareCaps);
-        const stream = await navigator.mediaDevices.getUserMedia({ video: constraints });
-        if (!isMountedRef.current) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
+        setVideoEnabled(false);
+      } else {
+        try {
+          stopPreview();
+          const constraints = buildCameraConstraints(selectedCamera, qualityMode, gridAspectRatio, cameraHardwareCaps);
+          const stream = await navigator.mediaDevices.getUserMedia({ video: constraints });
+          if (!isMountedRef.current) {
+            stream.getTracks().forEach((t) => t.stop());
+            return;
+          }
+          previewStreamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+          setVideoEnabled(true);
+        } catch (e) {
+          logger.error('Failed to start video preview:', e);
+          toast.error('Could not start camera');
         }
-        previewStreamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-        setVideoEnabled(true);
-      } catch (e) {
-        logger.error('Failed to start video preview:', e);
-        toast.error('Could not start camera');
       }
+    } finally {
+      togglingRef.current = false;
     }
   }, [videoEnabled, selectedCamera, qualityMode, gridAspectRatio, cameraHardwareCaps, stopPreview]);
 
@@ -337,6 +344,7 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
     return () => {
       isMountedRef.current = false;
       stopPreview();
+      hasRequestedPermissionsRef.current = false;
     };
     // startPreview and loadDevices are intentionally omitted — they are plain
     // functions (new reference each render) which would cause the effect to
@@ -351,7 +359,8 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
     if (!selectedCamera || !videoEnabled || !previewStreamRef.current) return;
 
     let cancelled = false;
-    stopPreview();
+    const previousStream = previewStreamRef.current;
+    const previousCamera = selectedCamera;
 
     const detectAndStart = async () => {
       const caps = await getCameraCapabilities(selectedCamera);
@@ -380,6 +389,8 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
           return;
         }
 
+        // Success: stop old stream and attach new one
+        stopPreview();
         previewStreamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -389,8 +400,13 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
 
     detectAndStart().catch((error) => {
       logger.error('Failed to switch camera:', error);
-      if (!cancelled && isMountedRef.current) {
-        toast.error('Failed to switch camera');
+      if (cancelled || !isMountedRef.current) return;
+      toast.error('Failed to switch camera');
+      // Restore previous camera selection and preview stream
+      setSelectedCamera(previousCamera);
+      if (previousStream && videoRef.current) {
+        previewStreamRef.current = previousStream;
+        videoRef.current.srcObject = previousStream;
       }
     });
 

@@ -16,7 +16,7 @@ export interface AutoPiPOptions {
   /** Whether user is currently in a meeting */
   isInMeeting: boolean;
   /** Callback to trigger PiP */
-  onTrigger: () => void;
+  onTrigger: () => void | Promise<void>;
   /** Cooldown between triggers in ms (default: 5000) */
   cooldown?: number;
   /** Whether to also trigger on window blur (default: false) */
@@ -47,13 +47,17 @@ export function useAutoPiP({
   const onTriggerRef = useRef(onTrigger);
   onTriggerRef.current = onTrigger;
 
-  const handleTrigger = useCallback(() => {
+  const handleTrigger = useCallback(async () => {
     const now = performance.now();
     if (now - lastTriggerRef.current >= cooldown && !pipOpenedRef.current) {
       lastTriggerRef.current = now;
-      pipOpenedRef.current = true;
-      onTriggerRef.current();
-      logger.info('[useAutoPiP] Triggered auto-PiP');
+      try {
+        await onTriggerRef.current();
+        pipOpenedRef.current = true;
+        logger.info('[useAutoPiP] Triggered auto-PiP');
+      } catch (err) {
+        logger.warn('[useAutoPiP] Failed to trigger PiP, will retry next time:', err);
+      }
     }
   }, [cooldown]);
 

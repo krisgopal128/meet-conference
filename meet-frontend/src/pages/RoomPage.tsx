@@ -6,7 +6,7 @@ import { ConferenceRoom } from '../components/room/ConferenceRoom';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { LobbyWaiting } from '../components/room/LobbyWaiting';
 import { useConnectionActions, useQualityMode, useScreenShareMode, useUIActions, useGridAspectRatio, useBackgroundBlurEnabled, useBackgroundBlurIntensity, useBackgroundMode, useBackgroundBgColor, useBackgroundImagePath, useMeetingControlsActions } from '../store/roomStore';
-import { enableBackgroundEffect, disableBackgroundEffect, updateBackgroundEffect } from '../utils/backgroundEffectsManager';
+import { enableBackgroundEffect, disableBackgroundEffect, updateBackgroundEffect, cleanupBackgroundEffect } from '../utils/backgroundEffectsManager';
 import { withOperationTimeout } from '../utils/asyncTimeout';
 import { getRoomSettings, roomsApi } from '../services/api';
 import {
@@ -250,10 +250,11 @@ function RoomContent({
       });
     }
     if (!blurEnabled || !localParticipant.isCameraEnabled) {
-      if (!blurEnabled && localParticipant.isCameraEnabled && cameraTrack) {
-        if ('setProcessor' in cameraTrack) {
-          void disableBackgroundEffect(cameraTrack as Parameters<typeof disableBackgroundEffect>[0]);
-        }
+      if (cameraTrack && 'setProcessor' in cameraTrack) {
+        void disableBackgroundEffect(cameraTrack as Parameters<typeof disableBackgroundEffect>[0]);
+      }
+      if (!localParticipant.isCameraEnabled) {
+        void cleanupBackgroundEffect();
       }
       return;
     }

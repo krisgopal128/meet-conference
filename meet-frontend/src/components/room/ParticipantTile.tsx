@@ -1,10 +1,9 @@
 import { memo, useEffect, useRef, useState, Component, ReactNode } from 'react';
-import { Track, RoomEvent, ConnectionQuality, type RemoteTrackPublication, type Participant } from 'livekit-client';
+import { Track, ParticipantEvent, ConnectionQuality, type RemoteTrackPublication, type Participant } from 'livekit-client';
 import {
   VideoTrack,
   ParticipantName,
   useIsSpeaking,
-  useRoomContext,
   useConnectionQualityIndicator,
 } from '@livekit/components-react';
 import {
@@ -108,7 +107,6 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
   const qualityOverrideReason = useQualityOverrideReason();
   const isPinned = pinnedIdentity === participant.identity;
   const tileRef = useRef<HTMLDivElement>(null);
-  const room = useRoomContext();
   const hostId = useHostId();
   const layout = useLayout();
   const isMobile = useIsMobile();
@@ -161,14 +159,14 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
       forceRender(v => v + 1);
     };
     
-    room.on(RoomEvent.TrackSubscribed, handleTrackEvent);
-    room.on(RoomEvent.TrackUnsubscribed, handleTrackEvent);
+    participant.on(ParticipantEvent.TrackSubscribed, handleTrackEvent);
+    participant.on(ParticipantEvent.TrackUnsubscribed, handleTrackEvent);
     
     return () => {
-      room.off(RoomEvent.TrackSubscribed, handleTrackEvent);
-      room.off(RoomEvent.TrackUnsubscribed, handleTrackEvent);
+      participant.off(ParticipantEvent.TrackSubscribed, handleTrackEvent);
+      participant.off(ParticipantEvent.TrackUnsubscribed, handleTrackEvent);
     };
-  }, [participant.identity, participant.isLocal, room, qualityMode]);
+  }, [participant, participant.isLocal, qualityMode]);
 
   // ========================================
   // Listen for new tracks being published (late joins)
@@ -176,64 +174,40 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
   useEffect(() => {
     if (participant.isLocal || isAudioOnlyMode(qualityMode)) return;
     
-    const handleTrackPublished = (publication: RemoteTrackPublication, pubParticipant: Participant) => {
-      if (pubParticipant.identity === participant.identity && publication.source === Track.Source.Camera) {
+    const handleTrackPublished = (publication: RemoteTrackPublication) => {
+      if (publication.source === Track.Source.Camera) {
         logger.debug(`[ParticipantTile] Camera published by ${participant.identity}, forcing subscription`);
-        // Force subscription immediately
         if (!publication.isSubscribed) {
           publication.setSubscribed(true);
         }
-        // Force a re-render to update the track reference
         forceRender(v => v + 1);
       }
     };
     
-    room.on(RoomEvent.TrackPublished, handleTrackPublished);
+    participant.on(ParticipantEvent.TrackPublished, handleTrackPublished);
     
     return () => {
-      room.off(RoomEvent.TrackPublished, handleTrackPublished);
+      participant.off(ParticipantEvent.TrackPublished, handleTrackPublished);
     };
-  }, [participant.identity, participant.isLocal, room, qualityMode]);
+  }, [participant, participant.isLocal, qualityMode]);
 
   // ========================================
-  // Listen for participant join events (for tracks already published)
+  // Listen for participant metadata changes (permission updates)
   // ========================================
   useEffect(() => {
     if (participant.isLocal || isAudioOnlyMode(qualityMode)) return;
-    
-    const handleParticipantConnected = (connectedParticipant: Participant) => {
-      if (connectedParticipant.identity === participant.identity) {
-        logger.debug(`[ParticipantTile] Participant connected: ${participant.identity}, checking for existing tracks`);
-        // Check for any already-published camera tracks
-        const cameraPubs = Array.from(connectedParticipant.trackPublications.values())
-          .filter(pub => pub.source === Track.Source.Camera);
-        for (const pub of cameraPubs) {
-          const remotePub = pub as RemoteTrackPublication;
-          if (!remotePub.isSubscribed) {
-            logger.debug(`[ParticipantTile] Subscribing to existing track for ${participant.identity}`);
-            remotePub.setSubscribed(true);
-          }
-        }
-        forceRender(v => v + 1);
-      }
+
+    const handleParticipantMetadataChanged = () => {
+      logger.debug(`[ParticipantTile] Metadata changed for ${participant.identity}`);
+      forceRender(v => v + 1);
     };
     
-    // Listen for participant metadata changes (permission updates)
-    const handleParticipantMetadataChanged = (_metadata: string | undefined, changedParticipant: Participant) => {
-      if (changedParticipant.identity === participant.identity) {
-        logger.debug(`[ParticipantTile] Metadata changed for ${participant.identity}`);
-        forceRender(v => v + 1);
-      }
-    };
-    
-    room.on(RoomEvent.ParticipantConnected, handleParticipantConnected);
-    room.on(RoomEvent.ParticipantMetadataChanged, handleParticipantMetadataChanged);
+    participant.on(ParticipantEvent.ParticipantMetadataChanged, handleParticipantMetadataChanged);
     
     return () => {
-      room.off(RoomEvent.ParticipantConnected, handleParticipantConnected);
-      room.off(RoomEvent.ParticipantMetadataChanged, handleParticipantMetadataChanged);
+      participant.off(ParticipantEvent.ParticipantMetadataChanged, handleParticipantMetadataChanged);
     };
-  }, [participant.identity, participant.isLocal, room, qualityMode]);
+  }, [participant, participant.isLocal, qualityMode]);
 
   // Debug logging for track state (development only)
   useEffect(() => {
@@ -262,14 +236,14 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
       logTrackState();
     };
     
-    room.on(RoomEvent.TrackSubscribed, handleChange);
-    room.on(RoomEvent.TrackUnsubscribed, handleChange);
+    participant.on(ParticipantEvent.TrackSubscribed, handleChange);
+    participant.on(ParticipantEvent.TrackUnsubscribed, handleChange);
     
     return () => {
-      room.off(RoomEvent.TrackSubscribed, handleChange);
-      room.off(RoomEvent.TrackUnsubscribed, handleChange);
+      participant.off(ParticipantEvent.TrackSubscribed, handleChange);
+      participant.off(ParticipantEvent.TrackUnsubscribed, handleChange);
     };
-  }, [cameraTrackRef?.publication, participant.identity, participant.isLocal, room]);
+  }, [cameraTrackRef?.publication, participant, participant.isLocal]);
 
   // Derive subscription state directly from publication
   const isTrackSubscribed = (cameraTrackRef?.publication as RemoteTrackPublication | undefined)?.isSubscribed ?? false;
@@ -423,11 +397,11 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
     };
 
     syncPausedState();
-    room.on(RoomEvent.TrackStreamStateChanged, handleStreamStateChanged);
+    participant.on(ParticipantEvent.TrackStreamStateChanged, handleStreamStateChanged);
     return () => {
-      room.off(RoomEvent.TrackStreamStateChanged, handleStreamStateChanged);
+      participant.off(ParticipantEvent.TrackStreamStateChanged, handleStreamStateChanged);
     };
-  }, [cameraTrackRef, participant.isLocal, room]);
+  }, [cameraTrackRef, participant, participant.isLocal]);
 
   return (
     <div

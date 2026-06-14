@@ -12,9 +12,11 @@ import {
   PhoneOff, LayoutGrid, Hand, Circle, MoreVertical, LogOut,
   StopCircle, ChevronDown,
   SquarePlay, Lock, Unlock, DoorOpen, ScreenShare, MessageCircle, Mic as MicIcon, Camera,
-  CircleDot, Loader2, Pencil
+  CircleDot, Loader2, Pencil,
+  Link2, Bell, BellOff, FlipHorizontal, Activity, Sparkles, PictureInPicture2,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { meetingRoomConfig } from '../../config/meetingRoomConfig';
 
 // ============================================
 // Constants
@@ -1048,6 +1050,193 @@ export const MoreMenu = memo(function MoreMenu({
       </div>
     </>
   );
+});
+
+// ============================================
+// Memoized More Menu (Desktop)
+// ============================================
+
+type SettingsViewType = 'devices' | 'call-health' | 'video-effects';
+
+interface MemoizedMoreMenuProps {
+  show: boolean;
+  onClose: () => void;
+  isRecording: boolean;
+  isPiPSupported: boolean;
+  isPiPOpen: boolean;
+  onTogglePiP: () => void;
+  joinLeaveSoundsEnabled: boolean;
+  onToggleJoinLeaveSounds: () => void;
+  mirrorLocalVideo: boolean;
+  onToggleMirrorLocalVideo: () => void;
+  settingsOpen: boolean;
+  onOpenSettings: (view: SettingsViewType) => void;
+  onCopyLink: () => void;
+}
+
+export const MemoizedMoreMenu = memo(function MemoizedMoreMenu({
+  show,
+  onClose,
+  isRecording,
+  isPiPSupported,
+  isPiPOpen,
+  onTogglePiP,
+  joinLeaveSoundsEnabled,
+  onToggleJoinLeaveSounds,
+  mirrorLocalVideo,
+  onToggleMirrorLocalVideo,
+  settingsOpen,
+  onOpenSettings,
+  onCopyLink,
+}: MemoizedMoreMenuProps) {
+  const items: MoreMenuItem[] = [
+    { icon: <Link2 size={16} />, label: 'Copy Meeting Link', onClick: onCopyLink },
+    ...(isPiPSupported ? [{
+      icon: <PictureInPicture2 size={16} />,
+      label: isPiPOpen ? 'Close Picture-in-Picture' : 'Open Picture-in-Picture',
+      onClick: onTogglePiP,
+    }] : []),
+    ...(meetingRoomConfig.features.joinLeaveSoundToggle ? [{
+      icon: joinLeaveSoundsEnabled ? <Bell size={16} /> : <BellOff size={16} />,
+      label: joinLeaveSoundsEnabled ? 'Mute Sounds' : 'Enable Sounds',
+      onClick: onToggleJoinLeaveSounds,
+    }] : []),
+    ...(meetingRoomConfig.features.mirrorLocalVideoToggle ? [{
+      icon: <FlipHorizontal size={16} />,
+      label: mirrorLocalVideo ? 'Unmirror My Tile' : 'Mirror My Tile',
+      onClick: onToggleMirrorLocalVideo,
+    }] : []),
+    ...(meetingRoomConfig.features.settingsPanelDeviceFallback ? [{
+      icon: <Mic size={16} />,
+      label: settingsOpen ? 'Close Device Settings' : 'Device Settings',
+      onClick: () => onOpenSettings('devices'),
+    }] : []),
+    { icon: <Activity size={16} />, label: 'Call Health', onClick: () => onOpenSettings('call-health') },
+    { icon: <Sparkles size={16} />, label: 'Video Effects', onClick: () => onOpenSettings('video-effects') },
+  ];
+
+  return <MoreMenu show={show} onClose={onClose} items={items} isRecording={isRecording} />;
+});
+
+// ============================================
+// Memoized More Menu (Mobile)
+// ============================================
+
+interface MemoizedMobileMoreMenuProps {
+  show: boolean;
+  onClose: () => void;
+  isRecording: boolean;
+  isScreenSharing: boolean | undefined;
+  onToggleScreenShare: () => void;
+  handRaised: boolean;
+  onToggleHandRaise: () => void;
+  layout: string;
+  onToggleLayout: () => void;
+  isPiPSupported: boolean;
+  isPiPOpen: boolean;
+  onTogglePiP: () => void;
+  joinLeaveSoundsEnabled: boolean;
+  onToggleJoinLeaveSounds: () => void;
+  mirrorLocalVideo: boolean;
+  onToggleMirrorLocalVideo: () => void;
+  settingsOpen: boolean;
+  onOpenSettings: (view: SettingsViewType) => void;
+  onToggleParticipants: () => void;
+  onCopyLink: () => void;
+  whiteboardOpen: boolean;
+  onToggleWhiteboard: () => void;
+  isModerator: boolean;
+  meetingLocked: boolean;
+  lobbyEnabled: boolean;
+  participantsCanShareScreen: boolean;
+  participantsCanChat: boolean;
+  participantsCanUnmute: boolean;
+  participantsCanTurnOnCamera: boolean;
+  onToggleLock: () => void;
+  onToggleLobby: () => void;
+  onToggleParticipantScreenShare: () => void;
+  onToggleParticipantChat: () => void;
+  onToggleParticipantUnmute: () => void;
+  onToggleParticipantCamera: () => void;
+}
+
+export const MemoizedMobileMoreMenu = memo(function MemoizedMobileMoreMenu({
+  show,
+  onClose,
+  isRecording,
+  isScreenSharing,
+  onToggleScreenShare,
+  handRaised,
+  onToggleHandRaise,
+  layout,
+  onToggleLayout,
+  isPiPSupported,
+  isPiPOpen,
+  onTogglePiP,
+  joinLeaveSoundsEnabled,
+  onToggleJoinLeaveSounds,
+  mirrorLocalVideo,
+  onToggleMirrorLocalVideo,
+  settingsOpen,
+  onOpenSettings,
+  onToggleParticipants,
+  onCopyLink,
+  whiteboardOpen,
+  onToggleWhiteboard,
+  isModerator,
+  meetingLocked,
+  lobbyEnabled,
+  participantsCanShareScreen,
+  participantsCanChat,
+  participantsCanUnmute,
+  participantsCanTurnOnCamera,
+  onToggleLock,
+  onToggleLobby,
+  onToggleParticipantScreenShare,
+  onToggleParticipantChat,
+  onToggleParticipantUnmute,
+  onToggleParticipantCamera,
+}: MemoizedMobileMoreMenuProps) {
+  const items: MoreMenuItem[] = [
+    { icon: <Monitor size={16} />, label: isScreenSharing ? 'Stop Share' : 'Share Screen', onClick: onToggleScreenShare },
+    { icon: <Hand size={16} className={handRaised ? 'text-warning-500' : ''} />, label: handRaised ? 'Lower Hand' : 'Raise Hand', onClick: onToggleHandRaise },
+    { icon: layout === 'grid' ? <SquarePlay size={16} /> : <LayoutGrid size={16} />, label: layout === 'grid' ? 'Speaker View' : 'Grid View', onClick: onToggleLayout },
+    ...(isPiPSupported ? [{
+      icon: <PictureInPicture2 size={16} />,
+      label: isPiPOpen ? 'Close Picture-in-Picture' : 'Open Picture-in-Picture',
+      onClick: onTogglePiP,
+    }] : []),
+    ...(meetingRoomConfig.features.joinLeaveSoundToggle ? [{
+      icon: joinLeaveSoundsEnabled ? <Bell size={16} /> : <BellOff size={16} />,
+      label: joinLeaveSoundsEnabled ? 'Mute Sounds' : 'Enable Sounds',
+      onClick: onToggleJoinLeaveSounds,
+    }] : []),
+    ...(meetingRoomConfig.features.mirrorLocalVideoToggle ? [{
+      icon: <FlipHorizontal size={16} />,
+      label: mirrorLocalVideo ? 'Unmirror My Tile' : 'Mirror My Tile',
+      onClick: onToggleMirrorLocalVideo,
+    }] : []),
+    ...(meetingRoomConfig.features.settingsPanelDeviceFallback ? [{
+      icon: <Mic size={16} />,
+      label: settingsOpen ? 'Close Device Settings' : 'Device Settings',
+      onClick: () => onOpenSettings('devices'),
+    }] : []),
+    { icon: <Activity size={16} />, label: 'Call Health', onClick: () => onOpenSettings('call-health') },
+    { icon: <Sparkles size={16} />, label: 'Video Effects', onClick: () => onOpenSettings('video-effects') },
+    { icon: <Users size={16} />, label: 'People', onClick: onToggleParticipants },
+    { icon: <Link2 size={16} />, label: 'Copy Link', onClick: onCopyLink },
+    { icon: <Pencil size={16} />, label: whiteboardOpen ? 'Close Whiteboard' : 'Whiteboard', onClick: onToggleWhiteboard },
+    ...(isModerator ? [
+      { icon: meetingLocked ? <Lock size={16} className="text-warning-400" /> : <Unlock size={16} />, label: meetingLocked ? 'Unlock Meeting' : 'Lock Meeting', onClick: onToggleLock },
+      { icon: <DoorOpen size={16} />, label: lobbyEnabled ? 'Disable Lobby' : 'Enable Lobby', onClick: onToggleLobby },
+      { icon: <ScreenShare size={16} className={participantsCanShareScreen ? 'text-brand-400' : ''} />, label: participantsCanShareScreen ? 'Disallow Screen Share' : 'Allow Screen Share', onClick: onToggleParticipantScreenShare },
+      { icon: <MessageCircle size={16} className={participantsCanChat ? 'text-brand-400' : ''} />, label: participantsCanChat ? 'Mute Participant Chat' : 'Allow Participant Chat', onClick: onToggleParticipantChat },
+      { icon: <MicIcon size={16} className={participantsCanUnmute ? 'text-brand-400' : ''} />, label: participantsCanUnmute ? 'Mute All Participants' : 'Allow Unmute', onClick: onToggleParticipantUnmute },
+      { icon: <Camera size={16} className={participantsCanTurnOnCamera ? 'text-brand-400' : ''} />, label: participantsCanTurnOnCamera ? 'Disable Cameras' : 'Allow Cameras', onClick: onToggleParticipantCamera },
+    ] : []),
+  ];
+
+  return <MoreMenu show={show} onClose={onClose} items={items} isRecording={isRecording} />;
 });
 
 // Export icons for use in ControlBar
