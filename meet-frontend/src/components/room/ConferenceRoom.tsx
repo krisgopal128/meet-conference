@@ -19,12 +19,9 @@ import {
   useHostId,
   useJoinLeaveSoundsEnabled,
   useSelectedQualityMode,
-  useBackgroundBlurEnabled,
-  useBackgroundBlurLevel,
   useUIActions,
   useIsPiPOpen,
 } from '../../store/roomStore';
-import { toggleBlur, forceCleanup, isBlurApplying } from '../../utils/blurProcessorManager';
 import { ControlBar } from '../controls/ControlBar';
 import { QualityIndicator } from '../controls/QualityIndicator';
 import { SpeakerLayout } from './SpeakerLayout';
@@ -78,8 +75,6 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
   const hostId = useHostId();
   const joinLeaveSoundsEnabled = useJoinLeaveSoundsEnabled();
   const selectedQualityMode = useSelectedQualityMode();
-  const backgroundBlurEnabled = useBackgroundBlurEnabled();
-  const backgroundBlurLevel = useBackgroundBlurLevel();
   const isPiPOpen = useIsPiPOpen();
   
   // Action hooks
@@ -411,51 +406,6 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
       }
     };
   }, [selectedQualityMode, setCallMetrics]);
-
-  // Background blur toggle effect - uses improved blur manager
-  useEffect(() => {
-    const cameraPublication = room.localParticipant.getTrackPublication(Track.Source.Camera);
-    const videoTrack = cameraPublication?.track;
-    
-    if (!videoTrack) return;
-
-    if (isBlurApplying()) {
-      logger.info('[ConferenceRoom] Blur operation in progress, skipping');
-      return;
-    }
-
-    let cancelled = false;
-    const track = videoTrack;
-
-    const applyBlurChange = async () => {
-      if (cancelled) return;
-      
-      const success = await toggleBlur(track, backgroundBlurEnabled, undefined, backgroundBlurLevel);
-      
-      if (!cancelled) {
-        if (success) {
-          logger.info(`[ConferenceRoom] Blur ${backgroundBlurEnabled ? 'enabled' : 'disabled'} successfully`);
-        } else {
-          logger.warn('[ConferenceRoom] Blur operation was debounced or failed');
-        }
-      }
-    };
-
-    void applyBlurChange();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [room, backgroundBlurEnabled, backgroundBlurLevel, room.localParticipant.getTrackPublication(Track.Source.Camera)?.track]);
-
-  // Cleanup blur processor on unmount
-  useEffect(() => {
-    return () => {
-      const cameraPublication = room.localParticipant.getTrackPublication(Track.Source.Camera);
-      const videoTrack = cameraPublication?.track;
-      void forceCleanup(videoTrack || undefined);
-    };
-  }, []);
 
   // Preload whiteboard chunk eagerly so first toggle doesn't suspend
   useEffect(() => {
