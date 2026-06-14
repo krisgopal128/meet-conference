@@ -228,13 +228,29 @@ function RoomContent({
   const backgroundBgColor = useBackgroundBgColor();
   const backgroundImagePath = useBackgroundImagePath();
 
+  // Extract camera track into a stable memoized value to avoid recreating dependency array on every render
+  const cameraTrack = useMemo(() => {
+    if (!localParticipant.isCameraEnabled) return null;
+    const publication = localParticipant.getTrackPublication(Track.Source.Camera);
+    return publication?.track ?? null;
+  }, [localParticipant, localParticipant.isCameraEnabled]);
+
   useEffect(() => {
     const blurEnabled = storeBlurEnabled || state.backgroundBlur;
+    if (import.meta.env.DEV) {
+      logger.info('[RoomPage] Blur effect triggered:', {
+        storeBlurEnabled,
+        stateBackgroundBlur: state.backgroundBlur,
+        blurEnabled,
+        cameraEnabled: localParticipant.isCameraEnabled,
+        cameraTrack: !!cameraTrack,
+        backgroundMode,
+        backgroundBlurIntensity,
+      });
+    }
     if (!blurEnabled || !localParticipant.isCameraEnabled) {
-      if (!blurEnabled && localParticipant.isCameraEnabled) {
-        const cameraPublication = localParticipant.getTrackPublication(Track.Source.Camera);
-        const cameraTrack = cameraPublication?.track;
-        if (cameraTrack && 'setProcessor' in cameraTrack) {
+      if (!blurEnabled && localParticipant.isCameraEnabled && cameraTrack) {
+        if ('setProcessor' in cameraTrack) {
           void disableBackgroundEffect(cameraTrack as Parameters<typeof disableBackgroundEffect>[0]);
         }
       }
@@ -244,10 +260,9 @@ function RoomContent({
     let cancelled = false;
 
     const applyBlur = async () => {
-      const cameraPublication = localParticipant.getTrackPublication(Track.Source.Camera);
-      const cameraTrack = cameraPublication?.track;
-      if (cameraTrack && 'setProcessor' in cameraTrack) {
-        if (cancelled) return;
+      if (!cameraTrack) return;
+      if (cancelled) return;
+      if ('setProcessor' in cameraTrack) {
         const success = await enableBackgroundEffect(
           cameraTrack as Parameters<typeof enableBackgroundEffect>[0],
           {
@@ -259,7 +274,10 @@ function RoomContent({
           },
         );
         if (!cancelled) {
-          logger.info(`[RoomPage] Background effect ${success ? 'applied' : 'failed'}`);
+          logger.info(`[RoomPage] Background effect ${success ? 'applied' : 'failed'}`, {
+            mode: backgroundMode,
+            blurRadius: backgroundBlurIntensity,
+          });
         }
       }
     };
@@ -270,7 +288,7 @@ function RoomContent({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [storeBlurEnabled, state.backgroundBlur, localParticipant, localParticipant.isCameraEnabled, localParticipant.getTrackPublication(Track.Source.Camera)?.track, backgroundBlurIntensity, backgroundMode, backgroundBgColor, backgroundImagePath]);
+  }, [storeBlurEnabled, state.backgroundBlur, cameraTrack, backgroundBlurIntensity, backgroundMode, backgroundBgColor, backgroundImagePath, localParticipant.isCameraEnabled]);
 
   // Update effect settings at runtime when store values change (in-room controls)
   useEffect(() => {
