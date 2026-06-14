@@ -98,5 +98,6 @@ Caddyfile.new
 .understand-anything/
 test-screenshots/
 build_tree.py
+bot-simulator/
 
 testsprite_tests/tmp/config.json
