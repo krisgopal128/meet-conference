@@ -1,21 +1,6 @@
 import { useEffect, useRef } from 'react';
 import logger from '../utils/logger';
 
-// Type declarations for Insertable Streams API (Chrome 94+)
-// Conditionally declared only if not already in lib.dom.d.ts
-declare global {
-  class MediaStreamTrackProcessor {
-    constructor(options: { track: MediaStreamTrack });
-    readonly readable: ReadableStream<VideoFrame>;
-  }
-
-  class MediaStreamTrackGenerator {
-    constructor(options: { kind: 'video' | 'audio' });
-    readonly writable: WritableStream<VideoFrame>;
-    readonly track: MediaStreamTrack;
-  }
-}
-
 /**
  * Lightweight video filter that applies temporal blending to reduce rolling shutter artifacts.
  * 
