@@ -291,15 +291,20 @@ function RoomContent({
     };
   }, [storeBlurEnabled, state.backgroundBlur, cameraTrack, backgroundBlurIntensity, backgroundMode, backgroundBgColor, backgroundImagePath, localParticipant.isCameraEnabled]);
 
-  // Update effect settings at runtime when store values change (in-room controls)
+  // Update effect settings at runtime — debounced to prevent rapid option spam during slider drag
+  const updateEffectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!storeBlurEnabled) return;
-    void updateBackgroundEffect({
-      mode: backgroundMode,
-      blurRadius: backgroundBlurIntensity,
-      bgColor: backgroundBgColor,
-      bgImagePath: backgroundImagePath,
-    });
+    if (updateEffectTimerRef.current) clearTimeout(updateEffectTimerRef.current);
+    updateEffectTimerRef.current = setTimeout(() => {
+      void updateBackgroundEffect({
+        mode: backgroundMode,
+        blurRadius: backgroundBlurIntensity,
+        bgColor: backgroundBgColor,
+        bgImagePath: backgroundImagePath,
+      });
+    }, 200);
+    return () => { if (updateEffectTimerRef.current) clearTimeout(updateEffectTimerRef.current); };
   }, [backgroundMode, backgroundBlurIntensity, backgroundBgColor, backgroundImagePath, storeBlurEnabled]);
 
   useEffect(() => {

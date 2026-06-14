@@ -40,7 +40,7 @@ const MASK_EMA = 0.5;
 const MASK_EDGE_MARGIN = 0.08;
 const MAX_FPS = 30;
 const FRAME_INTERVAL = 1000 / MAX_FPS;
-const STACK_COUNT = 8;
+const STACK_COUNT = 3;
 
 // ─── Engine ──────────────────────────────────────────
 

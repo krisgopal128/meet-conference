@@ -35,6 +35,7 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
   private outputCanvas: HTMLCanvasElement;
   private outputCtx: CanvasRenderingContext2D;
   private bgImageEl: HTMLImageElement | null = null;
+  private isProcessing = false;
 
   constructor(options: Partial<SelfieSegmentationOptions> = {}) {
     super();
@@ -120,6 +121,13 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
       return;
     }
 
+    // Skip processing if previous frame is still being processed.
+    // This prevents the TransformStream from backing up and freezing the video.
+    if (this.isProcessing) {
+      controller.enqueue(frame);
+      return;
+    }
+
     const w = frame.displayWidth;
     const h = frame.displayHeight;
 
@@ -127,6 +135,8 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
       controller.enqueue(frame);
       return;
     }
+
+    this.isProcessing = true;
 
     // Size canvases to match frame
     if (this.workCanvas.width !== w) this.workCanvas.width = w;
@@ -152,6 +162,8 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
     } catch (err) {
       logger.warn('[SelfieSegmentationTransformer] Transform error, passing through:', err);
       controller.enqueue(frame);
+    } finally {
+      this.isProcessing = false;
     }
   }
 
