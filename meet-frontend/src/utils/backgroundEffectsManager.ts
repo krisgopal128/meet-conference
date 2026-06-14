@@ -183,15 +183,17 @@ export async function enableBackgroundEffect(
 }
 
 /**
- * Disable background effect (switch to passthrough).
- * NOTE: Debounce is NOT applied to toggle actions - only to continuous updates
+ * Disable background effect — fully removes the processor from the track.
+ * This is critical: keeping the processor attached even in "passthrough" mode
+ * causes every frame to be copied through 2 canvases + a new VideoFrame allocation,
+ * which can freeze the video under load.
  */
-export async function disableBackgroundEffect(_track: VideoTrack): Promise<boolean> {
+export async function disableBackgroundEffect(track: VideoTrack): Promise<boolean> {
   if (state.isApplying) {
-    logger.warn('[BgEffects] Already applying effect, ignoring call');
+    logger.warn('[BgEffects] Already applying effect, ignoring disable call');
     return false;
   }
-  if (!state.transformer) {
+  if (!state.transformer && !state.processor) {
     state.isEnabled = false;
     return true;
   }
@@ -201,9 +203,31 @@ export async function disableBackgroundEffect(_track: VideoTrack): Promise<boole
   state.lastToggleTime = Date.now();
 
   try {
-    await withTimeout(state.transformer.update({ enabled: false }), OPERATION_TIMEOUT_MS);
+    logger.info('[BgEffects] Stopping processor and removing from track...');
+
+    // Destroy the transformer (releases engine + canvases)
+    if (state.transformer) {
+      try {
+        await withTimeout(state.transformer.destroy(), OPERATION_TIMEOUT_MS);
+      } catch (err) {
+        logger.warn('[BgEffects] Transformer destroy error (non-fatal):', err);
+      }
+    }
+
+    // Stop the processor on the track — this removes the processing pipeline
+    // so frames flow directly: camera → LiveKit → remote participants
+    try {
+      await withTimeout(track.stopProcessor(), OPERATION_TIMEOUT_MS);
+    } catch (err) {
+      logger.warn('[BgEffects] stopProcessor error (non-fatal):', err);
+    }
+
+    state.transformer = null;
+    state.processor = null;
+    state.currentTrack = null;
     state.isEnabled = false;
-    logger.info('[BgEffects] Background effect disabled');
+
+    logger.info('[BgEffects] Processor fully removed — frames now passthrough');
     return true;
   } catch (err) {
     logger.error('[BgEffects] Failed to disable:', err);
