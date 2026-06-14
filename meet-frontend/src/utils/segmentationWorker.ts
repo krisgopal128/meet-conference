@@ -10,10 +10,10 @@
  */
 
 // ─── importScripts polyfill for module workers ─────────────────────
-// Must be set up before MediaPipe loads. Runs synchronously at module eval time.
-const _self = self as unknown as { importScripts?: (...urls: string[]) => void };
-if (typeof _self.importScripts !== 'function') {
-  _self.importScripts = function (...urls: string[]): void {
+// In module workers, importScripts() exists as a function but THROWS when called.
+// We must always override it with a working implementation.
+const _self = self as unknown as { importScripts: (...urls: string[]) => void };
+_self.importScripts = function (...urls: string[]): void {
     for (const url of urls) {
       let resolved = url;
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
@@ -38,7 +38,6 @@ if (typeof _self.importScripts !== 'function') {
       }
     }
   };
-}
 
 // ─── Segmentation logic ────────────────────────────────────────────
 
