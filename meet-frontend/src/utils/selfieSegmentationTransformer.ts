@@ -107,6 +107,12 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
       }
     };
 
+    this.worker.onerror = (e: ErrorEvent) => {
+      logger.error('[SelfieSegmentationTransformer] Worker crashed:', e.message);
+      this.workerReady = false;
+      this.isFrameInFlight = false;
+    };
+
     this.worker.postMessage({ type: 'init' });
 
     if (this.options.bgImagePath) {

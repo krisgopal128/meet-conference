@@ -6,7 +6,7 @@ import { ConferenceRoom } from '../components/room/ConferenceRoom';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { LobbyWaiting } from '../components/room/LobbyWaiting';
 import { useConnectionActions, useQualityMode, useScreenShareMode, useUIActions, useGridAspectRatio, useBackgroundBlurEnabled, useBackgroundBlurIntensity, useBackgroundMode, useBackgroundBgColor, useBackgroundImagePath, useMeetingControlsActions } from '../store/roomStore';
-import { enableBackgroundEffect, disableBackgroundEffect, updateBackgroundEffect } from '../utils/backgroundEffectsManager';
+import { enableBackgroundEffect, disableBackgroundEffect, updateBackgroundEffect, cleanupBackgroundEffect } from '../utils/backgroundEffectsManager';
 import { withOperationTimeout } from '../utils/asyncTimeout';
 import { getRoomSettings, roomsApi } from '../services/api';
 import {
@@ -93,8 +93,7 @@ function sourceAllowed(sources: readonly unknown[] | undefined, source: string):
 
 async function teardownRoomMedia(room: ReturnType<typeof useRoomContext>) {
   try {
-    // room.disconnect() handles all track cleanup internally
-    // No need to manually stop tracks - this avoids duplicate stops
+    await cleanupBackgroundEffect();
     await room.disconnect();
   } catch (error) {
     logger.error('[RoomPage] Failed to disconnect room during teardown:', error);
@@ -229,30 +228,39 @@ function RoomContent({
   const backgroundBgColor = useBackgroundBgColor();
   const backgroundImagePath = useBackgroundImagePath();
 
-  // Extract camera track into a stable memoized value to avoid recreating dependency array on every render
+  // Track the camera track in a ref so disable can access it even when camera goes off
+  const cameraTrackRef = useRef<{ track: unknown; hasProcessor: boolean } | null>(null);
   const cameraTrack = useMemo(() => {
     if (!localParticipant.isCameraEnabled) return null;
     const publication = localParticipant.getTrackPublication(Track.Source.Camera);
     return publication?.track ?? null;
   }, [localParticipant, localParticipant.isCameraEnabled]);
 
+  // Effect A: Enable/disable — ONLY reacts to storeBlurEnabled, cameraTrack, isCameraEnabled
+  // Option changes (intensity, mode, color, image) are handled by Effect B below.
   useEffect(() => {
-    const blurEnabled = storeBlurEnabled;
-    if (!blurEnabled || !localParticipant.isCameraEnabled) {
-      if (cameraTrack && 'setProcessor' in cameraTrack) {
-        void disableBackgroundEffect(cameraTrack as Parameters<typeof disableBackgroundEffect>[0]);
+    const track = cameraTrack;
+    const blurEnabled = storeBlurEnabled && localParticipant.isCameraEnabled;
+
+    if (!blurEnabled) {
+      // Use ref'd track if cameraTrack is null (camera just turned off)
+      const trackToDisable = track || cameraTrackRef.current?.track;
+      if (trackToDisable && 'setProcessor' in (trackToDisable as object)) {
+        void disableBackgroundEffect(trackToDisable as Parameters<typeof disableBackgroundEffect>[0]);
+        cameraTrackRef.current = null;
       }
       return;
     }
 
-    let cancelled = false;
+    if (!track) return;
+    cameraTrackRef.current = { track, hasProcessor: true };
 
+    let cancelled = false;
     const applyBlur = async () => {
-      if (!cameraTrack) return;
       if (cancelled) return;
-      if ('setProcessor' in cameraTrack) {
-        const success = await enableBackgroundEffect(
-          cameraTrack as Parameters<typeof enableBackgroundEffect>[0],
+      if ('setProcessor' in track) {
+        await enableBackgroundEffect(
+          track as Parameters<typeof enableBackgroundEffect>[0],
           {
             enabled: true,
             mode: backgroundMode,
@@ -261,23 +269,16 @@ function RoomContent({
             bgImagePath: backgroundImagePath,
           },
         );
-        if (!cancelled) {
-          logger.info(`[RoomPage] Background effect ${success ? 'applied' : 'failed'}`, {
-            mode: backgroundMode,
-            blurRadius: backgroundBlurIntensity,
-          });
-        }
       }
     };
-
     void applyBlur();
 
-    return () => {
-      cancelled = true;
-    };
-  }, [storeBlurEnabled, cameraTrack, backgroundBlurIntensity, backgroundMode, backgroundBgColor, backgroundImagePath, localParticipant.isCameraEnabled]);
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeBlurEnabled, cameraTrack, localParticipant.isCameraEnabled]);
 
-  // Update effect settings at runtime — debounced to prevent rapid option spam during slider drag
+  // Effect B: Runtime option updates — debounced, only when blur is enabled.
+  // Does NOT trigger enable/disable (those are separate concerns).
   const updateEffectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!storeBlurEnabled) return;

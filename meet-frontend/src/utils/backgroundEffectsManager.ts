@@ -72,12 +72,14 @@ async function acquireLock(): Promise<() => void> {
         clearTimeout(safetyTimeout);
         safetyTimeout = null;
       }
+      state.lockPromise = null;
       resolve();
     };
     safetyTimeout = setTimeout(() => {
       if (state.lockPromise) {
         logger.warn('[BgEffects] Lock timeout (3s), forcing release');
         state.isApplying = false;
+        state.lockPromise = null;
         safetyTimeout = null;
         resolve();
       }
@@ -135,12 +137,19 @@ export async function enableBackgroundEffect(
       return true;
     }
 
-    // Clean up old processor
+    // Clean up old processor — destroy transformer BEFORE nulling to avoid leak
     if (state.processor && state.currentTrack) {
       try {
         await withTimeout(state.currentTrack.stopProcessor(), OPERATION_TIMEOUT_MS);
       } catch (err) {
         logger.warn('[BgEffects] Error stopping old processor:', err);
+      }
+      if (state.transformer) {
+        try {
+          await withTimeout(state.transformer.destroy(), OPERATION_TIMEOUT_MS);
+        } catch (err) {
+          logger.warn('[BgEffects] Old transformer destroy error:', err);
+        }
       }
       state.processor = null;
       state.transformer = null;
@@ -294,13 +303,20 @@ export function isBackgroundEffectApplying(): boolean {
 }
 
 /**
- * Force cleanup (unmount or track change).
+ * Force cleanup (unmount or track change) — destroys transformer, worker, canvases.
  */
 export async function cleanupBackgroundEffect(track?: VideoTrack): Promise<void> {
   const targetTrack = track || state.currentTrack;
   if (targetTrack) {
     try {
       await targetTrack.stopProcessor();
+    } catch {
+      // Ignore
+    }
+  }
+  if (state.transformer) {
+    try {
+      await state.transformer.destroy();
     } catch {
       // Ignore
     }
