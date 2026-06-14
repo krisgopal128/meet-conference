@@ -178,51 +178,39 @@ export async function enableBackgroundEffect(
 }
 
 /**
- * Disable background effect — fully removes the processor from the track.
- * This is critical: keeping the processor attached even in "passthrough" mode
- * causes every frame to be copied through 2 canvases + a new VideoFrame allocation,
- * which can freeze the video under load.
+ * Disable background effect — puts the transformer into passthrough mode
+ * WITHOUT removing the processor from the track. This prevents the video
+ * freeze that occurs when stopProcessor() disconnects the TransformStream
+ * mid-flight (stranding the last frame).
+ *
+ * The processor stays attached but passes frames through unmodified.
+ * Full removal only happens via cleanupBackgroundEffect() on room leave.
  */
-export async function disableBackgroundEffect(track: VideoTrack): Promise<boolean> {
+export async function disableBackgroundEffect(_track: VideoTrack): Promise<boolean> {
   if (!state.transformer && !state.processor) {
     state.isEnabled = false;
     return true;
   }
 
-  // Wait for any in-flight enable/update to complete before disabling.
-  // Do NOT early-return on isApplying — that causes the disable to be silently
-  // skipped when a previous operation hasn't finished, leaving the processor
-  // attached and freezing the video.
   const releaseLock = await acquireLock();
   state.isApplying = true;
   state.lastToggleTime = Date.now();
 
   try {
-    logger.info('[BgEffects] Stopping processor and removing from track...');
-
-    // Destroy the transformer (releases engine + canvases)
     if (state.transformer) {
+      logger.info('[BgEffects] Setting transformer to passthrough mode...');
       try {
-        await withTimeout(state.transformer.destroy(), OPERATION_TIMEOUT_MS);
+        await withTimeout(
+          state.transformer.update({ enabled: false, mode: 'none' }),
+          OPERATION_TIMEOUT_MS,
+        );
       } catch (err) {
-        logger.warn('[BgEffects] Transformer destroy error (non-fatal):', err);
+        logger.warn('[BgEffects] Passthrough update error (non-fatal):', err);
       }
     }
 
-    // Stop the processor on the track — this removes the processing pipeline
-    // so frames flow directly: camera → LiveKit → remote participants
-    try {
-      await withTimeout(track.stopProcessor(), OPERATION_TIMEOUT_MS);
-    } catch (err) {
-      logger.warn('[BgEffects] stopProcessor error (non-fatal):', err);
-    }
-
-    state.transformer = null;
-    state.processor = null;
-    state.currentTrack = null;
     state.isEnabled = false;
-
-    logger.info('[BgEffects] Processor fully removed — frames now passthrough');
+    logger.info('[BgEffects] Passthrough mode active — frames flow unmodified');
     return true;
   } catch (err) {
     logger.error('[BgEffects] Failed to disable:', err);

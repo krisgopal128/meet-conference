@@ -141,7 +141,8 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
     frame: VideoFrame,
     controller: TransformStreamDefaultController<VideoFrame>,
   ): Promise<void> {
-    if (!this.engine) {
+    // Passthrough when disabled — no canvas operations, zero overhead
+    if (!this.engine || !this.options.enabled) {
       controller.enqueue(frame);
       return;
     }
