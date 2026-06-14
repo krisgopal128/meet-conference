@@ -7,7 +7,6 @@
 
 import { useEffect, useRef } from 'react';
 import { BackgroundBlurEngine, type BackgroundBlurOptions } from '../utils/backgroundBlurEngine';
-import { createSegmentationWorker } from '../utils/segmentationWorkerFactory';
 
 interface MaskData {
   pixels: Uint8Array;
@@ -90,7 +89,10 @@ export function useBackgroundBlurPreview(
 
     // Create worker for segmentation
     if (!workerRef.current) {
-      workerRef.current = createSegmentationWorker();
+      workerRef.current = new Worker(
+        new URL('../utils/segmentationWorker.ts', import.meta.url),
+        { type: 'module' },
+      );
 
       workerRef.current.onmessage = (e: MessageEvent) => {
         const msg = e.data;

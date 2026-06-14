@@ -19,7 +19,6 @@
 
 import { VideoTransformer } from '@livekit/track-processors';
 import { BackgroundBlurEngine, type BackgroundMode } from './backgroundBlurEngine';
-import { createSegmentationWorker } from './segmentationWorkerFactory';
 import logger from './logger';
 
 export interface SelfieSegmentationOptions extends Record<string, unknown> {
@@ -87,8 +86,8 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
       bgImage: this.bgImageEl,
     });
 
-    // Spawn the segmentation worker (classic worker — MediaPipe needs importScripts)
-    this.worker = createSegmentationWorker();
+    // Spawn the segmentation worker (Vite-bundled module worker with importScripts polyfill)
+    this.worker = new Worker(new URL('./segmentationWorker.ts', import.meta.url), { type: 'module' });
 
     this.worker.onmessage = (e: MessageEvent) => {
       const msg = e.data;

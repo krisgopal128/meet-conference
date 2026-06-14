@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useCallback, memo } from 'react';
-import { exportToCanvas } from '@excalidraw/excalidraw';
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 
 const PREVIEW_PADDING_PX = 6;
@@ -78,6 +77,7 @@ export const WhiteboardPreviewTile = memo(function WhiteboardPreviewTile({
         return;
       }
 
+      const { exportToCanvas } = await import('@excalidraw/excalidraw');
       const canvas = await exportToCanvas({
         elements: elements as any,
         appState: {
