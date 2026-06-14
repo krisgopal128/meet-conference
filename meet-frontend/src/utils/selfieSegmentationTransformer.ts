@@ -163,13 +163,27 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
     // Draw incoming frame to work canvas
     this.workCtx.drawImage(frame, 0, 0);
 
-    // Send frame to worker for segmentation (non-blocking, pipelined)
+    // Fire-and-forget: send frame to worker for segmentation (non-blocking)
     if (this.workerReady && !this.isFrameInFlight) {
       this.isFrameInFlight = true;
-      this.createImageBitmapAndSend(w, h);
+      createImageBitmap(this.workCanvas, 0, 0, w, h)
+        .then((bitmap) => {
+          if (this.worker && this.workerReady) {
+            this.worker.postMessage(
+              { type: 'segment', bitmap, timestamp: performance.now() },
+              [bitmap],
+            );
+          } else {
+            bitmap.close();
+            this.isFrameInFlight = false;
+          }
+        })
+        .catch(() => {
+          this.isFrameInFlight = false;
+        });
     }
 
-    // Composite using the last available mask
+    // SYNCHRONOUS compositing using last available mask
     if (this.lastMask) {
       this.engine.compositeWithMask(
         this.workCanvas,
@@ -180,7 +194,6 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
         this.lastMask.h,
       );
     } else {
-      // No mask yet — pass through
       this.outputCtx.drawImage(this.workCanvas, 0, 0);
     }
 
@@ -191,23 +204,6 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
 
     frame.close();
     controller.enqueue(newFrame);
-  }
-
-  private async createImageBitmapAndSend(w: number, h: number): Promise<void> {
-    try {
-      const bitmap = await createImageBitmap(this.workCanvas, 0, 0, w, h);
-      if (this.worker && this.workerReady) {
-        this.worker.postMessage(
-          { type: 'segment', bitmap, timestamp: performance.now() },
-          [bitmap],
-        );
-      } else {
-        bitmap.close();
-        this.isFrameInFlight = false;
-      }
-    } catch {
-      this.isFrameInFlight = false;
-    }
   }
 
   override async update(options: Partial<SelfieSegmentationOptions>): Promise<void> {

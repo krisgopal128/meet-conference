@@ -3,10 +3,14 @@
  *
  * Uses a Web Worker for segmentation + BackgroundBlurEngine for compositing.
  * Segmentation runs off the main thread to prevent UI freezes.
+ *
+ * CRITICAL: The RAF loop must be SYNCHRONOUS. createImageBitmap is fired
+ * as fire-and-forget so it never blocks the render loop.
  */
 
 import { useEffect, useRef } from 'react';
 import { BackgroundBlurEngine, type BackgroundBlurOptions } from '../utils/backgroundBlurEngine';
+import logger from '../utils/logger';
 
 interface MaskData {
   pixels: Uint8Array;
@@ -34,6 +38,7 @@ export function useBackgroundBlurPreview(
   fitModeRef.current = fitMode;
   const lastMaskRef = useRef<MaskData | null>(null);
   const isFrameInFlightRef = useRef(false);
+  const maskCountRef = useRef(0);
 
   useEffect(() => {
     if (!videoElement) return;
@@ -65,6 +70,7 @@ export function useBackgroundBlurPreview(
       canvas.style.height = '100%';
       canvas.style.objectFit = fitModeRef.current;
       canvas.style.pointerEvents = 'none';
+      canvas.style.zIndex = '5';
       canvas.style.display = 'none';
       videoElement.parentElement?.appendChild(canvas);
       canvasRef.current = canvas;
@@ -89,6 +95,7 @@ export function useBackgroundBlurPreview(
 
     // Create worker for segmentation
     if (!workerRef.current) {
+      logger.info('[useBackgroundBlurPreview] Creating segmentation worker...');
       workerRef.current = new Worker(
         new URL('../utils/segmentationWorker.ts', import.meta.url),
         { type: 'module' },
@@ -98,6 +105,7 @@ export function useBackgroundBlurPreview(
         const msg = e.data;
         if (msg.type === 'ready') {
           workerReadyRef.current = true;
+          logger.info('[useBackgroundBlurPreview] Worker ready — segmentation active');
         } else if (msg.type === 'mask') {
           lastMaskRef.current = {
             pixels: new Uint8Array(msg.mask),
@@ -105,15 +113,25 @@ export function useBackgroundBlurPreview(
             h: msg.maskH,
           };
           isFrameInFlightRef.current = false;
+          maskCountRef.current++;
+          if (maskCountRef.current === 1) {
+            logger.info('[useBackgroundBlurPreview] First mask received — blur active');
+          }
         } else if (msg.type === 'error') {
           isFrameInFlightRef.current = false;
+          logger.warn('[useBackgroundBlurPreview] Worker segment error:', msg.error);
         }
+      };
+
+      workerRef.current.onerror = (e) => {
+        logger.error('[useBackgroundBlurPreview] Worker load error:', e.message);
       };
 
       workerRef.current.postMessage({ type: 'init' });
     }
 
-    const processLoop = async () => {
+    // Synchronous render loop — NO async/await inside RAF
+    const processLoop = () => {
       const engine = engineRef.current;
       const opts = optionsRef.current;
 
@@ -122,48 +140,51 @@ export function useBackgroundBlurPreview(
         return;
       }
 
-      canvas.style.transform = mirrorRef.current ? 'scaleX(-1)' : 'none';
-      canvas.style.objectFit = fitModeRef.current;
-
       const vw = videoElement.videoWidth;
       const vh = videoElement.videoHeight;
-      if (vw > 0 && vh > 0 && (canvas.width !== vw || canvas.height !== vh)) {
-        canvas.width = vw;
-        canvas.height = vh;
-      }
 
+      // Match canvas to video resolution
+      if (canvas.width !== vw) canvas.width = vw;
+      if (canvas.height !== vh) canvas.height = vh;
+
+      // Show canvas, hide raw video
       if (canvas.style.display === 'none') {
         canvas.style.display = 'block';
         videoElement.style.opacity = '0';
       }
 
+      canvas.style.transform = mirrorRef.current ? 'scaleX(-1)' : 'none';
+      canvas.style.objectFit = fitModeRef.current;
+
       engine.updateOptions(opts);
 
-      // Send frame to worker for segmentation (non-blocking)
+      // Fire-and-forget: send frame to worker (does NOT block render loop)
       if (workerReadyRef.current && !isFrameInFlightRef.current) {
-        try {
-          isFrameInFlightRef.current = true;
-          const bitmap = await createImageBitmap(videoElement, 0, 0, vw, vh);
-          if (workerRef.current && workerReadyRef.current) {
-            workerRef.current.postMessage(
-              { type: 'segment', bitmap, timestamp: performance.now() },
-              [bitmap],
-            );
-          } else {
-            bitmap.close();
+        isFrameInFlightRef.current = true;
+        createImageBitmap(videoElement, 0, 0, vw, vh)
+          .then((bitmap) => {
+            if (workerRef.current && workerReadyRef.current) {
+              workerRef.current.postMessage(
+                { type: 'segment', bitmap, timestamp: performance.now() },
+                [bitmap],
+              );
+            } else {
+              bitmap.close();
+              isFrameInFlightRef.current = false;
+            }
+          })
+          .catch(() => {
             isFrameInFlightRef.current = false;
-          }
-        } catch {
-          isFrameInFlightRef.current = false;
-        }
+          });
       }
 
-      // Composite with last available mask
+      // SYNCHRONOUS compositing — always runs, uses last available mask
       const mask = lastMaskRef.current;
       if (mask) {
         engine.compositeWithMask(videoElement, canvas, ctx, mask.pixels, mask.w, mask.h);
       } else {
-        ctx.drawImage(videoElement, 0, 0);
+        // No mask yet — show raw video on canvas so user sees something
+        ctx.drawImage(videoElement, 0, 0, vw, vh);
       }
 
       rafRef.current = requestAnimationFrame(processLoop);
