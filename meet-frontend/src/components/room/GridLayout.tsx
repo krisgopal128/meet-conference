@@ -93,6 +93,7 @@ export function GridLayout() {
             participant={admittedParticipants[0]} 
             className="w-full h-full rounded-2xl" 
             isSpeakerTile={true}
+            participantCount={count}
           />
         </div>
       </div>
@@ -133,7 +134,7 @@ export function GridLayout() {
               maxHeight: '100%',
             }}
           >
-            <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} />
+            <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
           </div>
         </div>
       ))}

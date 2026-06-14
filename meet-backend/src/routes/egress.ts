@@ -4,6 +4,7 @@ import { EncodedFileOutput, S3Upload, EgressStatus } from 'livekit-server-sdk';
 import { AuthRequest, authenticate } from '../middleware/authenticate.js';
 import { egressClient } from '../services/livekit.js';
 import { query, queryOne } from '../services/database.js';
+import { roomService } from '../services/roomService.js';
 import { config } from '../config.js';
 import logger from '../utils/logger.js';
 
@@ -23,16 +24,13 @@ egressRouter.post('/start', authenticate, async (req: AuthRequest, res: Response
     const { roomName } = startRecordingSchema.parse(req.body);
 
     // Verify user is the host
-    const room = await queryOne<{ host_id: string }>(
-      'SELECT host_id FROM rooms WHERE name = $1',
-      [roomName]
-    );
+    const hostId = await roomService.getRoomHostId(roomName);
 
-    if (!room) {
+    if (!hostId) {
       return res.status(404).json({ error: 'Room not found' });
     }
 
-    if (room.host_id !== req.user!.id) {
+    if (hostId !== req.user!.id) {
       return res.status(403).json({ error: 'Only the room host can start recording' });
     }
 
@@ -140,14 +138,11 @@ egressRouter.get('/status/:roomName', authenticate, async (req: AuthRequest, res
     const { roomName } = req.params;
 
     // Verify user is host or participant of this room
-    const room = await queryOne<{ host_id: string }>(
-      'SELECT host_id FROM rooms WHERE name = $1',
-      [roomName]
-    );
-    if (!room) {
+    const hostId = await roomService.getRoomHostId(roomName);
+    if (!hostId) {
       return res.status(404).json({ error: 'Room not found' });
     }
-    const isHost = room.host_id === req.user!.id;
+    const isHost = hostId === req.user!.id;
     if (!isHost) {
       const participant = await queryOne(
         'SELECT id FROM meeting_participants mp JOIN meetings m ON mp.meeting_id = m.id JOIN rooms r ON m.room_id = r.id WHERE r.name = $1 AND mp.user_id = $2 LIMIT 1',
@@ -186,7 +181,7 @@ egressRouter.get('/list', authenticate, async (req: AuthRequest, res: Response) 
 
     // Get room names where user is host
     const userRooms = await query<{ name: string }>(
-      'SELECT name FROM rooms WHERE host_id = $1',
+      'SELECT name FROM rooms WHERE host_id = $1 LIMIT 50',
       [req.user!.id]
     );
 

@@ -13,7 +13,7 @@ interface SettingsSyncMessage {
   senderIdentity: string;
 }
 
-export function useSettingsSync() {
+export function useVideoFitModeSync() {
   const room = useRoomContext();
   const { localParticipant } = useLocalParticipant();
 

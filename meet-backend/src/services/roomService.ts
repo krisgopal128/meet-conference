@@ -52,7 +52,7 @@ export async function getRoomByName(name: string, includeUserJoin = false): Prom
   }
 
   return await queryOne<RoomRow>(
-    'SELECT * FROM rooms WHERE name = $1',
+    'SELECT id, name, title, host_id, status, waiting_room_enabled, settings, metadata, password_hash, created_at, updated_at FROM rooms WHERE name = $1',
     [name]
   );
 }
@@ -62,7 +62,7 @@ export async function getRoomByName(name: string, includeUserJoin = false): Prom
  */
 export async function getRoomById(id: string): Promise<RoomRow | null> {
   return await queryOne<RoomRow>(
-    'SELECT * FROM rooms WHERE id = $1',
+    'SELECT id, name, title, host_id, status, waiting_room_enabled, settings, metadata, password_hash, created_at, updated_at FROM rooms WHERE id = $1',
     [id]
   );
 }

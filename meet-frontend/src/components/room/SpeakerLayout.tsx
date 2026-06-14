@@ -80,7 +80,8 @@ export function SpeakerLayout({ activeSpeakers }: SpeakerLayoutProps) {
             <ParticipantTile 
               participant={featured} 
               className="w-full h-full rounded-2xl" 
-              isSpeakerTile={true} 
+              isSpeakerTile={true}
+              participantCount={admittedParticipants.length}
             />
           </div>
         ) : (
@@ -108,7 +109,7 @@ export function SpeakerLayout({ activeSpeakers }: SpeakerLayoutProps) {
               className="flex-shrink-0 h-full rounded-2xl bg-surface-900"
               style={{ width: filmstripTileWidth }}
             >
-              <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} />
+              <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={admittedParticipants.length} />
             </div>
           ))}
         </div>

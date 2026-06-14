@@ -6,7 +6,6 @@ import {
   useIsSpeaking,
   useRoomContext,
   useConnectionQualityIndicator,
-  useParticipants,
 } from '@livekit/components-react';
 import {
   useHasRaisedHand,
@@ -38,6 +37,7 @@ interface ParticipantTileProps {
   participant: Participant;
   className?: string;
   isSpeakerTile?: boolean; // true = main speaker in speaker layout, false = filmstrip
+  participantCount?: number;
 }
 
 // Custom signal bars indicator (4 bars, fills based on quality)
@@ -86,7 +86,7 @@ function SignalBars({ quality }: { quality: ConnectionQuality }) {
   );
 }
 
-function ParticipantTileInner({ participant, className = '', isSpeakerTile = true }: ParticipantTileProps) {
+function ParticipantTileInner({ participant, className = '', isSpeakerTile = true, participantCount }: ParticipantTileProps) {
   // Optimized selectors
   const hasRaisedHand = useHasRaisedHand(participant.identity);
   const pinnedIdentity = usePinnedIdentity();
@@ -350,9 +350,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
     }
   };
 
-  // Get all participants for grid-based quality optimization
-  const allParticipants = useParticipants();
-  const gridParticipantCount = allParticipants.length;
+  const gridParticipantCount = participantCount ?? 1;
 
   useEffect(() => {
     if (!cameraTrackRef?.publication || participant.isLocal || audioOnlyMode) {
@@ -539,7 +537,8 @@ function arePropsEqual(prevProps: ParticipantTileProps, nextProps: ParticipantTi
   return (
     prevProps.participant === nextProps.participant &&
     prevProps.className === nextProps.className &&
-    prevProps.isSpeakerTile === nextProps.isSpeakerTile
+    prevProps.isSpeakerTile === nextProps.isSpeakerTile &&
+    prevProps.participantCount === nextProps.participantCount
   );
 }
 

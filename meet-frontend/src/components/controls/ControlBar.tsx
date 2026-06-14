@@ -60,6 +60,7 @@ import { useVideoControls } from '../../hooks/useVideoControls';
 import { useScreenShareControls } from '../../hooks/useScreenShareControls';
 import { useMeetingActions } from '../../hooks/useMeetingActions';
 import { useLobbyPolling } from '../../hooks/useLobbyPolling';
+import type { LobbyParticipant } from '../../types/api';
 import logger from '../../utils/logger';
 
 // Import memoized button components
@@ -193,9 +194,11 @@ export function ControlBar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, setLobbyCount]);
 
-  useLobbyPolling(room?.name, !!room && isModerator, useCallback((lobby) => {
+  const handleLobbyUpdate = useCallback((lobby: LobbyParticipant[]) => {
     setLobbyCount(lobby.length);
-  }, [setLobbyCount]));
+  }, [setLobbyCount]);
+
+  useLobbyPolling(room?.name, !!room && isModerator, handleLobbyUpdate);
 
   // Hand raise
   const toggleHandRaise = useCallback(async () => {

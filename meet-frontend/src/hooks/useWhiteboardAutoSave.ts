@@ -60,13 +60,9 @@ export function useWhiteboardAutoSave(
 
   // Mark dirty whenever handleChange writes to sceneRef
   // (called from WhiteboardLayout's handleChange callback)
-  useEffect(() => {
-    if (!roomName || !excalidrawReady || !shouldSave) return;
-
-    // Expose a setter on the ref so WhiteboardLayout can mark dirty
-    (sceneRef as any).__markDirty = () => { dirtyRef.current = true; };
-    return () => { delete (sceneRef as any).__markDirty; };
-  }, [roomName, excalidrawReady, shouldSave, sceneRef]);
+  const markDirty = useCallback(() => {
+    dirtyRef.current = true;
+  }, []);
 
   // Force-save function — used by leaveRoom/endMeeting before disconnect
   const forceSave = useCallback(async () => {
@@ -81,12 +77,6 @@ export function useWhiteboardAutoSave(
       logger.warn('[Whiteboard] Force-save failed', { error: err });
     }
   }, []);
-
-  // Expose forceSave on the sceneRef so external code can call it
-  useEffect(() => {
-    (sceneRef as any).__forceSave = forceSave;
-    return () => { delete (sceneRef as any).__forceSave; };
-  }, [sceneRef, forceSave]);
 
   // Register forceSave with the meeting actions module so leaveRoom/endMeeting
   // can trigger a final whiteboard save before disconnecting
@@ -152,4 +142,6 @@ export function useWhiteboardAutoSave(
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [roomName, shouldSave]);
+
+  return { markDirty, forceSave };
 }

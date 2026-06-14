@@ -574,6 +574,49 @@ export const RecordingBadge = memo(function RecordingBadge({
 });
 
 // ============================================
+// Leave Confirm Dialog (shared)
+// ============================================
+
+function LeaveConfirmDialog({ open, onClose, onLeave, onEndMeeting }: {
+  open: boolean;
+  onClose: () => void;
+  onLeave: () => void;
+  onEndMeeting: () => void;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60" onClick={onClose}>
+      <div className="bg-surface-800 rounded-2xl border border-surface-600 p-6 max-w-sm w-full mx-4 shadow-xl" onClick={e => e.stopPropagation()}>
+        <h3 className="text-lg font-semibold text-white mb-2">Leave Meeting?</h3>
+        <p className="text-sm text-surface-400 mb-6">
+          You are the host. Would you like to end the meeting for everyone or just leave?
+        </p>
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={onClose}
+            className="w-full px-4 py-2.5 rounded-lg bg-surface-700 hover:bg-surface-600 text-white text-sm font-medium transition"
+          >
+            Stay in Meeting
+          </button>
+          <button
+            onClick={onLeave}
+            className="w-full px-4 py-2.5 rounded-lg bg-warning-500 hover:bg-warning-600 text-surface-900 text-sm font-medium transition"
+          >
+            Just Leave (Meeting Continues)
+          </button>
+          <button
+            onClick={onEndMeeting}
+            className="w-full px-4 py-2.5 rounded-lg bg-danger-500 hover:bg-danger-600 text-white text-sm font-medium transition"
+          >
+            End Meeting for Everyone
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
 // Leave Button
 // ============================================
 
@@ -616,37 +659,6 @@ export const LeaveButton = memo(function LeaveButton({
     onLeave();
   };
 
-  const dialog = showConfirm && (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60" onClick={() => setShowConfirm(false)}>
-      <div className="bg-surface-800 rounded-2xl border border-surface-600 p-6 max-w-sm w-full mx-4 shadow-xl" onClick={e => e.stopPropagation()}>
-        <h3 className="text-lg font-semibold text-white mb-2">Leave Meeting?</h3>
-        <p className="text-sm text-surface-400 mb-6">
-          You are the host. Would you like to end the meeting for everyone or just leave?
-        </p>
-        <div className="flex flex-col gap-3">
-          <button
-            onClick={() => setShowConfirm(false)}
-            className="w-full px-4 py-2.5 rounded-lg bg-surface-700 hover:bg-surface-600 text-white text-sm font-medium transition"
-          >
-            Stay in Meeting
-          </button>
-          <button
-            onClick={handleJustLeave}
-            className="w-full px-4 py-2.5 rounded-lg bg-warning-500 hover:bg-warning-600 text-surface-900 text-sm font-medium transition"
-          >
-            Just Leave (Meeting Continues)
-          </button>
-          <button
-            onClick={handleEndMeeting}
-            className="w-full px-4 py-2.5 rounded-lg bg-danger-500 hover:bg-danger-600 text-white text-sm font-medium transition"
-          >
-            End Meeting for Everyone
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <>
       <button
@@ -659,7 +671,15 @@ export const LeaveButton = memo(function LeaveButton({
       </button>
 
       {/* Confirmation Dialog - Rendered via portal at document root */}
-      {dialog && createPortal(dialog, document.body)}
+      {createPortal(
+        <LeaveConfirmDialog
+          open={showConfirm}
+          onClose={() => setShowConfirm(false)}
+          onLeave={handleJustLeave}
+          onEndMeeting={handleEndMeeting}
+        />,
+        document.body,
+      )}
     </>
   );
 });
@@ -700,37 +720,6 @@ export const MobileLeaveButton = memo(function MobileLeaveButton({
     onLeave();
   };
 
-  const dialog = showConfirm && (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60" onClick={() => setShowConfirm(false)}>
-      <div className="bg-surface-800 rounded-2xl border border-surface-600 p-6 max-w-sm w-full mx-4 shadow-xl" onClick={e => e.stopPropagation()}>
-        <h3 className="text-lg font-semibold text-white mb-2">Leave Meeting?</h3>
-        <p className="text-sm text-surface-400 mb-6">
-          You are the host. Would you like to end the meeting for everyone or just leave?
-        </p>
-        <div className="flex flex-col gap-3">
-          <button
-            onClick={() => setShowConfirm(false)}
-            className="w-full px-4 py-2.5 rounded-lg bg-surface-700 hover:bg-surface-600 text-white text-sm font-medium transition"
-          >
-            Stay in Meeting
-          </button>
-          <button
-            onClick={handleJustLeave}
-            className="w-full px-4 py-2.5 rounded-lg bg-warning-500 hover:bg-warning-600 text-surface-900 text-sm font-medium transition"
-          >
-            Just Leave (Meeting Continues)
-          </button>
-          <button
-            onClick={handleEndMeeting}
-            className="w-full px-4 py-2.5 rounded-lg bg-danger-500 hover:bg-danger-600 text-white text-sm font-medium transition"
-          >
-            End Meeting for Everyone
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <>
       <button
@@ -743,7 +732,15 @@ export const MobileLeaveButton = memo(function MobileLeaveButton({
       </button>
 
       {/* Confirmation Dialog - Rendered via portal at document root */}
-      {dialog && createPortal(dialog, document.body)}
+      {createPortal(
+        <LeaveConfirmDialog
+          open={showConfirm}
+          onClose={() => setShowConfirm(false)}
+          onLeave={handleJustLeave}
+          onEndMeeting={handleEndMeeting}
+        />,
+        document.body,
+      )}
     </>
   );
 });

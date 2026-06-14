@@ -6,6 +6,7 @@ import {
 } from 'livekit-client';
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 import { whiteboardApi } from '../services/whiteboardApi';
+import { publishMessage } from '../utils/livekitData';
 import logger from '../utils/logger';
 
 const THROTTLE_MS = 80;
@@ -89,11 +90,7 @@ export function useWhiteboardSync(
           elements: [...elements],
           files,
         };
-        const encoder = new TextEncoder();
-        room.localParticipant.publishData(encoder.encode(JSON.stringify(msg)), {
-          reliable: true,
-          topic: WHITEBOARD_TOPIC,
-        });
+        publishMessage(room.localParticipant, msg, { topic: WHITEBOARD_TOPIC });
         lastBroadcastRef.current = now;
       } else if (!timerRef.current) {
         // Schedule deferred broadcast
@@ -106,11 +103,7 @@ export function useWhiteboardSync(
             elements: [...pendingElements.current],
             files: deferredFiles,
           };
-          const encoder = new TextEncoder();
-          room.localParticipant.publishData(encoder.encode(JSON.stringify(msg)), {
-            reliable: true,
-            topic: WHITEBOARD_TOPIC,
-          });
+          publishMessage(room.localParticipant, msg, { topic: WHITEBOARD_TOPIC });
           lastBroadcastRef.current = Date.now();
           timerRef.current = null;
         }, THROTTLE_MS - elapsed);
@@ -125,11 +118,7 @@ export function useWhiteboardSync(
       if (!room || !localParticipant) return;
 
       const msg: WhiteboardLockMsg = { type: 'whiteboard-lock', locked };
-      const encoder = new TextEncoder();
-      room.localParticipant.publishData(encoder.encode(JSON.stringify(msg)), {
-        reliable: true,
-        topic: WHITEBOARD_TOPIC,
-      });
+      publishMessage(room.localParticipant, msg, { topic: WHITEBOARD_TOPIC });
     },
     [room, localParticipant],
   );
@@ -140,11 +129,7 @@ export function useWhiteboardSync(
       if (!room || !localParticipant) return;
 
       const msg: WhiteboardActivateMsg = { type: 'whiteboard-activate', active };
-      const encoder = new TextEncoder();
-      room.localParticipant.publishData(encoder.encode(JSON.stringify(msg)), {
-        reliable: true,
-        topic: WHITEBOARD_TOPIC,
-      });
+      publishMessage(room.localParticipant, msg, { topic: WHITEBOARD_TOPIC });
     },
     [room, localParticipant],
   );
@@ -163,11 +148,7 @@ export function useWhiteboardSync(
         identity: localParticipant.identity,
         viewport,
       };
-      const encoder = new TextEncoder();
-      room.localParticipant.publishData(encoder.encode(JSON.stringify(msg)), {
-        reliable: true,
-        topic: WHITEBOARD_TOPIC,
-      });
+      publishMessage(room.localParticipant, msg, { topic: WHITEBOARD_TOPIC });
     },
     [room, localParticipant],
   );

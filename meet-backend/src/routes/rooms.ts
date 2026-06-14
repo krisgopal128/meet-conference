@@ -39,6 +39,23 @@ async function requireModeratorRoomAccess(roomName: string, userId: string) {
   return { room, allowed };
 }
 
+async function assertModerator(res: Response, name: string, userId: string, action = 'perform this action') {
+  const { room, allowed } = await requireModeratorRoomAccess(name, userId);
+  if (!room) { res.status(404).json({ error: 'Room not found' }); return null; }
+  if (!allowed) { res.status(403).json({ error: `Only moderators can ${action}` }); return null; }
+  return room;
+}
+
+async function executeKick(name: string, identity: string) {
+  let guestName: string | undefined;
+  try {
+    const participant = await getParticipantInfo(name, identity);
+    guestName = participant.name || undefined;
+  } catch { /* participant may have left */ }
+  await removeParticipant(name, identity);
+  await addKickedParticipant(name, identity, guestName);
+}
+
 async function canAccessRoomChat(roomName: string, userId: string) {
   const room = await roomService.getRoomByName(roomName);
 
@@ -101,8 +118,6 @@ const updateRoomSchema = z.object({
  // POST /rooms - Create a new room
  roomsRouter.post('/', authenticate, async (req: AuthRequest, res: Response) => {
    try {
-     const user = requireUser(req);
-    if (!user) return res.status(401).json({ error: 'Authentication required' });
      const data = createRoomSchema.parse(req.body);
      
      // Sanitize room name
@@ -128,9 +143,9 @@ const updateRoomSchema = z.object({
 
      // Create room in database
       const room = await roomService.createRoom(
-        roomName,
-        user.id,
-        data.title || null,
+         roomName,
+         req.user!.id,
+         data.title || null,
         description,
         roomPasswordHash,
         data.maxParticipants,
@@ -147,7 +162,7 @@ const updateRoomSchema = z.object({
        await createLiveKitRoom(roomName, {
          maxParticipants: data.maxParticipants,
          emptyTimeout: data.emptyTimeout,
-         metadata: JSON.stringify({ title: data.title, hostId: user.id }),
+          metadata: JSON.stringify({ title: data.title, hostId: req.user!.id }),
        });
      } catch (lkError) {
        logger.warn('LiveKit room creation failed (may already exist):', lkError);
@@ -172,20 +187,18 @@ const updateRoomSchema = z.object({
   // GET /rooms - List all rooms (user's rooms or all active)
   roomsRouter.get('/', authenticate, async (req: AuthRequest, res: Response) => {
     try {
-      const user = requireUser(req);
-    if (!user) return res.status(401).json({ error: 'Authentication required' });
       const { all } = req.query;
       const allFlag = all === 'true' ? 'true' : 'false';
 
       const result = await getCached<{ rooms: unknown[] }>(
-        `cache:rooms:list:${user.id}:${allFlag}`,
+         `cache:rooms:list:${req.user!.id}:${allFlag}`,
         TTL_SHORT,
         async () => {
           let rooms: RoomRow[];
           if (all === 'true') {
             rooms = await roomService.getAllRooms();
           } else {
-            rooms = await roomService.getUserRooms(user.id);
+            rooms = await roomService.getUserRooms(req.user!.id);
           }
 
           // Get active rooms from LiveKit
@@ -276,19 +289,17 @@ const updateRoomSchema = z.object({
  // PATCH /rooms/:name - Update room
  roomsRouter.patch('/:name', authenticate, async (req: AuthRequest, res: Response) => {
    try {
-     const user = requireUser(req);
-    if (!user) return res.status(401).json({ error: 'Authentication required' });
-     const { name } = req.params;
-     const data = updateRoomSchema.parse(req.body);
+      const { name } = req.params;
+      const data = updateRoomSchema.parse(req.body);
 
-     const room = await roomService.getRoomByName(name);
+      const room = await roomService.getRoomByName(name);
 
-     if (!room) {
-       return res.status(404).json({ error: 'Room not found' });
-     }
+      if (!room) {
+        return res.status(404).json({ error: 'Room not found' });
+      }
 
-     if (room.host_id !== user.id) {
-       return res.status(403).json({ error: 'Only the host can update this room' });
+      if (room.host_id !== req.user!.id) {
+        return res.status(403).json({ error: 'Only the host can update this room' });
      }
 
       const updated = await roomService.updateRoom(name, {
@@ -315,18 +326,16 @@ const updateRoomSchema = z.object({
  // DELETE /rooms/:name - Delete room
  roomsRouter.delete('/:name', authenticate, async (req: AuthRequest, res: Response) => {
    try {
-     const user = requireUser(req);
-    if (!user) return res.status(401).json({ error: 'Authentication required' });
-     const { name } = req.params;
+      const { name } = req.params;
 
-     const room = await roomService.getRoomByName(name);
+      const room = await roomService.getRoomByName(name);
 
-     if (!room) {
-       return res.status(404).json({ error: 'Room not found' });
-     }
+      if (!room) {
+        return res.status(404).json({ error: 'Room not found' });
+      }
 
-     if (room.host_id !== user.id) {
-       return res.status(403).json({ error: 'Only the host can delete this room' });
+      if (room.host_id !== req.user!.id) {
+        return res.status(403).json({ error: 'Only the host can delete this room' });
      }
 
      // Delete from LiveKit
@@ -367,19 +376,7 @@ roomsRouter.delete('/:name/participants/:identity', authenticate, async (req: Au
       return res.status(403).json({ error: 'Only moderators can remove participants' });
     }
 
-    // Get participant info to extract name for guest tracking
-    let guestName: string | undefined;
-    try {
-      const participant = await getParticipantInfo(name, identity);
-      guestName = participant.name || undefined;
-    } catch {
-      // Participant may have already left
-    }
-
-    await removeParticipant(name, identity);
-
-    // Add to kicked list with cooldown (consistent with POST /kick/:identity)
-    await addKickedParticipant(name, identity, guestName);
+    await executeKick(name, identity);
 
     res.json({ message: 'Participant removed' });
   } catch (error) {
@@ -391,19 +388,10 @@ roomsRouter.delete('/:name/participants/:identity', authenticate, async (req: Au
 // POST /rooms/:name/mute/:identity - Mute participant's audio
 roomsRouter.post('/:name/mute/:identity', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const user = requireUser(req);
-    if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { name, identity } = req.params;
 
-    const { room, allowed } = await requireModeratorRoomAccess(name, user.id);
-
-    if (!room) {
-      return res.status(404).json({ error: 'Room not found' });
-    }
-
-    if (!allowed) {
-      return res.status(403).json({ error: 'Only moderators can mute participants' });
-    }
+    const room = await assertModerator(res, name, req.user!.id, 'mute participants');
+    if (!room) return;
 
     await muteAllAudioTracks(name, identity);
     res.json({ message: 'Participant muted' });
@@ -416,19 +404,10 @@ roomsRouter.post('/:name/mute/:identity', authenticate, async (req: AuthRequest,
 // POST /rooms/:name/mute-video/:identity - Mute participant's video (camera)
 roomsRouter.post('/:name/mute-video/:identity', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const user = requireUser(req);
-    if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { name, identity } = req.params;
 
-    const { room, allowed } = await requireModeratorRoomAccess(name, user.id);
-
-    if (!room) {
-      return res.status(404).json({ error: 'Room not found' });
-    }
-
-    if (!allowed) {
-      return res.status(403).json({ error: 'Only moderators can disable cameras' });
-    }
+    const room = await assertModerator(res, name, req.user!.id, 'disable cameras');
+    if (!room) return;
 
     await muteVideoTrack(name, identity);
     res.json({ message: 'Participant camera disabled' });
@@ -441,19 +420,10 @@ roomsRouter.post('/:name/mute-video/:identity', authenticate, async (req: AuthRe
 // POST /rooms/:name/mute-all - Mute all participants
 roomsRouter.post('/:name/mute-all', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const user = requireUser(req);
-    if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { name } = req.params;
 
-    const { room, allowed } = await requireModeratorRoomAccess(name, user.id);
-
-    if (!room) {
-      return res.status(404).json({ error: 'Room not found' });
-    }
-
-    if (!allowed) {
-      return res.status(403).json({ error: 'Only moderators can mute all participants' });
-    }
+    const room = await assertModerator(res, name, req.user!.id, 'mute all participants');
+    if (!room) return;
 
     // Mute everyone except moderators in parallel
     const participants = await listParticipants(name);
@@ -497,19 +467,7 @@ roomsRouter.post('/:name/kick/:identity', authenticate, async (req: AuthRequest,
       return res.status(403).json({ error: 'Only moderators can remove participants' });
     }
 
-    // Get participant info to extract name for guest tracking
-    let guestName: string | undefined;
-    try {
-      const participant = await getParticipantInfo(name, identity);
-      guestName = participant.name || undefined;
-    } catch {
-      // Participant may have already left
-    }
-    
-    await removeParticipant(name, identity);
-    
-    // Add to kicked list with 10-second cooldown
-    await addKickedParticipant(name, identity, guestName);
+    await executeKick(name, identity);
     
     res.json({ message: 'Participant removed' });
   } catch (error) {
@@ -877,7 +835,10 @@ roomsRouter.post('/:name/chat', authenticate, async (req: AuthRequest, res: Resp
 
     res.status(201).json({
       message: {
-        ...message,
+        id: message.id,
+        content: message.content,
+        createdAt: message.created_at,
+        messageType: message.message_type,
         senderIdentity: user.id,
         senderName: user.name ?? user.email.split('@')[0],
       },

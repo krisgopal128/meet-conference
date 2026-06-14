@@ -65,7 +65,7 @@ export const WhiteboardPanel = React.memo(function WhiteboardPanel({
   const isViewOnly = !isModerator && isLocked;
 
   // Auto-save scene to backend every 2s when changed (any user who can edit)
-  useWhiteboardAutoSave(roomName, currentSceneRef, excalidrawReady, canEdit);
+  const { markDirty } = useWhiteboardAutoSave(roomName, currentSceneRef, excalidrawReady, canEdit);
 
   // Load persisted scene + lock state on mount
   useEffect(() => {
@@ -124,9 +124,9 @@ export const WhiteboardPanel = React.memo(function WhiteboardPanel({
       currentSceneRef.current = [...elements];
       if (!canEdit) return;
       broadcastChange(elements);
-      (currentSceneRef as any).__markDirty?.();
+      markDirty();
     },
-    [broadcastChange, canEdit],
+    [broadcastChange, canEdit, markDirty],
   );
 
   // Toggle lock (moderator only)

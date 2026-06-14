@@ -163,7 +163,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
   canEditRef.current = canEdit;
 
   // Auto-save via polling — only moderators save
-  useWhiteboardAutoSave(
+  const { markDirty } = useWhiteboardAutoSave(
     roomName,
     currentSceneRef,
     excalidrawReady,
@@ -387,10 +387,10 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
       bumpSceneVersion();
       if (canEditRef.current) {
         broadcastChange(elements);
-        (currentSceneRef as any).__markDirty?.();
+        markDirty();
       }
     },
-    [applySceneElements, broadcastChange, bumpSceneVersion],
+    [applySceneElements, broadcastChange, bumpSceneVersion, markDirty],
   );
 
   const handleToggleLock = useCallback(async () => {

@@ -47,78 +47,12 @@ const api = axios.create({
   withCredentials: true, // Send cookies for CSRF protection
 });
 
-/**
- * Read CSRF token from server-issued cookie (double-submit pattern).
- * Server sets csrf_token cookie on login; we read it and send as header.
- */
-function getCsrfToken(): string {
-  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : '';
-}
-
-// Add auth token and CSRF token to requests
-api.interceptors.request.use(async (config) => {
-  // Bypass token refresh logic for the refresh endpoint itself
-  if (config.url?.includes('/auth/refresh')) {
-    config.headers['X-CSRF-Token'] = getCsrfToken();
-    const storeState = _authStoreGetState?.();
-    const token = storeState?.token || null;
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  }
-  // Add CSRF token for state-changing requests
-  const method = config.method?.toUpperCase();
-  if (method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
-    config.headers['X-CSRF-Token'] = getCsrfToken();
-  }
-
-  // Try to get token from Zustand store (primary source of truth)
-  let token: string | null = null;
-  try {
-    const storeState = _authStoreGetState?.();
-    token = storeState?.token || null;
-  } catch {
-    // Store not available yet
-  }
-
+// Attach auth token to requests
+api.interceptors.request.use((config) => {
+  const token = useAuthStore.getState().token;
   if (token) {
-    const expired = isTokenExpired(token);
-    if (expired === true) {
-      // Token is expired — deduplicate refresh attempts to avoid race
-        if (!isRefreshing) {
-          isRefreshing = true;
-          try {
-            const refreshRes = await api.post<LoginResponse>('/auth/refresh');
-            if (refreshRes.data?.token) {
-              useAuthStore.setState({ token: refreshRes.data.token, user: refreshRes.data.user, isAuthenticated: true, initialized: true });
-              processQueue(null, refreshRes.data.token);
-              config.headers.Authorization = `Bearer ${refreshRes.data.token}`;
-              return config;
-          }
-        } catch {
-          // Refresh failed - fall through to clear auth
-          processQueue(new Error('Refresh failed'), null);
-        } finally {
-          isRefreshing = false;
-        }
-      } else {
-        // Another refresh is in progress — wait for it
-        const newToken = await new Promise<string>((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        });
-        config.headers.Authorization = `Bearer ${newToken}`;
-        return config;
-      }
-      // Refresh also failed — let the response interceptor handle the redirect
-      // (it has public-page guards and avoids kicking users from active meetings)
-      useAuthStore.setState({ user: null, token: null, isAuthenticated: false, initialized: true });
-      return Promise.reject(new Error('Token expired'));
-    }
     config.headers.Authorization = `Bearer ${token}`;
   }
-
   return config;
 });
 

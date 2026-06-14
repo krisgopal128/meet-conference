@@ -74,7 +74,7 @@ router.get('/users', requireModerator(), async (req: AuthRequest, res: Response)
 
         if (search) {
           whereClause += ` AND (name ILIKE $${paramIndex} OR email ILIKE $${paramIndex})`;
-          params.push(`%${search}%`);
+          params.push(`${search}%`);
           paramIndex++;
         }
 

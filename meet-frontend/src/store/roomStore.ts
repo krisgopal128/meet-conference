@@ -362,6 +362,8 @@ export const useRoomStore = create<RoomStore>()(
           toggleChatTimestamps: () => set((state) => ({
             showChatTimestamps: !state.showChatTimestamps,
           }), false, 'toggleChatTimestamps'),
+          // Sets the user's preferred quality mode. The effective qualityMode
+          // is only updated if no auto-fallback is active.
           setQualityMode: (selectedQualityMode) => set((state) => ({
             selectedQualityMode,
             qualityMode: state.autoFallbackActive ? state.qualityMode : selectedQualityMode,

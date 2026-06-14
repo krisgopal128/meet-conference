@@ -88,7 +88,7 @@ router.get('/meetings', requireModerator(), async (req: AuthRequest, res: Respon
 
         if (roomName) {
           whereClause += ` AND r.name ILIKE $${paramIndex}`;
-          params.push(`%${roomName}%`);
+          params.push(`${roomName}%`);
           paramIndex++;
         }
 

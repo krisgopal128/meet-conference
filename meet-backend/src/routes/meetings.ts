@@ -52,11 +52,10 @@ meetingsRouter.get('/', authenticate, async (req: AuthRequest, res: Response) =>
       TTL_MEDIUM,
       async () => {
         const meetings = await query<MeetingWithParticipants>(
-          `SELECT DISTINCT m.*, r.name as room_name, r.title as room_title
+          `SELECT m.*, r.name as room_name, r.title as room_title
            FROM meetings m
            JOIN rooms r ON m.room_id = r.id
-           LEFT JOIN meeting_participants mp ON mp.meeting_id = m.id AND mp.user_id = $1
-           WHERE r.host_id = $1 OR mp.id IS NOT NULL
+           WHERE r.host_id = $1 OR EXISTS (SELECT 1 FROM meeting_participants mp WHERE mp.meeting_id = m.id AND mp.user_id = $1)
            ORDER BY m.started_at DESC
            LIMIT $2 OFFSET $3`,
           [user.id, limit, offset]
@@ -84,17 +83,16 @@ meetingsRouter.get('/history', authenticate, async (req: AuthRequest, res: Respo
       TTL_MEDIUM,
       async () => {
         const meetings = await query<MeetingWithParticipants>(
-          `SELECT DISTINCT m.*, r.name as room_name, r.title as room_title,
+          `SELECT m.*, r.name as room_name, r.title as room_title,
                   COALESCE(mp_counts.unique_participants, 0)::integer as "uniqueParticipants"
            FROM meetings m
            JOIN rooms r ON m.room_id = r.id
-           LEFT JOIN meeting_participants mp ON mp.meeting_id = m.id AND mp.user_id = $1
            LEFT JOIN (
              SELECT meeting_id, COUNT(*) as unique_participants
              FROM meeting_participants
              GROUP BY meeting_id
            ) mp_counts ON mp_counts.meeting_id = m.id
-           WHERE r.host_id = $1 OR mp.id IS NOT NULL
+           WHERE r.host_id = $1 OR EXISTS (SELECT 1 FROM meeting_participants mp WHERE mp.meeting_id = m.id AND mp.user_id = $1)
            ORDER BY m.started_at DESC
            LIMIT $2 OFFSET $3`,
           [user.id, limit, offset]

@@ -381,6 +381,7 @@ router.post('/token', async (req: Request, res: Response) => {
     }
 
     // Create access token
+    // TODO: Refactor to reuse createAccessToken from livekit.ts to avoid role-grant drift
     const token = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
       identity,
       name: name || identity,
