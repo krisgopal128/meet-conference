@@ -22,6 +22,7 @@ export const WhiteboardPreviewTile = memo(function WhiteboardPreviewTile({
   const isEmptyRef = useRef(true);
   const [, forceRender] = useState(0);
   const renderingRef = useRef(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const drawContained = useCallback((ctx: CanvasRenderingContext2D, source: CanvasImageSource, targetWidth: number, targetHeight: number, sourceWidth: number, sourceHeight: number) => {
     ctx.clearRect(0, 0, targetWidth, targetHeight);
@@ -44,6 +45,7 @@ export const WhiteboardPreviewTile = memo(function WhiteboardPreviewTile({
     if (!api || !canvasRef.current || renderingRef.current) return;
 
     renderingRef.current = true;
+    if (isEmptyRef.current) setIsLoading(true);
     try {
       const elements = api.getSceneElements();
       if (!elements || elements.length === 0) {
@@ -98,6 +100,7 @@ export const WhiteboardPreviewTile = memo(function WhiteboardPreviewTile({
       // exportToCanvas can fail if elements are in flux
     } finally {
       renderingRef.current = false;
+      setIsLoading(false);
     }
   }, [drawContained, excalidrawAPI, sourceElement, width, height]);
 
@@ -127,7 +130,15 @@ export const WhiteboardPreviewTile = memo(function WhiteboardPreviewTile({
           display: isEmptyRef.current ? 'none' : 'block',
         }}
       />
-      {isEmptyRef.current && (
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-surface-900/80 z-10">
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-6 h-6 border-2 border-surface-600 border-t-brand-500 rounded-full animate-spin" />
+            <span className="text-[9px] text-surface-400">Loading whiteboard…</span>
+          </div>
+        </div>
+      )}
+      {isEmptyRef.current && !isLoading && (
         <div className="flex flex-col items-center gap-1">
           <svg
             className="w-6 h-6 text-surface-500"
