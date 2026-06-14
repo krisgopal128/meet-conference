@@ -243,7 +243,7 @@ export class BackgroundBlurEngine {
     const data = imageData.data;
 
     for (let i = 0; i < maskPixels.length; i++) {
-      const isPerson = maskPixels[i] !== 0; // non-zero = person (0 = background in selfie segmenter)
+      const isPerson = maskPixels[i] === 0; // 0 = person in this selfie segmenter model output
       const idx = i * 4;
       if (isPerson) {
         data[idx] = 255;
