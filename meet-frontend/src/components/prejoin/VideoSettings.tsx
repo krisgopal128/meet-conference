@@ -1,4 +1,5 @@
-import { Crop, Grid3X3, Maximize2, Eye, FlipHorizontal, Palette, Image as ImageIcon } from 'lucide-react';
+import { useRef, type ChangeEvent } from 'react';
+import { Crop, Grid3X3, Maximize2, Eye, FlipHorizontal, Palette, Image as ImageIcon, Upload } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import type { VideoSettingsProps } from './types';
 
@@ -25,6 +26,19 @@ export function VideoSettings({
   isExpanded,
   onToggle,
 }: VideoSettingsProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      onBackgroundImagePathChange(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="border-b border-surface-200 dark:border-surface-700 pb-4">
       <button
@@ -240,16 +254,36 @@ export function VideoSettings({
                   </div>
                 )}
 
-                {/* Image URL input */}
+                {/* Image URL input + file upload */}
                 {backgroundMode === 'image' && (
                   <div>
-                    <p className="text-xs text-surface-500 dark:text-surface-400 mb-1.5">Background image URL</p>
+                    <p className="text-xs text-surface-500 dark:text-surface-400 mb-1.5">Background image</p>
                     <input
                       type="url"
-                      value={backgroundImagePath ?? ''}
+                      value={backgroundImagePath?.startsWith('data:') ? '' : (backgroundImagePath ?? '')}
                       onChange={(e) => onBackgroundImagePathChange(e.target.value || null)}
                       placeholder="https://example.com/bg.jpg"
                       className="w-full rounded-lg border border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-700 px-3 py-2 text-sm text-surface-700 dark:text-surface-100 placeholder-surface-400 focus:border-brand-500 focus:outline-none"
+                    />
+                    <div className="mt-2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-700 px-3 py-1.5 text-xs font-medium text-surface-700 dark:text-surface-100 hover:bg-surface-100 dark:hover:bg-surface-600 focus:outline-none"
+                      >
+                        <Upload className="h-3.5 w-3.5" />
+                        Upload from device
+                      </button>
+                      {backgroundImagePath?.startsWith('data:') && (
+                        <span className="text-xs text-success-600 dark:text-success-400">✓ Image loaded</span>
+                      )}
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
                     />
                   </div>
                 )}

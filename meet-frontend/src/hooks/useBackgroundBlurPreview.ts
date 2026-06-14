@@ -14,6 +14,7 @@ import { BackgroundBlurEngine, type BackgroundBlurOptions } from '../utils/backg
 export function useBackgroundBlurPreview(
   videoElement: HTMLVideoElement | null,
   options: BackgroundBlurOptions,
+  mirror: boolean = false,
 ) {
   const engineRef = useRef<BackgroundBlurEngine | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -21,6 +22,8 @@ export function useBackgroundBlurPreview(
   const rafRef = useRef<number | null>(null);
   const optionsRef = useRef(options);
   optionsRef.current = options;
+  const mirrorRef = useRef(mirror);
+  mirrorRef.current = mirror;
 
   // Initialize engine lazily
   const ensureEngine = useCallback(async () => {
@@ -92,6 +95,9 @@ export function useBackgroundBlurPreview(
         rafRef.current = requestAnimationFrame(processLoop);
         return;
       }
+
+      // Apply mirror transform to match the video element's CSS flip
+      canvas.style.transform = mirrorRef.current ? 'scaleX(-1)' : 'none';
 
       // Match canvas to container size
       const container = videoElement.parentElement;

@@ -43,6 +43,10 @@ interface LocationState {
   echoCancellation?: boolean;
   backgroundBlur?: boolean;
   backgroundBlurLevel?: number;
+  backgroundMode?: 'none' | 'blur' | 'color' | 'image';
+  backgroundBgColor?: string;
+  backgroundImagePath?: string | null;
+  mirrorCamera?: boolean;
   videoFilter?: 'none' | 'lightweight';
   inLobby?: boolean;
   hostId?: string;
@@ -250,6 +254,8 @@ function RoomContent({
             enabled: true,
             mode: backgroundMode,
             blurRadius: backgroundBlurIntensity,
+            bgColor: backgroundBgColor,
+            bgImagePath: backgroundImagePath,
           },
         );
         if (!cancelled) {
@@ -264,7 +270,7 @@ function RoomContent({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [storeBlurEnabled, state.backgroundBlur, localParticipant, localParticipant.isCameraEnabled, localParticipant.getTrackPublication(Track.Source.Camera)?.track, backgroundBlurIntensity, backgroundMode]);
+  }, [storeBlurEnabled, state.backgroundBlur, localParticipant, localParticipant.isCameraEnabled, localParticipant.getTrackPublication(Track.Source.Camera)?.track, backgroundBlurIntensity, backgroundMode, backgroundBgColor, backgroundImagePath]);
 
   // Update effect settings at runtime when store values change (in-room controls)
   useEffect(() => {
@@ -540,7 +546,7 @@ export default function RoomPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { setConnected } = useConnectionActions();
-  const { setQualityMode, setScreenShareMode, setGridAspectRatio, setVideoFitMode, setBackgroundBlurEnabled, setBackgroundBlurLevel, setBackgroundBlurIntensity } = useUIActions();
+  const { setQualityMode, setScreenShareMode, setGridAspectRatio, setVideoFitMode, setBackgroundBlurEnabled, setBackgroundBlurLevel, setBackgroundBlurIntensity, setBackgroundMode, setBackgroundBgColor, setBackgroundImagePath } = useUIActions();
   const { setMeetingLocked, setParticipantsCanShareScreen, setParticipantsCanChat, setParticipantsCanUnmute, setParticipantsCanTurnOnCamera } = useMeetingControlsActions();
   const qualityMode = useQualityMode();
   const screenShareMode = useScreenShareMode();
@@ -621,6 +627,25 @@ export default function RoomPage() {
       setBackgroundBlurIntensity(state.backgroundBlurLevel);
     }
   }, [state?.backgroundBlurLevel, setBackgroundBlurLevel, setBackgroundBlurIntensity]);
+
+  // Sync background mode, color, and image path from PreJoinPage
+  useEffect(() => {
+    if (state?.backgroundMode) {
+      setBackgroundMode(state.backgroundMode);
+    }
+  }, [state?.backgroundMode, setBackgroundMode]);
+
+  useEffect(() => {
+    if (state?.backgroundBgColor) {
+      setBackgroundBgColor(state.backgroundBgColor);
+    }
+  }, [state?.backgroundBgColor, setBackgroundBgColor]);
+
+  useEffect(() => {
+    if (state?.backgroundImagePath !== undefined) {
+      setBackgroundImagePath(state.backgroundImagePath ?? null);
+    }
+  }, [state?.backgroundImagePath, setBackgroundImagePath]);
 
   // Fetch room settings from server (moderator's saved settings)
   useEffect(() => {
