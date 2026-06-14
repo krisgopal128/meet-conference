@@ -206,6 +206,12 @@ export function useWhiteboardSync(
             logger.debug('[WhiteboardSync] Skipping update — API not ready');
             return;
           }
+          // Ignore spurious empty updates (e.g., from a peer's Excalidraw mount).
+          // A genuine "clear all" uses Excalidraw's clearCanvas which marks elements as deleted, not an empty array.
+          if (msg.elements.length === 0) {
+            logger.debug('[WhiteboardSync] Skipping empty remote update (likely spurious mount event)');
+            return;
+          }
           logger.debug('[WhiteboardSync] Applying remote drawing update', {
             from: participant.identity,
             elements: msg.elements.length,

@@ -125,7 +125,7 @@ export const WhiteboardPreviewTile = memo(function WhiteboardPreviewTile({
 
   return (
     <div
-      className="w-full h-full rounded-lg bg-surface-900 relative overflow-hidden flex items-center justify-center"
+      className="w-full h-full rounded-2xl bg-surface-900 relative overflow-hidden flex items-center justify-center"
       title="Whiteboard preview"
     >
       <canvas
@@ -158,12 +158,6 @@ export const WhiteboardPreviewTile = memo(function WhiteboardPreviewTile({
         <span className="bg-black/60 backdrop-blur-sm px-1.5 py-0.5 text-[9px] text-white rounded-sm truncate">
           Whiteboard
         </span>
-        {!isEmptyRef.current && (
-          <span className="flex items-center gap-0.5 text-[8px] text-green-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-            Live
-          </span>
-        )}
       </div>
     </div>
   );

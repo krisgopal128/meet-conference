@@ -92,14 +92,22 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
   // Track what each participant is viewing on the canvas
   const [participantViewports, setParticipantViewports] = useState<ParticipantViewports>({});
 
+  const isLockedRef = useRef(isLocked);
+  isLockedRef.current = isLocked;
+
   const applySceneElements = useCallback((scene: unknown[]) => {
+    // Guard: don't let a spurious empty scene (e.g. Excalidraw mount) wipe existing content
+    if (scene.length === 0 && currentSceneRef.current.length > 0) {
+      return;
+    }
+
     currentSceneRef.current = [...scene];
 
     if (roomName) {
       whiteboardSceneCache.set(roomName, {
         scene: [...scene],
         files: ((excalidrawAPIRef.current as any)?.files || undefined) as Record<string, unknown> | undefined,
-        locked: isLocked,
+        locked: isLockedRef.current,
       });
     }
 
@@ -125,7 +133,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
       width: maxX - minX || 1,
       height: maxY - minY || 1,
     };
-  }, [isLocked, roomName]);
+  }, [roomName]);
 
   const bumpSceneVersion = useCallback(() => {
     sceneVersionRef.current += 1;
@@ -167,19 +175,18 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
     hasLoadedRef.current = true;
 
     const cached = whiteboardSceneCache.get(roomName);
-    if (cached) {
+    if (cached && cached.scene.length > 0) {
       setIsLocked(cached.locked);
       applySceneElements(cached.scene);
-      if (cached.scene.length > 0) {
-        excalidrawAPIRef.current.updateScene({ elements: cached.scene as any[], files: cached.files as any } as any);
-        excalidrawAPIRef.current.scrollToContent(cached.scene as any[], {
-          fitToContent: true,
-          animate: false,
-        });
-      }
+      excalidrawAPIRef.current.updateScene({ elements: cached.scene as any[], files: cached.files as any } as any);
+      excalidrawAPIRef.current.scrollToContent(cached.scene as any[], {
+        fitToContent: true,
+        animate: false,
+      });
       return;
     }
 
+    // Fall through to backend fetch whether cache was empty or missing entirely
     whiteboardApi.getState(roomName).then((state) => {
       if (state) {
         setIsLocked(state.locked);
@@ -358,9 +365,18 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
     setExcalidrawReady(true);
   }, []);
 
+  // Clear API bridge on unmount to prevent stale references
+  useEffect(() => {
+    return () => {
+      setWhiteboardAPI(null);
+    };
+  }, []);
+
   // Handle drawing changes — broadcast if user can edit
   const handleChange = useCallback(
     (elements: readonly any[]) => {
+      // Skip spurious onChange fires before initial scene load (Excalidraw mount)
+      if (!hasLoadedRef.current) return;
       applySceneElements(elements as unknown[]);
       bumpSceneVersion();
       if (canEditRef.current) {
@@ -427,6 +443,19 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
       },
     }));
   }, [participantViewports]);
+
+  // Provide initialData synchronously from cache so Excalidraw mounts with content
+  const initialData = useMemo(() => {
+    if (!roomName) return undefined;
+    const cached = whiteboardSceneCache.get(roomName);
+    if (!cached || cached.scene.length === 0) return undefined;
+    return {
+      elements: cached.scene,
+      appState: { gridSize: null },
+      files: cached.files,
+      scrollToContent: true,
+    } as any;
+  }, [roomName]);
 
   return (
     <div
@@ -548,6 +577,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
           >
             <div className="absolute inset-0" style={{ width: '100%', height: '100%' }}>
               <Excalidraw
+                initialData={initialData}
                 excalidrawAPI={handleAPIRef}
                 onChange={handleChange}
                 UIOptions={{
