@@ -373,7 +373,7 @@ describe('Token Routes', () => {
         mockQueryOne.mockResolvedValueOnce({
           id: 'room-123',
           status: 'active',
-          room_password: null,
+          password_hash: null,
         });
         mockQueryOne.mockResolvedValueOnce({
           waiting_room_enabled: false,
@@ -397,7 +397,7 @@ describe('Token Routes', () => {
         mockQueryOne.mockResolvedValueOnce({
           id: 'room-123',
           status: 'active',
-          room_password: null,
+          password_hash: null,
         });
         mockQueryOne.mockResolvedValueOnce({
           waiting_room_enabled: false,
@@ -419,7 +419,7 @@ describe('Token Routes', () => {
         mockQueryOne.mockResolvedValueOnce({
           id: 'room-123',
           status: 'active',
-          room_password: null,
+          password_hash: null,
           waiting_room_enabled: true,
           host_id: 'host-123',
         });
@@ -443,7 +443,7 @@ describe('Token Routes', () => {
           mockQueryOne.mockResolvedValueOnce({
             id: 'room-123',
             status: 'active',
-            room_password: null,
+            password_hash: null,
           });
           mockQueryOne.mockResolvedValueOnce({
             waiting_room_enabled: false,
@@ -471,7 +471,7 @@ describe('Token Routes', () => {
         mockQueryOne.mockResolvedValueOnce({
           id: 'room-123',
           status: 'active',
-          room_password: passwordHash,
+          password_hash: passwordHash,
         });
 
         const response = await request(app)
@@ -491,7 +491,7 @@ describe('Token Routes', () => {
         mockQueryOne.mockResolvedValueOnce({
           id: 'room-123',
           status: 'active',
-          room_password: passwordHash,
+          password_hash: passwordHash,
         });
         mockQueryOne.mockResolvedValueOnce({
           waiting_room_enabled: false,
@@ -516,7 +516,7 @@ describe('Token Routes', () => {
         mockQueryOne.mockResolvedValueOnce({
           id: 'room-123',
           status: 'active',
-          room_password: passwordHash,
+          password_hash: passwordHash,
         });
 
         const response = await request(app)

@@ -460,28 +460,36 @@ function RoomContent({
   useEffect(() => {
     const checkLobbyStatus = () => {
       const permissions = localParticipant.permissions;
+
+      // Parse participant metadata for server-side inLobby flag (set during token generation).
+      // This is the source of truth — router state can be bypassed by direct navigation to /room/.
+      let metadataInLobby = false;
+      try {
+        const md = localParticipant.metadata ? JSON.parse(localParticipant.metadata) : {};
+        metadataInLobby = md.inLobby === true;
+      } catch { /* metadata not JSON — ignore */ }
+
       logger.info('[RoomPage] Checking lobby status:', {
         initialInLobby: state.inLobby,
+        metadataInLobby,
         permissions,
         canPublish: permissions?.canPublish
       });
       
-      // CRITICAL: Trust the server's inLobby decision from token generation
-      // The ONLY way to exit lobby is when moderator explicitly grants canPublish permission
-      if (state.inLobby === true) {
-        // Server said this user should be in lobby
-        // Check if they've been admitted (have explicit canPublish: true)
+      // A participant should be in lobby if EITHER router state OR server metadata says so.
+      const shouldCheckLobby = state.inLobby === true || metadataInLobby;
+
+      if (shouldCheckLobby) {
+        // The ONLY way to exit lobby is when moderator grants canPublish permission
         if (permissions?.canPublish === true) {
-          // Moderator has admitted them - they now have publish permission
           logger.info('[RoomPage] Guest admitted by moderator - exiting lobby');
           setInLobby(false);
         } else {
-          // Still in lobby - no publish permission yet
           logger.info('[RoomPage] Guest in lobby - waiting for moderator');
           setInLobby(true);
         }
       } else {
-        // Server didn't set inLobby - authenticated user, not in lobby
+        // Server didn't set inLobby — authenticated user, not in lobby
         setInLobby(false);
       }
       setIsConnecting(false);
@@ -489,19 +497,28 @@ function RoomContent({
 
     const timer = setTimeout(checkLobbyStatus, 500);
     return () => clearTimeout(timer);
-  }, [localParticipant.permissions, state.inLobby]);
+  }, [localParticipant.permissions, localParticipant.metadata, state.inLobby]);
 
   useEffect(() => {
     const handlePermissionChange = () => {
       const permissions = localParticipant.permissions;
+
+      let metadataInLobby = false;
+      try {
+        const md = localParticipant.metadata ? JSON.parse(localParticipant.metadata) : {};
+        metadataInLobby = md.inLobby === true;
+      } catch {}
+
       logger.info('[RoomPage] Permission changed event:', {
         canPublish: permissions?.canPublish,
         currentInLobby: inLobby,
-        initialInLobby: state.inLobby
+        initialInLobby: state.inLobby,
+        metadataInLobby
       });
       
-      // Only process permission changes if user was initially in lobby
-      if (state.inLobby === true && permissions?.canPublish === true && inLobby) {
+      // Process permission changes if router state OR server metadata says lobby
+      const shouldCheckLobby = state.inLobby === true || metadataInLobby;
+      if (shouldCheckLobby && permissions?.canPublish === true && inLobby) {
         logger.info('[RoomPage] Guest admitted from lobby by moderator');
         setInLobby(false);
       }

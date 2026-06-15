@@ -110,6 +110,18 @@ vi.mock('../../store/roomStore', () => ({
   useGridAspectRatio: () => '16:9',
   useBackgroundBlurEnabled: () => false,
   useBackgroundBlurLevel: () => 10,
+  useBackgroundBlurIntensity: () => 10,
+  useBackgroundMode: () => 'blur',
+  useBackgroundBgColor: () => '#000000',
+  useBackgroundImagePath: () => null,
+  useVideoFitMode: () => 'cover',
+  useMeetingControlsActions: () => ({
+    setMeetingLocked: vi.fn(),
+    setParticipantsCanShareScreen: vi.fn(),
+    setParticipantsCanChat: vi.fn(),
+    setParticipantsCanUnmute: vi.fn(),
+    setParticipantsCanTurnOnCamera: vi.fn(),
+  }),
 }));
 
 vi.mock('../../config/meetingRoomConfig', () => ({

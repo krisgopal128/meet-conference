@@ -83,6 +83,10 @@ vi.mock('../../hooks/usePreviewBackgroundBlur', () => ({
   usePreviewBackgroundBlur: vi.fn(),
 }));
 
+vi.mock('../../hooks/useBackgroundBlurPreview', () => ({
+  useBackgroundBlurPreview: vi.fn(),
+}));
+
 // Mock services/api
 vi.mock('../../services/api', () => ({
   getToken: vi.fn().mockResolvedValue({ data: { token: 'test-token' } }),

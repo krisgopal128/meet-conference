@@ -52,7 +52,7 @@ describe('Whiteboard Router', () => {
     const response = await request(app).get('/whiteboard/test-room');
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ scene: [], locked: true, updated_at: null });
+    expect(response.body).toEqual({ scene: [], files: {}, locked: true, updated_at: null });
   });
 
   it('rejects participant edits when whiteboard is locked', async () => {
