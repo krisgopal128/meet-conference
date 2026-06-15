@@ -223,6 +223,13 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
         const msg = JSON.parse(text) as WhiteboardMessage;
 
         if (msg.type === 'whiteboard-lock') {
+          let senderRole = 'attendee';
+          try {
+            const senderMetadata = participant.metadata ? JSON.parse(participant.metadata) as { role?: string } : {};
+            senderRole = senderMetadata.role || 'attendee';
+          } catch { /* malformed metadata — treat as attendee */ }
+          const isPrivilegedSender = senderRole === 'host' || senderRole === 'cohost' || senderRole === 'moderator';
+          if (!isPrivilegedSender) return;
           setIsLocked(msg.locked);
           if (roomName) {
             setSceneCache(roomName, {

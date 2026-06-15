@@ -607,21 +607,26 @@ export default function RoomPage() {
   const state = useMemo<LocationState | null>(() => {
     const token = tokenFromSession || stateFromLocation?.token;
     if (token) {
-      const role = roleFromSession || stateFromLocation?.role || 'attendee';
       // Decode JWT metadata to extract inLobby flag — this is set server-side during
       // token generation and cannot be bypassed by direct navigation to /room/.
       let inLobbyFromToken: boolean | undefined;
+      let roleFromToken: string | undefined;
+      let hostIdFromToken: string | undefined;
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
         const metadata = typeof payload.metadata === 'string' ? JSON.parse(payload.metadata) : {};
         inLobbyFromToken = metadata.inLobby === true;
+        roleFromToken = typeof metadata.role === 'string' ? metadata.role : undefined;
+        hostIdFromToken = typeof metadata.hostId === 'string' ? metadata.hostId : undefined;
       } catch { /* invalid JWT — leave undefined */ }
+      const role = roleFromSession || stateFromLocation?.role || roleFromToken || 'attendee';
       return {
         ...stateFromLocation,
         token,
         videoEnabled: stateFromLocation?.videoEnabled ?? true,
         audioEnabled: stateFromLocation?.audioEnabled ?? true,
         role,
+        hostId: stateFromLocation?.hostId ?? hostIdFromToken,
         inLobby: stateFromLocation?.inLobby ?? inLobbyFromToken,
       };
     }

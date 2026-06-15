@@ -37,6 +37,22 @@ async function assertModerator(res: Response, name: string, userId: string, acti
   return room;
 }
 
+async function assertCanTargetModerator(
+  res: Response,
+  name: string,
+  identity: string,
+  room: { host_id: string },
+  requesterId: string
+): Promise<boolean> {
+  const participants = await listParticipants(name);
+  const target = participants.find(p => p.identity === identity);
+  if (target && isModeratorParticipant(target, room.host_id) && requesterId !== room.host_id) {
+    res.status(403).json({ error: 'Cannot moderate other moderators' });
+    return false;
+  }
+  return true;
+}
+
 async function executeKick(name: string, identity: string) {
   let guestName: string | undefined;
   try {
@@ -89,6 +105,8 @@ participantsRouter.post('/:name/mute/:identity', authenticate, async (req: AuthR
       return res.status(403).json({ error: 'Cannot mute the room host' });
     }
 
+    if (!(await assertCanTargetModerator(res, name, identity, room, req.user!.id))) return;
+
     await muteAllAudioTracks(name, identity);
     res.json({ message: 'Participant muted' });
   } catch (error) {
@@ -104,6 +122,8 @@ participantsRouter.post('/:name/mute-video/:identity', authenticate, async (req:
 
     const room = await assertModerator(res, name, req.user!.id, 'disable cameras');
     if (!room) return;
+
+    if (!(await assertCanTargetModerator(res, name, identity, room, req.user!.id))) return;
 
     await muteVideoTrack(name, identity);
     res.json({ message: 'Participant camera disabled' });
@@ -273,6 +293,8 @@ participantsRouter.post('/:name/disable-screen/:identity', authenticate, async (
     if (!allowed) {
       return res.status(403).json({ error: 'Only moderators can disable screen share' });
     }
+
+    if (!(await assertCanTargetModerator(res, name, identity, room, user.id))) return;
 
     await disableScreenShareTrack(name, identity);
     res.json({ message: 'Participant screen share disabled' });

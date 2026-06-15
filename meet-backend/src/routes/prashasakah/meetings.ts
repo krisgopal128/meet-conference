@@ -55,7 +55,7 @@ interface ChatMessageRow {
 
 router.get('/meetings', requireModerator(), async (req: AuthRequest, res: Response) => {
   try {
-    const limit = Number(req.query.limit) || 20;
+    const limit = Math.min(Number(req.query.limit) || 20, 200);
     const offset = Number(req.query.offset) || 0;
     const roomId = req.query.roomId as string | undefined;
     const roomName = req.query.roomName as string | undefined;
@@ -231,7 +231,7 @@ router.get('/meetings/:id', requireModerator(), async (req: AuthRequest, res: Re
 router.get('/meetings/:id/chat', requireModerator(), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const limit = Number(req.query.limit) || 100;
+    const limit = Math.min(Number(req.query.limit) || 100, 500);
     const before = req.query.before as string | undefined;
 
     let whereClause = 'WHERE meeting_id = $1';

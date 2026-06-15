@@ -71,6 +71,7 @@ export function useWhiteboardSync(
   const pendingElements = useRef<readonly unknown[]>([]);
   const lastViewportBroadcast = useRef(0);
   const seenFiles = useRef<Map<string, string>>(new Map());
+  const MAX_SEEN_FILES = 100;
 
   function deduplicateFiles(files: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
     if (!files) return files;
@@ -85,6 +86,13 @@ export function useWhiteboardSync(
       if (!seenFiles.current.has(hash)) {
         seenFiles.current.set(hash, id);
         result[id] = file;
+      }
+    }
+    if (seenFiles.current.size > MAX_SEEN_FILES) {
+      const entries = [...seenFiles.current.entries()];
+      const toRemove = entries.slice(0, entries.length - MAX_SEEN_FILES);
+      for (const [key] of toRemove) {
+        seenFiles.current.delete(key);
       }
     }
     return result;

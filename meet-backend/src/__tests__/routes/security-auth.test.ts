@@ -8,6 +8,7 @@ import { authRouter } from '../../routes/auth.js';
 vi.mock('../../services/database.js', () => ({
   queryOne: vi.fn(),
   query: vi.fn(),
+  withTransaction: vi.fn(),
 }));
 
 vi.mock('../../services/redis.js', () => ({
@@ -36,12 +37,13 @@ vi.mock('../../config.js', () => ({
   },
 }));
 
-import { queryOne, query } from '../../services/database.js';
+import { queryOne, query, withTransaction } from '../../services/database.js';
 import { cacheGet } from '../../services/redis.js';
 
 const mockQueryOne = queryOne as ReturnType<typeof vi.fn>;
 const mockQuery = query as ReturnType<typeof vi.fn>;
 const mockCacheGet = cacheGet as ReturnType<typeof vi.fn>;
+const mockWithTransaction = withTransaction as ReturnType<typeof vi.fn>;
 
 const TEST_SECRET = 'test-secret-key-for-testing';
 
@@ -53,6 +55,15 @@ describe('Security: Weak Authentication Systems', () => {
     app.use(express.json());
     app.use('/auth', authRouter);
     vi.clearAllMocks();
+    mockWithTransaction.mockImplementation(async (fn: any) => {
+      const client = {
+        query: async (sql: string, params?: unknown[]) => {
+          const rows = await (mockQuery as any)(sql, params);
+          return { rows: Array.isArray(rows) ? rows : [] };
+        },
+      };
+      return fn(client);
+    });
   });
 
   afterEach(() => {

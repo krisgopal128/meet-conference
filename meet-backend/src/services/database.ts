@@ -1,4 +1,5 @@
 import pkg from 'pg';
+import type { PoolClient } from 'pg';
 const { Pool } = pkg;
 import { config } from '../config.js';
 import logger from '../utils/logger.js';
@@ -95,6 +96,23 @@ export async function query<T = unknown>(
 export async function queryOne<T = unknown>(sql: string, params?: unknown[]): Promise<T | null> {
   const result = await query<T>(sql, params);
   return result[0] || null;
+}
+
+export async function withTransaction<T>(
+  fn: (client: PoolClient) => Promise<T>
+): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 // Graceful shutdown

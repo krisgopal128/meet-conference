@@ -58,14 +58,8 @@ app.use((req, res, next) => {
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl)
-    if (!origin) return callback(null, true);
-    
-    if (config.cors.origins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
+    if (!origin) return callback(null, false);
+    callback(null, config.cors.origins.includes(origin));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -164,7 +158,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   
   const statusCode = (err as any).statusCode || 500;
   res.status(statusCode).json({
-    error: config.nodeEnv === 'production' ? 'Internal server error' : err.message,
+    error: 'Internal server error',
   });
 });
 

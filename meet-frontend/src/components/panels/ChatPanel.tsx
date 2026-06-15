@@ -424,10 +424,22 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
     };
 
     try {
+      const publishOptions: { reliable: boolean; destinationIdentities?: string[] } = { reliable: true };
+      if (isPrivate) {
+        const moderatorIdentities = participants
+          .filter((p) => {
+            if (p.identity === localParticipant.identity) return false;
+            const participantRole = getParticipantRole(p.metadata, hostId, p.identity);
+            return participantRole === 'host' || participantRole === 'cohost' || participantRole === 'moderator';
+          })
+          .map((p) => p.identity)
+          .filter((id): id is string => Boolean(id));
+        publishOptions.destinationIdentities = moderatorIdentities;
+      }
       await withOperationTimeout(
         localParticipant.publishData(
           new TextEncoder().encode(JSON.stringify(payload)),
-          { reliable: true }
+          publishOptions
         ),
         'PUBLISH_DATA',
         'Send chat message'

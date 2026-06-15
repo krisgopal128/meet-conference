@@ -444,6 +444,28 @@ export async function disableScreenShareTrack(roomName: string, identity: string
 }
 
 /**
+ * Update screen share permissions for all non-moderator participants in a room.
+ * When disallowed, restricts canPublishSources to camera/microphone only,
+ * preventing screen share tracks from being published.
+ */
+export async function updateScreenSharePermissions(roomName: string, hostId: string, allowed: boolean): Promise<void> {
+  const participants = await listParticipants(roomName);
+  for (const p of participants) {
+    if (isModeratorParticipant(p, hostId)) {
+      continue;
+    }
+    const permissions = buildPermissionUpdate(p, {
+      canPublishSources: allowed ? [] : [TrackSource.CAMERA, TrackSource.MICROPHONE],
+    });
+    try {
+      await roomService.updateParticipant(roomName, p.identity, undefined, permissions);
+    } catch (err) {
+      logger.error(`[LiveKit] Failed to update screen share permissions for ${p.identity}:`, err);
+    }
+  }
+}
+
+/**
  * Update participant permissions (for lobby admission) - internal helper
  */
 async function updateParticipantPermissions(

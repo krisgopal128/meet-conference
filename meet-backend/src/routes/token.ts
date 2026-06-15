@@ -7,7 +7,7 @@
 import { createAccessToken, ParticipantRole } from '../services/livekit.js';
 import { queryOne } from '../services/database.js';
  import * as roomService from '../services/roomService.js';
- import { isParticipantKicked, isGuestNameKicked, isGuestNameAdmitted, cacheDel } from '../services/redis.js';
+ import { isParticipantKicked, isGuestNameKicked, isGuestNameAdmitted, cacheDel, cacheIncrWithExpire } from '../services/redis.js';
  import logger from '../utils/logger.js';
 
  export const tokenRouter = Router();
@@ -165,6 +165,18 @@ tokenRouter.post('/guest', tokenLimiter, async (req, res: Response) => {
     // Verify room password if required (fetched via dedicated query to avoid leaking hash)
     const roomPasswordHash = await roomService.getRoomPasswordHash(roomName);
     if (roomPasswordHash) {
+      // Rate limit password attempts (per IP + room) to prevent brute force
+      const attemptsKey = `room_pwd_attempts:${roomName}:${req.ip}`;
+      let attempts = 0;
+      try {
+        attempts = await cacheIncrWithExpire(attemptsKey, 300);
+      } catch {
+        // Redis unavailable - allow attempt
+      }
+      if (attempts > 10) {
+        return res.status(429).json({ error: 'Too many password attempts. Try again later.' });
+      }
+
       if (!password) {
         return res.status(401).json({ error: 'Room password required' });
       }
@@ -172,6 +184,9 @@ tokenRouter.post('/guest', tokenLimiter, async (req, res: Response) => {
       if (!validPassword) {
         return res.status(401).json({ error: 'Invalid room password' });
       }
+
+      // Reset attempts on successful password verification
+      try { await cacheDel(attemptsKey); } catch { /* best effort */ }
     }
 
     // Check if this guest name was recently kicked from this room

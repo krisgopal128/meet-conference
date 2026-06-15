@@ -41,6 +41,18 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
   const hostIdRef = useRef(hostId);
   hostIdRef.current = hostId;
 
+  const messageRateTracker = useRef<Map<string, number[]>>(new Map());
+
+  const isRateLimited = (senderIdentity: string): boolean => {
+    const now = Date.now();
+    const timestamps = messageRateTracker.current.get(senderIdentity) || [];
+    const recent = timestamps.filter(t => now - t < 1000);
+    if (recent.length >= 15) return true;
+    recent.push(now);
+    messageRateTracker.current.set(senderIdentity, recent);
+    return false;
+  };
+
   const getSenderRole = (metadata: string | undefined): string => {
     if (!metadata) return 'attendee';
     try {
@@ -71,9 +83,14 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
         if (!senderIdentity) {
           return;
         }
+
+        if (isRateLimited(senderIdentity)) {
+          return;
+        }
         
         // Handle meeting_ended - all participants navigate to ThankYou
         if (payload.type === 'meeting_ended') {
+          if (payload.source !== 'server') return;
           if (!isPrivilegedSender) return;
           onMeetingEnded?.(payload.reason || 'host_left');
           return;

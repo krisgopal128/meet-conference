@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import type { StringValue } from 'ms';
 import { z } from 'zod';
 import { config } from '../config.js';
-import { query, queryOne } from '../services/database.js';
+import { query, queryOne, withTransaction } from '../services/database.js';
 import { AuthRequest, authenticate } from '../middleware/authenticate.js';
 import { authLimiter } from '../middleware/rateLimiter.js';
 import { blacklistToken, cacheGet, cacheSet, cacheTTL, cacheIncrWithExpire, cacheDel } from '../services/redis.js';
@@ -38,6 +38,15 @@ const loginSchema = z.object({
 const updateProfileSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   avatarUrl: z.string().url().optional(),
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: z.string().min(8).max(128),
 });
 
 // Token expiration times
@@ -173,17 +182,26 @@ authRouter.post('/register', authLimiter, async (req, res: Response) => {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // Create user
-    const [user] = await query<{ id: string; email: string; name: string | null; role: string }>(
-      `INSERT INTO users (email, password_hash, name) 
-       VALUES ($1, $2, $3) 
-       RETURNING id, email, name, role`,
-      [email, passwordHash, name]
-    );
+    const { user, refresh } = await withTransaction(async (client) => {
+      const userResult = await client.query<{ id: string; email: string; name: string | null; role: string }>(
+        `INSERT INTO users (email, password_hash, name) 
+         VALUES ($1, $2, $3) 
+         RETURNING id, email, name, role`,
+        [email, passwordHash, name]
+      );
+      const newUser = userResult.rows[0];
+
+      const newRefresh = createRefreshToken(newUser.id, rawData.rememberMe);
+      await client.query(
+        `INSERT INTO refresh_tokens (user_id, token_hash, expires_at, revoked)
+         VALUES ($1, $2, $3, false)`,
+        [newUser.id, hashToken(newRefresh.token), newRefresh.expiresAt]
+      );
+
+      return { user: newUser, refresh: newRefresh };
+    });
 
     const token = createAccessToken(user.id);
-    const refresh = createRefreshToken(user.id, rawData.rememberMe);
-    await storeRefreshToken(user.id, refresh.token, refresh.expiresAt);
 
     // Issue CSRF token cookie for subsequent state-changing requests
     issueCsrfToken(res);
@@ -432,11 +450,7 @@ authRouter.patch('/profile', authenticate, async (req: AuthRequest, res: Respons
 // POST /auth/forgot-password - Request password reset
 authRouter.post('/forgot-password', authLimiter, async (req, res: Response) => {
   try {
-    const { email } = req.body;
-    
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
-    }
+    const { email } = forgotPasswordSchema.parse(req.body);
     
     const sanitizedEmail = sanitizeEmail(email);
     
@@ -471,6 +485,9 @@ authRouter.post('/forgot-password', authLimiter, async (req, res: Response) => {
       ...(config.nodeEnv === 'development' && { resetToken })
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
     logger.error('Forgot password error:', error);
     res.json({ message: 'If an account with that email exists, a reset link has been sent.' });
   }
@@ -478,11 +495,7 @@ authRouter.post('/forgot-password', authLimiter, async (req, res: Response) => {
 // POST /auth/reset-password - Reset password with token
 authRouter.post('/reset-password', authLimiter, async (req, res: Response) => {
   try {
-    const { token, password } = req.body;
-    
-    if (!token || !password) {
-      return res.status(400).json({ error: 'Token and password are required' });
-    }
+    const { token, password } = resetPasswordSchema.parse(req.body);
     
     // Validate password strength
     try {
@@ -529,6 +542,9 @@ authRouter.post('/reset-password', authLimiter, async (req, res: Response) => {
     
     res.json({ message: 'Password reset successfully' });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
     logger.error('Reset password error:', error);
     res.status(500).json({ error: 'Failed to reset password' });
   }

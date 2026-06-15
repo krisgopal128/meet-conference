@@ -275,3 +275,23 @@ CREATE INDEX IF NOT EXISTS idx_meeting_diagnostics_meeting_id ON meeting_diagnos
 CREATE INDEX IF NOT EXISTS idx_meeting_diagnostics_created_at ON meeting_diagnostics(created_at);
 
 CREATE INDEX IF NOT EXISTS idx_meeting_participants_user_id ON meeting_participants(user_id);
+
+-- ============================================
+-- CHECK CONSTRAINTS FOR ENUM-LIKE COLUMNS
+-- ============================================
+ALTER TABLE users ADD CONSTRAINT IF NOT EXISTS chk_users_role CHECK (role IN ('admin', 'moderator', 'participant', 'guest'));
+ALTER TABLE rooms ADD CONSTRAINT IF NOT EXISTS chk_rooms_status CHECK (status IN ('waiting', 'active', 'ended'));
+ALTER TABLE meetings ADD CONSTRAINT IF NOT EXISTS chk_meetings_status CHECK (status IN ('ongoing', 'ended'));
+ALTER TABLE meeting_participants ADD CONSTRAINT IF NOT EXISTS chk_mp_role CHECK (role IN ('host', 'moderator', 'attendee'));
+ALTER TABLE scheduled_meetings ADD CONSTRAINT IF NOT EXISTS chk_sm_status CHECK (status IN ('scheduled', 'started', 'completed', 'cancelled'));
+
+-- ============================================
+-- ON DELETE BEHAVIOR FOR AUDIT/BAN FKs
+-- ============================================
+ALTER TABLE admin_audit_logs DROP CONSTRAINT IF EXISTS admin_audit_logs_admin_id_fkey;
+ALTER TABLE admin_audit_logs ADD CONSTRAINT admin_audit_logs_admin_id_fkey
+  FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE SET NULL;
+
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_banned_by_fkey;
+ALTER TABLE users ADD CONSTRAINT users_banned_by_fkey
+  FOREIGN KEY (banned_by) REFERENCES users(id) ON DELETE SET NULL;

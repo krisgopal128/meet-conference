@@ -37,7 +37,7 @@ interface AlertRow {
 
 router.get('/alerts', requireModerator(), async (req: AuthRequest, res: Response) => {
   try {
-    const limit = Number(req.query.limit) || 20;
+    const limit = Math.min(Number(req.query.limit) || 20, 200);
     const offset = Number(req.query.offset) || 0;
     const severity = req.query.severity as string | undefined;
     const unreadOnly = req.query.unreadOnly === 'true';

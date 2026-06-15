@@ -10,6 +10,7 @@ import {
   deleteRoom,
   listParticipants,
   participantCanModerate,
+  updateScreenSharePermissions,
 } from '../services/livekit.js';
 import { getCached, invalidatePattern, TTL_SHORT } from '../services/cache.js';
 import { sanitizeRoomName, sanitizeDescription } from '../utils/validation.js';
@@ -464,9 +465,17 @@ const roomSettingsSchema = z.object({
      const currentSettings = room.settings || {};
      const newSettings = { ...currentSettings, ...data };
 
-     await roomService.updateRoomSettings(room.id, newSettings);
+      await roomService.updateRoomSettings(room.id, newSettings);
 
-     res.json({ settings: newSettings });
+      if (data.participantsCanShareScreen !== undefined) {
+        try {
+          await updateScreenSharePermissions(name, room.host_id, data.participantsCanShareScreen);
+        } catch (err) {
+          logger.warn('Failed to update screen share permissions for participants:', err);
+        }
+      }
+
+      res.json({ settings: newSettings });
    } catch (error) {
      if (error instanceof z.ZodError) {
        return res.status(400).json({ error: 'Validation error', details: error.errors });

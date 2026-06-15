@@ -243,6 +243,7 @@ export async function handleParticipantLeft(roomName: string, identity: string, 
         try {
           const message = new TextEncoder().encode(JSON.stringify({
             type: 'meeting_ended',
+            source: 'server',
             message: 'Meeting ended - host did not return',
             reason: 'host_timeout',
           }));

@@ -35,6 +35,15 @@ const paginationSchema = z.object({
   ]).optional(),
 });
 
+const updateUserSchema = z.object({
+  name: z.string().min(1).max(255).optional(),
+  role: z.enum(['admin', 'moderator', 'participant', 'guest']).optional(),
+});
+
+const changePasswordSchema = z.object({
+  password: z.string().min(8).max(128),
+});
+
 // ============================================
 // Row type interfaces
 // ============================================
@@ -190,7 +199,7 @@ router.get('/users/:id', requireModerator(), async (req: AuthRequest, res: Respo
 router.patch('/users/:id', adminActionLimiter, requireModerator(), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, role } = req.body;
+    const { name, role } = updateUserSchema.parse(req.body);
 
     const updateFields: string[] = [];
     const params: (string)[] = [];
@@ -198,10 +207,6 @@ router.patch('/users/:id', adminActionLimiter, requireModerator(), async (req: A
 
     // Validate role if provided
     if (role !== undefined) {
-      const validRoles = ['admin', 'moderator', 'participant', 'guest'];
-      if (!validRoles.includes(role)) {
-        return res.status(400).json({ error: 'Invalid role. Must be one of: admin, moderator, participant, guest' });
-      }
       // Only admins can assign admin role
       if (role === 'admin' && req.user!.role !== 'admin') {
         return res.status(403).json({ error: 'Only admins can assign admin role' });
@@ -256,6 +261,9 @@ router.patch('/users/:id', adminActionLimiter, requireModerator(), async (req: A
       }
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
     logger.error('[Admin] Error updating user:', error);
     res.status(500).json({ error: 'Failed to update user' });
   }
@@ -407,12 +415,7 @@ router.post('/users/:id/reset-password', adminActionLimiter, requireAdmin(), asy
 router.put('/users/:id/change-password', adminActionLimiter, requireAdmin(), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { password } = req.body;
-
-    if (!password || typeof password !== 'string') {
-      res.status(400).json({ error: 'Password is required' });
-      return;
-    }
+    const { password } = changePasswordSchema.parse(req.body);
 
     validatePassword(password);
 
@@ -439,6 +442,10 @@ router.put('/users/:id/change-password', adminActionLimiter, requireAdmin(), asy
 
     res.json({ message: 'Password changed successfully' });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Validation error', details: error.errors });
+      return;
+    }
     if (error instanceof Error && error.message.includes('Password')) {
       res.status(400).json({ error: error.message });
       return;

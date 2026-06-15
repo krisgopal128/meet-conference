@@ -199,10 +199,7 @@ function requireApiKeyPermission(
 router.get('/health', (req: Request, res: Response) => {
   res.json({
     status: 'ok',
-    service: 'meet-conference-external-api',
-    livekit: LIVEKIT_URL,
     timestamp: new Date().toISOString(),
-    version: 'unknown', // package.json version resolved at build time
   });
 });
 
@@ -294,15 +291,21 @@ router.get('/rooms/:name', async (req: Request, res: Response) => {
       title: string;
       status: string;
       waiting_room_enabled: boolean;
+      host_id: string;
     }>(
-      'SELECT id, name, title, status, waiting_room_enabled FROM rooms WHERE name = $1',
+      'SELECT id, name, title, status, waiting_room_enabled, host_id FROM rooms WHERE name = $1',
       [name]
     );
     
     if (!room) {
       return res.status(404).json({ error: 'Room not found' });
     }
-    
+
+    const apiKeyInfo = (req as ExternalApiRequest).apiKey;
+    if (room.host_id !== apiKeyInfo?.userId) {
+      return res.status(403).json({ error: 'You do not own this room' });
+    }
+
     res.json(room);
     
   } catch (error) {
@@ -386,8 +389,9 @@ router.post('/token', async (req: Request, res: Response) => {
 
     const inLobby = !isModerator && !isPresenter && !isObserver && roomData.waiting_room_enabled === true;
 
-    // Create access token
-    // TODO: Refactor to reuse createAccessToken from livekit.ts to avoid role-grant drift
+    // External API uses inline grants (not createAccessToken from livekit.ts) because
+    // external roles (teacher, student, observer) don't map 1:1 to internal ParticipantRole,
+    // and observer requires hidden:true which createAccessToken doesn't support.
     const token = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
       identity,
       name: name || identity,
@@ -404,7 +408,7 @@ router.post('/token', async (req: Request, res: Response) => {
       roomJoin: true,
       canPublish: (isModerator || isPresenter) && !inLobby,
       canSubscribe: true,
-      canPublishData: !inLobby,
+      canPublishData: !inLobby && !isObserver,
       roomAdmin: isModerator,
       hidden: isObserver
     });

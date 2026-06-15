@@ -56,7 +56,7 @@ interface RoomDetailRow {
 
 router.get('/rooms', requireModerator(), async (req: AuthRequest, res: Response) => {
   try {
-    const limit = Number(req.query.limit) || 20;
+    const limit = Math.min(Number(req.query.limit) || 20, 200);
     const offset = Number(req.query.offset) || 0;
     const search = req.query.search as string | undefined;
     const status = req.query.status as string | undefined;

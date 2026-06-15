@@ -2,7 +2,8 @@ import { Router, Response } from 'express';
 import { mkdir, writeFile, readdir, stat, unlink } from 'fs/promises';
 import { join } from 'path';
 import { z } from 'zod';
-import { AuthRequest, authenticate, optionalAuth } from '../middleware/authenticate.js';
+import rateLimit from 'express-rate-limit';
+import { AuthRequest, authenticate } from '../middleware/authenticate.js';
 import { requireUser } from '../middleware/requireUser.js';
 import { query, queryOne } from '../services/database.js';
 import { verifyMeetingAccess } from '../services/meetingService.js';
@@ -13,6 +14,14 @@ import logger from '../utils/logger.js';
 
 export const meetingsRouter = Router();
 let diagnosticsDirReady = false;
+
+const diagnosticsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  message: { error: 'Too many diagnostic uploads' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Interface for meeting with participant count
 interface MeetingWithParticipants {
@@ -110,7 +119,7 @@ meetingsRouter.get('/history', authenticate, async (req: AuthRequest, res: Respo
 });
 
 // POST /meetings/diagnostics - Upload client-side diagnostics for tuning
-meetingsRouter.post('/diagnostics', optionalAuth, async (req: AuthRequest, res: Response) => {
+meetingsRouter.post('/diagnostics', diagnosticsLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const payload = diagnosticsPayloadSchema.parse(req.body);
     const diagnosticsDir = join(process.cwd(), 'runtime', 'diagnostics');
