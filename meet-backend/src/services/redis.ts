@@ -248,8 +248,9 @@ export async function cacheSetMulti(items: Array<{ key: string; value: unknown; 
   for (const item of items) {
     const { data, compressed } = await compressValue(item.value);
     const finalData = compressed ? `gz:${data}` : data;
-    if (item.ttl) {
-      multi.setEx(item.key, item.ttl, finalData);
+    const ttl = item.ttl ?? 300; // Default 5min TTL to prevent permanent keys
+    if (ttl > 0) {
+      multi.setEx(item.key, ttl, finalData);
     } else {
       multi.set(item.key, finalData);
     }
@@ -311,7 +312,9 @@ export async function delRoomState(roomName: string): Promise<number> {
 export async function addParticipant(roomName: string, identity: string): Promise<void> {
   await ensureConnected();
   if (!mainClient) throw new Error('Redis not initialized');
-  await mainClient.sAdd(`room:${roomName}:participants`, identity);
+  const key = `room:${roomName}:participants`;
+  await mainClient.sAdd(key, identity);
+  await mainClient.expire(key, 86400); // 24h fallback TTL
 }
 
 export async function addParticipants(roomName: string, identities: string[]): Promise<void> {
@@ -319,10 +322,12 @@ export async function addParticipants(roomName: string, identities: string[]): P
   await ensureConnected();
   if (!mainClient) throw new Error('Redis not initialized');
 
+  const key = `room:${roomName}:participants`;
   const multi = mainClient.multi();
   for (const identity of identities) {
-    multi.sAdd(`room:${roomName}:participants`, identity);
+    multi.sAdd(key, identity);
   }
+  multi.expire(key, 86400); // 24h fallback TTL
   await multi.exec();
 }
 

@@ -295,3 +295,23 @@ ALTER TABLE admin_audit_logs ADD CONSTRAINT admin_audit_logs_admin_id_fkey
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_banned_by_fkey;
 ALTER TABLE users ADD CONSTRAINT users_banned_by_fkey
   FOREIGN KEY (banned_by) REFERENCES users(id) ON DELETE SET NULL;
+
+-- ============================================
+-- FK: scheduled_meetings.room_name -> rooms.name
+-- ============================================
+-- Ensure rooms.name has a unique constraint so it can be referenced by a FK.
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'rooms_name_key') THEN
+    ALTER TABLE rooms ADD CONSTRAINT rooms_name_key UNIQUE (name);
+  END IF;
+END $$;
+
+-- scheduled_meetings.room_name is NOT NULL, so ON DELETE SET NULL is not usable here.
+-- ON DELETE NO ACTION blocks deletion of a room that still has scheduled meetings,
+-- preventing dangling references. Cancel/reassign scheduled meetings before deleting a room.
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'scheduled_meetings_room_name_fkey') THEN
+    ALTER TABLE scheduled_meetings ADD CONSTRAINT scheduled_meetings_room_name_fkey
+      FOREIGN KEY (room_name) REFERENCES rooms(name) ON DELETE NO ACTION;
+  END IF;
+END $$;

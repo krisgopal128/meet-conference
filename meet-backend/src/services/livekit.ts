@@ -25,6 +25,9 @@ export const webhookReceiver = new WebhookReceiver(apiKey, apiSecret);
 // Role-based grants
 export type ParticipantRole = 'host' | 'cohost' | 'moderator' | 'presenter' | 'attendee' | 'viewer';
 
+// SECURITY INVARIANT: canUpdateOwnMetadata must NEVER be true for any role.
+// If this is enabled, participants can forge their own metadata (role, inLobby, etc.)
+// and bypass all client-side privilege checks that rely on metadata.
 const ROLE_GRANTS: Record<ParticipantRole, VideoGrant> = {
   host: {
     roomJoin: true,
@@ -61,6 +64,9 @@ const ROLE_GRANTS: Record<ParticipantRole, VideoGrant> = {
     canSubscribe: true,
     canPublishData: true,
   },
+  // VIEWER: Read-only livestream participant. Can subscribe to ALL media (video + audio)
+  // but cannot publish. Use for large audience/livestream scenarios only — not for private meetings
+  // where participant privacy is expected.
   viewer: {
     roomJoin: true,
     canPublish: false,
@@ -68,6 +74,12 @@ const ROLE_GRANTS: Record<ParticipantRole, VideoGrant> = {
     canPublishData: false,
   },
 };
+
+Object.values(ROLE_GRANTS).forEach((grant, i) => {
+  if (grant.canUpdateOwnMetadata) {
+    throw new Error(`SECURITY: ROLE_GRANTS[${i}] has canUpdateOwnMetadata=true — this is forbidden`);
+  }
+});
 
 /**
  * Generate an access token for a participant

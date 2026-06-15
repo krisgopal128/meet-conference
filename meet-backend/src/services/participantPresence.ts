@@ -68,7 +68,7 @@ export async function removeAdmittedParticipant(roomName: string, identity: stri
 // KICKED PARTICIPANTS (Cooldown)
 // ============================================
 
-const KICK_COOLDOWN_SECONDS = 10;
+const KICK_COOLDOWN_SECONDS = 60;
 
 export async function addKickedParticipant(roomName: string, identity: string, guestName?: string): Promise<void> {
   // Clear admitted status so kicked participants must pass through the lobby on rejoin

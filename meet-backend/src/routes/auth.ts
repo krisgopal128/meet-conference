@@ -316,6 +316,9 @@ authRouter.get('/me', authenticate, async (req: AuthRequest, res: Response) => {
 // POST /auth/refresh - Refresh token
 authRouter.post('/refresh', async (req, res: Response) => {
   try {
+    // Clean up expired refresh tokens (fire-and-forget, non-blocking)
+    query('DELETE FROM refresh_tokens WHERE expires_at < NOW()').catch(() => {});
+
     const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE] as string | undefined;
     if (!refreshToken) {
       clearRefreshTokenCookie(res);
@@ -466,9 +469,10 @@ authRouter.post('/forgot-password', authLimiter, async (req, res: Response) => {
     }
     
     // Generate password reset token (JWT with 1-hour expiry)
+    const resetSecret = config.jwt.secret + ':reset';
     const resetToken = jwt.sign(
       { userId: user.id, purpose: 'password-reset' },
-      config.jwt.secret,
+      resetSecret,
       { expiresIn: '1h' }
     );
     
@@ -507,7 +511,7 @@ authRouter.post('/reset-password', authLimiter, async (req, res: Response) => {
     // Verify reset token
     let decoded: { userId: string; purpose: string };
     try {
-      decoded = jwt.verify(token, config.jwt.secret, { algorithms: ['HS256'] }) as { userId: string; purpose: string };
+      decoded = jwt.verify(token, config.jwt.secret + ':reset', { algorithms: ['HS256'] }) as { userId: string; purpose: string };
     } catch {
       return res.status(400).json({ error: 'Invalid or expired reset token' });
     }

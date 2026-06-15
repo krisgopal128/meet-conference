@@ -408,39 +408,44 @@ const roomSettingsSchema = z.object({
   }).optional(),
 });
 
- // GET /rooms/:name/settings - Get room settings (public)
- roomsRouter.get('/:name/settings', optionalAuth, async (req, res: Response) => {
-   try {
-     const { name } = req.params;
+ // GET /rooms/:name/settings - Get room settings
+  roomsRouter.get('/:name/settings', optionalAuth, async (req: AuthRequest, res: Response) => {
+    try {
+      const { name } = req.params;
 
-     const room = await roomService.getRoomByName(name);
+      const room = await roomService.getRoomByName(name);
 
-     if (!room) {
-       return res.status(404).json({ error: 'Room not found' });
+      if (!room) {
+        return res.status(404).json({ error: 'Room not found' });
+      }
+
+      const isAuthenticated = !!req.user;
+
+        const settings = room.settings || {
+          gridAspectRatio: '16:9',
+          videoFitMode: 'cover',
+          meetingLocked: false,
+          participantsCanShareScreen: true,
+          participantsCanChat: true,
+          participantsCanUnmute: true,
+          participantsCanTurnOnCamera: true,
+          faceCrop: {
+            enabled: false,
+            aspectRatio: '16:9',
+            model: 'tiny',
+          },
+       };
+
+       if (!isAuthenticated) {
+         return res.json({ settings: { meetingLocked: !!settings.meetingLocked } });
+       }
+
+       res.json({ settings });
+     } catch (error) {
+       logger.error('Get room settings error:', error);
+       res.status(500).json({ error: 'Failed to get room settings' });
      }
-
-     // Return settings or defaults
-       const settings = room.settings || {
-         gridAspectRatio: '16:9',
-         videoFitMode: 'cover',
-         meetingLocked: false,
-         participantsCanShareScreen: true,
-         participantsCanChat: true,
-         participantsCanUnmute: true,
-         participantsCanTurnOnCamera: true,
-         faceCrop: {
-           enabled: false,
-           aspectRatio: '16:9',
-           model: 'tiny',
-         },
-      };
-
-      res.json({ settings });
-    } catch (error) {
-      logger.error('Get room settings error:', error);
-      res.status(500).json({ error: 'Failed to get room settings' });
-    }
-  });
+   });
 
  // PUT /rooms/:name/settings - Update room settings (moderator only)
  roomsRouter.put('/:name/settings', authenticate, async (req: AuthRequest, res: Response) => {

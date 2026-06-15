@@ -50,7 +50,7 @@ export interface AuthRequest extends Request {
 // Caches the full authentication result (user data) keyed by SHA256(token).
 // One Redis GET replaces: blacklist check + jwt.verify + getUserById DB lookup.
 const TOKEN_CACHE_PREFIX='tk:auth:';
-const TOKEN_CACHE_TTL=60; // 60 seconds — SHORT tier
+const TOKEN_CACHE_TTL=30; // 30 seconds — SHORT tier
 
 function tokenHash(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');

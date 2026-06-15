@@ -22,7 +22,7 @@ const requestTokenSchema = z.object({
   role: z.enum(['host', 'cohost', 'moderator', 'presenter', 'attendee', 'viewer']).default('attendee'),
   identity: z.string().min(1).max(255).optional(),
   name: z.string().max(255).optional(),
-  ttl: z.number().min(60).max(86400).optional(), // 1 min to 24 hours
+  ttl: z.number().min(60).max(14400).optional(), // 1 min to 4 hours
 });
 
 // POST /token - Get LiveKit access token

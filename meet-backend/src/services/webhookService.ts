@@ -8,17 +8,29 @@ import {
 } from './redis.js';
 import { sendDataMessage } from './livekit.js';
 import logger from '../utils/logger.js';
+import { z } from 'zod';
 
-// Types for egress events (not fully defined by LiveKit SDK)
-interface EgressFileResult {
-  downloadUrl?: string | null;
-  filename?: string | null;
-}
-interface EgressInfo {
-  egressId?: string;
-  roomName?: string;
-  fileResults?: EgressFileResult[];
-}
+const egressStartedSchema = z.object({
+  event: z.literal('egress_started'),
+  egressInfo: z.object({
+    egressId: z.string(),
+    roomName: z.string(),
+    status: z.string(),
+  }).passthrough(),
+}).passthrough();
+
+const egressEndedSchema = z.object({
+  event: z.literal('egress_ended'),
+  egressInfo: z.object({
+    egressId: z.string(),
+    roomName: z.string(),
+    status: z.string(),
+    fileResults: z.array(z.object({
+      filename: z.string(),
+      downloadUrl: z.string().url().optional(),
+    })).optional(),
+  }).passthrough(),
+}).passthrough();
 
 // ============================================
 // HOST LEAVE TIMEOUT MANAGEMENT
@@ -313,16 +325,24 @@ export async function handleParticipantLeft(roomName: string, identity: string, 
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function handleEgressStarted(event: any): Promise<void> {
-  logger.info(`[Webhook] Recording started: ${event.egressInfo?.egressId} in ${event.egressInfo?.roomName}`);
+export async function handleEgressStarted(event: unknown): Promise<void> {
+  const parsed = egressStartedSchema.safeParse(event);
+  if (!parsed.success) {
+    logger.warn('[Webhook] Invalid egress_started event structure, skipping:', parsed.error.message);
+    return;
+  }
+  const { egressInfo } = parsed.data;
+  logger.info(`[Webhook] Recording started: ${egressInfo.egressId} in ${egressInfo.roomName}`);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function handleEgressEnded(event: any): Promise<void> {
-  const egressInfo = event.egressInfo as EgressInfo | undefined;
-  if (!egressInfo) return;
+export async function handleEgressEnded(event: unknown): Promise<void> {
+  const parsed = egressEndedSchema.safeParse(event);
+  if (!parsed.success) {
+    logger.warn('[Webhook] Invalid egress_ended event structure, skipping:', parsed.error.message);
+    return;
+  }
 
+  const { egressInfo } = parsed.data;
   const fileResult = egressInfo.fileResults?.[0];
   const recordingUrl = fileResult?.downloadUrl ?? fileResult?.filename;
 

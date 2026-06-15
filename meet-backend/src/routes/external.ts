@@ -34,7 +34,10 @@ const createExternalRoomSchema = z.object({
   name: z.string().min(1).max(255),
   title: z.string().max(255).optional(),
   waitingRoomEnabled: z.boolean().optional().default(true),
-  metadata: z.record(z.unknown()).optional().default({}),
+  metadata: z.record(z.unknown()).optional().default({}).refine(
+    (val) => !val || JSON.stringify(val).length < 4096,
+    'Metadata too large (max 4KB)'
+  ),
 });
 
 const externalTokenSchema = z.object({
@@ -42,7 +45,10 @@ const externalTokenSchema = z.object({
   identity: z.string().min(1).max(255),
   name: z.string().max(255).optional(),
   role: z.enum(['moderator', 'attendee', 'observer', 'presenter', 'teacher', 'student']).optional().default('attendee'),
-  metadata: z.record(z.unknown()).optional().default({}),
+  metadata: z.record(z.unknown()).optional().default({}).refine(
+    (val) => !val || JSON.stringify(val).length < 4096,
+    'Metadata too large (max 4KB)'
+  ),
 });
 
 // ==================== Response Types ====================
@@ -422,7 +428,7 @@ router.post('/token', async (req: Request, res: Response) => {
       livekit_url: LIVEKIT_URL,
       identity,
       role,
-      join_url: `${FRONTEND_URL}/join/${room}#token=${jwt}`
+      join_url: `${FRONTEND_URL}/join/${room}#t=${jwt}`
     });
     
   } catch (error) {

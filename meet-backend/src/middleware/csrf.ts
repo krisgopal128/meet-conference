@@ -14,7 +14,7 @@ const CSRF_COOKIE_NAME = 'csrf_token';
 const CSRF_HEADER_NAME = 'x-csrf-token';
 
 const CSRF_SKIP_PATHS = new Set([
-  '/health', '/webhook', '/token', '/guest',
+  '/health', '/webhook',
   '/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password',
   '/auth/refresh',
   '/external',

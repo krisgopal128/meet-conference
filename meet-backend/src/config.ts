@@ -32,7 +32,7 @@ function getSSLConfig(): false | { rejectUnauthorized: boolean; ca?: string } {
       }
     }
     return {
-      rejectUnauthorized: process.env.DATABASE_REJECT_UNAUTHORIZED !== 'false',
+      rejectUnauthorized: true,
     };
   }
 
