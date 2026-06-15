@@ -21,7 +21,7 @@ import {
   useIsPiPOpen,
 } from '../../store/roomStore';
 import { ControlBar } from '../controls/ControlBar';
-import { QualityIndicator } from '../controls/QualityIndicator';
+
 import { SpeakerLayout } from './SpeakerLayout';
 import { GridLayout } from './GridLayout';
 import { ScreenShareLayout } from './ScreenShareLayout';
@@ -360,9 +360,7 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
                 {renderLayout()}
               </Suspense>
               
-              <div className="absolute top-2 sm:top-4 left-2 sm:left-4 z-20">
-                <QualityIndicator />
-              </div>
+
             </div>
           </div>
 
