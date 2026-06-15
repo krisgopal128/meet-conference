@@ -43,7 +43,7 @@ export interface RoomWithMetadata extends RoomRow {
 export async function getRoomByName(name: string, includeUserJoin = false): Promise<RoomRow | null> {
   if (includeUserJoin) {
     return await queryOne<RoomRow>(
-      `SELECT r.*, u.name as host_name, u.email as host_email
+      `SELECT r.id, r.name, r.title, r.description, r.host_id, r.status, r.waiting_room_enabled, r.settings, r.metadata, r.max_participants, r.empty_timeout, r.starts_at, r.ends_at, r.created_at, r.updated_at, u.name as host_name, u.email as host_email
        FROM rooms r
        LEFT JOIN users u ON r.host_id = u.id
        WHERE r.name = $1`,
@@ -52,9 +52,20 @@ export async function getRoomByName(name: string, includeUserJoin = false): Prom
   }
 
   return await queryOne<RoomRow>(
-    'SELECT id, name, title, host_id, status, waiting_room_enabled, settings, metadata, password_hash, created_at, updated_at FROM rooms WHERE name = $1',
+    'SELECT id, name, title, description, host_id, status, waiting_room_enabled, settings, metadata, max_participants, empty_timeout, starts_at, ends_at, created_at, updated_at FROM rooms WHERE name = $1',
     [name]
   );
+}
+
+/**
+ * Get only the password_hash for a room (used for guest password verification)
+ */
+export async function getRoomPasswordHash(roomName: string): Promise<string | null> {
+  const result = await queryOne<{ password_hash: string | null }>(
+    'SELECT password_hash FROM rooms WHERE name = $1',
+    [roomName]
+  );
+  return result?.password_hash ?? null;
 }
 
 /**
@@ -109,7 +120,7 @@ export async function createRoom(
   const [room] = await query<RoomRow>(
     `INSERT INTO rooms (name, title, description, host_id, password_hash, max_participants, empty_timeout, starts_at, ends_at, settings, waiting_room_enabled)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-     RETURNING *`,
+     RETURNING id, name, title, description, host_id, status, waiting_room_enabled, settings, metadata, max_participants, empty_timeout, starts_at, ends_at, created_at, updated_at`,
     [
       name,
       title,
@@ -172,7 +183,7 @@ export async function updateRoom(
 
   params.push(name);
   const [room] = await query<RoomRow>(
-    `UPDATE rooms SET ${setClauses.join(', ')} WHERE name = $${paramIdx} RETURNING *`,
+    `UPDATE rooms SET ${setClauses.join(', ')} WHERE name = $${paramIdx} RETURNING id, name, title, description, host_id, status, waiting_room_enabled, settings, metadata, max_participants, empty_timeout, starts_at, ends_at, created_at, updated_at`,
     params
   );
   return room;
@@ -224,7 +235,7 @@ export async function setRoomEnded(id: string): Promise<void> {
  */
 export async function getAllRooms(): Promise<RoomRow[]> {
   return await query<RoomRow>(
-    `SELECT r.*, u.name as host_name, u.email as host_email
+    `SELECT r.id, r.name, r.title, r.description, r.host_id, r.status, r.waiting_room_enabled, r.settings, r.metadata, r.max_participants, r.empty_timeout, r.starts_at, r.ends_at, r.created_at, r.updated_at, u.name as host_name, u.email as host_email
      FROM rooms r
      LEFT JOIN users u ON r.host_id = u.id
      ORDER BY r.created_at DESC
@@ -237,7 +248,7 @@ export async function getAllRooms(): Promise<RoomRow[]> {
  */
 export async function getUserRooms(userId: string): Promise<RoomRow[]> {
   return await query<RoomRow>(
-    `SELECT r.*, u.name as host_name, u.email as host_email
+    `SELECT r.id, r.name, r.title, r.description, r.host_id, r.status, r.waiting_room_enabled, r.settings, r.metadata, r.max_participants, r.empty_timeout, r.starts_at, r.ends_at, r.created_at, r.updated_at, u.name as host_name, u.email as host_email
      FROM rooms r
      LEFT JOIN users u ON r.host_id = u.id
      WHERE r.host_id = $1
@@ -394,6 +405,7 @@ export const roomService = {
   getRoomByName,
   getRoomById,
   getRoomHostId,
+  getRoomPasswordHash,
   roomExists,
   createRoom,
   updateRoom,

@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { requireModerator, requireAdmin } from '../../middleware/requireRole.js';
 import type { AuthRequest } from '../../middleware/authenticate.js';
 import { query, queryOne } from '../../services/database.js';
+import { adminActionLimiter } from './rateLimiter.js';
 import logger from '../../utils/logger.js';
 
 const router = Router();
@@ -42,7 +43,7 @@ router.get('/settings', requireModerator(), async (_req: AuthRequest, res: Respo
   }
 });
 
-router.patch('/settings', requireAdmin(), async (req: AuthRequest, res: Response) => {
+router.patch('/settings', adminActionLimiter, requireAdmin(), async (req: AuthRequest, res: Response) => {
   try {
     const updateSchema = z.object({
       room_defaults: z.object({

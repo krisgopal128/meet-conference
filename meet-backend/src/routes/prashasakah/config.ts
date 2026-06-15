@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { AuthRequest } from '../../middleware/authenticate.js';
 import { requireAdmin, requireModerator } from '../../middleware/requireRole.js';
 import { getCached, invalidatePattern, TTL_LONG } from '../../services/cache.js';
+import { adminActionLimiter } from './rateLimiter.js';
 import logger from '../../utils/logger.js';
 
 const router = Router();
@@ -84,7 +85,7 @@ router.get('/config', requireModerator(), async (_req: AuthRequest, res: Respons
   }
 });
 
-router.patch('/config', requireAdmin(), async (req: AuthRequest, res: Response) => {
+router.patch('/config', adminActionLimiter, requireAdmin(), async (req: AuthRequest, res: Response) => {
   try {
     const updateSchema = z.object({
       maxRoomsPerUser: z.number().min(1).max(100).optional(),

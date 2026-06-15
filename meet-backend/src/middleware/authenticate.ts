@@ -197,7 +197,9 @@ export async function authenticate(
 
     // Full verification path (cache miss)
     const allowExpired = req.path === '/auth/refresh';
-    const verifyOptions: jwt.VerifyOptions = allowExpired ? { ignoreExpiration: true } : {};
+    const verifyOptions: jwt.VerifyOptions = allowExpired
+      ? { ignoreExpiration: true, algorithms: ['HS256'] }
+      : { algorithms: ['HS256'] };
     const payload = jwt.verify(token, config.jwt.secret, verifyOptions) as { userId: string; type?: string };
     if (payload.type && payload.type !== 'access') {
        logFailedAuthAttempt('invalid_token', req).catch(() => {});
@@ -279,7 +281,7 @@ export async function optionalAuth(
       return;
     }
 
-    const payload = jwt.verify(token, config.jwt.secret) as { userId: string };
+    const payload = jwt.verify(token, config.jwt.secret, { algorithms: ['HS256'] }) as { userId: string };
     
     const user = await getUserById(payload.userId);
 

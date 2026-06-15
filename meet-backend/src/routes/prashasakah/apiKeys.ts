@@ -139,6 +139,7 @@ router.patch('/api-keys/admin/:id', adminActionLimiter, requireAdmin(), async (r
 
     // Invalidate API key caches
     await invalidatePattern('cache:apikeys:*');
+    await invalidatePattern('apikey:*');
 
     res.json({
       success: true, 
@@ -167,6 +168,7 @@ router.delete('/api-keys/admin/:id', adminActionLimiter, requireAdmin(), async (
 
     // Invalidate API key caches
     await invalidatePattern('cache:apikeys:*');
+    await invalidatePattern('apikey:*');
 
     res.json({ success: true, message: 'API key deleted' });
     

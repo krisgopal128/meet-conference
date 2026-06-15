@@ -1,219 +1,276 @@
-# Comprehensive Codebase Audit Report
+# Security Audit Report — Meet Conference
 
-**Date:** 2026-06-14  
-**Scope:** meet-backend + meet-frontend  
-**Method:** 25+ chunk-by-chunk analysis  
-**Categories:** Slow DB queries, Memory leaks, Excessive API calls, Server crashes under load, Duplicate code, Poor architecture, Inconsistent naming, Data leakage  
-
----
-
-## HIGH Severity (15 issues)
-
-### Data Leakage / Security
-
-#### H1. Meeting chat endpoint leaks participant emails
-- **File:** `meet-backend/src/routes/meetings.ts:472-488`
-- **Category:** Data leakage
-- **Details:** `GET /meetings/:id/chat` returns `u.email` for every chat message sender. Any meeting participant (not just host) can read every other participant's email address.
-- **Fix:** Drop `u.email` from SELECT; align with rooms.ts chat endpoint which only returns `sender_identity` and `sender_name`.
-
-#### H2. Meeting detail leaks all participant emails
-- **File:** `meet-backend/src/routes/meetings.ts:273-280`
-- **Category:** Data leakage
-- **Details:** `GET /meetings/:id` returns `mp.*` + `u.email` for all participants. `verifyMeetingAccess` grants access to any participant, so attendees can enumerate emails.
-- **Fix:** Strip emails from non-host responses; omit PII from cached payload.
-
-#### H3. Stale moderator role after participant leaves
-- **File:** `meet-backend/src/routes/token.ts:66-71`
-- **Category:** Privilege escalation
-- **Details:** Role query has no `left_at IS NULL` filter. A user who left as moderator retains moderator role on token requests until meeting ends.
-- **Fix:** Add `AND left_at IS NULL ORDER BY joined_at DESC LIMIT 1`.
-
-#### H4. Admin reset-password returns plaintext password
-- **File:** `meet-backend/src/routes/prashasakah/users.ts:383-406`
-- **Category:** Credential leak
-- **Details:** `temporaryPassword` returned in HTTP response body. Captured by proxies, browser dev tools, logs.
-- **Fix:** Never return passwords in API responses. Require admin to set password client-side or send via email.
-
-#### H5. Missing UNIQUE constraint on meeting_participants
-- **File:** `meet-backend/src/db/schema.sql:75-86`
-- **Category:** Data corruption
-- **Details:** No unique index on `(meeting_id, identity)`. `ON CONFLICT DO NOTHING` is a no-op. Every rejoin creates duplicate rows; `participant_left` UPDATE corrupts history.
-- **Fix:** Add `CREATE UNIQUE INDEX idx_meeting_participants_meeting_identity ON meeting_participants(meeting_id, identity) WHERE left_at IS NULL;`
-
-### Server Crashes / Performance
-
-#### H6. No unhandledRejection / uncaughtException handler
-- **File:** `meet-backend/src/index.ts`
-- **Category:** Server crashes under load
-- **Details:** Process registers SIGTERM/SIGINT but no promise rejection handler. Any unawaited rejection terminates Node ≥15.
-- **Fix:** Add `process.on('unhandledRejection', ...)` and `process.on('uncaughtException', ...)`.
-
-#### H7. Webhook fires 8 sequential DB queries per participant join
-- **File:** `meet-backend/src/routes/webhook.ts:170-251`
-- **Category:** Excessive API calls / Server crashes under load
-- **Details:** 8 sequential round trips per join event. 100-person burst = 800 DB operations.
-- **Fix:** Consolidate using CTEs or transaction; cache room row; batch updates.
-
-#### H8. Mute-all fans out ~5 LiveKit RPCs × N participants + 350ms sleep each
-- **File:** `meet-backend/src/routes/rooms.ts:453-466` + `services/livekit.ts:347`
-- **Category:** Excessive API calls
-- **Details:** 50 participants = ~250 RPCs plus 50 × 350ms sleeps within per-participant locks.
-- **Fix:** Remove fixed 350ms sleep; batch mute; rate-limit concurrency.
-
-#### H9. listParticipants() called to find ONE participant
-- **File:** `meet-backend/src/routes/rooms.ts:370-371, 496-497`
-- **Category:** Excessive API calls
-- **Details:** Fetches ALL participants then `.find()` for one. `getParticipantInfo(name, identity)` already exists.
-- **Fix:** Use `getParticipantInfo` instead.
-
-### Frontend Memory Leaks
-
-#### H10. whiteboardSceneCache Map never cleared
-- **File:** `meet-frontend/src/components/room/WhiteboardLayout.tsx:56`
-- **Category:** Memory leak
-- **Details:** Module-scoped Map accumulates scenes + Excalidraw files per room. 50 rooms = all scenes in memory forever.
-- **Fix:** Cap with LRU (max 5 entries) or clear on room disconnect.
-
-#### H11. sceneRafRef not cancelled on unmount
-- **File:** `meet-frontend/src/components/room/WhiteboardLayout.tsx:90`
-- **Category:** Memory leak
-- **Details:** `requestAnimationFrame` scheduled but no cleanup cancels it on unmount. Callback fires on unmounted component.
-- **Fix:** Add `useEffect(() => () => { if (sceneRafRef.current) cancelAnimationFrame(sceneRafRef.current); }, [])`.
-
-#### H12. chatPanelDraftCache never evicts
-- **File:** `meet-frontend/src/components/panels/ChatPanel.tsx:29-36`
-- **Category:** Memory leak
-- **Details:** Module-scoped Map grows per room. Draft text (potentially sensitive) persists across sessions.
-- **Fix:** Add LRU cap (max 10 rooms).
-
-#### H13. SettingsPanel debounce timers not cleared on unmount
-- **File:** `meet-frontend/src/components/panels/SettingsPanel.tsx:120-121`
-- **Category:** Memory leak / setState on unmounted
-- **Details:** `setTimeout` for aspect ratio and video fit mode debouncing. No cleanup clears them on unmount.
-- **Fix:** Add `useEffect(() => () => { clearTimeout(saveAspectRatioTimerRef.current); clearTimeout(saveVideoFitModeTimerRef.current); }, [])`.
-
-#### H14. ParticipantTile registers 5+ room listeners PER TILE
-- **File:** `meet-frontend/src/components/room/ParticipantTile.tsx:156-272`
-- **Category:** Server crashes under load / Poor architecture
-- **Details:** 20-person call = 140 listeners. Combined with `forceRender`, speaker change = O(N²) re-renders.
-- **Fix:** Move track subscription to parent; tiles consume via context.
-
-#### H15. Request interceptor hard-redirects to /login mid-meeting
-- **File:** `meet-frontend/src/services/api.ts:115-117`
-- **Category:** UX-breaking bug
-- **Details:** If any backend call fires with expired token during a meeting, user is kicked to /login. LiveKit room token (separate) is still valid.
-- **Fix:** Remove redirect from request interceptor. Let response interceptor handle it (it has public-page guards).
+**Date**: 2026-06-15
+**Scope**: Full codebase audit across 7 dimensions (Auth, Backend Routes, Frontend State, Database, LiveKit, Input Validation, Performance)
+**Method**: Parallel subagent analysis with source-level verification
 
 ---
 
-## MEDIUM Severity (43 issues)
+## Summary
 
-### Slow Database Queries
-| # | Issue | File |
-|---|-------|------|
-| M1 | Missing composite index on `meeting_participants(meeting_id, user_id)` | `schema.sql` |
-| M2 | Missing composite index on `chat_messages(meeting_id, created_at)` | `schema.sql` |
-| M3 | N+1 correlated subquery in admin meetings list | `prashasakah/meetings.ts:119-130` |
-| M4 | `SELECT *` on hot paths | `roomService.ts:54-57` |
-| M5 | `SELECT DISTINCT m.*` with LEFT JOIN | `meetings.ts:54-63` |
-| M6 | Unbounded participant query (no LIMIT) | `meetings.ts:273-280` |
-| M7 | `ILIKE '%search%'` bypasses B-tree indexes | `users.ts:76`, `meetings.ts:90` |
-| M8 | User rooms query feeds N+1 LiveKit API calls | `egress.ts:188-196` |
+| Severity | Count |
+|----------|-------|
+| CRITICAL | 4 |
+| HIGH | 11 |
+| MEDIUM | 18 |
+| LOW | 16 |
 
-### Excessive API Calls
-| # | Issue | File |
-|---|-------|------|
-| M9 | `requireModeratorRoomAccess` + inline fetch room 12+ times | `rooms.ts` |
-| M10 | API key verification hits DB on every request (no cache) | `external.ts:94-156` |
-| M11 | Dynamic `import()` in hot paths instead of static import | `auth.ts:69,81,90` |
-| M12 | Redundant room lookup in `deleteRoomByName` | `roomService.ts:197-202` |
-| M13 | Both ControlBar + ParticipantsPanel subscribe to lobby polling independently | `ControlBar.tsx:196` |
-| M14 | WhiteboardPreviewTile polls every 2s even when idle | `WhiteboardPreviewTile.tsx:118-124` |
-| M15 | useDataChannelHandler effect has 19 deps causing re-subscription churn | `useDataChannelHandler.tsx:187` |
-| M16 | useAdaptiveQuality effect depends on unstable fullConfig object | `useAdaptiveQuality.ts:92-107` |
-| M17 | `useParticipants()` called inside every ParticipantTile | `ParticipantTile.tsx:354-355` |
-| M18 | `document.querySelectorAll('audio, video')` for speaker volume | `RoomPage.tsx:361-373` |
-
-### Duplicate Code
-| # | Issue | File |
-|---|-------|------|
-| M19 | LeaveButton vs MobileLeaveButton: ~80 lines identical | `ControlBarButtons.tsx:587-749` |
-| M20 | `isModerator` inline check in 3 components (store has `useIsModerator()`) | `ConferenceRoom.tsx:94`, `PiPContainer.tsx:66`, `ChatPanel.tsx:88` |
-| M21 | `ASPECT_RATIO_MULTIPLIERS` / `ASPECT_RATIO_CSS` in 4 layout files | `GridLayout/SpeakerLayout/ScreenShareLayout/WhiteboardLayout` |
-| M22 | `publishData` payload encoding repeated 20+ times | Multiple hooks/components |
-| M23 | Kick participant logic duplicated in DELETE and POST routes | `rooms.ts:353-384 vs 474-510` |
-| M24 | `requireUser(req); if (!user)` boilerplate ~15 times | `rooms.ts`, `meetings.ts` |
-| M25 | `SELECT host_id FROM rooms WHERE name` duplicated 7+ times | `egress.ts`, `external.ts`, `token.ts` |
-| M26 | Token generation logic duplicated internal vs external | `external.ts:369` vs `livekit.ts:75` |
-| M27 | Duplicate token-refresh logic in request + response interceptors | `api.ts:60-123 vs 140-208` |
-
-### Poor Architecture
-| # | Issue | File |
-|---|-------|------|
-| M28 | `routes/rooms.ts` is a 1006-line god file | `rooms.ts` |
-| M29 | `services/redis.ts` is a 734-line god file | `redis.ts` |
-| M30 | `roomStore.ts` is 799 lines with 5+ slices | `roomStore.ts` |
-| M31 | `ConferenceRoom.tsx` is 562 lines (stats + battery + panels + mobile) | `ConferenceRoom.tsx` |
-| M32 | Business logic in webhook route handler | `webhook.ts:114-391` |
-| M33 | `getCached<T>` lies about nullability (`null as T`) | `cache.ts:47-83` |
-| M34 | `backgroundEffectsManager` module-level singleton | `backgroundEffectsManager.ts:33-41` |
-| M35 | `useWhiteboardAutoSave` mutates React refs with `__markDirty` | `useWhiteboardAutoSave.ts:67-69` |
-| M36 | `meetingRoomConfig.ts` 280-line fallback duplicates JSONC | `meetingRoomConfig.ts:281-554` |
-| M37 | `ControlBar.tsx` calls ~40 selector hooks per render | `ControlBar.tsx:89-134` |
-
-### Inconsistent Naming
-| # | Issue | File |
-|---|-------|------|
-| M38 | Role taxonomy: 7+ different role names across codebase | Multiple |
-| M39 | Mixed camelCase/snake_case in API responses | `rooms.ts:870-875` |
-| M40 | `useSettingsSync` only handles videoFitMode (misleading name) | `useSettingsSync.ts` |
-| M41 | `useCallSizeConfig` uses string events instead of RoomEvent enum | `useCallSizeConfig.ts:44-45` |
-| M42 | Text chevrons instead of lucide icons in prejoin components | `DeviceSettings.tsx:30`, `AudioSettings.tsx:23`, `VideoSettings.tsx:53` |
-| M43 | `setQualityMode` action name doesn't match what it does (sets `selectedQualityMode`) | `roomStore.ts:365` |
+**No SQL injection found.** All 80+ query sites use parameterized queries. No `dangerouslySetInnerHTML` in frontend. No XSS vectors. Webhook signature verification is correct. Room isolation is enforced by LiveKit SFU.
 
 ---
 
-## LOW Severity (28 issues)
+## CRITICAL Findings
 
-### Backend
-- `SELECT *` returns unnecessary columns (password_hash, metadata)
-- Redis pool code is dead code (never called)
-- `deleteRoomByName` does existence check then delete (TOCTOU)
-- Dynamic `import('crypto')` alongside static import
-- `IF NOT EXISTS` inconsistency in schema indexes
-- Webhook signature failure leaks error message
-- `/health` endpoint exposes version + env unauthenticated
-- Diagnostics files accumulate without cleanup/rotation
-- `hostLeaveTimeouts` Map cleanup only every 5 minutes
+### C1. `password_hash` Leaked in Room API Responses
+**File**: `roomService.ts:55,65,112,175,227,240` + `rooms.ts:109,152,215,254`
 
-### Frontend
-- `chatPanelDraftCache` updates on every keystroke (could debounce)
-- `api.ts` uses non-standard axios properties (`__retryCount`, `_retry`)
-- `HomePage.tsx` setTimeout for copied state not cleaned up
-- `usePreJoinAuth` getRoom call has no cancellation
-- `usePreviewBackgroundBlur` segmenter never closed on unmount
-- Background image upload has no file-size limit
-- `CreateMeetingForm` uses VideoOff icon for password visibility toggle
-- Magic numbers in audio hooks (740Hz, 520Hz, 0.03 gain)
-- `logger.info` calls in production (usePictureInPicture, useSettingsSync)
-- `useAutoPiP` uses `Date.now()` instead of `performance.now()`
-- Shared ref between desktop and mobile buttons in ControlBar
-- `key={i}` anti-pattern in MoreMenu
-- `_room`, `_participant` dead code in SettingsPanel
-- Module-level mutable `persistedSpeakerVolume` in SettingsPanel
+`SELECT r.*` and `RETURNING *` include the bcrypt `password_hash` column. `res.json()` serializes everything. Any authenticated user calling `GET /rooms?all=true` receives every room's password hash for offline cracking.
+
+**Fix**: Replace `SELECT r.*` / `RETURNING *` with explicit column lists excluding `password_hash`. Where the hash is needed (guest password check), use a dedicated query.
 
 ---
 
-## Fix Priority Order
+### C2. External API Tokens Bypass Waiting Room
+**File**: `routes/external.ts:400-408`
 
-1. **H3** — Stale moderator role (privilege escalation)
-2. **H5** — Missing UNIQUE constraint (data corruption)
-3. **H4** — Plaintext password in response (credential leak)
-4. **H1+H2** — Email leakage in meeting endpoints (PII)
-5. **H6** — No unhandledRejection handler (crash risk)
-6. **H15** — Request interceptor redirect (UX-breaking)
-7. **H10-H13** — Memory leaks (whiteboard cache, rAF, draft cache, debounce timers)
-8. **H9** — Excessive API calls (listParticipants for one)
-9. **H14** — ParticipantTile listeners (O(N²) renders)
-10. **H7+H8** — Webhook/mute-all throughput (server load)
+External token grants are hardcoded with no `lobbyMode` support:
+```typescript
+token.addGrant({ room, roomJoin: true, canPublish: ..., canPublishData: true });
+```
+Regardless of `waiting_room_enabled`, external attendees join immediately, can subscribe to media, and send chat — completely defeating the waiting room.
+
+**Fix**: Check `waiting_room_enabled` and set `canPublish: false, canPublishData: false` when in lobby. Set `metadata: JSON.stringify({ inLobby: true })` for frontend lobby check.
+
+---
+
+### C3. Password Reset Doesn't Invalidate Active Sessions
+**File**: `routes/auth.ts:520-528`
+
+After password reset, only the hash is updated. Existing access tokens remain valid for 15 min, refresh tokens for 30 days. An attacker with a stolen session maintains access after the victim resets their password.
+
+**Fix**: After password update, revoke all refresh tokens and invalidate token cache:
+```sql
+UPDATE refresh_tokens SET revoked = true WHERE user_id = $1
+```
+
+---
+
+### C4. External API Identity Collision with Host
+**File**: `routes/external.ts:370-372, 553`
+
+The identity collision check is bypassed for elevated roles (`isElevatedRole`). An attacker with a valid API key can generate a moderator token with `identity === roomData.host_id`. Since `participantCanModerate` returns `true` when `identity === roomHostId`, this grants full host privileges.
+
+The teacher-links endpoint (`external.ts:553`) has no collision check at all.
+
+**Fix**: Unconditionally reject external tokens where `identity === roomData.host_id`. Reserve identity prefixes (`guest_`, `teacher-`) and reject non-reserved external identities.
+
+---
+
+## HIGH Findings
+
+### H1. JWT Algorithm Not Pinned
+**File**: `middleware/authenticate.ts:201,282` + `routes/auth.ts:310,500`
+`jwt.verify()` calls don't specify `algorithms: ['HS256']`. Defense-in-depth gap against algorithm confusion attacks.
+**Fix**: Add `algorithms: ['HS256']` to all verify calls.
+
+### H2. External Token TTL Unbounded
+**File**: `routes/external.ts:576`
+`expires_in` query param has no upper bound. Can request `?expires_in=315360000` (10 years).
+**Fix**: `Math.min(parseInt(expires_in) || 86400, 86400)`.
+
+### H3. Whiteboard Read Access — No Authorization
+**File**: `routes/whiteboard.ts:14-53`
+`GET /whiteboard/:roomName` requires auth but no ownership/participant check. Any user reads any room's whiteboard.
+**Fix**: Add same participant/host check used in PUT route.
+
+### H4. API Key Cache Invalidation Mismatch
+**File**: `routes/external.ts:131` vs `routes/prashasakah/apiKeys.ts:141,169`
+External API caches under `apikey:*`. Admin deactivation invalidates `cache:apikeys:*`. Patterns don't overlap — revoked keys remain valid for 60 seconds.
+**Fix**: Invalidate both patterns on deactivation.
+
+### H5. Missing `adminActionLimiter` on Critical Endpoints
+**File**: `prashasakah/users.ts:190,383,407` + `config.ts:87` + `settings.ts:45`
+Role changes, password resets, system config changes lack strict rate limiting (only generic 500 req/min limiter).
+**Fix**: Add `adminActionLimiter` (20 actions/hour).
+
+### H6. Attendee Can Bypass Screen Share Restriction
+**File**: `services/livekit.ts:58-63`
+Attendee/presenter grants don't set `canPublishSources`. Empty = all sources allowed. The `participantsCanShareScreen=false` setting is only enforced client-side (UI toggle). Bypass via console: `localParticipant.setScreenShareEnabled(true)`.
+**Fix**: Use `roomService.updateParticipant()` to set `canPublishSources` excluding screen share when disabled.
+
+### H7. Moderator Can Kick the Host
+**File**: `routes/roomsParticipants.ts:51-74`
+Kick endpoint verifies requester is moderator but never checks target's role. A cohost can kick the actual host.
+**Fix**: Reject if `isModeratorParticipant(target, room.host_id)` unless requester is host.
+
+### H8. Data Channel Flooding (No Rate Limiting)
+**File**: `hooks/useDataChannelHandler.tsx:54-190`
+No per-sender message cap. Attacker sends 100 msg/s, flooding all clients' UIs with chat/typing/poll spam.
+**Fix**: Track message timestamps per `senderIdentity`, drop messages exceeding 10/s.
+
+### H9. Cookie Secure Flag Bypass
+**File**: `routes/auth.ts:49-55`
+`reqProtocol()` reads `X-Forwarded-Proto` header directly. Attacker sends `X-Forwarded-Proto: http` over HTTPS → refresh cookie set without `Secure` flag → interceptable on subsequent HTTP.
+**Fix**: Use `req.protocol` (respects `trust proxy` setting).
+
+### H10. Rate Limiter IP Validation Disabled
+**File**: `middleware/rateLimiter.ts:10`
+`validate: false` + `trust proxy: 1` = attacker rotates `X-Forwarded-For` to bypass all rate limits.
+**Fix**: Strip client-provided `X-Forwarded-For` at proxy, or use `req.socket.remoteAddress`.
+
+### H11. Unbounded `seenFiles` Map in Whiteboard Sync
+**File**: `hooks/useWhiteboardSync.ts:73`
+`seenFiles` Map grows for entire room session. Every pasted image's dataURL prefix is stored permanently.
+**Fix**: LRU cap (keep last 100 entries).
+
+---
+
+## MEDIUM Findings
+
+### M1. Role Derived from Client-Controlled sessionStorage
+**File**: `pages/RoomPage.tsx:601-605, 834`
+`role` and `hostId` come from sessionStorage (client-writable). Drives `useIsModerator()` for UI gating. Spoofable via `sessionStorage.setItem('role_room', 'host')`.
+**Fix**: Decode role from JWT metadata (same pattern as `inLobby` fix).
+
+### M2. Private Moderator Chat Broadcast to All
+**File**: `components/panels/ChatPanel.tsx:428` + `hooks/useDataChannelHandler.tsx:89`
+"Private to moderators" messages are broadcast to ALL participants via `publishData`. Filtered client-side by `isModerator`. Combined with M1, spoofable.
+**Fix**: Use LiveKit `publishData({ destinationIdentities: [...moderators] })`.
+
+### M3. Whiteboard Lock Broadcast — No Privilege Check
+**File**: `components/room/WhiteboardLayout.tsx:225-233`
+Any participant broadcasts `whiteboard-lock` → everyone honors it. Unlike `whiteboard-activate` (which checks `isPrivilegedSender`), this message has no sender check.
+**Fix**: Add `isPrivilegedSender` check or route through `useDataChannelHandler`.
+
+### M4. External API — Missing Ownership Check on Room Read
+**File**: `routes/external.ts:286-313`
+`GET /external/rooms/:name` doesn't verify `roomData.host_id === apiKeyInfo.userId`. Other external endpoints do.
+**Fix**: Add same ownership check.
+
+### M5. No Database Transactions
+**File**: `services/database.ts` (no transaction support)
+Multi-step operations (user registration, room creation, meeting end) are non-atomic. Partial failures leave orphaned records.
+**Fix**: Add `withTransaction(fn)` helper.
+
+### M6. No CHECK Constraints on Enum Columns
+**File**: `db/schema.sql`
+`users.role`, `rooms.status`, `meetings.status`, etc. have no DB-level CHECK. Invalid values insertable via webhook or future migration.
+**Fix**: `ALTER TABLE ... ADD CONSTRAINT ... CHECK (col IN (...))`.
+
+### M7. Missing ON DELETE on Audit/Ban Foreign Keys
+**File**: `db/schema.sql:177,20`
+`admin_audit_logs.admin_id` and `users.banned_by` have no `ON DELETE` behavior. Deleting a user with audit logs or ban history fails.
+**Fix**: `ON DELETE SET NULL`.
+
+### M8. Unauthenticated Diagnostics Upload
+**File**: `routes/meetings.ts:113-161`
+`optionalAuth` + 500 req/min + 1MB per file = disk exhaustion vector.
+**Fix**: Require auth, add strict rate limiter.
+
+### M9. Guest Room Password — No Brute-Force Protection
+**File**: `routes/token.ts:143-236`
+Room passwords checkable at 30 attempts/min per IP. No lockout (unlike user login).
+**Fix**: Per-room password attempt tracking in Redis.
+
+### M10. External API `meeting_ended` Data Channel — Forgeable
+**File**: `hooks/useDataChannelHandler.tsx:76-79`
+Any moderator can broadcast `meeting_ended` via data channel, ending meeting for all. No server-side validation.
+**Fix**: Only process `meeting_ended` from server (not peer-to-peer).
+
+### M11. Error Handler Leaks `err.message` in Non-Production
+**File**: `index.ts:167`
+If `NODE_ENV` is misconfigured, internal errors (SQL, stack traces) leak to clients.
+**Fix**: Always return generic message; log details server-side.
+
+### M12. External Health Endpoint Exposes LiveKit URL
+**File**: `routes/external.ts:200-208`
+Unauthenticated `/external/health` returns internal LiveKit server URL.
+**Fix**: Return only `status: 'ok'`.
+
+### M13. CORS Allows Null Origin
+**File**: `index.ts:60-68`
+`if (!origin) return callback(null, true)` — non-browser clients bypass CORS with credentials.
+**Fix**: Require Origin header for credentialed requests.
+
+### M14. External Token Metadata Client-Controlled
+**File**: `routes/external.ts:385-393`
+Client-provided `metadata` spread into JWT. Can inject `inLobby: false`, `guest: false`, etc.
+**Fix**: Whitelist metadata fields.
+
+### M15. External API Grant Drift from Internal ROLE_GRANTS
+**File**: `routes/external.ts:384-408`
+External constructs grants inline instead of using shared `createAccessToken()`. Observer gets `canPublishData: true` (internal viewer gets `false`).
+**Fix**: Resolve TODO — refactor to use `createAccessToken()`.
+
+### M16. Individual Mute Has No Target Role Protection
+**File**: `routes/roomsParticipants.ts:77-90`
+Moderator can mute/disable camera of the host or another moderator. `mute-all` correctly skips moderators, but individual mute doesn't.
+**Fix**: Check `isModeratorParticipant(target, room.host_id)`.
+
+### M17. Admin Alerts `limit` Unclamped
+**File**: `routes/prashasakah/alerts.ts:40`
+`?limit=1000000` loads entire table. Other admin endpoints clamp at 200.
+**Fix**: `Math.min(Number(req.query.limit) || 20, 200)`.
+
+### M18. Zod Validation Gaps
+**Files**: `routes/auth.ts:438,484`, `prashasakah/users.ts:193,267,410`, `routes/external.ts:528`
+Forgot-password, reset-password, admin user PATCH, external links params lack Zod schemas.
+**Fix**: Add Zod schemas matching existing patterns.
+
+---
+
+## LOW Findings
+
+| # | File | Issue |
+|---|------|-------|
+| L1 | `authenticate.ts:52` | Token cache 60s TTL — banned users retain access briefly |
+| L2 | `auth.ts:458` | Password reset token uses same JWT secret as access tokens |
+| L3 | `token.ts:25` | Regular token TTL allows 24h (guest is 1h) |
+| L4 | `auth.ts:123` | Expired refresh tokens never cleaned up |
+| L5 | `rooms.ts:411` | Room settings publicly readable (meetingLocked, etc.) |
+| L6 | `external.ts:419` | `join_url` uses `#token=` but frontend expects `#t=` |
+| L7 | `config.ts:35` | `DATABASE_REJECT_UNAUTHORIZED=false` disables SSL verification |
+| L8 | `schema.sql:96` | `scheduled_meetings.room_name` has no FK to rooms |
+| L9 | `webhookService.ts:321` | Egress webhook lacks structured Zod validation |
+| L10 | `csrf.ts:16` | CSRF skip on `/token` allows guest token generation via CSRF |
+| L11 | `external.ts:37` | External API metadata accepts arbitrary-size JSON |
+| L12 | `livekit.ts:64-69` | Viewer role subscribes to all media (privacy note) |
+| L13 | `livekit.ts:28-70` | `canUpdateMetadata` must never be true (fragile invariant) |
+| L14 | `participantPresence.ts:71` | Kick cooldown only 10 seconds |
+| L15 | `redis.ts:314` | Participant set has no TTL fallback if webhook missed |
+| L16 | `redis.ts:254` | `cacheSetMulti` permits TTL-less keys (dormant) |
+
+---
+
+## Verified Secure (No Issues Found)
+
+- **SQL injection**: All 80+ queries use parameterized `$1, $2` pattern
+- **XSS**: No `dangerouslySetInnerHTML` anywhere; chat sanitized via `sanitizeDisplayText`
+- **Auth token storage**: JWT only in memory (not persisted); refresh via httpOnly cookie
+- **Webhook signature**: `WebhookReceiver.receive(rawBody, authHeader)` verified
+- **Room isolation**: Enforced by LiveKit SFU at infrastructure level
+- **Guest identity**: `crypto.randomBytes(16)` — 128 bits of CSPRNG
+- **Password hashing**: bcrypt cost 12
+- **Refresh token rotation**: Atomic conditional UPDATE prevents replay
+- **Event listener cleanup**: All hooks properly clean up in useEffect returns
+- **AudioContext/Canvas/Worker disposal**: All properly disposed
+- **Chat message pruning**: Capped at 500
+- **Bundle splitting**: Thoughtful manualChunks configuration
+- **Admin route protection**: All require `requireModerator()` or `requireAdmin()`
+- **Recording authorization**: Start/stop verified against host_id
+- **API key CRUD**: All queries include `WHERE user_id = $1`
+
+---
+
+## Recommended Fix Priority
+
+1. **C1** — password_hash leakage (trivial fix, critical impact)
+2. **C4** — external identity collision (host impersonation)
+3. **C2** — external lobby bypass
+4. **H9** — cookie secure flag bypass
+5. **H10** — rate limiter bypass via X-Forwarded-For
+6. **C3** — password reset session invalidation
+7. **H7** — moderator can kick host
+8. **H6** — screen share bypass
+9. **H3** — whiteboard unauthorized read
+10. **M1+M2+M3** — frontend trust boundary (derive role from JWT)

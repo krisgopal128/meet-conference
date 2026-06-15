@@ -9,7 +9,7 @@ import { query, queryOne } from '../services/database.js';
 import { AuthRequest, authenticate } from '../middleware/authenticate.js';
 import { authLimiter } from '../middleware/rateLimiter.js';
 import { blacklistToken, cacheGet, cacheSet, cacheTTL, cacheIncrWithExpire, cacheDel } from '../services/redis.js';
-import { invalidateTokenAuth } from '../middleware/authenticate.js';
+import { invalidateTokenAuth, invalidateUserAuth } from '../middleware/authenticate.js';
 import { 
   sanitizeEmail, 
   sanitizeName, 
@@ -47,11 +47,8 @@ const REFRESH_TOKEN_EXPIRY_LONG: StringValue = '30d';
 const REFRESH_TOKEN_COOKIE = 'refresh_token';
 
 function reqProtocol(res: Response): string {
-  const req = res.req as Request & { secure?: boolean };
-  const forwarded = req.headers['x-forwarded-proto'];
-  if (typeof forwarded === 'string') return forwarded.split(',')[0].trim();
-  if (req.secure) return 'https';
-  return req.protocol || 'http';
+  const req = res.req as Request;
+  return req.protocol;
 }
 
 // Account lockout configuration
@@ -307,7 +304,7 @@ authRouter.post('/refresh', async (req, res: Response) => {
       return res.status(401).json({ error: 'Refresh token missing' });
     }
 
-    const payload = jwt.verify(refreshToken, config.jwt.secret) as { userId: string; type?: string };
+    const payload = jwt.verify(refreshToken, config.jwt.secret, { algorithms: ['HS256'] }) as { userId: string; type?: string };
     if (payload.type !== 'refresh') {
       clearRefreshTokenCookie(res);
       return res.status(401).json({ error: 'Invalid refresh token' });
@@ -497,7 +494,7 @@ authRouter.post('/reset-password', authLimiter, async (req, res: Response) => {
     // Verify reset token
     let decoded: { userId: string; purpose: string };
     try {
-      decoded = jwt.verify(token, config.jwt.secret) as { userId: string; purpose: string };
+      decoded = jwt.verify(token, config.jwt.secret, { algorithms: ['HS256'] }) as { userId: string; purpose: string };
     } catch {
       return res.status(400).json({ error: 'Invalid or expired reset token' });
     }
@@ -526,6 +523,9 @@ authRouter.post('/reset-password', authLimiter, async (req, res: Response) => {
       'UPDATE users SET password_hash = $1 WHERE id = $2',
       [hashedPassword, decoded.userId]
     );
+
+    await query('UPDATE refresh_tokens SET revoked = true WHERE user_id = $1', [decoded.userId]);
+    invalidateUserAuth(decoded.userId);
     
     res.json({ message: 'Password reset successfully' });
   } catch (error) {

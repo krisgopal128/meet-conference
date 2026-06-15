@@ -187,7 +187,7 @@ router.get('/users/:id', requireModerator(), async (req: AuthRequest, res: Respo
   }
 });
 
-router.patch('/users/:id', requireModerator(), async (req: AuthRequest, res: Response) => {
+router.patch('/users/:id', adminActionLimiter, requireModerator(), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { name, role } = req.body;
@@ -380,7 +380,7 @@ router.delete('/users/:id', adminActionLimiter, requireAdmin(), async (req: Auth
   }
 });
 
-router.post('/users/:id/reset-password', requireAdmin(), async (req: AuthRequest, res: Response) => {
+router.post('/users/:id/reset-password', adminActionLimiter, requireAdmin(), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -404,7 +404,7 @@ router.post('/users/:id/reset-password', requireAdmin(), async (req: AuthRequest
   }
 });
 
-router.put('/users/:id/change-password', requireAdmin(), async (req: AuthRequest, res: Response) => {
+router.put('/users/:id/change-password', adminActionLimiter, requireAdmin(), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { password } = req.body;

@@ -46,7 +46,7 @@ describe('Whiteboard Router', () => {
   });
 
   it('returns default locked state when no whiteboard exists', async () => {
-    mockGetRoomByName.mockResolvedValue({ id: 'room-1', name: 'test-room', host_id: 'host-1' });
+    mockGetRoomByName.mockResolvedValue({ id: 'room-1', name: 'test-room', host_id: 'user-123' });
     mockQueryOne.mockResolvedValueOnce(null);
 
     const response = await request(app).get('/whiteboard/test-room');

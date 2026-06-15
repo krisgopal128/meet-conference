@@ -151,25 +151,24 @@ tokenRouter.post('/guest', tokenLimiter, async (req, res: Response) => {
 
     const { roomName, name, role, password } = guestSchema.parse(req.body);
 
-    // Check if room exists and verify password if required (single query for all room fields)
-    const room = await queryOne<{ id: string; status: string; password_hash: string | null; waiting_room_enabled: boolean; host_id: string }>(
-      'SELECT id, status, password_hash, waiting_room_enabled, host_id FROM rooms WHERE name = $1',
-      [roomName]
-    );
+    // Check if room exists in database
+    const room = await roomService.getRoomByName(roomName);
 
     if (!room) {
       return res.status(404).json({ error: 'Room not found. The room must be created before guests can join.' });
     }
 
-    if (room?.status === 'ended') {
+    if (room.status === 'ended') {
       return res.status(400).json({ error: 'Room has ended. Please wait for the host to restart the meeting.' });
     }
 
-    if (room?.password_hash) {
+    // Verify room password if required (fetched via dedicated query to avoid leaking hash)
+    const roomPasswordHash = await roomService.getRoomPasswordHash(roomName);
+    if (roomPasswordHash) {
       if (!password) {
         return res.status(401).json({ error: 'Room password required' });
       }
-      const validPassword = await bcrypt.compare(password, room.password_hash);
+      const validPassword = await bcrypt.compare(password, roomPasswordHash);
       if (!validPassword) {
         return res.status(401).json({ error: 'Invalid room password' });
       }

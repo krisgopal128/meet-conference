@@ -72,7 +72,6 @@ const externalApiLimiter = rateLimit({
   message: { error: 'External API rate limit exceeded. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
-  validate: false as any,
   keyGenerator: (req: Request): string => {
     // Use API key as the rate limit key (extract from Authorization header)
     const authHeader = req.headers.authorization;
@@ -318,14 +317,13 @@ router.get('/rooms/:name', async (req: Request, res: Response) => {
  */
 router.post('/token', async (req: Request, res: Response) => {
   try {
-    let room: string, identity: string, name: string | undefined, role: string, metadata: Record<string, unknown>;
+    let room: string, identity: string, name: string | undefined, role: string;
     try {
       const parsed = externalTokenSchema.parse(req.body);
       room = parsed.room;
       identity = parsed.identity;
       name = parsed.name;
       role = parsed.role;
-      metadata = parsed.metadata;
     } catch (validationError) {
       return res.status(400).json({ error: 'Invalid request body', details: (validationError as Error).message });
     }
@@ -334,8 +332,9 @@ router.post('/token', async (req: Request, res: Response) => {
     const roomData = await queryOne<{
       id: string;
       host_id: string;
+      waiting_room_enabled: boolean;
     }>(
-      'SELECT id, host_id FROM rooms WHERE name = $1',
+      'SELECT id, host_id, waiting_room_enabled FROM rooms WHERE name = $1',
       [room]
     );
     
@@ -367,8 +366,8 @@ router.post('/token', async (req: Request, res: Response) => {
     }
 
     // Prevent identity collision with room host (privilege escalation via lobby bypass)
-    if (identity === roomData.host_id && !isElevatedRole) {
-      return res.status(403).json({ error: 'Identity cannot match room host for non-moderator roles' });
+    if (identity === roomData.host_id) {
+      return res.status(403).json({ error: 'Identity cannot match room host' });
     }
     
     // Cap permissions based on API key capabilities
@@ -380,29 +379,32 @@ router.post('/token', async (req: Request, res: Response) => {
       return res.status(503).json({ error: 'LiveKit service not configured' });
     }
 
+    // Add grants based on effective role (capped by API key permissions)
+    const isModerator = effectiveRole === 'moderator' || effectiveRole === 'teacher';
+    const isPresenter = effectiveRole === 'presenter';
+    const isObserver = effectiveRole === 'observer';
+
+    const inLobby = !isModerator && !isPresenter && !isObserver && roomData.waiting_room_enabled === true;
+
     // Create access token
     // TODO: Refactor to reuse createAccessToken from livekit.ts to avoid role-grant drift
     const token = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
       identity,
       name: name || identity,
+      ttl: 3600,
       metadata: JSON.stringify({
-        ...metadata,
-        role,
-        source: metadata.source || 'external'
+        role: effectiveRole,
+        source: 'external',
+        inLobby,
       })
     });
-    
-    // Add grants based on effective role (capped by API key permissions)
-    const isModerator = effectiveRole === 'moderator' || effectiveRole === 'teacher';
-    const isPresenter = effectiveRole === 'presenter';
-    const isObserver = effectiveRole === 'observer';
     
     token.addGrant({
       room,
       roomJoin: true,
-      canPublish: isModerator || isPresenter,
+      canPublish: (isModerator || isPresenter) && !inLobby,
       canSubscribe: true,
-      canPublishData: true,
+      canPublishData: !inLobby,
       roomAdmin: isModerator,
       hidden: isObserver
     });
@@ -552,6 +554,10 @@ router.get('/rooms/:name/links', async (req: Request, res: Response) => {
     // Generate teacher token with moderator privileges
     const teacherIdentity = (teacher_identity as string) || `teacher-${Date.now()}`;
     const teacherName = (teacher_name as string) || 'Teacher';
+
+    if (teacherIdentity === room.host_id) {
+      return res.status(403).json({ error: 'Teacher identity cannot match room host' });
+    }
     
     const teacherToken = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
       identity: teacherIdentity,
@@ -572,8 +578,8 @@ router.get('/rooms/:name/links', async (req: Request, res: Response) => {
       roomAdmin: true,
     });
     
-    // Set token expiry (default 24 hours)
-    const expiresIn = expires_in ? parseInt(expires_in as string) : 86400; // seconds
+    // Set token expiry (default 24 hours, capped at 24 hours)
+    const expiresIn = Math.min(parseInt(expires_in as string) || 86400, 86400);
     teacherToken.ttl = expiresIn;
     
     const teacherJwt = await teacherToken.toJwt();

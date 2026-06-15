@@ -471,6 +471,8 @@ describe('Token Routes', () => {
         mockQueryOne.mockResolvedValueOnce({
           id: 'room-123',
           status: 'active',
+        });
+        mockQueryOne.mockResolvedValueOnce({
           password_hash: passwordHash,
         });
 
@@ -491,10 +493,9 @@ describe('Token Routes', () => {
         mockQueryOne.mockResolvedValueOnce({
           id: 'room-123',
           status: 'active',
-          password_hash: passwordHash,
         });
         mockQueryOne.mockResolvedValueOnce({
-          waiting_room_enabled: false,
+          password_hash: passwordHash,
         });
         mockCreateAccessToken.mockResolvedValueOnce('mock-guest-token');
 
@@ -516,6 +517,8 @@ describe('Token Routes', () => {
         mockQueryOne.mockResolvedValueOnce({
           id: 'room-123',
           status: 'active',
+        });
+        mockQueryOne.mockResolvedValueOnce({
           password_hash: passwordHash,
         });
 

@@ -64,6 +64,10 @@ participantsRouter.delete('/:name/participants/:identity', authenticate, async (
       return res.status(403).json({ error: 'Only moderators can remove participants' });
     }
 
+    if (identity === room.host_id) {
+      return res.status(403).json({ error: 'Cannot kick the room host' });
+    }
+
     await executeKick(name, identity);
 
     res.json({ message: 'Participant removed' });
@@ -80,6 +84,10 @@ participantsRouter.post('/:name/mute/:identity', authenticate, async (req: AuthR
 
     const room = await assertModerator(res, name, req.user!.id, 'mute participants');
     if (!room) return;
+
+    if (identity === room.host_id && req.user!.id !== room.host_id) {
+      return res.status(403).json({ error: 'Cannot mute the room host' });
+    }
 
     await muteAllAudioTracks(name, identity);
     res.json({ message: 'Participant muted' });
@@ -153,6 +161,10 @@ participantsRouter.post('/:name/kick/:identity', authenticate, async (req: AuthR
 
     if (!allowed) {
       return res.status(403).json({ error: 'Only moderators can remove participants' });
+    }
+
+    if (identity === room.host_id) {
+      return res.status(403).json({ error: 'Cannot kick the room host' });
     }
 
     await executeKick(name, identity);
