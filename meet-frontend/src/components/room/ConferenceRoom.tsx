@@ -325,7 +325,7 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
       <RoomCameraTracksProvider>
       <div className="flex flex-col bg-surface-900 text-white overflow-hidden h-dvh overscroll-none">
         <div className="flex flex-1 min-h-0">
-          <div className="flex-1 min-w-0 p-1.5 sm:p-3 flex flex-col">
+          <div className="flex-1 min-w-0 p-1.5 sm:p-3 flex flex-col" style={{ paddingTop: 'max(0.375rem, env(safe-area-inset-top, 0px))' }}>
             {meetingRoomConfig.features.inlineLobbyBanner && isModerator && lobbyCount > 0 && (
               <div className="mb-2 sm:mb-3 rounded-lg border border-warning-200 dark:border-warning-700 bg-warning-50 dark:bg-warning-900/20 px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-3 animate-fade-in">
                 <div className="flex items-center gap-2 sm:gap-3">

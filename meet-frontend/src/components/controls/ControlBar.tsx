@@ -77,7 +77,6 @@ import {
   ControlsIcon,
   ControlsIconUnlocked,
   RecordingButton,
-  MobileRecordingButton,
   MemoizedMoreMenu,
   MemoizedMobileMoreMenu,
 } from './ControlBarButtons';
@@ -597,7 +596,7 @@ export function ControlBar() {
       {/* Mobile Layout */}
       <div className="md:hidden flex items-center justify-between bg-surface-800/95 backdrop-blur-sm border-t border-surface-700 py-2 px-4 overscroll-behavior-contain" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))', paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))', paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}>
         {/* Left: Primary Controls */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <MobileMicButton isMuted={isMicMuted} onToggle={handleToggleMic} />
           <MobileCameraButton isOff={isCameraOff} onToggle={handleToggleCamera} />
         </div>
@@ -611,11 +610,8 @@ export function ControlBar() {
         />
 
         {/* Right: Secondary Controls */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <MobileChatButton isOpen={chatOpen} unreadCount={unreadCount} mentionCount={mentionCount} onToggle={toggleChat} />
-          {isModerator && (
-            <MobileRecordingButton isRecording={isRecording} isLoading={isRecordingLoading} onToggle={toggleRecording} />
-          )}
           <div className="relative">
             <button
               ref={moreButtonRefMobile}
@@ -630,6 +626,8 @@ export function ControlBar() {
               show={showMore}
               onClose={() => setShowMore(false)}
               isRecording={isRecording}
+              isRecordingLoading={isRecordingLoading}
+              onToggleRecording={toggleRecording}
               isScreenSharing={isScreenSharing}
               onToggleScreenShare={handleToggleScreenShare}
               handRaised={handRaised}

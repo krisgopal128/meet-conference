@@ -69,7 +69,7 @@ export function ScreenShareLayout() {
               className="flex-shrink-0 h-full rounded-2xl bg-surface-900"
               style={{ width: mobileTileWidth }}
             >
-              <ParticipantTile participant={p} className="w-full h-full rounded-2xl" participantCount={participants.length} />
+              <ParticipantTile participant={p} className="w-full h-full rounded-2xl" participantCount={participants.length} isSpeakerTile={false} />
             </div>
           ))}
         </div>
@@ -100,7 +100,7 @@ export function ScreenShareLayout() {
       <div className="w-48 flex flex-col gap-2 overflow-y-auto flex-shrink-0">
         {participants.map(p => (
           <div key={p.identity} className="w-full flex-shrink-0" style={{ aspectRatio: ASPECT_RATIO_CSS[aspectRatio] }}>
-            <ParticipantTile participant={p} className="w-full h-full" participantCount={participants.length} />
+            <ParticipantTile participant={p} className="w-full h-full" participantCount={participants.length} isSpeakerTile={false} />
           </div>
         ))}
       </div>

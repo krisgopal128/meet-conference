@@ -107,6 +107,7 @@ export const ChatInput = React.memo(function ChatInput({
         
         <input
           ref={inputRef}
+          type="text"
           value={input}
           onChange={(event) => {
             void onInputChange(event.target.value, event.target.selectionStart);

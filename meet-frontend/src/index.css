@@ -685,6 +685,7 @@ body.scroll-locked {
   }
 
   /* Prevent auto-zoom on iOS Safari — inputs must be >= 16px font */
+  input:not([type]),
   input[type="text"],
   input[type="email"],
   input[type="password"],
@@ -752,7 +753,7 @@ body.scroll-locked {
 /* Landscape orientation on phones: prevent squished layout */
 @media (max-width: 767px) and (orientation: landscape) and (max-height: 500px) {
   .mobile-sheet {
-    max-height: 95vh !important;
+    max-height: calc(100dvh - 70px) !important;
   }
 }
 

@@ -605,7 +605,10 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
                     saveToActiveFile: false,
                     toggleTheme: true,
                   },
-                  tools: { image: !isViewOnly },
+                  tools: {
+                    image: !isViewOnly,
+                    ...(isMobile ? { enabled: ['rectangle', 'ellipse', 'line', 'arrow', 'text', 'draw', 'eraser'] } : {}),
+                  },
                 }}
                 theme="dark"
                 gridModeEnabled={false}

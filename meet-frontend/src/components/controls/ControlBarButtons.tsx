@@ -726,7 +726,7 @@ export const MobileLeaveButton = memo(function MobileLeaveButton({
     <>
       <button
         onClick={handleClick}
-        className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-danger-500 hover:bg-danger-600 text-white text-sm font-semibold transition-all shadow-sm"
+        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-danger-500 hover:bg-danger-600 text-white text-sm font-semibold transition-all shadow-sm"
         aria-label="Leave meeting"
       >
         <LogOut size={18} aria-hidden="true" />
@@ -1126,6 +1126,8 @@ interface MemoizedMobileMoreMenuProps {
   show: boolean;
   onClose: () => void;
   isRecording: boolean;
+  isRecordingLoading: boolean;
+  onToggleRecording: () => void;
   isScreenSharing: boolean | undefined;
   onToggleScreenShare: () => void;
   handRaised: boolean;
@@ -1164,6 +1166,8 @@ export const MemoizedMobileMoreMenu = memo(function MemoizedMobileMoreMenu({
   show,
   onClose,
   isRecording,
+  isRecordingLoading,
+  onToggleRecording,
   isScreenSharing,
   onToggleScreenShare,
   handRaised,
@@ -1227,6 +1231,7 @@ export const MemoizedMobileMoreMenu = memo(function MemoizedMobileMoreMenu({
     { icon: <Link2 size={16} />, label: 'Copy Link', onClick: onCopyLink },
     { icon: <Pencil size={16} />, label: whiteboardOpen ? 'Close Whiteboard' : 'Whiteboard', onClick: onToggleWhiteboard },
     ...(isModerator ? [
+      { icon: isRecordingLoading ? <Loader2 size={16} className="animate-spin" /> : isRecording ? <CircleDot size={16} className="animate-pulse text-danger-400" /> : <Circle size={16} />, label: isRecording ? 'Stop Recording' : 'Start Recording', onClick: onToggleRecording, danger: isRecording },
       { icon: meetingLocked ? <Lock size={16} className="text-warning-400" /> : <Unlock size={16} />, label: meetingLocked ? 'Unlock Meeting' : 'Lock Meeting', onClick: onToggleLock },
       { icon: <DoorOpen size={16} />, label: lobbyEnabled ? 'Disable Lobby' : 'Enable Lobby', onClick: onToggleLobby },
       { icon: <ScreenShare size={16} className={participantsCanShareScreen ? 'text-brand-400' : ''} />, label: participantsCanShareScreen ? 'Disallow Screen Share' : 'Allow Screen Share', onClick: onToggleParticipantScreenShare },

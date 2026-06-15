@@ -406,7 +406,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
   return (
     <div
       ref={tileRef}
-      className={`relative bg-surface-800 group ring-[3px] ring-transparent ${className}`}
+      className={`relative bg-surface-800 group outline-[3px] ${isSpeaking ? 'outline-brand-400' : 'outline-transparent'} ${className}`}
     >
       {/* Video or avatar */}
       <div className="absolute inset-0 overflow-hidden">

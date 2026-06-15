@@ -47,6 +47,25 @@ export function MobileSheet({ open, onClose, children, title }: MobileSheetProps
     return () => document.removeEventListener('keydown', handleEscape);
   }, [open, onClose]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+
+    const onResize = () => {
+      if (window.visualViewport) {
+        document.documentElement.style.setProperty('--vh', `${window.visualViewport.height}px`);
+      }
+    };
+
+    onResize();
+    window.visualViewport.addEventListener('resize', onResize);
+    window.visualViewport.addEventListener('scroll', onResize);
+    return () => {
+      window.visualViewport?.removeEventListener('resize', onResize);
+      window.visualViewport?.removeEventListener('scroll', onResize);
+      document.documentElement.style.removeProperty('--vh');
+    };
+  }, []);
+
   const handleTouchStart = (e: React.TouchEvent) => {
     startY.current = e.touches[0].clientY;
   };
@@ -84,7 +103,7 @@ export function MobileSheet({ open, onClose, children, title }: MobileSheetProps
       <div
         ref={sheetRef}
         className="mobile-sheet absolute inset-x-0 bottom-0 bg-surface-800 rounded-t-2xl flex flex-col overflow-hidden"
-        style={{ maxHeight: '75vh' }}
+        style={{ maxHeight: 'calc(var(--vh, 100dvh) - 70px)' }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
