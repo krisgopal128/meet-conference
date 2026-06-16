@@ -66,3 +66,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <AppRoot />
   </React.StrictMode>
 );
+
+// Auto-reload when a stale chunk fails to load (new deploy while app is open)
+window.addEventListener('error', (e) => {
+  if (e.message?.includes('Failed to fetch dynamically imported module') && !sessionStorage.getItem('__reloaded')) {
+    sessionStorage.setItem('__reloaded', '1');
+    window.location.reload();
+  }
+});
