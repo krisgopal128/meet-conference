@@ -20,7 +20,10 @@ import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
 import { useIsMobile } from '../../hooks/useIsMobile';
 
 const FIXED_GRID_MAX = 8;
-const SCROLL_THRESHOLD = 32;
+const SCROLL_THRESHOLD_DESKTOP = 9;
+const SCROLL_THRESHOLD_MOBILE = 7;
+const MIN_TILE_HEIGHT_DESKTOP = 180;
+const MIN_TILE_HEIGHT_MOBILE = 120;
 
 const ASPECT_RATIO_CSS: Record<GridAspectRatio, string> = {
   '16:9': '16/9',
@@ -102,7 +105,9 @@ export function GridLayout() {
 
   const { cols, rows } = getGridDimensions(count, aspectRatio, isMobile);
   const useFixedGrid = count <= FIXED_GRID_MAX;
-  const needsScroll = count > SCROLL_THRESHOLD;
+  const scrollThreshold = isMobile ? SCROLL_THRESHOLD_MOBILE : SCROLL_THRESHOLD_DESKTOP;
+  const needsScroll = count > scrollThreshold;
+  const minTileHeight = isMobile ? MIN_TILE_HEIGHT_MOBILE : MIN_TILE_HEIGHT_DESKTOP;
 
   return (
     <div
@@ -110,19 +115,25 @@ export function GridLayout() {
       style={{
         display: 'grid',
         gridTemplateColumns: `repeat(${cols}, 1fr)`,
-        gridTemplateRows: `repeat(${rows}, 1fr)`,
-        alignContent: useFixedGrid ? 'center' : 'start',
+        ...(needsScroll
+          ? {
+              gridAutoRows: `${minTileHeight}px`,
+              gridTemplateRows: 'none',
+              alignContent: 'start',
+              scrollbarWidth: 'thin',
+              scrollbarColor: 'rgba(255,255,255,0.3) transparent',
+            }
+          : {
+              gridTemplateRows: `repeat(${rows}, 1fr)`,
+              alignContent: useFixedGrid ? 'center' : 'start',
+            }),
         gap: isMobile ? '4px' : '8px',
-        ...(needsScroll ? {
-          scrollbarWidth: 'thin',
-          scrollbarColor: 'rgba(255,255,255,0.3) transparent',
-        } : {}),
       }}
     >
       {admittedParticipants.map((p) => (
         <div
           key={p.identity}
-          className="relative flex items-center justify-center rounded-2xl"
+          className="relative flex items-center justify-center rounded-2xl h-full"
         >
           <div
             className="relative rounded-2xl bg-surface-900 overflow-hidden"
