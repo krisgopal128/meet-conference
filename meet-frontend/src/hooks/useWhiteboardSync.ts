@@ -6,7 +6,7 @@ import {
 } from 'livekit-client';
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 import { whiteboardApi } from '../services/whiteboardApi';
-import { publishMessage } from '../utils/livekitData';
+import { publishMessage, ChunkReassembler } from '../utils/livekitData';
 import logger from '../utils/logger';
 
 const THROTTLE_MS = 80;
@@ -70,32 +70,20 @@ export function useWhiteboardSync(
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingElements = useRef<readonly unknown[]>([]);
   const lastViewportBroadcast = useRef(0);
-  const seenFiles = useRef<Map<string, string>>(new Map());
-  const MAX_SEEN_FILES = 100;
+  const sentFileIds = useRef<Set<string>>(new Set());
+  const reassembler = useRef(new ChunkReassembler());
 
-  function deduplicateFiles(files: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
-    if (!files) return files;
-    const result: Record<string, unknown> = {};
-    for (const [id, file] of Object.entries(files)) {
-      const dataURL = (file as { dataURL?: string })?.dataURL;
-      if (!dataURL) {
-        result[id] = file;
-        continue;
-      }
-      const hash = dataURL.substring(0, 100);
-      if (!seenFiles.current.has(hash)) {
-        seenFiles.current.set(hash, id);
-        result[id] = file;
+  function getNewFiles(): Record<string, unknown> | undefined {
+    const allFiles = ((excalidrawAPIRef.current as any)?.files || undefined) as Record<string, unknown> | undefined;
+    if (!allFiles) return undefined;
+    const newFiles: Record<string, unknown> = {};
+    for (const [id, file] of Object.entries(allFiles)) {
+      if (!sentFileIds.current.has(id)) {
+        newFiles[id] = file;
+        sentFileIds.current.add(id);
       }
     }
-    if (seenFiles.current.size > MAX_SEEN_FILES) {
-      const entries = [...seenFiles.current.entries()];
-      const toRemove = entries.slice(0, entries.length - MAX_SEEN_FILES);
-      for (const [key] of toRemove) {
-        seenFiles.current.delete(key);
-      }
-    }
-    return result;
+    return Object.keys(newFiles).length > 0 ? newFiles : undefined;
   }
 
   // Broadcast drawing changes with throttle
@@ -107,28 +95,27 @@ export function useWhiteboardSync(
 
       const now = Date.now();
       const elapsed = now - lastBroadcastRef.current;
-      const files = ((excalidrawAPIRef.current as any)?.files || undefined) as Record<string, unknown> | undefined;
 
       if (elapsed >= THROTTLE_MS) {
+        const newFiles = getNewFiles();
         commitRef.current += 1;
         const msg: WhiteboardDrawMsg = {
           type: 'whiteboard-update',
           commit: commitRef.current,
           elements: [...elements],
-          files,
+          files: newFiles,
         };
         publishMessage(room.localParticipant, msg, { topic: WHITEBOARD_TOPIC });
         lastBroadcastRef.current = now;
       } else if (!timerRef.current) {
-        // Schedule deferred broadcast
         timerRef.current = setTimeout(() => {
-          const deferredFiles = ((excalidrawAPIRef.current as any)?.files || undefined) as Record<string, unknown> | undefined;
+          const deferredNewFiles = getNewFiles();
           commitRef.current += 1;
           const msg: WhiteboardDrawMsg = {
             type: 'whiteboard-update',
             commit: commitRef.current,
             elements: [...pendingElements.current],
-            files: deferredFiles,
+            files: deferredNewFiles,
           };
           publishMessage(room.localParticipant, msg, { topic: WHITEBOARD_TOPIC });
           lastBroadcastRef.current = Date.now();
@@ -207,33 +194,36 @@ export function useWhiteboardSync(
       if (!participant || participant.identity === localParticipant?.identity) return;
       try {
         const text = new TextDecoder().decode(payload);
-        const msg = JSON.parse(text) as WhiteboardMessage;
-        if (msg.type === 'whiteboard-update' && Array.isArray(msg.elements)) {
+        const parsed = JSON.parse(text) as Record<string, unknown>;
+
+        const msg = reassembler.current.reassemble(parsed);
+        if (!msg) return;
+
+        const wbMsg = msg as WhiteboardMessage;
+        if (wbMsg.type === 'whiteboard-update' && Array.isArray(wbMsg.elements)) {
           const api = excalidrawAPIRef.current;
           if (!api) {
             logger.debug('[WhiteboardSync] Skipping update — API not ready');
             return;
           }
-          // Ignore spurious empty updates (e.g., from a peer's Excalidraw mount).
-          // A genuine "clear all" uses Excalidraw's clearCanvas which marks elements as deleted, not an empty array.
-          if (msg.elements.length === 0) {
+          if (wbMsg.elements.length === 0) {
             logger.debug('[WhiteboardSync] Skipping empty remote update (likely spurious mount event)');
             return;
           }
           logger.debug('[WhiteboardSync] Applying remote drawing update', {
             from: participant.identity,
-            elements: msg.elements.length,
-            commit: msg.commit,
+            elements: wbMsg.elements.length,
+            commit: wbMsg.commit,
+            hasFiles: !!wbMsg.files,
           });
-          const dedupedFiles = deduplicateFiles(msg.files as Record<string, unknown> | undefined);
-          api.updateScene({ elements: msg.elements as any[], files: dedupedFiles as any } as any);
-          onSceneElements?.(msg.elements as unknown[]);
+          api.updateScene({ elements: wbMsg.elements as any[], files: wbMsg.files as any } as any);
+          onSceneElements?.(wbMsg.elements as unknown[]);
           onSceneUpdate?.();
 
           // Google Meet-style: auto-fit viewport to show all content
           // Ensures all participants see the same drawings regardless of screen size
-          if (msg.elements.length > 0) {
-            api.scrollToContent(msg.elements as any[], {
+          if (wbMsg.elements.length > 0) {
+            api.scrollToContent(wbMsg.elements as any[], {
               fitToContent: true,
               animate: false,
             });
@@ -259,6 +249,7 @@ export function useWhiteboardSync(
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      reassembler.current.clear();
     };
   }, []);
 

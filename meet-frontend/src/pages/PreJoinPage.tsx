@@ -33,6 +33,7 @@ import {
   CreateMeetingForm,
   JoinForm,
 } from '../components/prejoin';
+import { setPendingTracks } from '../media/sharedTracks';
 
 export default function PreJoinPage() {
   const { roomName } = useParams<{ roomName: string }>();
@@ -108,6 +109,9 @@ export default function PreJoinPage() {
     initStatus,
     toggleVideo,
     stopPreview,
+    detachPreview,
+    getPreviewVideoTrack,
+    markTracksTransferred,
   } = usePreJoinMedia({ roomName, isCreateMode });
 
   const [displayName, setDisplayName] = useState('');
@@ -205,7 +209,34 @@ export default function PreJoinPage() {
         }
       }
 
-      stopPreview();
+      const videoTrack = videoEnabled && !isAudioOnlyMode(qualityMode)
+        ? getPreviewVideoTrack()
+        : null;
+
+      let audioTrack: MediaStreamTrack | null = null;
+      if (audioEnabled) {
+        try {
+          const audioStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              deviceId: selectedMic ? { exact: selectedMic } : undefined,
+              noiseSuppression: { ideal: noiseSuppression },
+              echoCancellation: { ideal: echoCancellation },
+              autoGainControl: { ideal: true },
+            },
+          });
+          audioTrack = audioStream.getAudioTracks()[0] || null;
+        } catch {
+          // Audio permission may have been revoked — RoomPage will handle it
+        }
+      }
+
+      if (videoTrack || audioTrack) {
+        detachPreview();
+        markTracksTransferred();
+        setPendingTracks(videoTrack, audioTrack);
+      } else {
+        stopPreview();
+      }
 
       navigate(`/room/${targetRoomName}`, {
         state: {

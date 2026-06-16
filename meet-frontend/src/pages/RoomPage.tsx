@@ -27,6 +27,7 @@ import {
 import { Video, WifiOff } from 'lucide-react';
 import '@livekit/components-styles';
 import logger from '../utils/logger';
+import { consumePendingVideoTrack, consumePendingAudioTrack, stopPendingTracks } from '../media/sharedTracks';
 
 // Module-scoped constant — avoids new object per render
 const FULLSCREEN_STYLE = { height: '100dvh' } as const;
@@ -164,10 +165,14 @@ function RoomContent({
   roomName,
   state,
   qualityMode,
+  pendingVideoTrack,
+  pendingAudioTrack,
 }: {
   roomName?: string;
   state: LocationState;
   qualityMode?: QualityModeName;
+  pendingVideoTrack?: MediaStreamTrack | null;
+  pendingAudioTrack?: MediaStreamTrack | null;
 }) {
   const { localParticipant } = useLocalParticipant();
   const room = useRoomContext();
@@ -331,6 +336,52 @@ function RoomContent({
       logger.error('[RoomPage] Failed to switch speaker device:', error);
     });
   }, [room, state.selectedSpeaker]);
+
+  // Publish pre-created tracks from PreJoin page (avoids second getUserMedia/permission prompt)
+  const pendingPublishedRef = useRef(false);
+  useEffect(() => {
+    if (pendingPublishedRef.current || !localParticipant.identity) return;
+    if (!pendingVideoTrack && !pendingAudioTrack) return;
+    pendingPublishedRef.current = true;
+
+    const publish = async () => {
+      if (pendingVideoTrack) {
+        if (state.videoEnabled && pendingVideoTrack.readyState === 'live') {
+          try {
+            await localParticipant.publishTrack(pendingVideoTrack, { source: Track.Source.Camera });
+            logger.info('[RoomContent] Published pre-created video track (no getUserMedia)');
+          } catch (e) {
+            logger.warn('[RoomContent] Failed to publish pending video, falling back:', e);
+            pendingVideoTrack.stop();
+            try {
+              await localParticipant.setCameraEnabled(true);
+            } catch { /* give up */ }
+          }
+        } else {
+          pendingVideoTrack.stop();
+        }
+      }
+
+      if (pendingAudioTrack) {
+        if (state.audioEnabled && pendingAudioTrack.readyState === 'live') {
+          try {
+            await localParticipant.publishTrack(pendingAudioTrack, { source: Track.Source.Microphone });
+            logger.info('[RoomContent] Published pre-created audio track (no getUserMedia)');
+          } catch (e) {
+            logger.warn('[RoomContent] Failed to publish pending audio, falling back:', e);
+            pendingAudioTrack.stop();
+            try {
+              await localParticipant.setMicrophoneEnabled(true);
+            } catch { /* give up */ }
+          }
+        } else {
+          pendingAudioTrack.stop();
+        }
+      }
+    };
+
+    void publish();
+  }, [localParticipant, localParticipant.identity, pendingVideoTrack, pendingAudioTrack, state.videoEnabled, state.audioEnabled]);
 
   // Switch video input (camera) to prejoin selection
   useEffect(() => {
@@ -755,25 +806,44 @@ export default function RoomPage() {
   const qualitySettings = getQualityModeConfig(effectiveQualityMode);
   const audioOnlyMode = isAudioOnlyMode(effectiveQualityMode);
 
+  // Consume pre-created tracks from PreJoin page (avoids second getUserMedia/permission prompt)
+  const pendingVideoTrack = useMemo(() => consumePendingVideoTrack(), []);
+  const pendingAudioTrack = useMemo(() => consumePendingAudioTrack(), []);
+  const hasPendingVideo = pendingVideoTrack?.readyState === 'live';
+  const hasPendingAudio = pendingAudioTrack?.readyState === 'live';
+
+  // Stop any leftover pending tracks on unmount (e.g., connection failure before RoomContent published them)
+  useEffect(() => {
+    return () => {
+      stopPendingTracks();
+      if (pendingVideoTrack?.readyState === 'live') pendingVideoTrack.stop();
+      if (pendingAudioTrack?.readyState === 'live') pendingAudioTrack.stop();
+    };
+  }, [pendingVideoTrack, pendingAudioTrack]);
+
   // Dynamic resolution based on call size (will be updated by hooks inside room)
   // For initial connection, use default settings
   const maxBitrate = qualitySettings.name === 'highQuality'
     ? meetingRoomConfig.media.simulcastLayers.high.maxBitrate
     : meetingRoomConfig.media.publishDefaults.videoEncoding.maxBitrate;
 
-  // Capture video at the target aspect ratio to save bandwidth
-  const videoOptions = state?.token && state.videoEnabled && !audioOnlyMode
-    ? buildCameraCaptureOptions(state.selectedCamera, effectiveQualityMode, currentGridAspectRatio, state.cameraHardwareCaps)
-    : false;
-  
-  const audioOptions = state?.token && state.audioEnabled
-    ? buildAudioCaptureOptions(
-        state.selectedMic,
-        state.noiseSuppression,
-        state.echoCancellation,
-        state.micLevel,
-      )
-    : false;
+  // If we have pending tracks from PreJoin, set to false so LiveKitRoom doesn't call getUserMedia again
+  const videoOptions = hasPendingVideo
+    ? false
+    : (state?.token && state.videoEnabled && !audioOnlyMode
+      ? buildCameraCaptureOptions(state.selectedCamera, effectiveQualityMode, currentGridAspectRatio, state.cameraHardwareCaps)
+      : false);
+
+  const audioOptions = hasPendingAudio
+    ? false
+    : (state?.token && state.audioEnabled
+      ? buildAudioCaptureOptions(
+          state.selectedMic,
+          state.noiseSuppression,
+          state.echoCancellation,
+          state.micLevel,
+        )
+      : false);
 
   const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const livekitUrl = isLocalhost
@@ -892,7 +962,13 @@ export default function RoomPage() {
         options={livekitOptions}
         style={FULLSCREEN_STYLE}
       >
-        <RoomContent roomName={roomName} state={state} qualityMode={effectiveQualityMode} />
+        <RoomContent
+          roomName={roomName}
+          state={state}
+          qualityMode={effectiveQualityMode}
+          pendingVideoTrack={hasPendingVideo ? pendingVideoTrack : null}
+          pendingAudioTrack={hasPendingAudio ? pendingAudioTrack : null}
+        />
       </LiveKitRoom>
     </ErrorBoundary>
   );

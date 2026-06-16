@@ -20,10 +20,10 @@ import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
 import { useIsMobile } from '../../hooks/useIsMobile';
 
 const FIXED_GRID_MAX = 8;
-const SCROLL_THRESHOLD_DESKTOP = 9;
-const SCROLL_THRESHOLD_MOBILE = 7;
-const MIN_TILE_HEIGHT_DESKTOP = 180;
-const MIN_TILE_HEIGHT_MOBILE = 120;
+const SCROLL_THRESHOLD_DESKTOP = 25;
+const SCROLL_THRESHOLD_MOBILE = 12;
+const MIN_TILE_HEIGHT_DESKTOP = 200;
+const MIN_TILE_HEIGHT_MOBILE = 140;
 
 const ASPECT_RATIO_CSS: Record<GridAspectRatio, string> = {
   '16:9': '16/9',

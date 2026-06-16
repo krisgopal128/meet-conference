@@ -41,7 +41,7 @@ export function useScreenShareControls(
             lastApplied ? { audio: options.audio } : { audio: false },
             lastApplied ? { screenShareEncoding: options.encoding } : undefined,
           ),
-          'MEDIA_TOGGLE',
+          'SCREEN_SHARE',
           'Toggle screen share',
         );
       }

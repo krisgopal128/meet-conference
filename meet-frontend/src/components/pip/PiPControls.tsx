@@ -192,7 +192,7 @@ export function PiPControls({
     try {
       await withOperationTimeout(
         localParticipant.setScreenShareEnabled(!localParticipant.isScreenShareEnabled),
-        'MEDIA_TOGGLE',
+        'SCREEN_SHARE',
         'Toggle screen share'
       );
     } catch (error) {

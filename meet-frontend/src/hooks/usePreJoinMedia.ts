@@ -84,6 +84,7 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
   const isMountedRef = useRef(true);
   const hasRequestedPermissionsRef = useRef(false);
   const togglingRef = useRef(false);
+  const tracksTransferredRef = useRef(false);
 
   const [videoEnabled, setVideoEnabled] = useState(meetingRoomConfig.prejoin.videoEnabledByDefault);
   const [audioEnabled, setAudioEnabled] = useState(meetingRoomConfig.prejoin.audioEnabledByDefault);
@@ -142,6 +143,22 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+  }, []);
+
+  const detachPreview = useCallback(() => {
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  }, []);
+
+  const getPreviewVideoTrack = useCallback((): MediaStreamTrack | null => {
+    if (previewStreamRef.current) {
+      const tracks = previewStreamRef.current.getVideoTracks();
+      if (tracks.length > 0 && tracks[0].readyState === 'live') {
+        return tracks[0];
+      }
+    }
+    return null;
   }, []);
 
   // Helper: Find closest aspect ratio option to camera's native ratio
@@ -343,7 +360,9 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
 
     return () => {
       isMountedRef.current = false;
-      stopPreview();
+      if (!tracksTransferredRef.current) {
+        stopPreview();
+      }
       hasRequestedPermissionsRef.current = false;
     };
     // startPreview and loadDevices are intentionally omitted — they are plain
@@ -485,5 +504,8 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
     // Functions
     toggleVideo,
     stopPreview,
+    detachPreview,
+    getPreviewVideoTrack,
+    markTracksTransferred: () => { tracksTransferredRef.current = true; },
   };
 }

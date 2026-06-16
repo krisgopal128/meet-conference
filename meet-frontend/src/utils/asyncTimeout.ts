@@ -6,8 +6,10 @@
 import logger from './logger';
 
 export const OPERATION_TIMEOUTS = {
-  // Media operations (camera, mic, screen share toggle)
+  // Media operations (camera, mic toggle)
   MEDIA_TOGGLE: 5000,
+  // Screen share requires user interaction with browser picker dialog
+  SCREEN_SHARE: 60000,
   // Device operations (switch active device)
   DEVICE_SWITCH: 8000,
   // Disconnect from room

@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { useLocalParticipant } from '@livekit/components-react';
+import { Track } from 'livekit-client';
 import {
   buildCameraCaptureOptions,
   buildAudioCaptureOptions,
@@ -27,6 +28,8 @@ interface UseMediaSyncProps {
   cameraHardwareCaps?: CameraHardwareCaps | null;
   canPublish?: boolean;
   inLobby: boolean;
+  pendingVideoTrack?: MediaStreamTrack | null;
+  pendingAudioTrack?: MediaStreamTrack | null;
 }
 
 export function useMediaSync({
@@ -42,6 +45,8 @@ export function useMediaSync({
   cameraHardwareCaps,
   canPublish,
   inLobby,
+  pendingVideoTrack,
+  pendingAudioTrack,
 }: UseMediaSyncProps) {
   const { localParticipant } = useLocalParticipant();
   const [initialMediaSynced, setInitialMediaSynced] = useState(false);
@@ -54,14 +59,29 @@ export function useMediaSync({
 
     const syncInitialMedia = async () => {
       try {
-        if (videoEnabled !== localParticipant.isCameraEnabled) {
-          await withOperationTimeout(
-            localParticipant.setCameraEnabled(videoEnabled, videoEnabled
-              ? buildCameraCaptureOptions(selectedCamera, qualityMode, currentGridAspectRatio, cameraHardwareCaps)
-              : undefined),
-            'MEDIA_TOGGLE',
-            'Sync camera state'
-          );
+        if (videoEnabled && !localParticipant.isCameraEnabled) {
+          if (pendingVideoTrack && pendingVideoTrack.readyState === 'live') {
+            try {
+              await localParticipant.publishTrack(pendingVideoTrack, { source: Track.Source.Camera });
+              logger.info('[MediaSync] Published pre-created video track (no getUserMedia)');
+            } catch (e) {
+              logger.warn('[MediaSync] Failed to publish pending video track, falling back:', e);
+              pendingVideoTrack.stop();
+              await withOperationTimeout(
+                localParticipant.setCameraEnabled(true, buildCameraCaptureOptions(selectedCamera, qualityMode, currentGridAspectRatio, cameraHardwareCaps)),
+                'MEDIA_TOGGLE',
+                'Sync camera state'
+              );
+            }
+          } else {
+            await withOperationTimeout(
+              localParticipant.setCameraEnabled(true, buildCameraCaptureOptions(selectedCamera, qualityMode, currentGridAspectRatio, cameraHardwareCaps)),
+              'MEDIA_TOGGLE',
+              'Sync camera state'
+            );
+          }
+        } else if (!videoEnabled && pendingVideoTrack) {
+          pendingVideoTrack.stop();
         }
       } catch (e) {
         logger.error('[RoomPage] Failed to sync camera state:', e);
@@ -71,14 +91,29 @@ export function useMediaSync({
       if (cancelled) return;
 
       try {
-        if (audioEnabled !== localParticipant.isMicrophoneEnabled) {
-          await withOperationTimeout(
-            localParticipant.setMicrophoneEnabled(audioEnabled, audioEnabled
-              ? buildAudioCaptureOptions(selectedMic, noiseSuppression, echoCancellation, micLevel)
-              : undefined),
-            'MEDIA_TOGGLE',
-            'Sync microphone state'
-          );
+        if (audioEnabled && !localParticipant.isMicrophoneEnabled) {
+          if (pendingAudioTrack && pendingAudioTrack.readyState === 'live') {
+            try {
+              await localParticipant.publishTrack(pendingAudioTrack, { source: Track.Source.Microphone });
+              logger.info('[MediaSync] Published pre-created audio track (no getUserMedia)');
+            } catch (e) {
+              logger.warn('[MediaSync] Failed to publish pending audio track, falling back:', e);
+              pendingAudioTrack.stop();
+              await withOperationTimeout(
+                localParticipant.setMicrophoneEnabled(true, buildAudioCaptureOptions(selectedMic, noiseSuppression, echoCancellation, micLevel)),
+                'MEDIA_TOGGLE',
+                'Sync microphone state'
+              );
+            }
+          } else {
+            await withOperationTimeout(
+              localParticipant.setMicrophoneEnabled(true, buildAudioCaptureOptions(selectedMic, noiseSuppression, echoCancellation, micLevel)),
+              'MEDIA_TOGGLE',
+              'Sync microphone state'
+            );
+          }
+        } else if (!audioEnabled && pendingAudioTrack) {
+          pendingAudioTrack.stop();
         }
       } catch (e) {
         logger.error('[RoomPage] Failed to sync microphone state:', e);
@@ -110,6 +145,8 @@ export function useMediaSync({
     qualityMode,
     currentGridAspectRatio,
     cameraHardwareCaps,
+    pendingVideoTrack,
+    pendingAudioTrack,
   ]);
 
   useEffect(() => {
