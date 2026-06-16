@@ -47,11 +47,16 @@ const api = axios.create({
   withCredentials: true, // Send cookies for CSRF protection
 });
 
-// Attach auth token to requests
+// Attach auth token + CSRF token to requests
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  // CSRF double-submit: read csrf_token cookie, send as X-CSRF-Token header
+  const csrfMatch = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+  if (csrfMatch) {
+    config.headers['X-CSRF-Token'] = csrfMatch[1];
   }
   return config;
 });
