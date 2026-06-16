@@ -296,7 +296,7 @@ const fallbackConfig: MeetingRoomConfig = {
   room: {
     defaultLayout: 'speaker',
     qualityMode: 'highQuality',  // Changed from 'auto' to use high quality by default
-    adaptiveStream: true,
+    adaptiveStream: false,  // Disabled — conflicts with manual setVideoQuality in ParticipantTile, causing frozen streams
     dynacast: true,
     simulcast: true,
     pauseOffscreenVideo: false,  // Disabled - was causing videos to not appear for moderators
@@ -527,7 +527,7 @@ const fallbackConfig: MeetingRoomConfig = {
     recoveryThresholdPercent: 60,
     qualityRestoreDurationMs: 10000,
     offscreenPauseDelayMs: 3000,
-    freezeLastFrameWhenPaused: true,
+    freezeLastFrameWhenPaused: false,  // Show avatar fallback instead of confusing frozen frame
     // Phase 2: Visible participant culling
     enableParticipantCulling: false,
     maxVisibleParticipants: 12,
