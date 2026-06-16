@@ -70,7 +70,7 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
     ) => {
       try {
         const payload = JSON.parse(new TextDecoder().decode(data));
-        const senderIdentity = participant?.identity;
+        const senderIdentity = participant?.identity || '';
         const senderName = participant?.name || senderIdentity;
         const senderRole = getSenderRole(participant?.metadata);
         const isPrivilegedSender = !!senderIdentity && (
@@ -79,12 +79,13 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
           senderRole === 'cohost' ||
           senderRole === 'moderator'
         );
+        const isServerOrigin = payload.source === 'server';
 
-        if (!senderIdentity) {
+        if (!senderIdentity && !isServerOrigin) {
           return;
         }
 
-        if (isRateLimited(senderIdentity)) {
+        if (senderIdentity && isRateLimited(senderIdentity)) {
           return;
         }
         
@@ -189,7 +190,7 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
             setVideoFitMode(payload.value);
           }
         } else if (payload.type === 'moderation_control' && payload.targetIdentity === localParticipantRef.current.identity) {
-          if (!isPrivilegedSender) return;
+          if (!isServerOrigin && !isPrivilegedSender) return;
           if (payload.action === 'disable_camera' && localParticipantRef.current.isCameraEnabled) {
             await localParticipantRef.current.setCameraEnabled(false);
           } else if (payload.action === 'mute_microphone' && localParticipantRef.current.isMicrophoneEnabled) {

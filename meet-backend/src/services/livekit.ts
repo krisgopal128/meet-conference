@@ -394,6 +394,7 @@ async function sendParticipantControlSignal(
 ): Promise<void> {
   const payload = new TextEncoder().encode(JSON.stringify({
     type: 'moderation_control',
+    source: 'server',
     action,
     targetIdentity: identity,
     sentAt: new Date().toISOString(),
