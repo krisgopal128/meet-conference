@@ -73,6 +73,15 @@ export function useWhiteboardSync(
   const sentFileIds = useRef<Set<string>>(new Set());
   const reassembler = useRef(new ChunkReassembler());
 
+  // Store frequently-changing values in refs so the DataReceived effect
+  // doesn't re-subscribe on every state change (was dropping messages)
+  const localParticipantRef = useRef(localParticipant);
+  localParticipantRef.current = localParticipant;
+  const onSceneUpdateRef = useRef(onSceneUpdate);
+  onSceneUpdateRef.current = onSceneUpdate;
+  const onSceneElementsRef = useRef(onSceneElements);
+  onSceneElementsRef.current = onSceneElements;
+
   function getNewFiles(): Record<string, unknown> | undefined {
     const allFiles = ((excalidrawAPIRef.current as any)?.files || undefined) as Record<string, unknown> | undefined;
     if (!allFiles) return undefined;
@@ -199,7 +208,7 @@ export function useWhiteboardSync(
     if (!room) return;
 
     const onDataReceived = (payload: Uint8Array, participant: any) => {
-      if (!participant || participant.identity === localParticipant?.identity) return;
+      if (!participant || participant.identity === localParticipantRef.current?.identity) return;
       try {
         const text = new TextDecoder().decode(payload);
         const parsed = JSON.parse(text) as Record<string, unknown>;
@@ -225,8 +234,8 @@ export function useWhiteboardSync(
             hasFiles: !!wbMsg.files,
           });
           api.updateScene({ elements: wbMsg.elements as any[], files: wbMsg.files as any } as any);
-          onSceneElements?.(wbMsg.elements as unknown[]);
-          onSceneUpdate?.();
+          onSceneElementsRef.current?.(wbMsg.elements as unknown[]);
+          onSceneUpdateRef.current?.();
 
           // Google Meet-style: auto-fit viewport to show all content
           // Ensures all participants see the same drawings regardless of screen size
@@ -245,13 +254,15 @@ export function useWhiteboardSync(
 
     logger.debug('[WhiteboardSync] Subscribing to DataReceived', {
       hasRoom: !!room,
-      localIdentity: localParticipant?.identity,
+      localIdentity: localParticipantRef.current?.identity,
     });
     room.on(RoomEvent.DataReceived, onDataReceived);
     return () => {
       room.off(RoomEvent.DataReceived, onDataReceived);
     };
-  }, [room, excalidrawAPIRef, localParticipant, onSceneElements, onSceneUpdate]);
+    // Only re-subscribe when room changes — all other values are read from refs
+    // to prevent message loss during unsubscribe/resubscribe cycles
+  }, [room]);
 
   // Cleanup timer
   useEffect(() => {
