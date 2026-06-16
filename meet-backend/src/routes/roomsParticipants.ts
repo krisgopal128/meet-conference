@@ -123,6 +123,10 @@ participantsRouter.post('/:name/mute-video/:identity', authenticate, async (req:
     const room = await assertModerator(res, name, req.user!.id, 'disable cameras');
     if (!room) return;
 
+    if (identity === room.host_id && req.user!.id !== room.host_id) {
+      return res.status(403).json({ error: 'Cannot disable the room host\'s camera' });
+    }
+
     if (!(await assertCanTargetModerator(res, name, identity, room, req.user!.id))) return;
 
     await muteVideoTrack(name, identity);

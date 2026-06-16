@@ -88,21 +88,25 @@ export function useWhiteboardAutoSave(
   useEffect(() => {
     if (!roomName || !excalidrawReady || !shouldSave) return;
 
-    timerRef.current = setInterval(async () => {
-      if (!dirtyRef.current) return; // skip if no changes since last save
-      const scene = sceneRef.current;
-      if (!scene) return;
-      try {
-        await whiteboardApi.saveScene(roomName, scene as object[], ((getWhiteboardAPI() as any)?.files || undefined) as Record<string, unknown> | undefined);
-        dirtyRef.current = false;
-        logger.debug('[Whiteboard] Auto-saved scene');
-      } catch (err) {
-        logger.warn('[Whiteboard] Auto-save failed', { error: err });
-      }
-    }, AUTO_SAVE_MS);
+    const scheduleSave = () => {
+      timerRef.current = setTimeout(async () => {
+        if (!dirtyRef.current) { scheduleSave(); return; }
+        const scene = sceneRef.current;
+        if (!scene) { scheduleSave(); return; }
+        try {
+          await whiteboardApi.saveScene(roomName, scene as object[], ((getWhiteboardAPI() as any)?.files || undefined) as Record<string, unknown> | undefined);
+          dirtyRef.current = false;
+          logger.debug('[Whiteboard] Auto-saved scene');
+        } catch (err) {
+          logger.warn('[Whiteboard] Auto-save failed', { error: err });
+        }
+        scheduleSave();
+      }, AUTO_SAVE_MS);
+    };
+    scheduleSave();
 
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [roomName, excalidrawReady, shouldSave, sceneRef]);
 

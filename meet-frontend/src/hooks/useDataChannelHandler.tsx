@@ -47,7 +47,11 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
     const now = Date.now();
     const timestamps = messageRateTracker.current.get(senderIdentity) || [];
     const recent = timestamps.filter(t => now - t < 1000);
-    if (recent.length >= 15) return true;
+    if (recent.length === 0) {
+      messageRateTracker.current.delete(senderIdentity);
+    } else if (recent.length >= 15) {
+      return true;
+    }
     recent.push(now);
     messageRateTracker.current.set(senderIdentity, recent);
     return false;
@@ -91,8 +95,7 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
         
         // Handle meeting_ended - all participants navigate to ThankYou
         if (payload.type === 'meeting_ended') {
-          if (payload.source !== 'server') return;
-          if (!isPrivilegedSender) return;
+          if (payload.source !== 'server' && !isPrivilegedSender) return;
           onMeetingEnded?.(payload.reason || 'host_left');
           return;
         }

@@ -221,6 +221,16 @@ export async function authenticate(
       return;
     }
 
+    // Also check Redis ban marker (covers the window between DB cache TTL expiry and ban propagation)
+    try {
+      const { cacheExists } = await import('../services/redis.js');
+      const isBanned = await cacheExists(`banned:${user.id}`);
+      if (isBanned) {
+        res.status(403).json({ error: 'Account suspended' });
+        return;
+      }
+    } catch { /* Redis unavailable — fall through */ }
+
     (req as AuthRequest).user = user;
 
     // Cache the token → user mapping for subsequent requests (non-blocking)

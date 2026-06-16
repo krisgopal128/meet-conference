@@ -32,7 +32,7 @@ export function issueCsrfToken(res: Response, token?: string): string {
   const isSecure = (typeof forwarded === 'string' && forwarded.startsWith('https')) || req.secure;
   res.cookie(CSRF_COOKIE_NAME, csrfToken, {
     httpOnly: false,
-    sameSite: isSecure ? 'lax' : 'strict',
+    sameSite: 'lax',
     secure: !!isSecure,
     path: '/',
     maxAge: 7 * 24 * 60 * 60 * 1000,

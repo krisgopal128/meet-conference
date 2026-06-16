@@ -164,7 +164,7 @@ export function SettingsPanel() {
       const data = encoder.encode(JSON.stringify(message));
       
       // Broadcast to all participants
-      room.localParticipant.publishData(data, { reliable: true });
+      room.localParticipant.publishData(data, { reliable: true }).catch((e: unknown) => logger.warn('[SettingsPanel] publishData failed', e));
       logger.info('[SettingsPanel] Broadcasting videoFitMode:', mode);
     }
     

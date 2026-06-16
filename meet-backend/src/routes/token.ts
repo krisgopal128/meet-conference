@@ -64,7 +64,7 @@ tokenRouter.post('/', authenticate, tokenLimiter, async (req: AuthRequest, res: 
     } else if (room && room.host_id !== req.user!.id) {
       // Check if user is co-host (stored permissions)
       const participant = await queryOne<{ role: string }>(
-        'SELECT role FROM meeting_participants WHERE meeting_id = (SELECT id FROM meetings WHERE room_id = $1 AND ended_at IS NULL LIMIT 1) AND user_id = $2 AND left_at IS NULL ORDER BY joined_at DESC LIMIT 1',
+        'SELECT role FROM meeting_participants WHERE meeting_id = (SELECT id FROM meetings WHERE room_id = $1 AND ended_at IS NULL ORDER BY started_at DESC LIMIT 1) AND user_id = $2 AND left_at IS NULL ORDER BY joined_at DESC LIMIT 1',
         [room.id, req.user!.id]
       );
       isModerator = participant?.role === 'host' || participant?.role === 'moderator';
@@ -90,8 +90,9 @@ tokenRouter.post('/', authenticate, tokenLimiter, async (req: AuthRequest, res: 
     }
 
     // Check if participant was recently kicked (non-hosts only)
+    // Use req.user!.id (authenticated) not participantIdentity (user-supplied) to prevent kick bypass
     if (!isHost) {
-      const kickedTTL = await isParticipantKicked(roomName, participantIdentity);
+      const kickedTTL = await isParticipantKicked(roomName, req.user!.id);
       if (kickedTTL > 0) {
         return res.status(429).json({ 
           error: `You were recently removed from this meeting. Please wait ${kickedTTL} seconds before rejoining.`,

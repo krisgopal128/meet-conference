@@ -80,10 +80,16 @@ export function useWhiteboardSync(
     for (const [id, file] of Object.entries(allFiles)) {
       if (!sentFileIds.current.has(id)) {
         newFiles[id] = file;
-        sentFileIds.current.add(id);
       }
     }
     return Object.keys(newFiles).length > 0 ? newFiles : undefined;
+  }
+
+  function markFilesSent(files: Record<string, unknown> | undefined) {
+    if (!files) return;
+    for (const id of Object.keys(files)) {
+      sentFileIds.current.add(id);
+    }
   }
 
   // Broadcast drawing changes with throttle
@@ -106,6 +112,7 @@ export function useWhiteboardSync(
           files: newFiles,
         };
         publishMessage(room.localParticipant, msg, { topic: WHITEBOARD_TOPIC });
+        markFilesSent(newFiles);
         lastBroadcastRef.current = now;
       } else if (!timerRef.current) {
         timerRef.current = setTimeout(() => {
@@ -118,6 +125,7 @@ export function useWhiteboardSync(
             files: deferredNewFiles,
           };
           publishMessage(room.localParticipant, msg, { topic: WHITEBOARD_TOPIC });
+          markFilesSent(deferredNewFiles);
           lastBroadcastRef.current = Date.now();
           timerRef.current = null;
         }, THROTTLE_MS - elapsed);

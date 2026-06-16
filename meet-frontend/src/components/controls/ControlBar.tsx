@@ -277,12 +277,16 @@ export function ControlBar() {
   }, [layout, setLayout]);
 
   const handleToggleWhiteboard = useCallback(() => {
+    if (!isModerator) {
+      toast.error('Only moderators can toggle the whiteboard');
+      return;
+    }
     toggleWhiteboard();
     if (room) {
       const msg = JSON.stringify({ type: 'whiteboard-activate', active: !whiteboardOpen });
       room.localParticipant.publishData(new TextEncoder().encode(msg), { reliable: true, topic: 'whiteboard' }).catch(() => {});
     }
-  }, [toggleWhiteboard, room, whiteboardOpen]);
+  }, [toggleWhiteboard, room, whiteboardOpen, isModerator]);
 
   const broadcastMeetingSettings = useCallback(async (settings: {
     meetingLocked: boolean;

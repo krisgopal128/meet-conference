@@ -9,7 +9,7 @@
  * - Hang up/leave
  */
 
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useRef } from 'react';
 import { LocalParticipant } from 'livekit-client';
 import {
   Mic,
@@ -146,6 +146,9 @@ export function PiPControls({
   const isCameraOff = !localParticipant?.isCameraEnabled;
   const isScreenSharing = localParticipant?.isScreenShareEnabled ?? false;
 
+  // Coalesce rapid toggles to prevent race conditions (mirrors useVideoControls pattern)
+  const pendingToggleRef = useRef<boolean | null>(null);
+
   // Toggle handlers
   const toggleMic = useCallback(async () => {
     if (!localParticipant) return;
@@ -153,15 +156,22 @@ export function PiPControls({
       toast.error('The host has disabled self-unmute');
       return;
     }
+    if (pendingToggleRef.current !== null) {
+      pendingToggleRef.current = !pendingToggleRef.current;
+      return;
+    }
+    pendingToggleRef.current = !localParticipant.isMicrophoneEnabled;
     try {
       await withOperationTimeout(
-        localParticipant.setMicrophoneEnabled(!localParticipant.isMicrophoneEnabled),
+        localParticipant.setMicrophoneEnabled(pendingToggleRef.current),
         'MEDIA_TOGGLE',
         'Toggle microphone'
       );
     } catch (error) {
       logger.error('[PiPControls] Failed to toggle microphone:', error);
       toast.error('Failed to toggle microphone');
+    } finally {
+      pendingToggleRef.current = null;
     }
   }, [isModerator, localParticipant, participantsCanUnmute]);
 
@@ -171,15 +181,22 @@ export function PiPControls({
       toast.error('The host has disabled self camera enable');
       return;
     }
+    if (pendingToggleRef.current !== null) {
+      pendingToggleRef.current = !pendingToggleRef.current;
+      return;
+    }
+    pendingToggleRef.current = !localParticipant.isCameraEnabled;
     try {
       await withOperationTimeout(
-        localParticipant.setCameraEnabled(!localParticipant.isCameraEnabled),
+        localParticipant.setCameraEnabled(pendingToggleRef.current),
         'MEDIA_TOGGLE',
         'Toggle camera'
       );
     } catch (error) {
       logger.error('[PiPControls] Failed to toggle camera:', error);
       toast.error('Failed to toggle camera');
+    } finally {
+      pendingToggleRef.current = null;
     }
   }, [isModerator, localParticipant, participantsCanTurnOnCamera]);
 

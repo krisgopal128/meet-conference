@@ -351,11 +351,8 @@ function RoomContent({
             await localParticipant.publishTrack(pendingVideoTrack, { source: Track.Source.Camera });
             logger.info('[RoomContent] Published pre-created video track (no getUserMedia)');
           } catch (e) {
-            logger.warn('[RoomContent] Failed to publish pending video, falling back:', e);
+            logger.warn('[RoomContent] Failed to publish pending video track:', e);
             pendingVideoTrack.stop();
-            try {
-              await localParticipant.setCameraEnabled(true);
-            } catch { /* give up */ }
           }
         } else {
           pendingVideoTrack.stop();
@@ -368,11 +365,8 @@ function RoomContent({
             await localParticipant.publishTrack(pendingAudioTrack, { source: Track.Source.Microphone });
             logger.info('[RoomContent] Published pre-created audio track (no getUserMedia)');
           } catch (e) {
-            logger.warn('[RoomContent] Failed to publish pending audio, falling back:', e);
+            logger.warn('[RoomContent] Failed to publish pending audio track:', e);
             pendingAudioTrack.stop();
-            try {
-              await localParticipant.setMicrophoneEnabled(true);
-            } catch { /* give up */ }
           }
         } else {
           pendingAudioTrack.stop();
