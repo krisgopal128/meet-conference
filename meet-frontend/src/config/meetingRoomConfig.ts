@@ -296,8 +296,8 @@ const fallbackConfig: MeetingRoomConfig = {
   room: {
     defaultLayout: 'speaker',
     qualityMode: 'highQuality',  // Changed from 'auto' to use high quality by default
-    adaptiveStream: false,  // Disabled — conflicts with manual setVideoQuality in ParticipantTile, causing frozen streams
-    dynacast: true,
+    adaptiveStream: false,  // Disabled — conflicts with manual setVideoQuality in ParticipantTile
+    dynacast: false,        // Disabled — requires adaptiveStream to signal layer preferences; without it, publisher drops video layers
     simulcast: true,
     pauseOffscreenVideo: false,  // Disabled - was causing videos to not appear for moderators
     joinLeaveSoundsEnabled: true,
