@@ -38,12 +38,13 @@ export function useBackgroundBlurPreview(
   fitModeRef.current = fitMode;
   const lastMaskRef = useRef<MaskData | null>(null);
   const isFrameInFlightRef = useRef(false);
+  const retryCountRef = useRef(0);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Effect 1: Pre-initialize the worker when video element is ready.
-  // This starts the ~6s MediaPipe model load immediately, so blur
-  // is instant when the user toggles it on.
+  // Effect 1: Pre-initialize the worker IMMEDIATELY on mount (not waiting for video element).
+  // The worker only needs the video element for segmentation frames, not for model loading.
+  // Starting early saves 2-5s (camera init time) of wasted idle.
   useEffect(() => {
-    if (!videoElement) return;
     if (workerRef.current) return;
 
     logger.info('[useBackgroundBlurPreview] Pre-initializing segmentation worker...');
@@ -56,6 +57,7 @@ export function useBackgroundBlurPreview(
       const msg = e.data;
       if (msg.type === 'ready') {
         workerReadyRef.current = true;
+        retryCountRef.current = 0;
         logger.info('[useBackgroundBlurPreview] Worker ready — segmentation active');
       } else if (msg.type === 'mask') {
         lastMaskRef.current = {
@@ -67,6 +69,15 @@ export function useBackgroundBlurPreview(
       } else if (msg.type === 'error') {
         isFrameInFlightRef.current = false;
         logger.warn('[useBackgroundBlurPreview] Worker segment error:', msg.error);
+        // Retry init up to 3 times (covers transient WASM/model load failures)
+        if (retryCountRef.current < 3 && !retryTimerRef.current) {
+          retryCountRef.current++;
+          logger.info(`[useBackgroundBlurPreview] Retrying worker init (attempt ${retryCountRef.current}/3)...`);
+          retryTimerRef.current = setTimeout(() => {
+            retryTimerRef.current = null;
+            worker.postMessage({ type: 'init' });
+          }, 2000);
+        }
       }
     };
 
@@ -76,7 +87,7 @@ export function useBackgroundBlurPreview(
 
     worker.postMessage({ type: 'init' });
     workerRef.current = worker;
-  }, [videoElement]);
+  }, []);
 
   // Effect 2: Canvas + render loop — only when blur is enabled
   useEffect(() => {
@@ -200,6 +211,7 @@ export function useBackgroundBlurPreview(
   useEffect(() => {
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
       if (workerRef.current) {
         workerRef.current.postMessage({ type: 'destroy' });
         workerRef.current.terminate();
