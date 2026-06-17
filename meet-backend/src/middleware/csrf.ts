@@ -17,6 +17,7 @@ const CSRF_SKIP_PATHS = new Set([
   '/health', '/webhook',
   '/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password',
   '/auth/refresh',
+  '/token/guest',
   '/external',
 ]);
 const CSRF_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
