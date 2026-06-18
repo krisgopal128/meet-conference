@@ -5,6 +5,7 @@ import { AuthRequest, authenticate } from '../middleware/authenticate.js';
 import { egressClient } from '../services/livekit.js';
 import { query, queryOne } from '../services/database.js';
 import { roomService } from '../services/roomService.js';
+import { cacheIncrWithExpire, cacheDel } from '../services/redis.js';
 import { config } from '../config.js';
 import logger from '../utils/logger.js';
 
@@ -20,6 +21,7 @@ const stopRecordingSchema = z.object({
 
 // POST /egress/start - Start recording (host only)
 egressRouter.post('/start', authenticate, async (req: AuthRequest, res: Response) => {
+  let lockKey = '';
   try {
     const { roomName } = startRecordingSchema.parse(req.body);
 
@@ -32,6 +34,14 @@ egressRouter.post('/start', authenticate, async (req: AuthRequest, res: Response
 
     if (hostId !== req.user!.id) {
       return res.status(403).json({ error: 'Only the room host can start recording' });
+    }
+
+    // Acquire per-room lock to prevent concurrent start requests (double-click, retry)
+    lockKey = `egress_lock:${roomName}`;
+    const lockCount = await cacheIncrWithExpire(lockKey, 30);
+    if (lockCount > 1) {
+      await cacheDel(lockKey).catch(() => {});
+      return res.status(409).json({ error: 'Recording start already in progress' });
     }
 
     // Check if recording is already in progress
@@ -88,13 +98,15 @@ egressRouter.post('/start', authenticate, async (req: AuthRequest, res: Response
       roomName,
       filename,
     });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: 'Validation error', details: error.errors });
+      }
+      logger.error('Start recording error:', error);
+      res.status(500).json({ error: 'Failed to start recording' });
+    } finally {
+      if (lockKey) cacheDel(lockKey).catch(() => {});
     }
-    logger.error('Start recording error:', error);
-    res.status(500).json({ error: 'Failed to start recording' });
-  }
 });
 
 // POST /egress/stop - Stop recording (host only)

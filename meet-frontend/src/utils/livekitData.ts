@@ -25,19 +25,20 @@ export function publishMessage(
   }
 
   const chunkId = Math.random().toString(36).slice(2, 10);
-  const total = Math.ceil(json.length / CHUNK_SIZE);
+  const total = Math.ceil(data.byteLength / CHUNK_SIZE);
 
   for (let i = 0; i < total; i++) {
     const start = i * CHUNK_SIZE;
-    const end = Math.min(start + CHUNK_SIZE, json.length);
-    const part = json.slice(start, end);
+    const end = Math.min(start + CHUNK_SIZE, data.byteLength);
+    const part = data.subarray(start, end);
+    const partB64 = btoa(String.fromCharCode(...part));
 
     const chunkPayload = {
       __chunked: true,
       chunkId,
       index: i,
       total,
-      data: part,
+      data: partB64,
     };
 
     const chunkData = encoder.encode(JSON.stringify(chunkPayload));
@@ -73,7 +74,11 @@ export class ChunkReassembler {
     for (let i = 0; i < total; i++) {
       parts.push(buf.get(i)!);
     }
-    return JSON.parse(parts.join(''));
+    const fullB64 = parts.join('');
+    const binary = atob(fullB64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return JSON.parse(new TextDecoder().decode(bytes));
   }
 
   clear(): void {

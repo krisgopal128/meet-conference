@@ -234,7 +234,7 @@ export async function handleParticipantLeft(roomName: string, identity: string, 
     [roomName]
   );
 
-  if (room && room.host_id === identity && room.waiting_room_enabled) {
+  if (room && room.host_id === identity) {
     // Clear any existing timeout first
     const existingTimeout = hostLeaveTimeouts.get(roomName);
     if (existingTimeout) {

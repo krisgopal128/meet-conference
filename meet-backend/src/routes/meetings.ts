@@ -5,7 +5,7 @@ import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { AuthRequest, authenticate } from '../middleware/authenticate.js';
 import { requireUser } from '../middleware/requireUser.js';
-import { query, queryOne } from '../services/database.js';
+import { query, queryOne, withTransaction } from '../services/database.js';
 import { verifyMeetingAccess } from '../services/meetingService.js';
 import { scheduleMeetingSchema, diagnosticsPayloadSchema } from '../schemas/meetings.js';
 import { sanitizeChatMessage } from '../utils/validation.js';
@@ -220,37 +220,38 @@ meetingsRouter.post('/schedule', authenticate, async (req: AuthRequest, res: Res
 
     const roomName = `${baseRoomName}-${Date.now().toString(36)}`;
 
-    // Create scheduled meeting
-    const [meeting] = await query(
-      `INSERT INTO scheduled_meetings
-        (room_name, title, description, host_id, scheduled_start, scheduled_end, participant_emails, timezone)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING *`,
-      [
-        roomName,
-        data.title,
-        data.description || null,
-        user.id,
-        new Date(data.scheduledStart),
-        data.scheduledEnd ? new Date(data.scheduledEnd) : null,
-        data.participantEmails || [],
-        data.timezone,
-      ]
-    );
-
-    // Also create a room entry
-    await query(
-      `INSERT INTO rooms (name, title, description, host_id, starts_at, ends_at)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [
-        roomName,
-        data.title,
-        data.description || null,
-        user.id,
-        new Date(data.scheduledStart),
-        data.scheduledEnd ? new Date(data.scheduledEnd) : null,
-      ]
-    );
+    // Create scheduled meeting + room atomically
+    const meeting = await withTransaction(async (client) => {
+      const res = await client.query(
+        `INSERT INTO scheduled_meetings
+         (room_name, title, description, host_id, scheduled_start, scheduled_end, participant_emails, timezone)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING *`,
+        [
+          roomName,
+          data.title,
+          data.description || null,
+          user.id,
+          new Date(data.scheduledStart),
+          data.scheduledEnd ? new Date(data.scheduledEnd) : null,
+          data.participantEmails || [],
+          data.timezone,
+        ]
+      );
+      await client.query(
+        `INSERT INTO rooms (name, title, description, host_id, starts_at, ends_at)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          roomName,
+          data.title,
+          data.description || null,
+          user.id,
+          new Date(data.scheduledStart),
+          data.scheduledEnd ? new Date(data.scheduledEnd) : null,
+        ]
+      );
+      return res.rows[0];
+    });
 
     // Invalidate meeting caches for this user and general caches
     await invalidatePattern(`cache:meetings:*`);
@@ -461,8 +462,11 @@ meetingsRouter.delete('/scheduled/:id', authenticate, async (req: AuthRequest, r
       [id]
     );
 
-    // Delete the room
-    await query('DELETE FROM rooms WHERE name = $1', [meeting.room_name]);
+    // Soft-end the room instead of hard-deleting (CASCADE would destroy meetings + participants)
+    await query(
+      "UPDATE rooms SET status = 'ended' WHERE name = $1 AND status != 'ended'",
+      [meeting.room_name]
+    );
 
     // Invalidate meeting caches
     invalidatePattern('cache:meetings:*').catch(() => {});

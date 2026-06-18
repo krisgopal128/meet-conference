@@ -463,19 +463,16 @@ export async function disableScreenShareTrack(roomName: string, identity: string
  */
 export async function updateScreenSharePermissions(roomName: string, hostId: string, allowed: boolean): Promise<void> {
   const participants = await listParticipants(roomName);
-  for (const p of participants) {
-    if (isModeratorParticipant(p, hostId)) {
-      continue;
-    }
-    const permissions = buildPermissionUpdate(p, {
-      canPublishSources: allowed ? [] : [TrackSource.CAMERA, TrackSource.MICROPHONE],
+  const updates = participants
+    .filter((p) => !isModeratorParticipant(p, hostId))
+    .map((p) => {
+      const permissions = buildPermissionUpdate(p, {
+        canPublishSources: allowed ? [] : [TrackSource.CAMERA, TrackSource.MICROPHONE],
+      });
+      return roomService.updateParticipant(roomName, p.identity, undefined, permissions)
+        .catch((err: unknown) => logger.error(`[LiveKit] Failed to update screen share permissions for ${p.identity}:`, err));
     });
-    try {
-      await roomService.updateParticipant(roomName, p.identity, undefined, permissions);
-    } catch (err) {
-      logger.error(`[LiveKit] Failed to update screen share permissions for ${p.identity}:`, err);
-    }
-  }
+  await Promise.allSettled(updates);
 }
 
 /**

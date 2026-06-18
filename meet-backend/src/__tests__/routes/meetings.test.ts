@@ -6,10 +6,19 @@ import express from 'express';
 const mockQuery = vi.fn();
 const mockQueryOne = vi.fn();
 
-vi.mock('../../services/database.js', () => ({
-  query: mockQuery,
-  queryOne: mockQueryOne,
-}));
+ vi.mock('../../services/database.js', () => ({
+   query: mockQuery,
+   queryOne: mockQueryOne,
+   withTransaction: vi.fn(async (fn: any) => {
+     const client = {
+       query: async (sql: string, params?: unknown[]) => {
+         const rows = await mockQuery(sql, params);
+         return { rows: Array.isArray(rows) ? rows : [] };
+       },
+     };
+     return fn(client);
+   }),
+ }));
 
 vi.mock('fs/promises', () => ({
   mkdir: vi.fn().mockResolvedValue(undefined),

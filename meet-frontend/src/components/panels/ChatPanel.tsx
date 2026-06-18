@@ -116,6 +116,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
   const inputValueRef = useRef(input);
   inputValueRef.current = input;
   const localParticipantRef = useRef(localParticipant);
+  const sendingRef = useRef(false);
   localParticipantRef.current = localParticipant;
   const mentionListRef = useRef<HTMLDivElement>(null);
 
@@ -373,6 +374,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
   }
 
   async function sendMessage() {
+    if (sendingRef.current) return;
     if (chatDisabled) {
       toast.error('Chat is disabled by the host');
       return;
@@ -381,6 +383,8 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
     if (!inputValueRef.current.trim() || !localParticipant) {
       return;
     }
+
+    sendingRef.current = true;
 
     const trimmed = inputValueRef.current.trim();
     const isPrivate = meetingRoomConfig.chat.privateModeratorChatEnabled && sendPrivateToModerators && !isModerator;
@@ -459,6 +463,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
       window.clearTimeout(typingTimeoutRef.current);
     }
     await publishTyping(false);
+    sendingRef.current = false;
   }
 
   // Poll functions
