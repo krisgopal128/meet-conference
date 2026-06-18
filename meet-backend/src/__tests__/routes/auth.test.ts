@@ -3,6 +3,7 @@ import express, { Express } from 'express';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import cookieParser from 'cookie-parser';
 import { authRouter } from '../../routes/auth.js';
 
 // Mock dependencies
@@ -47,8 +48,10 @@ describe('Auth Routes', () => {
   beforeEach(() => {
     app = express();
     app.use(express.json());
+    app.use(cookieParser());
     app.use('/auth', authRouter);
     vi.clearAllMocks();
+    mockQuery.mockResolvedValue([]);
     mockWithTransaction.mockImplementation(async (fn: any) => {
       const client = {
         query: async (sql: string, params?: unknown[]) => {
@@ -372,6 +375,56 @@ describe('Auth Routes', () => {
         expect(response.status).toBe(400);
         expect(response.body).toHaveProperty('error', 'Validation error');
       });
+    });
+  });
+
+  describe('POST /auth/refresh', () => {
+    it('should reject when no refresh cookie is present', async () => {
+      const response = await request(app).post('/auth/refresh');
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should reject an invalid refresh token', async () => {
+      const response = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', 'refresh_token=invalid-token');
+
+      expect(response.status).toBe(401);
+    });
+
+    it('should reject a replayed (already-revoked) refresh token', async () => {
+      const validToken = jwt.sign({ userId: 'user-1', type: 'refresh' }, 'test-secret-key-for-testing');
+      mockQueryOne
+        .mockResolvedValueOnce(null);
+
+      const response = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', `refresh_token=${validToken}`);
+
+      expect(response.status).toBe(401);
+    });
+
+    it('should issue new tokens with a valid refresh token', async () => {
+      const validToken = jwt.sign({ userId: 'user-1', type: 'refresh' }, 'test-secret-key-for-testing');
+      mockQueryOne
+        .mockResolvedValueOnce({ user_id: 'user-1' })
+        .mockResolvedValueOnce({ id: 'user-1', email: 'test@example.com', name: 'Test', role: 'user' });
+
+      const response = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', `refresh_token=${validToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('token');
+      expect(response.body.user).toHaveProperty('email', 'test@example.com');
+    });
+  });
+
+  describe('POST /auth/logout', () => {
+    it('should return 401 without authentication', async () => {
+      const response = await request(app).post('/auth/logout');
+      expect(response.status).toBe(401);
     });
   });
 });

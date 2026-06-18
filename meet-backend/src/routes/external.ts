@@ -450,7 +450,7 @@ router.post('/rooms/:name/end', async (req: Request, res: Response) => {
     // Verify ownership
     const apiKeyInfo = (req as ExternalApiRequest).apiKey;
     const roomOwner = await queryOne<{ host_id: string }>('SELECT host_id FROM rooms WHERE name = $1', [name]);
-    if (roomOwner && roomOwner.host_id !== apiKeyInfo?.userId) {
+    if (!roomOwner || roomOwner.host_id !== apiKeyInfo?.userId) {
       return res.status(403).json({ error: 'Not authorized to modify this room' });
     }
     
@@ -494,7 +494,7 @@ router.delete('/rooms/:name', async (req: Request, res: Response) => {
     // Verify ownership
     const apiKeyInfo = (req as ExternalApiRequest).apiKey;
     const roomOwner = await queryOne<{ host_id: string }>('SELECT host_id FROM rooms WHERE name = $1', [name]);
-    if (roomOwner && roomOwner.host_id !== apiKeyInfo?.userId) {
+    if (!roomOwner || roomOwner.host_id !== apiKeyInfo?.userId) {
       return res.status(403).json({ error: 'Not authorized to modify this room' });
     }
     

@@ -136,8 +136,14 @@ webhookRouter.post('/', async (req: Request, res: Response) => {
         break;
     }
   } catch (dbError) {
-    logger.error('[Webhook] DB error:', dbError);
-    // Still return 200 so LiveKit doesn't retry
+    logger.error('[Webhook] Handler error:', {
+      error: dbError instanceof Error ? dbError.message : String(dbError),
+      eventType: event.event,
+      room: event.room?.name,
+      participant: event.participant?.identity,
+    });
+    res.status(500).json({ error: 'Webhook handler failed' } as WebhookErrorResponse);
+    return;
   }
 
   res.status(200).json({ received: true } as WebhookSuccessResponse);

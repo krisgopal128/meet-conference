@@ -397,14 +397,15 @@ router.post('/users/:id/reset-password', adminActionLimiter, requireAdmin(), asy
     const passwordHash = await bcrypt.hash(tempPassword, 12);
 
     await query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, id]);
-    logger.info(`[Admin] Password reset for user ${id} by ${req.user?.id}. Temp password generated.`);
+    logger.info(`[Admin] Password reset for user ${id} by ${req.user?.id}.`);
 
     await invalidateCache(`cache:users:detail:${id}`);
     await invalidatePattern('cache:users:*');
     invalidateUserAuth(id);
 
     res.json({
-      message: 'Password reset successfully. The temporary password has been logged for the admin.',
+      message: 'Password reset successfully.',
+      temporaryPassword: tempPassword,
     });
   } catch (error) {
     logger.error('[Admin] Error resetting password:', error);

@@ -201,15 +201,22 @@ describe('Token Routes', () => {
         expect(response.body).toHaveProperty('expiresIn', 3600);
       });
 
-      it('should allow non-host roles for non-creator', async () => {
-        // Host role requires being the room creator - tested separately
+      it('should downgrade elevated roles to attendee for non-creator', async () => {
         const roles = ['cohost', 'presenter', 'attendee', 'viewer'];
+        const expectedRoles: Record<string, string> = {
+          cohost: 'attendee',
+          presenter: 'attendee',
+          attendee: 'attendee',
+          viewer: 'viewer',
+        };
 
         for (const role of roles) {
           mockQueryOne.mockResolvedValueOnce({
             id: 'room-123',
             status: 'active',
             host_id: 'other-user',
+            password_hash: null,
+            waiting_room_enabled: false,
           });
           mockCreateAccessToken.mockResolvedValueOnce('mock-livekit-token');
 
@@ -221,7 +228,7 @@ describe('Token Routes', () => {
             });
 
           expect(response.status).toBe(200);
-          expect(response.body).toHaveProperty('role', role);
+          expect(response.body).toHaveProperty('role', expectedRoles[role]);
         }
       });
     });

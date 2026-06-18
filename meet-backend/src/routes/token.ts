@@ -75,8 +75,8 @@ tokenRouter.post('/', authenticate, tokenLimiter, async (req: AuthRequest, res: 
       return res.status(403).json({ error: 'Only the room creator can be host' });
     }
 
-    // If user requests moderator role, verify they are host or co-host
-    if (role === 'moderator' && !isHost && !isModerator) {
+    // If user requests elevated role, verify they are host or moderator
+    if ((role === 'moderator' || role === 'cohost' || role === 'presenter') && !isHost && !isModerator) {
       // User is not host nor co-host - check if API key was used for this session
        const apiKeyUsed = (req as TokenRequest).apiKeyId;
       if (apiKeyUsed) {

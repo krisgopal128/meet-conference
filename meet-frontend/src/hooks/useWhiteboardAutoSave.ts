@@ -88,8 +88,11 @@ export function useWhiteboardAutoSave(
   useEffect(() => {
     if (!roomName || !excalidrawReady || !shouldSave) return;
 
+    let stopped = false;
+
     const scheduleSave = () => {
       timerRef.current = setTimeout(async () => {
+        if (stopped) return;
         if (!dirtyRef.current) { scheduleSave(); return; }
         const scene = sceneRef.current;
         if (!scene) { scheduleSave(); return; }
@@ -100,12 +103,13 @@ export function useWhiteboardAutoSave(
         } catch (err) {
           logger.warn('[Whiteboard] Auto-save failed', { error: err });
         }
-        scheduleSave();
+        if (!stopped) scheduleSave();
       }, AUTO_SAVE_MS);
     };
     scheduleSave();
 
     return () => {
+      stopped = true;
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [roomName, excalidrawReady, shouldSave, sceneRef]);

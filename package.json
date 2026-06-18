@@ -1,1 +1,9 @@
-{}
+{
+  "name": "meet-conference",
+  "private": true,
+  "scripts": {
+    "verify": "npm run verify:backend && npm run verify:frontend",
+    "verify:backend": "cd meet-backend && npm run typecheck && npm run lint && npm run test -- --run",
+    "verify:frontend": "cd meet-frontend && npx tsc --noEmit && npm run lint && npm run test -- --run && npm run build"
+  }
+}
