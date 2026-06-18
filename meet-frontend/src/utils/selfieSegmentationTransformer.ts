@@ -50,6 +50,12 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
   private workerReady = false;
   private lastMask: MaskData | null = null;
   private isFrameInFlight = false;
+  private externalWorker: Worker | null = null;
+
+  /** Pass a pre-initialized worker to skip WASM+model load (~6s savings) */
+  setPreInitializedWorker(worker: Worker): void {
+    this.externalWorker = worker;
+  }
 
   constructor(options: Partial<SelfieSegmentationOptions> = {}) {
     super();
@@ -87,7 +93,16 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
     });
 
     // Spawn the segmentation worker (Vite-bundled module worker with importScripts polyfill)
-    this.worker = new Worker(new URL('./segmentationWorker.ts', import.meta.url), { type: 'module' });
+    const hadPreInit = !!this.externalWorker;
+    if (this.externalWorker) {
+      this.worker = this.externalWorker;
+      this.externalWorker = null;
+      this.workerReady = true;
+      logger.info('[SelfieSegmentationTransformer] Reusing pre-initialized worker');
+    } else {
+      this.worker = new Worker(new URL('./segmentationWorker.ts', import.meta.url), { type: 'module' });
+      logger.info('[SelfieSegmentationTransformer] Created new worker (cold start)');
+    }
 
     this.worker.onmessage = (e: MessageEvent) => {
       const msg = e.data;
@@ -113,7 +128,9 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
       this.isFrameInFlight = false;
     };
 
-    this.worker.postMessage({ type: 'init' });
+    if (!hadPreInit) {
+      this.worker.postMessage({ type: 'init' });
+    }
 
     if (this.options.bgImagePath) {
       await this.loadBackgroundImage(this.options.bgImagePath);

@@ -103,9 +103,9 @@ tokenRouter.post('/', authenticate, tokenLimiter, async (req: AuthRequest, res: 
 
     // Check waiting room status for non-hosts (no extra query needed)
     let inLobby = false;
-    if (!isHost && room) {
-      // If waiting room enabled, always put non-hosts in lobby for moderator approval
-      inLobby = room.waiting_room_enabled === true;
+    if (!isHost && !isModerator) {
+      // Default to lobby when waiting_room_enabled is null/undefined (fail closed)
+      inLobby = room?.waiting_room_enabled !== false;
     }
 
     // Generate LiveKit access token
@@ -218,7 +218,8 @@ tokenRouter.post('/guest', tokenLimiter, async (req, res: Response) => {
     
     // If waiting room is enabled, guests go to lobby for moderator approval
     // UNLESS they were previously admitted (reconnecting after disconnect)
-    const inLobby = room?.waiting_room_enabled === true && !wasPreviouslyAdmitted;
+    // Default to lobby when waiting_room_enabled is null/undefined (fail closed)
+    const inLobby = room?.waiting_room_enabled !== false && !wasPreviouslyAdmitted;
 
     // Generate token with appropriate permissions
     const accessToken = await createAccessToken(roomName, guestIdentity, role as ParticipantRole, {

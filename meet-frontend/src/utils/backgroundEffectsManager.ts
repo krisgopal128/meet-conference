@@ -28,6 +28,47 @@ interface VideoTrack {
   stopProcessor: () => Promise<void>;
 }
 
+// ─── Pre-init worker for conference blur ──────────────────────
+// Started during PreJoin so WASM+model are loaded before RoomPage needs them.
+// The SelfieSegmentationTransformer reuses this worker instead of creating a new one.
+let preInitWorker: Worker | null = null;
+let preInitWorkerReady = false;
+
+export function preInitBlurWorker(): void {
+  if (preInitWorker) return;
+  try {
+    preInitWorker = new Worker(
+      new URL('./segmentationWorker.ts', import.meta.url),
+      { type: 'module' },
+    );
+    preInitWorker.onmessage = (e: MessageEvent) => {
+      if (e.data?.type === 'ready') {
+        preInitWorkerReady = true;
+        logger.info('[BgEffects] Pre-init worker ready for conference blur');
+      }
+    };
+    preInitWorker.onerror = () => {
+      logger.warn('[BgEffects] Pre-init worker failed — will create on demand');
+      preInitWorker = null;
+    };
+    preInitWorker.postMessage({ type: 'init' });
+    logger.info('[BgEffects] Pre-initializing conference blur worker...');
+  } catch (e) {
+    logger.warn('[BgEffects] Failed to pre-init worker:', e);
+    preInitWorker = null;
+  }
+}
+
+function consumePreInitWorker(): Worker | null {
+  if (preInitWorker && preInitWorkerReady) {
+    const w = preInitWorker;
+    preInitWorker = null;
+    preInitWorkerReady = false;
+    return w;
+  }
+  return null;
+}
+
 interface ManagerState {
   processor: ProcessorWrapper<SelfieSegmentationOptions, SelfieSegmentationTransformer> | null;
   transformer: SelfieSegmentationTransformer | null;
@@ -165,6 +206,11 @@ export async function enableBackgroundEffect(
       bgImagePath: null,
       ...options,
     });
+    // Reuse pre-initialized worker if available (saves ~6s of WASM+model load)
+    const preWorker = consumePreInitWorker();
+    if (preWorker) {
+      transformer.setPreInitializedWorker(preWorker);
+    }
     const processor = new ProcessorWrapper(transformer, 'selfie-segmentation');
 
     await withTimeout(track.setProcessor(processor), OPERATION_TIMEOUT_MS);

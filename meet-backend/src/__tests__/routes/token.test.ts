@@ -374,6 +374,7 @@ describe('Token Routes', () => {
           id: 'room-123',
           status: 'active',
           password_hash: null,
+          waiting_room_enabled: false,
         });
         mockQueryOne.mockResolvedValueOnce({
           waiting_room_enabled: false,
@@ -398,6 +399,7 @@ describe('Token Routes', () => {
           id: 'room-123',
           status: 'active',
           password_hash: null,
+          waiting_room_enabled: false,
         });
         mockQueryOne.mockResolvedValueOnce({
           waiting_room_enabled: false,
@@ -444,6 +446,7 @@ describe('Token Routes', () => {
             id: 'room-123',
             status: 'active',
             password_hash: null,
+            waiting_room_enabled: false,
           });
           mockQueryOne.mockResolvedValueOnce({
             waiting_room_enabled: false,
