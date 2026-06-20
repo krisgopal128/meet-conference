@@ -3,8 +3,17 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
 
+function stripLazyCSS() {
+  return {
+    name: 'strip-lazy-css',
+    transformIndexHtml(html: string) {
+      return html.replace(/<link[^>]*excalidraw[^>]*>/g, '');
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => ({
-  plugins: [react()],
+  plugins: [react(), stripLazyCSS()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -41,12 +50,7 @@ export default defineConfig(({ mode }) => ({
     outDir: 'dist',
     target: 'es2020',
     sourcemap: mode === 'development',
-    modulePreload: {
-      polyfill: true,
-      resolveDependencies: (_filename: string, deps: string[]) => {
-        return deps.filter((dep) => !dep.includes('excalidraw') && !dep.includes('blur-processor') && !dep.includes('cytoscape') && !dep.includes('katex'));
-      },
-    },
+    modulePreload: false,
     rollupOptions: {
       output: {
         manualChunks(id: string) {
