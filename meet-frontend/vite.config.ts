@@ -41,6 +41,12 @@ export default defineConfig(({ mode }) => ({
     outDir: 'dist',
     target: 'es2020',
     sourcemap: mode === 'development',
+    modulePreload: {
+      polyfill: true,
+      resolveDependencies: (_filename: string, deps: string[]) => {
+        return deps.filter((dep) => !dep.includes('excalidraw') && !dep.includes('blur-processor') && !dep.includes('cytoscape') && !dep.includes('katex'));
+      },
+    },
     rollupOptions: {
       output: {
         manualChunks(id: string) {

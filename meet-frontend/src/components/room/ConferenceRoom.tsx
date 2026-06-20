@@ -278,11 +278,6 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
     };
   }, [selectedQualityMode, setCallMetrics]);
 
-  // Preload whiteboard chunk eagerly so first toggle doesn't suspend
-  useEffect(() => {
-    import('./WhiteboardLayout').catch(() => {});
-  }, []);
-
   const isMobile = useIsMobile();
 
   // Mobile: enforce single-panel exclusivity synchronously (before browser paint)
