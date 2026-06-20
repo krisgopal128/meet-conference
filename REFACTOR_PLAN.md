@@ -1,5 +1,9 @@
 # God-File Refactor Plan (M28-M32, M34, M36)
 
+> **STATUS: COMPLETED** — All refactors listed below have been implemented.
+> This file is kept for historical reference. See the actual code in the
+> referenced files.
+
 **Backups:** `/tmp/opencode/refactor-backup/`  
 **Strategy:** Extract-and-mount (not physical file moves). New files are created, original files import and re-export. All existing imports continue to work.
 

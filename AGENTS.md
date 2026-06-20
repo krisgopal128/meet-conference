@@ -9,20 +9,22 @@ meet-conference/
 ├── meet-frontend/     # React + Vite + TypeScript frontend
 │   └── src/
 │       ├── components/   # React components (room, chat, controls, panels, etc.)
-│       ├── hooks/       # Custom React hooks (23 total)
+│       ├── contexts/    # React contexts (ParticipantVisibilityContext)
+│       ├── hooks/       # Custom React hooks (38 total)
 │       ├── services/    # API services
-│       ├── store/       # Zustand state management
+│       ├── store/       # Zustand state management (authStore, roomStore, pipStore)
 │       ├── types/       # TypeScript types
-│       ├── utils/      # Utilities
-│       ├── config/     # Configuration
+│       ├── utils/      # Utilities (background blur, livekit data, logger, etc.)
+│       ├── config/     # Configuration (meetingRoomConfig.ts)
+│       ├── media/      # Media track transfer (sharedTracks.ts)
 │       └── __tests__/  # Vitest tests
 └── meet-backend/      # Express + TypeScript backend
     └── src/
         ├── config.ts, index.ts
-        ├── db/schema.sql, migrations/
-        ├── middleware/ (authenticate, rateLimiter, requireRole, etc.)
-        ├── routes/ (auth, rooms, meetings, webhook, external, etc.)
-        ├── services/ (database, redis, livekit, meetingService, etc.)
+        ├── db/schema.sql
+        ├── middleware/ (authenticate, csrf, rateLimiter, requireRole, etc.)
+        ├── routes/ (auth, rooms, meetings, token, webhook, external, egress, whiteboard, prashasakah/*)
+        ├── services/ (database, redis, livekit, webhookService, roomService, etc.)
         ├── schemas/ (Zod validation)
         ├── utils/
         └── __tests__/
@@ -214,8 +216,11 @@ When handling moderator links from external apps:
 ## Security
 - Never commit `.env` or secrets
 - Rate limit auth endpoints
-- Hash passwords with bcrypt (cost 12)
-- JWT for authentication with expiration
+- Hash passwords with bcryptjs (cost 12)
+- JWT for authentication with expiration (alg pinned to HS256)
+- Access tokens blacklisted in Redis on logout/refresh
+- CSRF protection via double-submit cookie pattern (csrf.ts middleware)
+- Refresh tokens stored as httpOnly cookies with sameSite=lax
 
 ---
 
@@ -241,11 +246,14 @@ When handling moderator links from external apps:
 | Table | Purpose |
 |-------|---------|
 | `users` | User accounts (id, email, password_hash, name, role) |
-| `rooms` | Conference rooms (name, title, host_id, status, max_participants) |
+| `rooms` | Conference rooms (name, title, host_id, status, max_participants, waiting_room_enabled) |
 | `meetings` | Meeting sessions (room_id, participant_count, started_at/ended_at) |
 | `meeting_participants` | Meeting attendance records |
 | `scheduled_meetings` | Scheduled meeting events |
 | `refresh_tokens` | JWT refresh tokens |
+| `chat_messages` | In-meeting chat messages |
+| `whiteboards` | Whiteboard scene + lock state per room |
+| `meeting_diagnostics` | Network/quality diagnostic snapshots |
 
 ### Admin Tables
 | Table | Purpose |
@@ -262,35 +270,43 @@ When handling moderator links from external apps:
 | Prefix | Description |
 |--------|-------------|
 | `/auth` | Register, login, logout, refresh, forgot-password, reset-password, profile |
-| `/token` | Generate LiveKit tokens |
-| `/rooms` | CRUD + join, leave, kick, mute-all |
-| `/meetings` | List, schedule, history, diagnostics |
-| `/egress` | Recording start/stop |
+| `/token` | Generate LiveKit tokens (authenticated + guest) |
+| `/rooms` | CRUD + join, leave, kick, mute, mute-video, lobby management |
+| `/meetings` | List, schedule, history, diagnostics, chat |
+| `/egress` | Recording start/stop/status |
 | `/webhook/livekit` | LiveKit webhook handler |
-| `/prashasakah` | Admin panel API |
+| `/whiteboard` | Whiteboard scene persistence + lock state |
+| `/prashasakah` | Admin panel API (users, rooms, meetings, dashboard, audit, alerts, settings, api-keys) |
 | `/api-keys` | API key CRUD |
 | `/external` | External integrations (Tuition Notebook) |
 | `/health` | Health check |
+| `/ping` | Connectivity check |
 
 ### Frontend Routes
 | Path | Component |
 |------|------------|
 | `/login` | LoginPage |
 | `/register` | RegisterPage |
+| `/forgot-password` | ForgotPasswordPage |
+| `/reset-password/:token` | ResetPasswordPage |
 | `/join/:roomName` | PreJoinPage |
 | `/room/:roomName` | RoomPage |
-| `/schedule` | SchedulePage |
-| `/history` | HistoryPage |
-| `/api-keys` | ApiKeysPage |
-| `/prashasakah/*` | Admin panel |
+| `/` | HomePage (protected) |
+| `/schedule` | SchedulePage (protected) |
+| `/history` | HistoryPage (protected) |
+| `/history/:id` | MeetingDetailPage (protected) |
+| `/recordings` | RecordingsPage (protected) |
+| `/api-keys` | ApiKeysPage (protected) |
+| `/thank-you` | ThankYouPage |
+| `/404` | NotFoundPage |
+| `/prashasakah/*` | Admin panel (10 sub-routes, admin-only) |
 
 ## State Management (Zustand)
 
 ### authStore.ts
-- User authentication state
-- Persisted to localStorage
+- User authentication state (in-memory only, not persisted to localStorage)
 
-### roomStore.ts (707 lines - large)
+### roomStore.ts
 - Connection state (roomName, token, identity, role, isConnecting, isConnected)
 - UI state (layout, chat, participants, settings panels)
 - Quality state (qualityMode, connectionQualityLabel, packetLoss, rtt, jitter)
@@ -299,18 +315,19 @@ When handling moderator links from external apps:
 ### pipStore.ts
 - Picture-in-Picture state
 
-## Custom Hooks (23 total)
+## Custom Hooks (38 total)
 
 | Category | Hooks |
 |----------|-------|
-| Connection | useTokenRefresh, useRequireRole |
-| Media | usePictureInPicture, useAutoPiP, usePermissionEnforcer |
-| Performance | useAdaptiveQuality, useCpuMonitor, useFpsMonitor, useNetworkQuality, useQualityMonitoring |
-| Room | useVisibleParticipants, useVideoPool, useLobbyManager, useAdmittedParticipants |
-| Data | useDataChannelHandler |
-| UI | useTabVisibility, useSettingsSync, useSpeakerManager, useMediaSync |
+| Connection | useTokenRefresh, usePreJoinAuth |
+| Media | usePictureInPicture, useAutoPiP, usePermissionEnforcer, usePreJoinMedia, useMicLevelMeter, useAudioControls, useVideoControls, useScreenShareControls, useMediaSync |
+| Performance | useAdaptiveQuality, useCpuMonitor, useFpsMonitor, useNetworkQuality, useQualityMonitoring, useCallHealthMonitor, useCallSizeConfig |
+| Room | useVisibleParticipants, useVideoPool, useLobbyPolling, useAdmittedParticipants, useParticipantActions, useMeetingActions |
+| Data | useDataChannelHandler, useWhiteboardSync, useWhiteboardAutoSave |
+| UI | useTabVisibility, useSettingsSync, useSpeakerManager, useIsMobile |
 | Audio | useJoinLeaveSounds |
-| Utils | useFormValidation, useCallSizeConfig |
+| Background | useBackgroundBlurPreview, usePreviewBackgroundBlur, useLightweightVideoFilter |
+| Utils | useFormValidation |
 
 ## Authentication Flow
 

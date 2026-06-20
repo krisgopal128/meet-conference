@@ -91,7 +91,7 @@ A real-time video conferencing platform built with React, Express, and LiveKit �
 
 | Layer | Technology |
 |-------|-----------|
-| **Frontend** | React 19, TypeScript, Vite, Tailwind CSS, Zustand |
+| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, Zustand |
 | **Backend** | Express.js, TypeScript, Zod validation |
 | **WebRTC** | LiveKit Server 1.10.0, LiveKit Client SDK |
 | **Database** | PostgreSQL 16 |
@@ -109,7 +109,7 @@ meet-conference/
 ├── meet-frontend/          # React + Vite frontend
 │   ├── src/
 │   │   ├── components/     # UI components (chat, controls, room, pip, etc.)
-│   │   ├── hooks/          # 30+ custom React hooks
+│   │   ├── hooks/          # 38 custom React hooks
 │   │   ├── pages/          # 15 pages (Home, Login, Room, Schedule, etc.)
 │   │   ├── services/       # API client services
 │   │   ├── store/          # Zustand state management (5 slices)
