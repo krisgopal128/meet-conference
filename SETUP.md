@@ -55,12 +55,12 @@ Complete step-by-step guide to deploy the Meet Conference platform from source.
 
 ```bash
 # Clone or copy the project to your desired location
-cd /home/jspace
+cd $PROJECT_DIR
 # Option A: Clone from git
 git clone <your-repo-url> meet-conference
 
 # Option B: Copy existing folder
-cp -r /path/to/meet-conference /home/jspace/meet-conference
+cp -r /path/to/meet-conference $PROJECT_DIR
 
 cd meet-conference
 ```
@@ -108,14 +108,14 @@ npm --version    # Should show 10.x.x
 ### Install Backend Dependencies
 
 ```bash
-cd /home/jspace/meet-conference/meet-backend
+cd $PROJECT_DIR/meet-backend
 npm install
 ```
 
 ### Install Frontend Dependencies
 
 ```bash
-cd /home/jspace/meet-conference/meet-frontend
+cd $PROJECT_DIR/meet-frontend
 npm install
 ```
 
@@ -151,7 +151,7 @@ sudo chmod +x /usr/local/bin/livekit-server
 
 ### Backend (.env)
 
-Create `/home/jspace/meet-conference/meet-backend/.env`:
+Create `$PROJECT_DIR/meet-backend/.env`:
 
 ```bash
 # Server
@@ -180,7 +180,7 @@ FRONTEND_URL=https://meet.yourdomain.com
 
 ### Frontend (.env)
 
-Create `/home/jspace/meet-conference/meet-frontend/.env`:
+Create `$PROJECT_DIR/meet-frontend/.env`:
 
 ```bash
 # API URL (relative path, proxied through Caddy)
@@ -200,7 +200,7 @@ openssl rand -base64 32
 openssl rand -hex 24
 
 # Generate LiveKit API Key/Secret (or use livekit-cli generate-keys)
-livekit-server --generate-keys
+livekit-server generate-keys
 ```
 
 ---
@@ -223,22 +223,10 @@ GRANT ALL PRIVILEGES ON DATABASE meetdb TO meetapp;
 ### Run Migrations
 
 ```bash
-cd /home/jspace/meet-conference/meet-backend
+cd $PROJECT_DIR/meet-backend
 
-# Run all migrations
-npm run db:migrate
-
-# Or manually:
-psql -U meetapp -d meetdb -f src/db/migrations/001_add_chat_messages.sql
-psql -U meetapp -d meetdb -f src/db/migrations/002_add_performance_indexes.sql
-# ... etc
-```
-
-### (Optional) Seed Mock Data
-
-```bash
-# For development/testing
-psql -U meetapp -d meetdb -f scripts/seed-mock-data.sql
+# Initialize database schema (single file with all tables, indexes, constraints)
+psql -U meetapp -d meetdb -f src/db/schema.sql
 ```
 
 ---
@@ -247,7 +235,7 @@ psql -U meetapp -d meetdb -f scripts/seed-mock-data.sql
 
 ### Create livekit.yaml
 
-Create `/home/jspace/meet-conference/livekit/livekit.yaml`:
+Create `$PROJECT_DIR/livekit/livekit.yaml`:
 
 ```yaml
 # LiveKit Server Configuration
@@ -290,8 +278,8 @@ After=network.target
 [Service]
 Type=simple
 User=jspace
-WorkingDirectory=/home/jspace/meet-conference
-ExecStart=/usr/local/bin/livekit-server --config /home/jspace/meet-conference/livekit/livekit.yaml
+WorkingDirectory=$PROJECT_DIR
+ExecStart=/usr/local/bin/livekit-server --config $PROJECT_DIR/livekit/livekit.yaml
 Restart=on-failure
 RestartSec=5
 
@@ -337,7 +325,7 @@ livekit.yourdomain.com {
 meet.yourdomain.com {
     # Define API path matcher
     @api {
-        path /auth* /token* /rooms* /meetings* /egress* /webhook*
+        path /auth* /token* /rooms* /meetings* /egress* /webhook* /whiteboard* /prashasakah* /api-keys* /external*
     }
     
     # API routes go to Express backend
@@ -380,7 +368,7 @@ Point these domains to your server IP:
 ### Option A: Using the Startup Script
 
 ```bash
-cd /home/jspace/meet-conference
+cd $PROJECT_DIR
 chmod +x start-meet.sh
 
 # Start all services
@@ -415,16 +403,16 @@ sudo systemctl start livekit
 sudo systemctl start caddy
 
 # 5. Build and start Backend
-cd /home/jspace/meet-conference/meet-backend
+cd $PROJECT_DIR/meet-backend
 npm run build
 npm run start &
 
 # 6. Start Frontend (development mode)
-cd /home/jspace/meet-conference/meet-frontend
+cd $PROJECT_DIR/meet-frontend
 npm run dev &
 
 # OR for production build:
-cd /home/jspace/meet-conference/meet-frontend
+cd $PROJECT_DIR/meet-frontend
 npm run build
 npm run preview -- --port 5173 &
 ```
@@ -497,7 +485,7 @@ kill -9 <PID>
 psql -U meetapp -d meetdb -c "SELECT 1;"
 
 # Check logs
-tail -f /home/jspace/meet-conference/logs/backend.log
+tail -f $PROJECT_DIR/logs/backend.log
 ```
 
 #### Frontend shows blank page
@@ -510,7 +498,7 @@ lsof -i :5173
 # Hard refresh: Ctrl+Shift+R
 
 # Verify environment variables
-cat /home/jspace/meet-conference/meet-frontend/.env
+cat $PROJECT_DIR/meet-frontend/.env
 ```
 
 #### API returns 404
@@ -536,7 +524,7 @@ sudo systemctl status livekit
 sudo journalctl -u livekit -f
 
 # Verify LiveKit config
-cat /home/jspace/meet-conference/livekit/livekit.yaml
+cat $PROJECT_DIR/livekit/livekit.yaml
 
 # Test LiveKit directly
 curl http://localhost:7880
@@ -573,8 +561,8 @@ dig meet.yourdomain.com
 
 | Service | Log Location |
 |---------|--------------|
-| Backend | `/home/jspace/meet-conference/logs/backend.log` |
-| Frontend | `/home/jspace/meet-conference/logs/frontend.log` |
+| Backend | `$PROJECT_DIR/logs/backend.log` |
+| Frontend | `$PROJECT_DIR/logs/frontend.log` |
 | LiveKit | `sudo journalctl -u livekit` |
 | Caddy | `sudo journalctl -u caddy` |
 | PostgreSQL | `/var/log/postgresql/` |
@@ -608,7 +596,7 @@ sudo systemctl restart postgresql redis-server livekit caddy
 sudo systemctl start postgresql redis-server livekit caddy
 
 # 2. Start the app
-cd /home/jspace/meet-conference && ./start-meet.sh
+cd $PROJECT_DIR && ./start-meet.sh
 
 # 3. Verify
 curl https://meet.yourdomain.com
@@ -617,13 +605,13 @@ curl https://meet.yourdomain.com
 ### Stop Command Sequence
 
 ```bash
-cd /home/jspace/meet-conference && ./start-meet.sh --stop
+cd $PROJECT_DIR && ./start-meet.sh --stop
 ```
 
 ### Update & Restart
 
 ```bash
-cd /home/jspace/meet-conference
+cd $PROJECT_DIR
 git pull  # if using git
 ./start-meet.sh --restart
 ```
@@ -642,7 +630,7 @@ After seeding mock data:
 ## Support
 
 If issues persist:
-1. Check logs in `/home/jspace/meet-conference/logs/`
+1. Check logs in `$PROJECT_DIR/logs/`
 2. Run `./start-meet.sh --status` for service health
 3. Verify all environment variables are set correctly
 4. Ensure DNS is properly configured

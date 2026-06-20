@@ -1,5 +1,16 @@
 # Whiteboard Integration Plan — Meet Conference
 
+> **STATUS: FULLY IMPLEMENTED** — The whiteboard feature described in this plan
+> is live in production. Implementation files:
+> - `routes/whiteboard.ts` (backend persistence)
+> - `hooks/useWhiteboardSync.ts` (real-time sync via data channels)
+> - `hooks/useWhiteboardAutoSave.ts` (auto-save)
+> - `components/room/WhiteboardLayout.tsx` (Excalidraw integration)
+> - `db/schema.sql` table `whiteboards` (scene + lock state)
+>
+> This plan is kept for design context. Schema differs from proposal
+> (simplified to `id, room_id, scene, locked, updated_at`).
+
 > Advisory document for adding an Excalidraw-style collaborative whiteboard to the meeting room.
 > Date: 2026-05-21 | Author: Peter (nanobot)
 
