@@ -411,8 +411,8 @@ const fallbackConfig: MeetingRoomConfig = {
       maxWidth: 1920,
       minHeight: 180,        // Lower min for struggling clients
       maxHeight: 1080,
-      frameRate: 24,         // Reduced from 30 for stability
-      minFrameRate: 10,      // Allow lower framerate for struggling clients
+      frameRate: 30,
+      minFrameRate: 10,
       maxFrameRate: 30,
       facingMode: 'user',
     },
@@ -444,9 +444,9 @@ const fallbackConfig: MeetingRoomConfig = {
       },
       screenShareEncoding: {
         minBitrate: 300000,
-        maxBitrate: 800000,  // Reduced for stability
-        minFramerate: 3,     // Lower minimum
-        maxFramerate: 10,    // Reduced from 15
+        maxBitrate: 1000000,  // Aligned with documents mode (was 800000 — dead config overridden by per-mode bitrate)
+        minFramerate: 5,
+        maxFramerate: 12,     // Aligned with documents mode (was 10 — dead config)
       },
     },
     simulcastLayers: {
@@ -455,7 +455,7 @@ const fallbackConfig: MeetingRoomConfig = {
       low: { width: 320, height: 180, frameRate: 15, maxBitrate: 200000 },      // Thumbnails, small tiles
       medium: { width: 640, height: 360, frameRate: 24, maxBitrate: 800000 },   // Small grid tiles
       high: { width: 1280, height: 720, frameRate: 30, maxBitrate: 2500000 },   // Medium/large tiles
-      ultra: { width: 1920, height: 1080, frameRate: 30, maxBitrate: 4500000 }, // Fullscreen, pinned
+      ultra: { width: 1920, height: 1080, frameRate: 30, maxBitrate: 3500000 }, // Capped from 4.5M — 720p upscale is indistinguishable for talking-head video
     },
     screenShare: {
       defaultMode: 'documents',
@@ -466,7 +466,7 @@ const fallbackConfig: MeetingRoomConfig = {
         maxWidth: 2560,
         minHeight: 720,
         maxHeight: 1440,
-        frameRate: 8,
+        frameRate: 12,
         minFrameRate: 5,
         maxFrameRate: 15,
       },
@@ -476,7 +476,7 @@ const fallbackConfig: MeetingRoomConfig = {
       systemAudio: 'include',
       selfBrowserSurface: 'exclude',
       modes: {
-        documents: { width: 1920, height: 1080, frameRate: 8, maxBitrate: 1000000 },
+        documents: { width: 1920, height: 1080, frameRate: 12, maxBitrate: 1000000 },
         motion: { width: 1920, height: 1080, frameRate: 30, maxBitrate: 2500000 },
       },
     },
@@ -841,17 +841,23 @@ export function resolveBackupCodecPolicy() {
 }
 
 export function getVideoSimulcastLayers(mode?: QualityModeName) {
-  const { settings, name } = getQualityModeConfig(mode);
+  const { settings } = getQualityModeConfig(mode);
+  const isMobile = isMobileViewport() && meetingRoomConfig.mobile.enabled;
   const layerOrder: Array<keyof MeetingRoomConfig['media']['simulcastLayers']> =
-    name === 'dataSaver' || (isMobileViewport() && meetingRoomConfig.mobile.enabled)
+    isMobile
       ? ['low', 'medium', 'high']
       : ['low', 'medium', 'high', 'ultra'];
+
+  // Mobile max resolution caps which layers are worth subscribing to
+  const mobileMaxRes = isMobile ? parseResolution(meetingRoomConfig.mobile.maxResolution) : null;
 
   return layerOrder
     .map((key) => meetingRoomConfig.media.simulcastLayers[key])
     .filter((layer) => {
       const resolution = parseResolution(settings.cameraMaxResolution);
-      return !resolution || layer.width <= resolution.width;
+      const qualityCap = !resolution || layer.width <= resolution.width;
+      const mobileCap = !mobileMaxRes || layer.width <= mobileMaxRes.width;
+      return qualityCap && mobileCap;
     })
     .map((layer) => new VideoPreset(layer.width, layer.height, layer.maxBitrate, layer.frameRate));
 }
