@@ -35,10 +35,11 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { ASPECT_RATIO_MULTIPLIERS } from '../../utils/aspectRatio';
 import logger from '../../utils/logger';
 
-import '@excalidraw/excalidraw/index.css';
-
 const Excalidraw = React.lazy(() =>
-  import('@excalidraw/excalidraw').then((mod) => ({ default: mod.Excalidraw })),
+  import('@excalidraw/excalidraw').then(async (mod) => {
+    await import('@excalidraw/excalidraw/index.css');
+    return { default: mod.Excalidraw };
+  }),
 );
 
 interface WhiteboardLayoutProps {
