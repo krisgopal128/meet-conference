@@ -551,6 +551,12 @@ meetingsRouter.get('/:id/chat', authenticate, async (req: AuthRequest, res: Resp
     const { id } = req.params;
     const { limit = 100, before } = req.query;
 
+    // Guard: reject non-UUID IDs early (prevents DB uuid parse errors / log spam)
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID_REGEX.test(id)) {
+      return res.status(404).json({ error: 'Meeting not found' });
+    }
+
     // Verify meeting exists and user has access
     const meeting = await verifyMeetingAccess(id, user.id);
 
@@ -606,6 +612,12 @@ meetingsRouter.post('/:id/chat', authenticate, async (req: AuthRequest, res: Res
 
     if (content.length > 5000) {
       return res.status(400).json({ error: 'Message too long (max 5000 characters)' });
+    }
+
+    // Guard: reject non-UUID IDs early (prevents DB uuid parse errors / log spam)
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID_REGEX.test(id)) {
+      return res.status(404).json({ error: 'Meeting not found' });
     }
 
     // Verify meeting exists and user has access
