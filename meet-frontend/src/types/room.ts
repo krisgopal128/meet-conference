@@ -18,6 +18,7 @@ export interface CreateRoomPayload {
   name: string;
   title?: string;
   description?: string;
+  password?: string;
   maxParticipants?: number;
   waitingRoomEnabled?: boolean;
   startsAt?: string;

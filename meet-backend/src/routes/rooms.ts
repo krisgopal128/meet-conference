@@ -49,6 +49,7 @@ const createRoomSchema = z.object({
 const updateRoomSchema = z.object({
   title: z.string().max(255).optional(),
   description: z.string().max(1000).optional(),
+  password: z.string().max(255).optional(),
   maxParticipants: z.number().min(2).max(100).optional(),
   status: z.enum(['waiting', 'active', 'ended']).optional(),
   waitingRoomEnabled: z.boolean().optional(),
@@ -241,9 +242,13 @@ const updateRoomSchema = z.object({
         return res.status(403).json({ error: 'Only the host can update this room' });
       }
 
+      const roomPassword = data.password?.trim();
+      const roomPasswordHash = roomPassword ? await bcrypt.hash(roomPassword, 12) : data.password !== undefined ? null : undefined;
+
       const updated = await roomService.updateRoom(name, {
         title: data.title,
         description: data.description,
+        passwordHash: roomPasswordHash,
         maxParticipants: data.maxParticipants,
         status: data.status,
         waitingRoomEnabled: data.waitingRoomEnabled,

@@ -151,6 +151,7 @@ export async function updateRoom(
   updates: {
     title?: string | null;
     description?: string | null;
+    passwordHash?: string | null;
     maxParticipants?: number;
     status?: string;
     waitingRoomEnabled?: boolean;
@@ -179,6 +180,10 @@ export async function updateRoom(
   if (updates.waitingRoomEnabled !== undefined) {
     setClauses.push(`waiting_room_enabled = $${paramIdx++}`);
     params.push(updates.waitingRoomEnabled);
+  }
+  if (updates.passwordHash !== undefined) {
+    setClauses.push(`password_hash = $${paramIdx++}`);
+    params.push(updates.passwordHash);
   }
 
   params.push(name);

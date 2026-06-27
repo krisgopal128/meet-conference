@@ -8,7 +8,7 @@ import type { StatItem } from '../components/shared/DashboardStats';
 import { cn } from '../utils/cn';
 import { generateRoomName } from '../utils/roomName';
 import type { Room, ScheduledMeeting } from '../types';
-import { Plus, Link2 as LinkIcon, ArrowRight, X, Trash2, Calendar, Clock, AlertCircle, Check, Video, Users, Share2, ChevronRight, LayoutGrid } from 'lucide-react';
+import { Plus, Link2 as LinkIcon, ArrowRight, X, Trash2, Calendar, Clock, AlertCircle, Check, Video, Users, Share2, ChevronRight, LayoutGrid, Lock, EyeOff, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format, parseISO } from 'date-fns';
 import logger from '../utils/logger';
@@ -59,6 +59,8 @@ function HomePageContent() {
   // Form state
   const [roomName, setRoomName] = useState('');
   const [roomTitle, setRoomTitle] = useState('');
+  const [meetingPassword, setMeetingPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
@@ -224,6 +226,7 @@ function HomePageContent() {
       const response = await createRoom({
         name: roomName,
         title: roomTitle || undefined,
+        password: meetingPassword || undefined,
       });
       
       if (response?.data?.room) {
@@ -231,6 +234,8 @@ function HomePageContent() {
         setShowCreateModal(false);
         setRoomName('');
         setRoomTitle('');
+        setMeetingPassword('');
+        setShowPassword(false);
         setRoomNameTouched(false);
         reloadRooms();
       }
@@ -240,7 +245,7 @@ function HomePageContent() {
     } finally {
       setCreating(false);
     }
-  }, [creating, roomName, roomTitle, roomNameError, reloadRooms]);
+  }, [creating, roomName, roomTitle, meetingPassword, roomNameError, reloadRooms]);
 
   // Delete room
   const handleDeleteRoom = useCallback(async (roomName: string, e: React.MouseEvent) => {
@@ -538,6 +543,8 @@ function HomePageContent() {
               setShowCreateModal(false);
               setRoomName('');
               setRoomTitle('');
+              setMeetingPassword('');
+              setShowPassword(false);
               setRoomNameTouched(false);
             }
           }}
@@ -555,14 +562,16 @@ function HomePageContent() {
               </h2>
               <button
                 ref={closeButtonRef}
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setRoomName('');
-                  setRoomTitle('');
-                  setRoomNameTouched(false);
-                }}
-                className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 transition"
-                aria-label="Close"
+            onClick={() => {
+              setShowCreateModal(false);
+              setRoomName('');
+              setRoomTitle('');
+              setMeetingPassword('');
+              setShowPassword(false);
+              setRoomNameTouched(false);
+            }}
+            className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 transition"
+            aria-label="Close"
               >
                 <X size={18} className="text-surface-500" />
               </button>
@@ -612,6 +621,33 @@ function HomePageContent() {
                   />
                   <p className="form-hint">Friendly name shown to participants</p>
                 </div>
+
+                <div className="form-group">
+                  <label htmlFor="meetingPassword" className="flex items-center gap-2">
+                    <Lock size={14} className="text-surface-400" />
+                    Password <span className="text-surface-400 font-normal">(optional)</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="meetingPassword"
+                      type={showPassword ? "text" : "password"}
+                      value={meetingPassword}
+                      onChange={(e) => setMeetingPassword(e.target.value)}
+                      placeholder="Leave empty for no password"
+                      maxLength={255}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  <p className="form-hint">Protect your meeting with a password</p>
+                </div>
               </div>
 
               <div className="modal-footer">
@@ -621,6 +657,8 @@ function HomePageContent() {
                     setShowCreateModal(false);
                     setRoomName('');
                     setRoomTitle('');
+                    setMeetingPassword('');
+                    setShowPassword(false);
                     setRoomNameTouched(false);
                   }}
                   className="btn-secondary"
