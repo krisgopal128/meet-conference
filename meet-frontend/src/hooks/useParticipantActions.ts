@@ -5,7 +5,7 @@
  * Handles kick, mute, camera disable, lobby admit/deny, and bulk actions.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { Room } from 'livekit-client';
 import { roomsApi } from '../services/api';
 import logger from '../utils/logger';
@@ -32,8 +32,13 @@ export function useParticipantActions(
     return message || fallback;
   };
 
+  // Ref so the callback identity stays stable — prevents all ParticipantListItem
+  // children from re-rendering whenever any one participant's pending state changes.
+  const pendingRef = useRef(pendingParticipantActions);
+  pendingRef.current = pendingParticipantActions;
+
   const withParticipantAction = useCallback(async (participantIdentity: string, action: () => Promise<void>) => {
-    if (pendingParticipantActions.has(participantIdentity)) {
+    if (pendingRef.current.has(participantIdentity)) {
       return;
     }
 
@@ -47,7 +52,7 @@ export function useParticipantActions(
         return next;
       });
     }
-  }, [pendingParticipantActions]);
+  }, []);
 
   // Admit participant from lobby
   const handleAdmit = useCallback(async (participantIdentity: string) => {
