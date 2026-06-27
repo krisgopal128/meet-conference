@@ -340,15 +340,15 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
                   Loading layout…
                 </div>
               }>
-                {(layout === 'grid' || layout === 'speaker') && (
-                  <>
-                    <div className={`absolute inset-0 ${layout === 'grid' ? '' : 'hidden'}`}>
-                      <GridLayout />
-                    </div>
-                    <div className={`absolute inset-0 ${layout === 'speaker' ? '' : 'hidden'}`}>
-                      <SpeakerLayout activeSpeakers={activeSpeakers} />
-                    </div>
-                  </>
+                {layout === 'grid' && (
+                  <div className="absolute inset-0">
+                    <GridLayout />
+                  </div>
+                )}
+                {layout === 'speaker' && (
+                  <div className="absolute inset-0">
+                    <SpeakerLayout activeSpeakers={activeSpeakers} />
+                  </div>
                 )}
                 {layout === 'screenshare' && <ScreenShareLayout />}
                 {layout === 'whiteboard' && <WhiteboardLayout room={room} roomName={_props.roomName} />}
