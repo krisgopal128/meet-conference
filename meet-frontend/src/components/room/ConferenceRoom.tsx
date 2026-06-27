@@ -340,16 +340,16 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
                   Loading layout…
                 </div>
               }>
-                {layout === 'grid' && (
-                  <div className="absolute inset-0">
-                    <GridLayout />
-                  </div>
-                )}
-                {layout === 'speaker' && (
-                  <div className="absolute inset-0">
-                    <SpeakerLayout activeSpeakers={activeSpeakers} />
-                  </div>
-                )}
+                {/* Keep both grid and speaker layouts mounted to preserve video
+                    track subscriptions across layout switches. Use opacity — NOT
+                    display:none — so adaptiveStream sees non-zero element sizes
+                    and keeps streams flowing. */}
+                <div className={`absolute inset-0 transition-opacity duration-150 ${layout === 'grid' ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none'}`}>
+                  <GridLayout />
+                </div>
+                <div className={`absolute inset-0 transition-opacity duration-150 ${layout === 'speaker' ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none'}`}>
+                  <SpeakerLayout activeSpeakers={activeSpeakers} />
+                </div>
                 {layout === 'screenshare' && <ScreenShareLayout />}
                 {layout === 'whiteboard' && <WhiteboardLayout room={room} roomName={_props.roomName} />}
               </Suspense>
