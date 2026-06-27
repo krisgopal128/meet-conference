@@ -9,6 +9,7 @@ import { AuthRequest } from '../../middleware/authenticate.js';
 import { requireAdmin, requireModerator } from '../../middleware/requireRole.js';
 import { query, queryOne } from '../../services/database.js';
 import { getCached, invalidateCache, invalidatePattern, buildListKey, TTL_MEDIUM, TTL_LONG } from '../../services/cache.js';
+import { auditAdminAction } from '../../utils/auditLog.js';
 import logger from '../../utils/logger.js';
 import { RoomServiceClient } from 'livekit-server-sdk';
 import { config } from '../../config.js';
@@ -209,6 +210,7 @@ router.post('/rooms/:id/end', adminActionLimiter, requireModerator(), async (req
     `, [id]);
 
     logger.info(`[Admin] Room ${id} ended by ${req.user?.id}`);
+    void auditAdminAction(req, 'room_end', 'room', id, room ? { roomName: room.name } : {});
 
     // Invalidate room and meeting caches
     await invalidateCache(`cache:rooms:detail:${id}`);
@@ -228,6 +230,7 @@ router.delete('/rooms/:id', adminActionLimiter, requireAdmin(), async (req: Auth
 
     await query('DELETE FROM rooms WHERE id = $1', [id]);
     logger.info(`[Admin] Room ${id} deleted by ${req.user?.id}`);
+    void auditAdminAction(req, 'room_delete', 'room', id, {});
 
     // Invalidate room caches
     await invalidateCache(`cache:rooms:detail:${id}`);

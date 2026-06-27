@@ -51,11 +51,9 @@ function HomePageContent() {
   // Stats state
   const [stats, setStats] = useState<StatItem[]>([]);
   const [loadingStats, setLoadingStats] = useState(true);
-  const [_statsLoaded, setStatsLoaded] = useState(false);
-  
+
   // Scheduled meetings state
   const [upcomingMeetings, setUpcomingMeetings] = useState<ScheduledMeeting[]>([]);
-  const [_loadingUpcoming, setLoadingUpcoming] = useState(true);
   const [upcomingLoaded, setUpcomingLoaded] = useState(false);
   
   // Form state
@@ -103,7 +101,7 @@ function HomePageContent() {
   }, [roomName, roomNameTouched]);
 
   // Lightweight room + stats reload (for after create/delete)
-  const reloadRooms = async () => {
+  const reloadRooms = useCallback(async () => {
     try {
       const response = await getMyRooms();
       if (!mountedRef.current) return;
@@ -113,7 +111,9 @@ function HomePageContent() {
     } catch (err) {
       logger.error('Failed to reload rooms:', err);
     }
-  };
+  // loadDeferredData is stable enough (only closes over state setters + mountedRef)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Critical data - loads immediately
   const loadCriticalData = async () => {
@@ -133,7 +133,7 @@ function HomePageContent() {
   const loadDeferredData = async () => {
     if (!mountedRef.current) return;
     setLoadingStats(true);
-    setLoadingUpcoming(true);
+    setUpcomingLoaded(false);
     
     try {
       const [statsRes, scheduledRes] = await Promise.all([
@@ -176,7 +176,6 @@ function HomePageContent() {
 
       if (mountedRef.current) {
         setStats(newStats);
-        setStatsLoaded(true);
         setUpcomingMeetings(scheduled);
         setUpcomingLoaded(true);
       }
@@ -185,7 +184,6 @@ function HomePageContent() {
     } finally {
       if (mountedRef.current) {
         setLoadingStats(false);
-        setLoadingUpcoming(false);
       }
     }
   };

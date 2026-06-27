@@ -14,8 +14,9 @@ const router = Router();
 
 const VALID_ACTION_TYPES = [
   'auth_failed', 'user_ban', 'user_unban', 'user_delete', 'user_update',
-  'meeting_end', 'room_delete', 'settings_update', 'role_change',
-  'api_key_create', 'api_key_delete', 'api_key_regenerate',
+  'password_reset', 'password_change',
+  'meeting_end', 'room_delete', 'room_end', 'settings_update', 'config_update', 'role_change',
+  'api_key_create', 'api_key_delete', 'api_key_regenerate', 'api_key_update',
 ] as const;
 
 router.get('/audit-logs', requireAdmin(), async (req: AuthRequest, res: Response) => {

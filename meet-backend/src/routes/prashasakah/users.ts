@@ -13,6 +13,7 @@ import { AuthRequest, invalidateUserAuth, setUserBanned, clearUserBanned } from 
 import { requireAdmin, requireModerator } from '../../middleware/requireRole.js';
 import { query, queryOne } from '../../services/database.js';
 import { sanitizeName, validatePassword } from '../../utils/validation.js';
+import { auditAdminAction } from '../../utils/auditLog.js';
 import { getCached, invalidateCache, invalidatePattern, buildListKey, TTL_MEDIUM } from '../../services/cache.js';
 import logger from '../../utils/logger.js';
 import { adminActionLimiter } from './rateLimiter.js';
@@ -238,9 +239,20 @@ router.patch('/users/:id', adminActionLimiter, requireModerator(), async (req: A
 
     params.push(id);
 
+    let previousRole: string | undefined;
+    if (role !== undefined) {
+      const before = await queryOne<{ role: string }>('SELECT role FROM users WHERE id = $1', [id]);
+      previousRole = before?.role;
+    }
+
     await query(`
       UPDATE users SET ${updateFields.join(', ')} WHERE id = $${paramIndex}
     `, params);
+
+    if (role !== undefined && role !== previousRole) {
+      void auditAdminAction(req, 'role_change', 'user', id, { fromRole: previousRole ?? null, toRole: role });
+    }
+    void auditAdminAction(req, 'user_update', 'user', id, { name: name ?? undefined, role: role ?? undefined });
 
     // Invalidate user caches
     await invalidateCache(`cache:users:detail:${id}`);
@@ -293,6 +305,7 @@ router.post('/users/:id/ban', adminActionLimiter, requireModerator(), async (req
     const banReason = typeof reason === 'string' && reason.trim() ? reason.trim().substring(0, 500) : null;
     await query('UPDATE users SET is_banned = true, ban_reason = $2, banned_at = NOW(), banned_by = $3 WHERE id = $1', [id, banReason, req.user!.id]);
     logger.info(`[Admin] User ${id} banned by ${req.user?.id}${banReason ? ` - Reason: ${banReason}` : ''}`);
+    void auditAdminAction(req, 'user_ban', 'user', id, { reason: banReason });
 
     // Invalidate user caches
     await invalidateCache(`cache:users:detail:${id}`);
@@ -337,6 +350,7 @@ router.post('/users/:id/unban', adminActionLimiter, requireModerator(), async (r
 
     await query('UPDATE users SET is_banned = false, ban_reason = NULL, banned_at = NULL, banned_by = NULL WHERE id = $1', [id]);
     logger.info(`[Admin] User ${id} unbanned by ${req.user?.id}`);
+    void auditAdminAction(req, 'user_unban', 'user', id, {});
 
     // Invalidate user caches
     await invalidateCache(`cache:users:detail:${id}`);
@@ -375,6 +389,7 @@ router.delete('/users/:id', adminActionLimiter, requireAdmin(), async (req: Auth
 
     await query('DELETE FROM users WHERE id = $1', [id]);
     logger.info(`[Admin] User ${id} deleted by ${req.user?.id}`);
+    void auditAdminAction(req, 'user_delete', 'user', id, {});
 
     // Invalidate user caches
     await invalidateCache(`cache:users:detail:${id}`);
@@ -398,6 +413,7 @@ router.post('/users/:id/reset-password', adminActionLimiter, requireAdmin(), asy
 
     await query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, id]);
     logger.info(`[Admin] Password reset for user ${id} by ${req.user?.id}.`);
+    void auditAdminAction(req, 'password_reset', 'user', id, { method: 'admin_reset' });
 
     await invalidateCache(`cache:users:detail:${id}`);
     await invalidatePattern('cache:users:*');
@@ -436,6 +452,7 @@ router.put('/users/:id/change-password', adminActionLimiter, requireAdmin(), asy
     const passwordHash = await bcrypt.hash(password, 12);
     await query('UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2', [passwordHash, id]);
     logger.info(`[Admin] Password changed for user ${id} by admin ${req.user?.id}`);
+    void auditAdminAction(req, 'password_change', 'user', id, { method: 'admin_set' });
 
     await invalidateCache(`cache:users:detail:${id}`);
     await invalidatePattern('cache:users:*');

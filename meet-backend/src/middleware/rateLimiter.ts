@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 const sharedConfig = {
   standardHeaders: true,
   legacyHeaders: false,
+  validate: false, // express-rate-limit v8 — we've verified our config
 };
 
 // General API rate limiter

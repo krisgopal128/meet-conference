@@ -161,7 +161,10 @@ router.post('/', async (req: Request, res: Response) => {
     logger.info(`[API Keys] User ${userId} created API key: ${name}`);
 
     await invalidatePattern('cache:apikeys:*').catch(() => {});
-    
+    // Also invalidate the verification cache so the old key stops authenticating
+    // immediately (otherwise it stays valid for up to 60s — see external.ts).
+    await invalidatePattern('apikey:*').catch(() => {});
+
     // Return the key ONLY on creation (can't be retrieved later)
     res.status(201).json({
       id: newKey.id,
@@ -279,7 +282,8 @@ router.patch('/:id', async (req: Request, res: Response) => {
     logger.info(`[API Keys] User ${userId} updated API key: ${id}`);
 
     await invalidatePattern('cache:apikeys:*').catch(() => {});
-    
+    await invalidatePattern('apikey:*').catch(() => {});
+
     res.json({ success: true, message: 'API key updated' });
     
   } catch (error) {
@@ -313,7 +317,8 @@ router.delete('/:id', async (req: Request, res: Response) => {
     logger.info(`[API Keys] User ${userId} deleted API key: ${existing.name}`);
 
     await invalidatePattern('cache:apikeys:*').catch(() => {});
-    
+    await invalidatePattern('apikey:*').catch(() => {});
+
     res.json({ success: true, message: 'API key deleted' });
     
   } catch (error) {
@@ -354,7 +359,8 @@ router.post('/:id/regenerate', async (req: Request, res: Response) => {
     logger.info(`[API Keys] User ${userId} regenerated API key: ${existing.name}`);
 
     await invalidatePattern('cache:apikeys:*').catch(() => {});
-    
+    await invalidatePattern('apikey:*').catch(() => {});
+
     // Return the new key (only shown once!)
     res.json({
       id,

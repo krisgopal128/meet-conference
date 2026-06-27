@@ -12,8 +12,6 @@ import logger from '../../utils/logger';
  */
 
 interface MeetingData extends AdminMeeting {
-  room_id: string;
-  recording_url?: string | null;
 }
 
 function formatDateTime(dateStr: string | null | undefined): string {
@@ -160,7 +158,7 @@ export default function MeetingDetail() {
   }
 
   const isOngoing = meeting.status === 'ongoing';
-  const safeRecordingUrl = getSafeRecordingUrl(meeting.recording_url);
+  const safeRecordingUrl = getSafeRecordingUrl(meeting.recordingUrl);
 
   return (
     <div className="space-y-6">

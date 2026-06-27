@@ -8,6 +8,7 @@ import { Router, Response } from 'express';
 import { requireAdmin } from '../../middleware/requireRole.js';
 import type { AuthRequest } from '../../middleware/authenticate.js';
 import { query, queryOne } from '../../services/database.js';
+import { auditAdminAction } from '../../utils/auditLog.js';
 import { getCached, invalidatePattern, buildListKey, TTL_LONG } from '../../services/cache.js';
 import logger from '../../utils/logger.js';
 import { adminActionLimiter } from './rateLimiter.js';
@@ -137,6 +138,8 @@ router.patch('/api-keys/admin/:id', adminActionLimiter, requireAdmin(), async (r
     
     logger.info(`[Admin API Keys] Admin ${req.user?.id} updated key ${id}: is_active=${isActive}${reason ? `, reason: ${reason}` : ''}`);
 
+    await auditAdminAction(req, 'api_key_update', 'api_key', id, { isActive, reason });
+
     // Invalidate API key caches
     await invalidatePattern('cache:apikeys:*');
     await invalidatePattern('apikey:*');
@@ -165,6 +168,8 @@ router.delete('/api-keys/admin/:id', adminActionLimiter, requireAdmin(), async (
     await query('DELETE FROM api_keys WHERE id = $1', [id]);
 
     logger.info(`[Admin API Keys] Admin ${adminId} deleted API key ${id} (owner: ${existing.user_id})`);
+
+    await auditAdminAction(req, 'api_key_delete', 'api_key', id, { ownerId: existing.user_id });
 
     // Invalidate API key caches
     await invalidatePattern('cache:apikeys:*');

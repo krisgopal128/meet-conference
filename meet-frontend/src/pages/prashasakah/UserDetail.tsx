@@ -187,15 +187,17 @@ export default function UserDetail() {
     setActionLoading('reset');
     try {
       const response = await prashasakahApi.resetPassword(user.id);
-      toast.success('Password reset link generated');
+      const tempPwd = (response?.data as Record<string, unknown>)?.temporaryPassword as string | undefined;
 
-      if (response?.data?.resetUrl) {
-        const copied = await copyToClipboard(response.data.resetUrl);
+      if (tempPwd) {
+        const copied = await copyToClipboard(tempPwd);
         if (copied) {
-          toast.success('Reset link copied to clipboard');
+          toast.success(`Temporary password copied to clipboard`, { duration: 6000 });
         } else {
-          toast.error('Reset link generated, but copying to clipboard failed');
+          toast.error(`Temporary password: ${tempPwd}`, { duration: 10000 });
         }
+      } else {
+        toast.success('Password has been reset');
       }
     } catch (error) {
       logger.error('Failed to reset password:', error);

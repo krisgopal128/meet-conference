@@ -919,28 +919,33 @@ export const ControlsMenu = memo(function ControlsMenu({
 
   return (
     <>
-      <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div
-        ref={menuRef}
-        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-surface-700 rounded-xl shadow-lg border border-surface-600 py-2 min-w-[280px] max-h-[80vh] overflow-y-auto z-50 animate-fade-in"
-        role="menu"
-      >
-        <div className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-surface-400 border-b border-surface-600 mb-1">
-          Meeting Controls
-        </div>
+      {createPortal(
+        <>
+          <div className="fixed inset-0 z-[9997]" onClick={onClose} />
+          <div
+            ref={menuRef}
+            className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-surface-700 rounded-xl shadow-lg border border-surface-600 py-2 min-w-[280px] max-h-[80vh] overflow-y-auto z-[9998] animate-fade-in"
+            role="menu"
+          >
+            <div className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-surface-400 border-b border-surface-600 mb-1">
+              Meeting Controls
+            </div>
 
-        <ToggleButton label="Lock Meeting" icon={meetingLocked ? <Lock size={16} className="text-warning-400" /> : <Unlock size={16} />} isActive={meetingLocked} onToggle={onToggleLock} />
-        <ToggleButton label="Enable Lobby" icon={<DoorOpen size={16} />} isActive={lobbyEnabled} onToggle={onToggleLobby} />
+            <ToggleButton label="Lock Meeting" icon={meetingLocked ? <Lock size={16} className="text-warning-400" /> : <Unlock size={16} />} isActive={meetingLocked} onToggle={onToggleLock} />
+            <ToggleButton label="Enable Lobby" icon={<DoorOpen size={16} />} isActive={lobbyEnabled} onToggle={onToggleLobby} />
 
-        <div className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-surface-400 border-t border-b border-surface-600 my-1 mt-2">
-          Allow All Participants To
-        </div>
+            <div className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-surface-400 border-t border-b border-surface-600 my-1 mt-2">
+              Allow All Participants To
+            </div>
 
-        <ToggleButton label="Share Screen" icon={<ScreenShare size={16} />} isActive={participantsCanShareScreen} onToggle={onToggleScreenShare} />
-        <ToggleButton label="Chat" icon={<MessageCircle size={16} />} isActive={participantsCanChat} onToggle={onToggleChat} />
-        <ToggleButton label="Unmute Themselves" icon={<MicIcon size={16} />} isActive={participantsCanUnmute} onToggle={onToggleUnmute} />
-        <ToggleButton label="Turn On Camera" icon={<Camera size={16} />} isActive={participantsCanTurnOnCamera} onToggle={onToggleCamera} />
-      </div>
+            <ToggleButton label="Share Screen" icon={<ScreenShare size={16} />} isActive={participantsCanShareScreen} onToggle={onToggleScreenShare} />
+            <ToggleButton label="Chat" icon={<MessageCircle size={16} />} isActive={participantsCanChat} onToggle={onToggleChat} />
+            <ToggleButton label="Unmute Themselves" icon={<MicIcon size={16} />} isActive={participantsCanUnmute} onToggle={onToggleUnmute} />
+            <ToggleButton label="Turn On Camera" icon={<Camera size={16} />} isActive={participantsCanTurnOnCamera} onToggle={onToggleCamera} />
+          </div>
+        </>,
+        document.body,
+      )}
     </>
   );
 });
@@ -1024,30 +1029,35 @@ export const MoreMenu = memo(function MoreMenu({
 
   return (
     <>
-      <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div
-        ref={menuRef}
-        className="absolute bottom-full right-0 mb-2 mr-2 bg-surface-700 rounded-xl shadow-lg border border-surface-600 py-1 min-w-[160px] max-w-[calc(100vw-2rem)] max-h-[70vh] overflow-y-auto z-50 animate-fade-in"
-        role="menu"
-      >
-        {items.map((item) => (
-          <button
-            key={item.label}
-            onClick={() => { item.onClick(); onClose(); }}
-            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white hover:bg-surface-600 transition-colors cursor-pointer whitespace-nowrap"
-            role="menuitem"
+      {createPortal(
+        <>
+          <div className="fixed inset-0 z-[9997]" onClick={onClose} />
+          <div
+            ref={menuRef}
+            className="fixed bottom-20 right-4 bg-surface-700 rounded-xl shadow-lg border border-surface-600 py-1 min-w-[160px] max-w-[calc(100vw-2rem)] max-h-[70vh] overflow-y-auto z-[9998] animate-fade-in"
+            role="menu"
           >
-            {item.icon}
-            <span>{item.label}</span>
-          </button>
-        ))}
-        {isRecording && (
-          <div className="flex items-center gap-3 px-4 py-2.5 text-danger-400 text-sm border-t border-surface-600 mt-1 pt-2 whitespace-nowrap">
-            <Circle size={10} className="animate-pulse fill-current" aria-hidden="true" />
-            <span>Recording in progress</span>
+            {items.map((item) => (
+              <button
+                key={item.label}
+                onClick={() => { item.onClick(); onClose(); }}
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-white hover:bg-surface-600 transition-colors cursor-pointer whitespace-nowrap"
+                role="menuitem"
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </button>
+            ))}
+            {isRecording && (
+              <div className="flex items-center gap-3 px-4 py-2.5 text-danger-400 text-sm border-t border-surface-600 mt-1 pt-2 whitespace-nowrap">
+                <Circle size={10} className="animate-pulse fill-current" aria-hidden="true" />
+                <span>Recording in progress</span>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>,
+        document.body,
+      )}
     </>
   );
 });

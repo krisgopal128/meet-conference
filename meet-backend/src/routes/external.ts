@@ -78,6 +78,7 @@ const externalApiLimiter = rateLimit({
   message: { error: 'External API rate limit exceeded. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: false, // custom keyGenerator uses API key, not IP — safe to skip IPv6 check
   keyGenerator: (req: Request): string => {
     // Use API key as the rate limit key (extract from Authorization header)
     const authHeader = req.headers.authorization;

@@ -202,16 +202,23 @@ export async function handleParticipantJoined(roomName: string, identity: string
     [count, roomName]
   );
 
-  // Check if participant is a registered user
-  const [user] = await query<{ id: string }>(
-    'SELECT id FROM users WHERE id = $1',
-    [identity]
-  );
+  // Check if participant is a registered user.
+  // Identity may be a non-UUID guest_*** string; guard the UUID column lookup
+  // to avoid Postgres error 22P02 (invalid input syntax for type uuid),
+  // which would crash the whole webhook handler for guest joins.
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  let user: { id: string } | undefined;
+  if (UUID_RE.test(identity)) {
+    [user] = await query<{ id: string }>(
+      'SELECT id FROM users WHERE id = $1',
+      [identity]
+    );
+  }
 
   // Record participant join
   await query(
     `INSERT INTO meeting_participants (meeting_id, user_id, identity, role)
-     SELECT m.id, $1, $2, 
+     SELECT m.id, $1, $2,
        CASE WHEN r.host_id = $1 THEN 'host' ELSE 'attendee' END
      FROM meetings m
      JOIN rooms r ON r.id = m.room_id

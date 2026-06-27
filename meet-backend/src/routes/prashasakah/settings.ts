@@ -11,6 +11,7 @@ import { requireModerator, requireAdmin } from '../../middleware/requireRole.js'
 import type { AuthRequest } from '../../middleware/authenticate.js';
 import { query, queryOne } from '../../services/database.js';
 import { adminActionLimiter } from './rateLimiter.js';
+import { auditAdminAction } from '../../utils/auditLog.js';
 import logger from '../../utils/logger.js';
 
 const router = Router();
@@ -88,6 +89,8 @@ router.patch('/settings', adminActionLimiter, requireAdmin(), async (req: AuthRe
       );
       updatedKeys.push(key);
     }
+
+    void auditAdminAction(req, 'settings_update', 'system', null, { updatedKeys });
 
     res.json({
       message: 'Settings updated successfully',

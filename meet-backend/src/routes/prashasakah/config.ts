@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { AuthRequest } from '../../middleware/authenticate.js';
 import { requireAdmin, requireModerator } from '../../middleware/requireRole.js';
 import { getCached, invalidatePattern, TTL_LONG } from '../../services/cache.js';
+import { auditAdminAction } from '../../utils/auditLog.js';
 import { adminActionLimiter } from './rateLimiter.js';
 import logger from '../../utils/logger.js';
 
@@ -117,6 +118,7 @@ router.patch('/config', adminActionLimiter, requireAdmin(), async (req: AuthRequ
     invalidatePattern('cache:config:*').catch(() => {});
 
     logger.info(`[Admin] Config updated by ${req.user?.id}: ${updatedKeys.join(', ')}`);
+    void auditAdminAction(req, 'config_update', 'system', null, { updatedKeys });
 
     res.json({
       message: 'Config updated successfully',
