@@ -5,7 +5,7 @@ import { VideoPreset, Track } from 'livekit-client';
 import { ConferenceRoom } from '../components/room/ConferenceRoom';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { LobbyWaiting } from '../components/room/LobbyWaiting';
-import { useConnectionActions, useQualityMode, useScreenShareMode, useUIActions, useGridAspectRatio, useBackgroundBlurEnabled, useBackgroundBlurIntensity, useBackgroundMode, useBackgroundBgColor, useBackgroundImagePath, useMeetingControlsActions } from '../store/roomStore';
+import { useConnectionActions, useQualityMode, useScreenShareMode, useUIActions, useGridAspectRatio, useBackgroundBlurEnabled, useBackgroundBlurIntensity, useBackgroundMode, useBackgroundBgColor, useBackgroundImagePath, useMeetingControlsActions, useRoomStore } from '../store/roomStore';
 import { enableBackgroundEffect, disableBackgroundEffect, updateBackgroundEffect, cleanupBackgroundEffect } from '../utils/backgroundEffectsManager';
 import { withOperationTimeout } from '../utils/asyncTimeout';
 import { getRoomSettings, roomsApi } from '../services/api';
@@ -904,6 +904,22 @@ export default function RoomPage() {
       roomsApi.startMeeting(roomName).catch((error) => {
         logger.warn('[RoomPage] Failed to register meeting in history:', error);
       });
+    }
+
+    // Check if recording is already active (for users joining mid-recording)
+    if (roomName) {
+      roomsApi.listRecordings(5, 0).then((response) => {
+        const recordings = response.data?.recordings || response.data || [];
+        const activeRecording = Array.isArray(recordings)
+          ? recordings.find((r: { roomName?: string; status?: string; egressId?: string }) =>
+              r.roomName === roomName && (r.status === 'active' || r.status === 'EGRESS_ACTIVE' || r.status === undefined) && r.egressId
+            )
+          : undefined;
+        if (activeRecording) {
+          useRoomStore.getState().setRecording(true, activeRecording.egressId);
+          logger.info('[RoomPage] Recording already active on join:', activeRecording.egressId);
+        }
+      }).catch(() => {});
     }
     
     if (import.meta.env.DEV) {

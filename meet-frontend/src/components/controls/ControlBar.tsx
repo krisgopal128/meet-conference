@@ -455,7 +455,7 @@ export function ControlBar() {
         {/* Connection Quality Indicator */}
         {(meetingRoomConfig.features.connectionQualityIndicator || autoFallbackActive) && (
           <div className={cn(
-            'mr-3 rounded-full px-3 py-1 text-xs font-medium',
+            'mr-1 rounded-full px-3 py-1 text-xs font-medium',
             connectionQualityLabel === 'excellent' || connectionQualityLabel === 'good'
               ? 'bg-success-500/15 text-success-300'
               : connectionQualityLabel === 'poor' || connectionQualityLabel === 'lost'
@@ -466,6 +466,13 @@ export function ControlBar() {
               ? `Auto ${qualityMode === 'dataSaver' ? 'Data Saver' : 'Audio Only'}`
               : `Connection ${connectionQualityLabel}`}
             {autoFallbackActive && selectedQualityMode !== qualityMode ? ` from ${qualityOverrideReason}` : ''}
+          </div>
+        )}
+        {/* Recording indicator */}
+        {isRecording && (
+          <div className="mr-2 flex items-center gap-1.5 rounded-full bg-danger-500/15 px-2.5 py-1">
+            <span className="w-2 h-2 rounded-full bg-danger-400 animate-pulse" />
+            <span className="text-xs font-medium text-danger-300">REC</span>
           </div>
         )}
 
@@ -603,6 +610,27 @@ export function ControlBar() {
         <div className="flex items-center gap-1">
           <MobileMicButton isMuted={isMicMuted} onToggle={handleToggleMic} />
           <MobileCameraButton isOff={isCameraOff} onToggle={handleToggleCamera} />
+          {/* Mobile: Recording indicator badge */}
+          {isRecording && (
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-danger-500/20">
+              <span className="w-2 h-2 rounded-full bg-danger-400 animate-pulse" />
+              <span className="text-[10px] font-medium text-danger-300">REC</span>
+            </div>
+          )}
+          {/* Mobile: Connection quality dot */}
+          {(meetingRoomConfig.features.connectionQualityIndicator || autoFallbackActive) && (
+            <span
+              className={cn(
+                'w-2 h-2 rounded-full',
+                connectionQualityLabel === 'excellent' || connectionQualityLabel === 'good'
+                  ? 'bg-success-400'
+                  : connectionQualityLabel === 'poor' || connectionQualityLabel === 'lost'
+                    ? 'bg-danger-400'
+                    : 'bg-warning-400'
+              )}
+              title={`Connection ${connectionQualityLabel}`}
+            />
+          )}
         </div>
 
         {/* Center: Leave */}

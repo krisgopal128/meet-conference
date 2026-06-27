@@ -20,13 +20,13 @@ import {
 } from './redis.js';
 
 /** Short TTL — rapidly-changing data (active meetings, participant counts) */
-export const TTL_SHORT = 30;
+export const TTL_SHORT = 60;
 
 /** Medium TTL — dashboard stats, user lists */
-export const TTL_MEDIUM = 60;
+export const TTL_MEDIUM = 180;
 
 /** Long TTL — metadata that rarely changes (room config, API key list) */
-export const TTL_LONG = 120;
+export const TTL_LONG = 300;
 
 /** Sentinel value for cached null/not-found results */
 const NULL_SENTINEL = '__NULL__';

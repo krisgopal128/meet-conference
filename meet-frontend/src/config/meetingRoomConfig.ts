@@ -320,7 +320,7 @@ const fallbackConfig: MeetingRoomConfig = {
     cameraDropdownDeviceMenu: true,
     settingsPanelDeviceFallback: true,
     qualityModeSelector: true,
-    connectionQualityIndicator: false,
+    connectionQualityIndicator: true,
     networkRecoveryToasts: true,
     screenshareModeSelector: true,
   },

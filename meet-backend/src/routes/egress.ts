@@ -193,16 +193,18 @@ egressRouter.get('/list', authenticate, async (req: AuthRequest, res: Response) 
 
     // Get room names where user is host
     const userRooms = await query<{ name: string }>(
-      'SELECT name FROM rooms WHERE host_id = $1 LIMIT 50',
+      'SELECT name FROM rooms WHERE host_id = $1',
       [req.user!.id]
     );
+    const userRoomNames = new Set(userRooms.map(r => r.name));
 
-    const egressPromises = userRooms.map(r =>
-      egressClient.listEgress({ roomName: r.name }).catch(() => [] as Array<{ egressId: string; roomName?: string; status?: unknown; [k: string]: unknown }>)
+    // Single API call to list ALL egress, then filter by user's rooms
+    const allEgress = await egressClient.listEgress({});
+    const filtered = allEgress.filter(e =>
+      !e.roomName || userRoomNames.has(e.roomName)
     );
-    const allEgress = (await Promise.all(egressPromises)).flat();
-    const total = allEgress.length;
-    const recordings = allEgress.slice(offset, offset + limit);
+    const total = filtered.length;
+    const recordings = filtered.slice(offset, offset + limit);
     
     res.json({
       recordings,

@@ -103,3 +103,10 @@ bot-simulator/
 Camera_BG_Blur/
 
 testsprite_tests/tmp/config.json
+
+# Audit/profiling scripts (not part of the app)
+api-profile*.py
+page-audit*.py
+audit-inject.js
+page-audit-results.json
+fix-lobby.js

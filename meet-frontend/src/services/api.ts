@@ -356,6 +356,16 @@ export const meetingsApi = {
   getScheduled: (): Promise<AxiosResponse<ScheduledMeetingsResponse>> =>
     api.get<ScheduledMeetingsResponse>('/meetings/scheduled'),
 
+  getStats: (): Promise<AxiosResponse<{
+    stats: {
+      totalMeetings: number;
+      totalParticipants: number;
+      totalMinutes: number;
+      thisWeek: number;
+    };
+  }>> =>
+    api.get('/meetings/stats'),
+
   schedule: (data: {
     title: string;
     description?: string;

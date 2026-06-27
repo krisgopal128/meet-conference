@@ -136,65 +136,39 @@ function HomePageContent() {
     setLoadingUpcoming(true);
     
     try {
-      const [historyRes, scheduledRes] = await Promise.all([
-        meetingsApi.getHistory(50, 0),
+      const [statsRes, scheduledRes] = await Promise.all([
+        meetingsApi.getStats(),
         meetingsApi.getScheduled(),
       ]);
 
       if (!mountedRef.current) return;
 
-      const meetings = historyRes?.data?.meetings || [];
+      const s = statsRes?.data?.stats;
       const scheduled = scheduledRes?.data?.meetings || [];
-      
-      const totalMeetings = meetings.length;
-      const totalParticipants = meetings.reduce(
-        (sum, m) => sum + (m.uniqueParticipants || m.participantCount || 0),
-        0
-      );
-      
-      const totalMinutes = meetings.reduce((sum, m) => {
-        if (!m.startedAt || !m.endedAt) return sum;
-        const start = parseISO(m.startedAt);
-        const end = parseISO(m.endedAt);
-        return sum + Math.abs(Math.round((end.getTime() - start.getTime()) / 60000));
-      }, 0);
-      
-      const now = new Date();
-      const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-      const upcomingThisWeek = scheduled.filter(m => {
-        const start = m.scheduledStart || m.scheduled_start;
-        if (!start) return false;
-        try {
-          const d = parseISO(start);
-          return d >= now && d <= weekFromNow;
-        } catch {
-          return false;
-        }
-      });
 
       const newStats: StatItem[] = [
         {
           label: 'Total Meetings',
-          value: totalMeetings,
+          value: s?.totalMeetings ?? 0,
           icon: Video,
           color: 'brand',
           primary: true,
         },
         {
           label: 'Participants',
-          value: totalParticipants,
+          value: s?.totalParticipants ?? 0,
           icon: Users,
           color: 'info',
         },
         {
           label: 'Minutes',
-          value: totalMinutes,
+          value: s?.totalMinutes ?? 0,
           icon: Clock,
           color: 'success',
         },
         {
           label: 'This Week',
-          value: upcomingThisWeek.length,
+          value: s?.thisWeek ?? 0,
           icon: Calendar,
           color: 'warning',
         },

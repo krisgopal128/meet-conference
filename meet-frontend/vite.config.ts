@@ -58,15 +58,15 @@ export default defineConfig(({ mode }) => ({
     },
     rollupOptions: {
       output: {
-        manualChunks(id: string) {
-          if (id.includes('livekit-client') || id.includes('@livekit/components-react')) return 'livekit';
-          if (id.includes('@livekit/track-processors')) return 'blur-processor';
-          if (id.includes('@excalidraw')) return 'excalidraw';
-          if (id.includes('lucide-react')) return 'icons';
-          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react-router-dom')) return 'vendor';
-          if (id.includes('node_modules/react/')) return 'vendor';
-          if (id.includes('@tanstack/react-virtual')) return 'tanstack-virtual';
-          if (id.includes('node_modules/date-fns')) return 'date-fns';
+        // Let Rolldown handle code splitting automatically.
+        // WhiteboardLayout already uses dynamic import('@excalidraw/excalidraw'),
+        // so excalidraw will be split into its own lazy-loaded chunk.
+        advancedChunks: {
+          groups: [
+            { name: 'vendor', test: /node_modules\/(react|react-dom|scheduler|react-router|@radix-ui|clsx|tailwind-merge)\// },
+            { name: 'livekit', test: /node_modules\/(livekit-client|@livekit)\// },
+            { name: 'icons', test: /node_modules\/lucide-react\// },
+          ],
         },
       },
     },

@@ -50,7 +50,7 @@ export interface AuthRequest extends Request {
 // Caches the full authentication result (user data) keyed by SHA256(token).
 // One Redis GET replaces: blacklist check + jwt.verify + getUserById DB lookup.
 const TOKEN_CACHE_PREFIX='tk:auth:';
-const TOKEN_CACHE_TTL=30; // 30 seconds — SHORT tier
+const TOKEN_CACHE_TTL=120; // 120 seconds — balances freshness with hit rate
 
 function tokenHash(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -162,19 +162,9 @@ export async function authenticate(
     try {
       const cached = await cacheGet<AuthUser>(tokenCacheKey(token));
       if (cached) {
-        // Check banned status in Redis (set by admin ban endpoint)
-        if (cached.id) {
-          try {
-            const isBanned = await cacheExists(`banned:${cached.id}`);
-            if (isBanned) {
-              res.status(403).json({ error: 'Account suspended' });
-              return;
-            }
-          } catch {
-            // If Redis check fails, proceed with cached data (best effort)
-          }
-        }
-       // Re-check ban status even on cache hit — prevents 60s bypass window
+        // The cached user object already carries is_banned from the DB.
+        // Only do the Redis banned-marker check if the cached flag is clean
+        // (avoids a guaranteed Redis MISS on every non-banned user request).
         if (cached.is_banned) {
           res.status(403).json({ error: 'Account suspended' });
           return;

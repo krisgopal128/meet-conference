@@ -268,12 +268,76 @@ meetingsRouter.post('/schedule', authenticate, async (req: AuthRequest, res: Res
   }
 });
 
+// GET /meetings/stats - Aggregated meeting statistics for dashboard
+meetingsRouter.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
+
+    const cacheKey = `cache:stats:${user.id}`;
+    const result = await getCached<{
+      totalMeetings: number;
+      totalParticipants: number;
+      totalMinutes: number;
+      thisWeek: number;
+    }>(
+      cacheKey,
+      TTL_MEDIUM,
+      async () => {
+        const stats = await queryOne<{
+          total_meetings: number;
+          total_participants: number;
+          total_minutes: number;
+        }>(
+          `SELECT
+             COUNT(*)::integer as total_meetings,
+             COALESCE(SUM(m.participant_count), 0)::integer as total_participants,
+             COALESCE(SUM(EXTRACT(EPOCH FROM (COALESCE(m.ended_at, m.started_at) - m.started_at)) / 60), 0)::integer as total_minutes
+           FROM meetings m
+           JOIN rooms r ON m.room_id = r.id
+           WHERE r.host_id = $1
+             OR EXISTS (SELECT 1 FROM meeting_participants mp WHERE mp.meeting_id = m.id AND mp.user_id = $1)`,
+          [user.id],
+        );
+
+        const weekResult = await queryOne<{ count: number }>(
+          `SELECT COUNT(*)::integer as count
+           FROM scheduled_meetings s
+           WHERE s.host_id = $1
+             AND s.status = 'scheduled'
+             AND s.scheduled_start >= NOW()
+             AND s.scheduled_start <= NOW() + INTERVAL '7 days'`,
+          [user.id],
+        );
+
+        return {
+          totalMeetings: stats?.total_meetings ?? 0,
+          totalParticipants: stats?.total_participants ?? 0,
+          totalMinutes: stats?.total_minutes ?? 0,
+          thisWeek: weekResult?.count ?? 0,
+        };
+      },
+    );
+
+    res.json({ stats: result });
+  } catch (error) {
+    logger.error('Get meeting stats error:', error);
+    res.status(500).json({ error: 'Failed to get meeting stats' });
+  }
+});
+
 // GET /meetings/:id - Get meeting details
 meetingsRouter.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const user = requireUser(req);
     if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { id } = req.params;
+
+    // Guard: reject non-UUID IDs early (prevents /stats, /scheduled, etc. from hitting DB)
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID_REGEX.test(id)) {
+      return res.status(404).json({ error: 'Meeting not found' });
+    }
 
     // Verify user has access to this meeting (host or participant)
     const meeting = await verifyMeetingAccess(id, user.id);
