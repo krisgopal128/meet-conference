@@ -25,6 +25,7 @@ export function useQualityMonitoring({ room, localParticipant, selectedQualityMo
   
   const recoveryTimerRef = useRef<number | null>(null);
   const decodeTimerRef = useRef<number | null>(null);
+  const decodeMountedRef = useRef(false);
   const consecutiveBadDecodeRef = useRef(0);
   const prevFramesDroppedRef = useRef(0);
   const prevFramesDecodedRef = useRef(0);
@@ -127,6 +128,7 @@ export function useQualityMonitoring({ room, localParticipant, selectedQualityMo
     room.on(RoomEvent.ConnectionQualityChanged, handleConnectionQualityChanged);
     room.localParticipant.on(ParticipantEvent.LocalTrackCpuConstrained, handleCpuConstraint);
 
+    decodeMountedRef.current = true;
     const checkDecodeHealth = async () => {
       const participants = Array.from(room.remoteParticipants.values());
       let totalFramesDropped = 0;
@@ -134,10 +136,13 @@ export function useQualityMonitoring({ room, localParticipant, selectedQualityMo
       let totalPliCount = 0;
 
       for (const participant of participants) {
+        if (!decodeMountedRef.current) return;
         for (const [, publication] of participant.trackPublications) {
+          if (!decodeMountedRef.current) return;
           const track = publication.track;
           if (!track) continue;
           const stats = await track.getRTCStatsReport?.();
+          if (!decodeMountedRef.current) return;
           if (!stats) continue;
           stats.forEach((stat) => {
             const s = stat as Record<string, unknown>;
@@ -189,6 +194,7 @@ export function useQualityMonitoring({ room, localParticipant, selectedQualityMo
     decodeTimerRef.current = window.setInterval(checkDecodeHealth, 5000);
 
     return () => {
+      decodeMountedRef.current = false;
       room.off(RoomEvent.ConnectionQualityChanged, handleConnectionQualityChanged);
       room.localParticipant.off(ParticipantEvent.LocalTrackCpuConstrained, handleCpuConstraint);
       clearRecoveryTimer();

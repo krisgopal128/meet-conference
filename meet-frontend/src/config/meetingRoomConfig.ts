@@ -1,4 +1,4 @@
-import { AudioPresets, BackupCodecPolicy, VideoPreset, VideoQuality, type AudioCaptureOptions, type VideoCaptureOptions } from 'livekit-client';
+import { AudioPresets, BackupCodecPolicy, VideoPreset, type AudioCaptureOptions, type VideoCaptureOptions } from 'livekit-client';
 import rawConfig from '../../meeting-room.config.example.jsonc?raw';
 import logger from '../utils/logger';
 
@@ -882,92 +882,6 @@ export function getAdaptiveStreamOptions() {
 
 export function isAudioOnlyMode(mode?: QualityModeName) {
   return getQualityModeConfig(mode).name === 'audioOnly';
-}
-
-export function resolveVideoQuality(layerName: SimulcastLayerName) {
-  if (layerName === 'low') {
-    return VideoQuality.LOW;
-  }
-  if (layerName === 'medium') {
-    return VideoQuality.MEDIUM;
-  }
-  return VideoQuality.HIGH;
-}
-
-export function resolveTileTargetLayer(options: {
-  width: number;
-  isFullscreen: boolean;
-  isPinned: boolean;
-  isHostPresenter: boolean;
-  qualityMode?: string;
-  gridParticipantCount?: number;
-  screenWidth?: number;
-}) {
-  if (options.isFullscreen) {
-    // Even in data saver, fullscreen needs decent quality
-    return options.qualityMode === 'dataSaver' 
-      ? 'medium' as const  // 640×360 @ 800 Kbps for data saver fullscreen
-      : meetingRoomConfig.layoutQuality.fullscreenLayer;
-  }
-  if (options.isPinned) {
-    return meetingRoomConfig.activeSpeaker.pinnedParticipantTargetLayer;
-  }
-  if (options.isHostPresenter) {
-    return meetingRoomConfig.activeSpeaker.hostPresenterTargetLayer;
-  }
-
-  const gridCount = options.gridParticipantCount ?? 1;
-  const isLargeGrid = gridCount >= 4;
-
-  // Data Saver Mode: Use more conservative thresholds
-  if (options.qualityMode === 'dataSaver') {
-    if (isLargeGrid) {
-      // 4+ participants: Very conservative
-      if (options.width <= 120) return 'low' as const;    // 320×180 @ 200 Kbps
-      if (options.width <= 250) return 'low' as const;    // Still low for medium tiles
-      return 'medium' as const;                           // 640×360 @ 800 Kbps max
-    } else {
-      // ≤3 participants: Slightly better quality
-      if (options.width <= 150) return 'low' as const;    // 320×180 @ 200 Kbps
-      if (options.width <= 350) return 'medium' as const; // 640×360 @ 800 Kbps
-      return 'medium' as const;                           // Cap at medium
-    }
-  }
-
-  // High Quality Mode: Force high for pinned/fullscreen
-  if (options.qualityMode === 'highQuality' && (options.isFullscreen || options.isPinned)) {
-    return 'high' as const;
-  }
-
-  // Auto Mode (default): Grid-based optimization
-  if (isLargeGrid) {
-    // Large grid (4+ participants): Use lower thresholds to save bandwidth
-    // Tiles are smaller, so lower quality is acceptable
-    if (options.width <= 100) return 'low' as const;     // 320×180 @ 200 Kbps
-    if (options.width <= 200) return 'medium' as const;  // 640×360 @ 800 Kbps
-    return 'high' as const;                              // 1280×720 @ 2.5 Mbps
-  }
-
-  // Small grid (≤3 participants): Use adaptive thresholds based on screen size
-  // Larger screens need higher thresholds to avoid pixelation
-  const baseScreenWidth = 1920;
-  const screenWidth = options.screenWidth ?? (typeof window !== 'undefined' ? window.innerWidth : baseScreenWidth);
-  const scaleFactor = screenWidth / baseScreenWidth;
-  
-  const thumbnailThreshold = Math.round(meetingRoomConfig.layoutQuality.thumbnailMaxWidthPx * scaleFactor);
-  const mediumThreshold = Math.round(meetingRoomConfig.layoutQuality.mediumTileMaxWidthPx * scaleFactor);
-  const largeThreshold = Math.round(meetingRoomConfig.layoutQuality.largeTileMaxWidthPx * scaleFactor);
-
-  if (options.width <= thumbnailThreshold) {
-    return 'medium' as const;  // Bump thumbnails to medium for small grids
-  }
-  if (options.width <= mediumThreshold) {
-    return 'high' as const;    // Bump medium tiles to high for small grids
-  }
-  if (options.width <= largeThreshold) {
-    return meetingRoomConfig.layoutQuality.largeTileLayer;
-  }
-  return meetingRoomConfig.layoutQuality.fullscreenLayer;
 }
 
 // Adaptive Quality Configuration
