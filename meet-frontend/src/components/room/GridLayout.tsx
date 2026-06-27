@@ -133,13 +133,15 @@ export function GridLayout() {
       {admittedParticipants.map((p) => (
         <div
           key={p.identity}
-          className="relative flex items-center justify-center rounded-2xl h-full"
+          className="relative flex items-center justify-center overflow-hidden"
+          style={{ minWidth: 0, minHeight: 0 }}
         >
           <div
             className="relative rounded-2xl bg-surface-900 overflow-hidden"
             style={{
-              width: '100%',
-              height: '100%',
+              aspectRatio: ASPECT_RATIO_CSS[aspectRatio],
+              maxWidth: '100%',
+              maxHeight: '100%',
             }}
           >
             <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />

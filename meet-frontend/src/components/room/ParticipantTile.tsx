@@ -282,6 +282,15 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
 
   const gridParticipantCount = participantCount ?? 1;
 
+  // Ref so the quality effect doesn't re-run when participant count changes.
+  // When a new participant joins, count changes on ALL tiles simultaneously,
+  // which would trigger setVideoQuality() on every tile at once — causing
+  // LiveKit to renegotiate all layers and freeze video for several seconds.
+  // The ResizeObserver (debounced 200ms) handles quality updates naturally
+  // when tiles actually resize due to grid layout changes.
+  const gridParticipantCountRef = useRef(gridParticipantCount);
+  gridParticipantCountRef.current = gridParticipantCount;
+
   useEffect(() => {
     if (!cameraTrackRef?.publication || participant.isLocal || audioOnlyMode) {
       return;
@@ -302,7 +311,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
         isPinned,
         isHostPresenter: layout === 'screenshare' && participant.identity === hostId,
         qualityMode: effectiveQualityMode,
-        gridParticipantCount,
+        gridParticipantCount: gridParticipantCountRef.current,
         screenWidth: window.innerWidth,
       });
 
@@ -316,7 +325,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
     let resizeTimeout: number | null = null;
     const resizeObserver = new ResizeObserver(() => {
       if (resizeTimeout) clearTimeout(resizeTimeout);
-      resizeTimeout = window.setTimeout(applyQuality, 100);
+      resizeTimeout = window.setTimeout(applyQuality, 200);
     });
     resizeObserver.observe(element);
 
@@ -331,7 +340,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
       resizeObserver.disconnect();
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
-  }, [cameraTrackRef, hostId, isFullscreen, isPinned, layout, participant.identity, participant.isLocal, effectiveQualityMode, gridParticipantCount, audioOnlyMode]);
+  }, [cameraTrackRef, hostId, isFullscreen, isPinned, layout, participant.identity, participant.isLocal, effectiveQualityMode, audioOnlyMode]);
 
   useEffect(() => {
     const publication = cameraTrackRef?.publication as RemoteTrackPublication | undefined;
@@ -463,12 +472,13 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
  */
 function arePropsEqual(prevProps: ParticipantTileProps, nextProps: ParticipantTileProps): boolean {
   // Simple reference equality check
-  // This means we only skip re-render if it's the EXACT same props
+  // participantCount is intentionally excluded: it changes on ALL tiles when
+  // someone joins/leaves, causing every tile to re-render simultaneously.
+  // Quality resolution uses a ref + ResizeObserver instead.
   return (
     prevProps.participant === nextProps.participant &&
     prevProps.className === nextProps.className &&
-    prevProps.isSpeakerTile === nextProps.isSpeakerTile &&
-    prevProps.participantCount === nextProps.participantCount
+    prevProps.isSpeakerTile === nextProps.isSpeakerTile
   );
 }
 
