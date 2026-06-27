@@ -140,6 +140,8 @@ export function GridLayout() {
             className="relative rounded-2xl bg-surface-900 overflow-hidden"
             style={{
               aspectRatio: ASPECT_RATIO_CSS[aspectRatio],
+              width: isLandscape ? '100%' : 'auto',
+              height: isLandscape ? 'auto' : '100%',
               maxWidth: '100%',
               maxHeight: '100%',
             }}

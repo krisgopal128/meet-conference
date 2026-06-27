@@ -161,6 +161,24 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
     };
   }, [participant, participant.isLocal, qualityMode]);
 
+  // ========================================
+  // Listen for track mute/unmute (camera/mic toggles)
+  // LiveKit mutates Participant in place, so we need these events to trigger re-render
+  // ========================================
+  useEffect(() => {
+    const handleMuteChange = () => {
+      forceRender(v => v + 1);
+    };
+
+    participant.on(ParticipantEvent.TrackMuted, handleMuteChange);
+    participant.on(ParticipantEvent.TrackUnmuted, handleMuteChange);
+
+    return () => {
+      participant.off(ParticipantEvent.TrackMuted, handleMuteChange);
+      participant.off(ParticipantEvent.TrackUnmuted, handleMuteChange);
+    };
+  }, [participant]);
+
   // Debug logging for track state (development only)
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -198,7 +216,11 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
   }, [cameraTrackRef?.publication, participant, participant.isLocal]);
 
   // Derive subscription state directly from publication
-  const isTrackSubscribed = (cameraTrackRef?.publication as RemoteTrackPublication | undefined)?.isSubscribed ?? false;
+  // Local participant tracks are always "subscribed" (they're published locally)
+  // RemoteTrackPublication has isSubscribed, LocalTrackPublication does not
+  const isTrackSubscribed = participant.isLocal
+    ? true
+    : (cameraTrackRef?.publication as RemoteTrackPublication | undefined)?.isSubscribed ?? false;
 
   // Phase 2: Check if video should be rendered based on visibility
   const shouldRenderVideoFromContext = visibilityContext.shouldRenderVideo(participant.identity);

@@ -599,7 +599,7 @@ export const useRoomStore = create<RoomStore>()(
       {
         name: 'meet-ui-preferences',
         partialize: (state: RoomStoreState) => ({
-          layout: state.layout,
+          layout: getPersistedLayoutPreference(state.layout),
           mirrorLocalVideo: state.mirrorLocalVideo,
           joinLeaveSoundsEnabled: state.joinLeaveSoundsEnabled,
           showChatTimestamps: state.showChatTimestamps,
