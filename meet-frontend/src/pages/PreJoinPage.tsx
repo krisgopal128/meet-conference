@@ -34,18 +34,11 @@ import {
   JoinForm,
 } from '../components/prejoin';
 import { setPendingTracks } from '../media/sharedTracks';
-import { preInitBlurWorker } from '../utils/backgroundEffectsManager';
 
 export default function PreJoinPage() {
   const { roomName } = useParams<{ roomName: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-
-  // Pre-warm the conference blur worker in parallel with camera init
-  // so blur is instant when entering the room (saves ~6s of WASM+model load)
-  useEffect(() => {
-    preInitBlurWorker();
-  }, []);
 
   // Check if this is a "create new meeting" flow
   const isCreateMode = searchParams.get('create') === 'true';

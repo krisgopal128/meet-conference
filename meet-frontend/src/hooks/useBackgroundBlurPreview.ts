@@ -3,9 +3,8 @@
  *
  * Uses a Web Worker for segmentation + BackgroundBlurEngine for compositing.
  *
- * The worker is pre-initialized when the video element becomes available,
- * so blur is instant when the user toggles it on (~6s model load happens
- * in the background before the user interacts).
+ * The worker is created lazily — only when blur is toggled on by the user.
+ * This avoids downloading the 9MB WASM on page load.
  */
 
 import { useEffect, useRef } from 'react';
@@ -41,13 +40,14 @@ export function useBackgroundBlurPreview(
   const retryCountRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Effect 1: Pre-initialize the worker IMMEDIATELY on mount (not waiting for video element).
-  // The worker only needs the video element for segmentation frames, not for model loading.
-  // Starting early saves 2-5s (camera init time) of wasted idle.
+  // Effect 1: Initialize the worker only when blur is actually enabled.
+  // Avoids downloading the 9MB WASM on page load for users who don't use blur.
+  const blurEnabled = options.enabled;
   useEffect(() => {
+    if (!blurEnabled) return;
     if (workerRef.current) return;
 
-    logger.info('[useBackgroundBlurPreview] Pre-initializing segmentation worker...');
+    logger.info('[useBackgroundBlurPreview] Initializing segmentation worker...');
     const worker = new Worker(
       new URL('../utils/segmentationWorker.ts', import.meta.url),
       { type: 'module' },
@@ -87,7 +87,7 @@ export function useBackgroundBlurPreview(
 
     worker.postMessage({ type: 'init' });
     workerRef.current = worker;
-  }, []);
+  }, [blurEnabled]);
 
   // Effect 2: Canvas + render loop — only when blur is enabled
   useEffect(() => {
