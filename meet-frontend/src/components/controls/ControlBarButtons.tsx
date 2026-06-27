@@ -13,7 +13,7 @@ import {
   StopCircle, ChevronDown,
   SquarePlay, Lock, Unlock, DoorOpen, ScreenShare, MessageCircle, Mic as MicIcon, Camera,
   CircleDot, Loader2, Pencil,
-  Link2, Bell, BellOff, FlipHorizontal, Activity, Sparkles, PictureInPicture2,
+  Link2, Bell, BellOff, FlipHorizontal, Activity, Sparkles,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { meetingRoomConfig } from '../../config/meetingRoomConfig';
@@ -1062,9 +1062,6 @@ interface MemoizedMoreMenuProps {
   show: boolean;
   onClose: () => void;
   isRecording: boolean;
-  isPiPSupported: boolean;
-  isPiPOpen: boolean;
-  onTogglePiP: () => void;
   joinLeaveSoundsEnabled: boolean;
   onToggleJoinLeaveSounds: () => void;
   mirrorLocalVideo: boolean;
@@ -1078,9 +1075,6 @@ export const MemoizedMoreMenu = memo(function MemoizedMoreMenu({
   show,
   onClose,
   isRecording,
-  isPiPSupported,
-  isPiPOpen,
-  onTogglePiP,
   joinLeaveSoundsEnabled,
   onToggleJoinLeaveSounds,
   mirrorLocalVideo,
@@ -1091,11 +1085,6 @@ export const MemoizedMoreMenu = memo(function MemoizedMoreMenu({
 }: MemoizedMoreMenuProps) {
   const items: MoreMenuItem[] = [
     { icon: <Link2 size={16} />, label: 'Copy Meeting Link', onClick: onCopyLink },
-    ...(isPiPSupported ? [{
-      icon: <PictureInPicture2 size={16} />,
-      label: isPiPOpen ? 'Close Picture-in-Picture' : 'Open Picture-in-Picture',
-      onClick: onTogglePiP,
-    }] : []),
     ...(meetingRoomConfig.features.joinLeaveSoundToggle ? [{
       icon: joinLeaveSoundsEnabled ? <Bell size={16} /> : <BellOff size={16} />,
       label: joinLeaveSoundsEnabled ? 'Mute Sounds' : 'Enable Sounds',
@@ -1134,9 +1123,6 @@ interface MemoizedMobileMoreMenuProps {
   onToggleHandRaise: () => void;
   layout: string;
   onToggleLayout: () => void;
-  isPiPSupported: boolean;
-  isPiPOpen: boolean;
-  onTogglePiP: () => void;
   joinLeaveSoundsEnabled: boolean;
   onToggleJoinLeaveSounds: () => void;
   mirrorLocalVideo: boolean;
@@ -1174,9 +1160,6 @@ export const MemoizedMobileMoreMenu = memo(function MemoizedMobileMoreMenu({
   onToggleHandRaise,
   layout,
   onToggleLayout,
-  isPiPSupported,
-  isPiPOpen,
-  onTogglePiP,
   joinLeaveSoundsEnabled,
   onToggleJoinLeaveSounds,
   mirrorLocalVideo,
@@ -1205,11 +1188,6 @@ export const MemoizedMobileMoreMenu = memo(function MemoizedMobileMoreMenu({
     { icon: <Monitor size={16} />, label: isScreenSharing ? 'Stop Share' : 'Share Screen', onClick: onToggleScreenShare },
     { icon: <Hand size={16} className={handRaised ? 'text-warning-500' : ''} />, label: handRaised ? 'Lower Hand' : 'Raise Hand', onClick: onToggleHandRaise },
     { icon: layout === 'grid' ? <SquarePlay size={16} /> : <LayoutGrid size={16} />, label: layout === 'grid' ? 'Speaker View' : 'Grid View', onClick: onToggleLayout },
-    ...(isPiPSupported ? [{
-      icon: <PictureInPicture2 size={16} />,
-      label: isPiPOpen ? 'Close Picture-in-Picture' : 'Open Picture-in-Picture',
-      onClick: onTogglePiP,
-    }] : []),
     ...(meetingRoomConfig.features.joinLeaveSoundToggle ? [{
       icon: joinLeaveSoundsEnabled ? <Bell size={16} /> : <BellOff size={16} />,
       label: joinLeaveSoundsEnabled ? 'Mute Sounds' : 'Enable Sounds',

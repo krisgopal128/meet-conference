@@ -28,7 +28,6 @@ import {
   useAutoFallbackActive,
   useConnectionQualityLabel,
   useQualityOverrideReason,
-  useConnectionActions,
   useUIActions,
   useFeatureActions,
   useMeetingLocked,
@@ -39,7 +38,6 @@ import {
   useParticipantsCanTurnOnCamera,
   useMeetingControlsActions,
   useGridAspectRatio,
-  useIsPiPOpen,
 } from '../../store/roomStore';
 import { roomsApi } from '../../services/api';
 import { withOperationTimeout } from '../../utils/asyncTimeout';
@@ -48,7 +46,6 @@ import { meetingRoomConfig } from '../../config/meetingRoomConfig';
 import toast from 'react-hot-toast';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { cn } from '../../utils/cn';
-import { usePictureInPicture } from '../../hooks/usePictureInPicture';
 import { useAudioControls } from '../../hooks/useAudioControls';
 import { useVideoControls } from '../../hooks/useVideoControls';
 import { useScreenShareControls } from '../../hooks/useScreenShareControls';
@@ -117,7 +114,6 @@ export function ControlBar() {
 
   // Action hooks (stable references)
   const { setLayout, toggleChat, toggleParticipants, toggleWhiteboard, openSettingsView, setLobbyCount, toggleJoinLeaveSounds, toggleMirrorLocalVideo } = useUIActions();
-  const { togglePiP } = useConnectionActions();
   const { raiseHand, lowerHand, setRecording } = useFeatureActions();
   const {
     setMeetingLocked,
@@ -160,12 +156,6 @@ export function ControlBar() {
     }
     await toggleScreenShare();
   }, [isModerator, localParticipant, participantsCanShareScreen, toggleScreenShare]);
-
-  // PiP support detection
-  const { isDocumentPiPSupported: isPiPSupported } = usePictureInPicture();
-  const isPiPOpen = useIsPiPOpen();
-
-  if (import.meta.env.DEV) logger.debug('[ControlBar] PiP state:', { isPiPSupported, isPiPOpen });
 
   // Local state for menus
   const [showMore, setShowMore] = useState(false);
@@ -579,9 +569,6 @@ export function ControlBar() {
               show={showMore}
               onClose={() => setShowMore(false)}
               isRecording={isRecording}
-              isPiPSupported={isPiPSupported}
-              isPiPOpen={isPiPOpen}
-              onTogglePiP={togglePiP}
               joinLeaveSoundsEnabled={joinLeaveSoundsEnabled}
               onToggleJoinLeaveSounds={toggleJoinLeaveSounds}
               mirrorLocalVideo={mirrorLocalVideo}
@@ -666,9 +653,6 @@ export function ControlBar() {
               onToggleHandRaise={toggleHandRaise}
               layout={layout}
               onToggleLayout={toggleLayout}
-              isPiPSupported={isPiPSupported}
-              isPiPOpen={isPiPOpen}
-              onTogglePiP={togglePiP}
               joinLeaveSoundsEnabled={joinLeaveSoundsEnabled}
               onToggleJoinLeaveSounds={toggleJoinLeaveSounds}
               mirrorLocalVideo={mirrorLocalVideo}

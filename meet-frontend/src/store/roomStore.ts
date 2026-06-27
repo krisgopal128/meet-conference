@@ -31,7 +31,7 @@ export type VideoFitMode = 'cover' | 'contain';
 
 // ============================================
 // SLICE 1: Connection State (roomName, token, identity, role,
-// connection lifecycle, PiP, prejoin device selection)
+// connection lifecycle, prejoin device selection)
 // ============================================
 interface ConnectionState {
   roomName: string | null;
@@ -43,7 +43,6 @@ interface ConnectionState {
   isConnecting: boolean;
   isConnected: boolean;
   error: string | null;
-  isPiPOpen: boolean;
   prejoinCameraId: string | null;
   prejoinMicId: string | null;
 }
@@ -58,8 +57,6 @@ interface ConnectionActions {
   setConnected: (isConnected: boolean) => void;
   setError: (error: string | null) => void;
   resetConnection: () => void;
-  setPiPOpen: (open: boolean) => void;
-  togglePiP: () => void;
   setPrejoinDevices: (cameraId: string | null, micId: string | null) => void;
 }
 
@@ -73,7 +70,6 @@ const initialConnectionState: ConnectionState = {
   isConnecting: false,
   isConnected: false,
   error: null,
-  isPiPOpen: false,
   prejoinCameraId: null,
   prejoinMicId: null,
 };
@@ -333,8 +329,6 @@ export const useRoomStore = create<RoomStore>()(
           setConnected: (isConnected) => set({ isConnected }, false, 'setConnected'),
           setError: (error) => set({ error }, false, 'setError'),
           resetConnection: () => set(initialConnectionState, false, 'resetConnection'),
-          setPiPOpen: (isPiPOpen) => set({ isPiPOpen }, false, 'setPiPOpen'),
-          togglePiP: () => set((state) => ({ isPiPOpen: !state.isPiPOpen }), false, 'togglePiP'),
           setPrejoinDevices: (cameraId, micId) => set({ prejoinCameraId: cameraId, prejoinMicId: micId }, false, 'setPrejoinDevices'),
 
           // UI slice
@@ -699,9 +693,6 @@ export const useParticipantsCanChat = () => useRoomStore((state) => state.partic
 export const useParticipantsCanUnmute = () => useRoomStore((state) => state.participantsCanUnmute);
 export const useParticipantsCanTurnOnCamera = () => useRoomStore((state) => state.participantsCanTurnOnCamera);
 
-// PiP selectors
-export const useIsPiPOpen = () => useRoomStore((state) => state.isPiPOpen);
-
 // ============================================
 // SHALLOW COMPARISON SELECTORS
 // For objects/arrays that change reference
@@ -720,8 +711,6 @@ export const useConnectionActions = () => useRoomStore(
     setConnected: state.setConnected,
     setError: state.setError,
     reset: state.reset,
-    setPiPOpen: state.setPiPOpen,
-    togglePiP: state.togglePiP,
     setPrejoinDevices: state.setPrejoinDevices,
   }),
   shallow
@@ -809,11 +798,3 @@ export const useMeetingControlsActions = () => useRoomStore(
   shallow
 );
 
-// Get PiP actions (stable reference)
-export const usePiPActions = () => useRoomStore(
-  (state) => ({
-    setPiPOpen: state.setPiPOpen,
-    togglePiP: state.togglePiP,
-  }),
-  shallow
-);

@@ -10,26 +10,6 @@ interface ImportMeta {
 }
 
 
-// Document Picture-in-Picture API (Chrome 116+)
-interface DocumentPictureInPicture {
-  requestWindow(options?: {
-    width?: number;
-    height?: number;
-    disallowReturnToOpener?: boolean;
-    preferInitialWindowPlacement?: number;
-  }): Promise<Window>;
-  window: Window | null;
-}
-
-interface DocumentPictureInPictureWindow extends Window {
-  addEventListener(type: 'pagehide', listener: (event: PageTransitionEvent) => void): void;
-  addEventListener(type: 'error', listener: (event: ErrorEvent) => void): void;
-}
-
-interface ExtendedWindow extends Window {
-  documentPictureInPicture?: DocumentPictureInPicture;
-}
-
 // Insertable Streams API (Chrome/Edge) — not yet in TS lib.dom.d.ts
 declare var MediaStreamTrackProcessor: {
   prototype: MediaStreamTrackProcessor;

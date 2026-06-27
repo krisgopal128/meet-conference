@@ -18,7 +18,6 @@ import {
   useJoinLeaveSoundsEnabled,
   useSelectedQualityMode,
   useUIActions,
-  useIsPiPOpen,
 } from '../../store/roomStore';
 import { ControlBar } from '../controls/ControlBar';
 
@@ -44,7 +43,6 @@ const ChatPanel = lazy(() => import('../panels/ChatPanel').then(m => ({ default:
 const ParticipantsPanel = lazy(() => import('../panels/ParticipantsPanel').then(m => ({ default: m.ParticipantsPanel })));
 const SettingsPanel = lazy(() => import('../panels/SettingsPanel').then(m => ({ default: m.SettingsPanel })));
 const WhiteboardLayout = lazy(() => import('./WhiteboardLayout').then(m => ({ default: m.WhiteboardLayout })));
-const PiPContainer = lazy(() => import('../pip/PiPContainer').then(m => ({ default: m.PiPContainer })));
 
 function PanelLoader() {
   return (
@@ -72,7 +70,6 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
   const isModerator = useIsModerator();
   const joinLeaveSoundsEnabled = useJoinLeaveSoundsEnabled();
   const selectedQualityMode = useSelectedQualityMode();
-  const isPiPOpen = useIsPiPOpen();
   
   // Action hooks
   const {
@@ -409,12 +406,6 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
         )}
 
         <ControlBar />
-        
-        {isPiPOpen && (
-          <Suspense fallback={null}>
-            <PiPContainer />
-          </Suspense>
-        )}
         
         <RoomAudioRenderer />
       </div>

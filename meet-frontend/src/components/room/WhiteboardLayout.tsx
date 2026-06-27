@@ -428,7 +428,6 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
 
   // Fullscreen toggle — uses browser Fullscreen API
   // Participants are shown in a floating overlay INSIDE the fullscreen element
-  // (Document PiP API conflicts with requestFullscreen for user activation)
   const handleFullscreenToggle = useCallback(async () => {
     const container = whiteboardContainerRef.current;
     if (!container || !isModerator) return;
