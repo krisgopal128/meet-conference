@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, memo } from 'react';
-import { useIsSpeaking } from '@livekit/components-react';
+import { useIsSpeaking, useConnectionQualityIndicator } from '@livekit/components-react';
 import type { RemoteParticipant, LocalParticipant } from 'livekit-client';
 import { Hand, Mic, MicOff, Video, VideoOff, Monitor, LogOut } from 'lucide-react';
 import { meetingRoomConfig } from '../../config/meetingRoomConfig';
+import SignalBars from '../room/SignalBars';
 
 // Get initials from name
 // - Single name (Kris) → K
@@ -52,6 +53,7 @@ const ParticipantListItem = memo(function ParticipantListItem({
   onKick,
 }: ParticipantListItemProps) {
   const isSpeaking = useIsSpeaking(participant);
+  const { quality: connectionQuality } = useConnectionQualityIndicator({ participant });
   const audioLevelRef = useRef(0);
   const [, forceUpdate] = useState(0);
 
@@ -114,6 +116,11 @@ const ParticipantListItem = memo(function ParticipantListItem({
             <Hand size={12} className="text-warning-500" />
           )}
         </p>
+      </div>
+
+      {/* Connection quality signal */}
+      <div className="flex-shrink-0">
+        <SignalBars quality={connectionQuality} compact />
       </div>
 
       {/* Combined mic/camera buttons - shows status and action for moderators */}

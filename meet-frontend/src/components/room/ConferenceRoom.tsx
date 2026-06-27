@@ -300,15 +300,6 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
     prevPanelState.current = { chat: chatOpen, participants: participantsOpen, settings: settingsOpen };
   }, [chatOpen, participantsOpen, settingsOpen, isMobile, toggleChat, toggleParticipants, toggleSettings]);
 
-  const renderLayout = () => {
-    switch (layout) {
-      case 'grid': return <GridLayout />;
-      case 'screenshare': return <ScreenShareLayout />;
-      case 'whiteboard': return <WhiteboardLayout room={room} roomName={_props.roomName} />;
-      default: return <SpeakerLayout activeSpeakers={activeSpeakers} />;
-    }
-  };
-
   const panelTitle = chatOpen ? 'Chat' : participantsOpen ? 'Participants' : settingsOpen ? 'Settings' : '';
   const anyPanelOpen = chatOpen || participantsOpen || settingsOpen;
 
@@ -349,7 +340,18 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
                   Loading layout…
                 </div>
               }>
-                {renderLayout()}
+                {(layout === 'grid' || layout === 'speaker') && (
+                  <>
+                    <div className={`absolute inset-0 ${layout === 'grid' ? '' : 'hidden'}`}>
+                      <GridLayout />
+                    </div>
+                    <div className={`absolute inset-0 ${layout === 'speaker' ? '' : 'hidden'}`}>
+                      <SpeakerLayout activeSpeakers={activeSpeakers} />
+                    </div>
+                  </>
+                )}
+                {layout === 'screenshare' && <ScreenShareLayout />}
+                {layout === 'whiteboard' && <WhiteboardLayout room={room} roomName={_props.roomName} />}
               </Suspense>
               
 

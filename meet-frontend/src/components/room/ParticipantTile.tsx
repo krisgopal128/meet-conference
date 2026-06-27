@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef, useState, Component, ReactNode } from 'react';
-import { Track, ParticipantEvent, ConnectionQuality, type RemoteTrackPublication, type Participant } from 'livekit-client';
+import { Track, ParticipantEvent, type RemoteTrackPublication, type Participant } from 'livekit-client';
+import SignalBars from './SignalBars';
 import {
   VideoTrack,
   ParticipantName,
@@ -39,51 +40,6 @@ interface ParticipantTileProps {
   participantCount?: number;
 }
 
-// Custom signal bars indicator (4 bars, fills based on quality)
-function SignalBars({ quality }: { quality: ConnectionQuality }) {
-  const getBarHeights = () => {
-    switch (quality) {
-      case ConnectionQuality.Excellent:
-        return ['25%', '50%', '75%', '100%'];
-      case ConnectionQuality.Good:
-        return ['25%', '50%', '75%', '0%'];
-      case ConnectionQuality.Poor:
-        return ['25%', '50%', '0%', '0%'];
-      case ConnectionQuality.Lost:
-      default:
-        return ['25%', '0%', '0%', '0%'];
-    }
-  };
-
-  const getColor = () => {
-    switch (quality) {
-      case ConnectionQuality.Excellent:
-        return 'bg-green-500';
-      case ConnectionQuality.Good:
-        return 'bg-yellow-500';
-      case ConnectionQuality.Poor:
-        return 'bg-orange-500';
-      case ConnectionQuality.Lost:
-      default:
-        return 'bg-red-500';
-    }
-  };
-
-  const heights = getBarHeights();
-  const color = getColor();
-
-  return (
-    <div className="flex items-end gap-[2px] h-3">
-      {heights.map((h, i) => (
-        <div
-          key={i}
-          className={`w-[3px] ${h !== '0%' ? color : 'bg-white/30'} rounded-[1px]`}
-          style={{ height: h }}
-        />
-      ))}
-    </div>
-  );
-}
 
 function ParticipantTileInner({ participant, className = '', isSpeakerTile = true, participantCount }: ParticipantTileProps) {
   // Optimized selectors
