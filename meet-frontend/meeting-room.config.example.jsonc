@@ -439,10 +439,6 @@
   },
 
   "performance": {
-    "cpuMonitorEnabled": true,  // Changed from false
-    "cpuReductionThresholdPercent": 92,
-    "cpuReductionThresholdDurationMs": 5000,
-    "recoveryThresholdPercent": 60,
     "qualityRestoreDurationMs": 10000,
     "offscreenPauseDelayMs": 750,
     "freezeLastFrameWhenPaused": true,
@@ -453,15 +449,8 @@
     // Phase 2: Tab visibility optimization
     "pauseVideoOnTabHidden": true,
     "tabVisibilityHideDelayMs": 500,
-    // Phase 2: Video element pooling
-    "enableVideoPooling": true,
-    "videoPoolSize": 16,
-    "videoRecycleDelayMs": 5000,
 
     // Other possible values:
-    // "cpuMonitorEnabled": false
-    // "cpuReductionThresholdPercent": 90
-    // "recoveryThresholdPercent": 65
     // "qualityRestoreDurationMs": 5000
     // "offscreenPauseDelayMs": 500
     // "offscreenPauseDelayMs": 1000

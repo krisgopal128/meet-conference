@@ -236,24 +236,14 @@ export interface MeetingRoomConfig {
     reduceQualityWhenBatteryBelowPercent: number;
   };
   performance: {
-    cpuMonitorEnabled: boolean;
-    cpuReductionThresholdPercent: number;
-    cpuReductionThresholdDurationMs: number;
-    recoveryThresholdPercent: number;
     qualityRestoreDurationMs: number;
     offscreenPauseDelayMs: number;
     freezeLastFrameWhenPaused: boolean;
-    // Phase 2: Visible participant culling
     enableParticipantCulling: boolean;
     maxVisibleParticipants: number;
     cullingThreshold: number;
-    // Phase 2: Tab visibility optimization
     pauseVideoOnTabHidden: boolean;
     tabVisibilityHideDelayMs: number;
-    // Phase 2: Video element pooling
-    enableVideoPooling: boolean;
-    videoPoolSize: number;
-    videoRecycleDelayMs: number;
   };
   feedback: {
     networkDegradedMessage: string;
@@ -296,8 +286,8 @@ const fallbackConfig: MeetingRoomConfig = {
   room: {
     defaultLayout: 'speaker',
     qualityMode: 'highQuality',  // Changed from 'auto' to use high quality by default
-    adaptiveStream: false,  // Disabled — conflicts with manual setVideoQuality in ParticipantTile
-    dynacast: false,        // Disabled — requires adaptiveStream to signal layer preferences; without it, publisher drops video layers
+    adaptiveStream: true,
+    dynacast: true,
     simulcast: true,
     pauseOffscreenVideo: false,  // Disabled - was causing videos to not appear for moderators
     joinLeaveSoundsEnabled: true,
@@ -521,24 +511,14 @@ const fallbackConfig: MeetingRoomConfig = {
     reduceQualityWhenBatteryBelowPercent: 20,
   },
   performance: {
-    cpuMonitorEnabled: true,
-    cpuReductionThresholdPercent: 92,
-    cpuReductionThresholdDurationMs: 5000,
-    recoveryThresholdPercent: 60,
     qualityRestoreDurationMs: 10000,
     offscreenPauseDelayMs: 3000,
-    freezeLastFrameWhenPaused: false,  // Show avatar fallback instead of confusing frozen frame
-    // Phase 2: Visible participant culling
+    freezeLastFrameWhenPaused: false,
     enableParticipantCulling: false,
     maxVisibleParticipants: 12,
     cullingThreshold: 12,
-    // Phase 2: Tab visibility optimization
     pauseVideoOnTabHidden: false,
     tabVisibilityHideDelayMs: 5000,
-    // Phase 2: Video element pooling - ENABLED for better performance
-    enableVideoPooling: true,
-    videoPoolSize: 12,
-    videoRecycleDelayMs: 3000,
   },
   feedback: {
     networkDegradedMessage: 'Optimizing video for your connection',
@@ -1010,13 +990,6 @@ export const ADAPTIVE_CONFIG = {
     },
   },
   
-  // CPU-based degradation
-  cpuDegradation: {
-    enabled: true,
-    highThreshold: 80,      // % CPU usage
-    criticalThreshold: 90,  // % CPU usage
-    checkIntervalMs: 2000,
-  },
   
   // Tab visibility optimization
   visibility: {

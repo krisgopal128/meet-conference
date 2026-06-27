@@ -398,7 +398,7 @@ export const meetingsApi = {
     effectiveQualityMode: string;
     screenShareMode: string;
     autoFallbackActive: boolean;
-    qualityOverrideReason: 'network' | 'cpu' | 'battery' | null;
+    qualityOverrideReason: 'network' | 'cpu' | 'battery' | 'decode' | null;
     connectionQualityLabel: string;
     packetLossPercent: number | null;
     rttMs: number | null;
@@ -408,7 +408,7 @@ export const meetingsApi = {
     batteryCharging?: boolean | null;
     diagnosticsLog: Array<{
       at: string;
-      type: 'network' | 'cpu' | 'battery' | 'recovery' | 'manual';
+      type: 'network' | 'cpu' | 'battery' | 'decode' | 'recovery' | 'manual';
       message: string;
     }>;
     userAgent?: string;

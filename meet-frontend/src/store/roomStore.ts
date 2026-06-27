@@ -12,7 +12,7 @@ function safeGetTime(date: Date | string): number {
 export type BackgroundMode = 'blur' | 'image' | 'color' | 'none';
 
 export type SettingsView = 'devices' | 'call-health' | 'video-effects';
-export type QualityOverrideReason = 'network' | 'cpu' | 'battery' | null;
+export type QualityOverrideReason = 'network' | 'cpu' | 'battery' | 'decode' | null;
 export type GridAspectRatio = '16:9' | '9:16' | '1:1' | '4:3';
 export type VideoFitMode = 'cover' | 'contain';
 
@@ -116,7 +116,7 @@ interface UIState {
   diagnosticsLog: Array<{
     id: string;
     at: string;
-    type: 'network' | 'cpu' | 'battery' | 'recovery' | 'manual';
+    type: 'network' | 'cpu' | 'battery' | 'decode' | 'recovery' | 'manual';
     message: string;
   }>;
 }

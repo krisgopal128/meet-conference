@@ -9,7 +9,6 @@
 
 import { useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Participant } from 'livekit-client';
-import { VideoQuality } from 'livekit-client';
 
 interface UseVisibleParticipantsOptions {
   /** Maximum number of participants to render video for */
@@ -225,34 +224,4 @@ export function useVisibleParticipants(
   };
 }
 
-/**
- * Determine the desired video quality for a participant based on call context.
- *
- * - Active speaker or pinned participant: HIGH quality
- * - 1-4 participants: HIGH for all
- * - 5-8 participants: MEDIUM for non-speakers
- * - 9+ participants: LOW for non-speakers
- */
-export function getDesiredQuality(
-  identity: string,
-  activeSpeakerIdentity: string | null,
-  participantCount: number
-): VideoQuality {
-  // Active speaker always gets HIGH
-  if (activeSpeakerIdentity && identity === activeSpeakerIdentity) {
-    return VideoQuality.HIGH;
-  }
 
-  // Small calls: HIGH for everyone
-  if (participantCount <= 4) {
-    return VideoQuality.HIGH;
-  }
-
-  // Medium calls: MEDIUM for non-speakers
-  if (participantCount <= 8) {
-    return VideoQuality.MEDIUM;
-  }
-
-  // Large calls: LOW for non-speakers
-  return VideoQuality.LOW;
-}

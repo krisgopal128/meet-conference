@@ -1,10 +1,3 @@
-/**
- * useQualityMonitoring - Handles connection quality monitoring and automatic quality overrides
- * 
- * Extracted from ConferenceRoom to reduce component complexity.
- * Monitors connection quality and triggers quality degradation/recovery.
- */
-
 import { useEffect, useRef, useCallback } from 'react';
 import { RoomEvent, ParticipantEvent, type Room, type Participant } from 'livekit-client';
 import { useUIActions, useQualityOverrideReason, type QualityOverrideReason } from '../store/roomStore';
@@ -31,6 +24,11 @@ export function useQualityMonitoring({ room, localParticipant, selectedQualityMo
   setConnectionQualityLabelRef.current = setConnectionQualityLabel;
   
   const recoveryTimerRef = useRef<number | null>(null);
+  const decodeTimerRef = useRef<number | null>(null);
+  const consecutiveBadDecodeRef = useRef(0);
+  const prevFramesDroppedRef = useRef(0);
+  const prevFramesDecodedRef = useRef(0);
+  const prevPliCountRef = useRef(0);
 
   useEffect(() => {
     qualityOverrideReasonRef.current = qualityOverrideReason;
@@ -61,7 +59,6 @@ export function useQualityMonitoring({ room, localParticipant, selectedQualityMo
     }, meetingRoomConfig.performance.qualityRestoreDurationMs);
   }, []);
 
-  // Connection quality monitoring
   useEffect(() => {
     if (!localParticipant) return;
 
@@ -93,8 +90,6 @@ export function useQualityMonitoring({ room, localParticipant, selectedQualityMo
         }
       } else if (nextQuality === 'lost') {
         if (shouldAutoAdjust) {
-          // Use dataSaver instead of audioOnly — audioOnly kills camera entirely
-          // which users can't recover from. dataSaver degrades video without disabling it.
           setQualityOverrideRef.current('dataSaver', 'network');
           addDiagnosticsEventRef.current({
             type: 'network',
@@ -131,10 +126,75 @@ export function useQualityMonitoring({ room, localParticipant, selectedQualityMo
     handleConnectionQualityChanged();
     room.on(RoomEvent.ConnectionQualityChanged, handleConnectionQualityChanged);
     room.localParticipant.on(ParticipantEvent.LocalTrackCpuConstrained, handleCpuConstraint);
+
+    const checkDecodeHealth = async () => {
+      const participants = Array.from(room.remoteParticipants.values());
+      let totalFramesDropped = 0;
+      let totalFramesDecoded = 0;
+      let totalPliCount = 0;
+
+      for (const participant of participants) {
+        for (const [, publication] of participant.trackPublications) {
+          const track = publication.track;
+          if (!track) continue;
+          const stats = await track.getRTCStatsReport?.();
+          if (!stats) continue;
+          stats.forEach((stat) => {
+            const s = stat as Record<string, unknown>;
+            if (stat.type === 'inbound-rtp' && s.kind === 'video') {
+              totalFramesDropped += (s.framesDropped as number) || 0;
+              totalFramesDecoded += (s.framesDecoded as number) || 0;
+              totalPliCount += (s.pliCount as number) || 0;
+            }
+          });
+        }
+      }
+
+      const deltaDropped = Math.max(0, totalFramesDropped - prevFramesDroppedRef.current);
+      const deltaDecoded = Math.max(0, totalFramesDecoded - prevFramesDecodedRef.current);
+      const deltaPli = Math.max(0, totalPliCount - prevPliCountRef.current);
+      prevFramesDroppedRef.current = totalFramesDropped;
+      prevFramesDecodedRef.current = totalFramesDecoded;
+      prevPliCountRef.current = totalPliCount;
+
+      // ponytail: symmetric thresholds to match calculateDecodeScore in useNetworkQuality
+      const dropRate = deltaDropped + deltaDecoded > 0
+        ? deltaDropped / (deltaDropped + deltaDecoded)
+        : 0;
+      const dropScore = Math.max(0, 60 - (dropRate * 1200));
+      const pliScore = Math.max(0, 40 - (deltaPli * 13));
+      const decodeScore = Math.round(dropScore + pliScore);
+
+      if (decodeScore < 40) {
+        consecutiveBadDecodeRef.current++;
+        if (consecutiveBadDecodeRef.current >= 2) {
+          const shouldAutoAdjust = selectedQualityMode === 'auto';
+          if (shouldAutoAdjust) {
+            setQualityOverrideRef.current('dataSaver', 'decode');
+            addDiagnosticsEventRef.current({
+              type: 'decode',
+              message: `Decode health poor (score=${decodeScore}, drops=${(dropRate * 100).toFixed(1)}%, pli=${deltaPli}); forcing dataSaver`,
+            });
+          }
+        }
+      } else if (decodeScore >= 60) {
+        consecutiveBadDecodeRef.current = 0;
+        if (qualityOverrideReasonRef.current === 'decode') {
+          scheduleRecovery('decode');
+        }
+      }
+    };
+
+    checkDecodeHealth();
+    decodeTimerRef.current = window.setInterval(checkDecodeHealth, 5000);
+
     return () => {
       room.off(RoomEvent.ConnectionQualityChanged, handleConnectionQualityChanged);
       room.localParticipant.off(ParticipantEvent.LocalTrackCpuConstrained, handleCpuConstraint);
       clearRecoveryTimer();
+      if (decodeTimerRef.current) {
+        window.clearInterval(decodeTimerRef.current);
+      }
     };
   }, [room, localParticipant, selectedQualityMode, scheduleRecovery]);
 

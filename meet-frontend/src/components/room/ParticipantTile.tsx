@@ -12,7 +12,6 @@ import {
   usePinnedIdentity,
   useMirrorLocalVideo,
   useFeatureActions,
-  useHostId,
   useLayout,
   useQualityMode,
   useVideoFitMode,
@@ -24,8 +23,6 @@ import { Pin, Hand, Mic, MicOff, Maximize, Minimize, Crop, Square } from 'lucide
 import {
   isAudioOnlyMode,
   meetingRoomConfig,
-  resolveTileTargetLayer,
-  resolveVideoQuality,
 } from '../../config/meetingRoomConfig';
 import { useParticipantVisibility } from '../../contexts/ParticipantVisibilityContext';
 import { useRoomCameraTrack } from '../../contexts/RoomCameraTracksContext';
@@ -41,7 +38,7 @@ interface ParticipantTileProps {
 }
 
 
-function ParticipantTileInner({ participant, className = '', isSpeakerTile = true, participantCount }: ParticipantTileProps) {
+function ParticipantTileInner({ participant, className = '', isSpeakerTile = true, participantCount: _participantCount }: ParticipantTileProps) {
   // Optimized selectors
   const hasRaisedHand = useHasRaisedHand(participant.identity);
   const pinnedIdentity = usePinnedIdentity();
@@ -63,7 +60,6 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
   const qualityOverrideReason = useQualityOverrideReason();
   const isPinned = pinnedIdentity === participant.identity;
   const tileRef = useRef<HTMLDivElement>(null);
-  const hostId = useHostId();
   const layout = useLayout();
   const isMobile = useIsMobile();
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -280,67 +276,17 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
     }
   };
 
-  const gridParticipantCount = participantCount ?? 1;
-
-  // Ref so the quality effect doesn't re-run when participant count changes.
-  // When a new participant joins, count changes on ALL tiles simultaneously,
-  // which would trigger setVideoQuality() on every tile at once — causing
-  // LiveKit to renegotiate all layers and freeze video for several seconds.
-  // The ResizeObserver (debounced 200ms) handles quality updates naturally
-  // when tiles actually resize due to grid layout changes.
-  const gridParticipantCountRef = useRef(gridParticipantCount);
-  gridParticipantCountRef.current = gridParticipantCount;
-
   useEffect(() => {
-    if (!cameraTrackRef?.publication || participant.isLocal || audioOnlyMode) {
-      return;
-    }
-
-    const publication = cameraTrackRef.publication as RemoteTrackPublication | undefined;
     const element = tileRef.current;
-    if (!element || !publication) {
-      return;
-    }
-
-    const applyQuality = () => {
-      const width = element.clientWidth;
-
-      const targetLayer = resolveTileTargetLayer({
-        width,
-        isFullscreen,
-        isPinned,
-        isHostPresenter: layout === 'screenshare' && participant.identity === hostId,
-        qualityMode: effectiveQualityMode,
-        gridParticipantCount: gridParticipantCountRef.current,
-        screenWidth: window.innerWidth,
-      });
-
-      publication.setVideoQuality(resolveVideoQuality(targetLayer));
-    };
-
-    // Initial quality application
-    applyQuality();
-
-    // Debounced resize observer to prevent rapid quality changes
-    let resizeTimeout: number | null = null;
-    const resizeObserver = new ResizeObserver(() => {
-      if (resizeTimeout) clearTimeout(resizeTimeout);
-      resizeTimeout = window.setTimeout(applyQuality, 200);
-    });
-    resizeObserver.observe(element);
-
+    if (!element) return;
     const handleFullscreenChange = () => {
       setIsFullscreen(document.fullscreenElement === element);
-      applyQuality();
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-
     return () => {
-      if (resizeTimeout) clearTimeout(resizeTimeout);
-      resizeObserver.disconnect();
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
-  }, [cameraTrackRef, hostId, isFullscreen, isPinned, layout, participant.identity, participant.isLocal, effectiveQualityMode, audioOnlyMode]);
+  }, []);
 
   useEffect(() => {
     const publication = cameraTrackRef?.publication as RemoteTrackPublication | undefined;

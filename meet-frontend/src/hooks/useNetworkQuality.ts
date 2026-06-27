@@ -11,6 +11,9 @@ export type NetworkQualityScore = {
   rtt: number;
   jitter: number;
   availableBitrate: number;
+  decodeScore: number;
+  framesDroppedRate: number;
+  pliCountDelta: number;
 };
 
 interface NetworkQualityConfig {
@@ -33,16 +36,6 @@ const DEFAULT_CONFIG: NetworkQualityConfig = {
   debounceMs: 5000,
 };
 
-/**
- * Monitors network quality by periodically collecting WebRTC stats and
- * computing a composite quality score (0–100).
- *
- * **Throttling**: React state is only updated when the quality `level` string
- * changes **or** the numeric `score` drifts by more than 5 points from the
- * last value that was pushed to state. Internal refs are always refreshed so
- * the latest stats remain available for programmatic consumers even when the
- * UI does not re-render.
- */
 export function useNetworkQuality(config: Partial<NetworkQualityConfig> = {}) {
   const configKey = JSON.stringify(config);
   const finalConfig = useMemo(() => ({ ...DEFAULT_CONFIG, ...config }), [configKey]);
@@ -55,20 +48,23 @@ export function useNetworkQuality(config: Partial<NetworkQualityConfig> = {}) {
     rtt: 0,
     jitter: 0,
     availableBitrate: 0,
+    decodeScore: 100,
+    framesDroppedRate: 0,
+    pliCountDelta: 0,
   });
   
   const lastLevelRef = useRef<NetworkQualityLevel>('excellent');
-  /** Tracks the last quality state that was actually pushed to React state. */
   const lastQualityRef = useRef<NetworkQualityScore>(quality);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingQualityRef = useRef<NetworkQualityScore | null>(null);
   const isCheckingRef = useRef(false);
   const isMountedRef = useRef(true);
-  /** Always-updated raw stats for programmatic access (independent of React renders). */
   const rawStatsRef = useRef<NetworkQualityScore>(quality);
-  /** Previous cumulative packet counters for delta-based loss calculation. */
   const prevPacketsLostRef = useRef(0);
   const prevPacketsReceivedRef = useRef(0);
+  const prevFramesDroppedRef = useRef(0);
+  const prevFramesDecodedRef = useRef(0);
+  const prevPliCountRef = useRef(0);
 
   const calculateLevel = useCallback((score: number): NetworkQualityLevel => {
     if (score >= finalConfig.scoreThresholds.excellent) return 'excellent';
@@ -77,7 +73,7 @@ export function useNetworkQuality(config: Partial<NetworkQualityConfig> = {}) {
     return 'poor';
   }, [finalConfig.scoreThresholds]);
 
-  const calculateScore = useCallback((
+  const calculateNetworkScore = useCallback((
     packetLoss: number,
     rtt: number,
     jitter: number,
@@ -87,8 +83,16 @@ export function useNetworkQuality(config: Partial<NetworkQualityConfig> = {}) {
     const rttScore = Math.max(0, 30 - (rtt / 500) * 30);
     const jitterScore = Math.max(0, 20 - (jitter / 100) * 20);
     const bitrateScore = Math.min(10, (availableBitrate / 1000000) * 10);
-    
     return Math.round(lossScore + rttScore + jitterScore + bitrateScore);
+  }, []);
+
+  const calculateDecodeScore = useCallback((
+    framesDroppedRate: number,
+    pliCountDelta: number
+  ): number => {
+    const dropScore = Math.max(0, 60 - (framesDroppedRate * 1200));
+    const pliScore = Math.max(0, 40 - (pliCountDelta * 13));
+    return Math.round(dropScore + pliScore);
   }, []);
 
   useEffect(() => {
@@ -96,12 +100,10 @@ export function useNetworkQuality(config: Partial<NetworkQualityConfig> = {}) {
     isMountedRef.current = true;
 
     const checkNetworkQuality = async () => {
-      // Prevent overlapping async calls
       if (isCheckingRef.current) return;
       isCheckingRef.current = true;
 
       try {
-        // Check if unmounted before starting
         if (!isMountedRef.current) return;
         const participants = Array.from(room.remoteParticipants.values());
         const localParticipant = room.localParticipant;
@@ -111,8 +113,10 @@ export function useNetworkQuality(config: Partial<NetworkQualityConfig> = {}) {
         const rtts: number[] = [];
         const jitters: number[] = [];
         let availableBitrate = 0;
+        let totalFramesDropped = 0;
+        let totalFramesDecoded = 0;
+        let totalPliCount = 0;
 
-        // Get stats from remote participants
         for (const participant of participants) {
           if (!isMountedRef.current) return;
           for (const [, publication] of participant.trackPublications) {
@@ -130,6 +134,11 @@ export function useNetworkQuality(config: Partial<NetworkQualityConfig> = {}) {
                     if (s.jitter !== undefined) {
                       jitters.push((s.jitter as number) * 1000);
                     }
+                    if (s.kind === 'video') {
+                      totalFramesDropped += (s.framesDropped as number) || 0;
+                      totalFramesDecoded += (s.framesDecoded as number) || 0;
+                      totalPliCount += (s.pliCount as number) || 0;
+                    }
                   }
                 });
               }
@@ -137,7 +146,6 @@ export function useNetworkQuality(config: Partial<NetworkQualityConfig> = {}) {
           }
         }
 
-        // Get local stats for RTT
         for (const [, publication] of localParticipant.trackPublications) {
           if (!isMountedRef.current) return;
           const track = publication.track;
@@ -165,8 +173,18 @@ export function useNetworkQuality(config: Partial<NetworkQualityConfig> = {}) {
         prevPacketsLostRef.current = totalPacketsLost;
         prevPacketsReceivedRef.current = totalPacketsReceived;
 
+        const deltaFramesDropped = Math.max(0, totalFramesDropped - prevFramesDroppedRef.current);
+        const deltaFramesDecoded = Math.max(0, totalFramesDecoded - prevFramesDecodedRef.current);
+        const deltaPliCount = Math.max(0, totalPliCount - prevPliCountRef.current);
+        prevFramesDroppedRef.current = totalFramesDropped;
+        prevFramesDecodedRef.current = totalFramesDecoded;
+        prevPliCountRef.current = totalPliCount;
+
         const packetLoss = deltaLost + deltaReceived > 0
           ? (deltaLost / (deltaLost + deltaReceived)) * 100
+          : 0;
+        const framesDroppedRate = deltaFramesDropped + deltaFramesDecoded > 0
+          ? deltaFramesDropped / (deltaFramesDropped + deltaFramesDecoded)
           : 0;
         const avgRtt = rtts.length > 0 
           ? rtts.reduce((a, b) => a + b, 0) / rtts.length 
@@ -175,7 +193,9 @@ export function useNetworkQuality(config: Partial<NetworkQualityConfig> = {}) {
           ? jitters.reduce((a, b) => a + b, 0) / jitters.length 
           : 0;
 
-        const score = calculateScore(packetLoss, avgRtt, avgJitter, availableBitrate);
+        const netScore = calculateNetworkScore(packetLoss, avgRtt, avgJitter, availableBitrate);
+        const decodeScore = calculateDecodeScore(framesDroppedRate, deltaPliCount);
+        const score = Math.min(netScore, decodeScore);
         const level = calculateLevel(score);
 
         const newQuality: NetworkQualityScore = {
@@ -185,9 +205,11 @@ export function useNetworkQuality(config: Partial<NetworkQualityConfig> = {}) {
           rtt: Math.round(avgRtt),
           jitter: Math.round(avgJitter),
           availableBitrate: Math.round(availableBitrate),
+          decodeScore,
+          framesDroppedRate: Math.round(framesDroppedRate * 1000) / 10,
+          pliCountDelta: deltaPliCount,
         };
 
-        // Debounce level changes
         if (level !== lastLevelRef.current) {
           pendingQualityRef.current = newQuality;
 
@@ -223,7 +245,6 @@ export function useNetworkQuality(config: Partial<NetworkQualityConfig> = {}) {
             debounceTimerRef.current = null;
           }
         }
-        // Always update raw stats ref so latest data is available programmatically
         rawStatsRef.current = newQuality;
       } catch (error) {
         logger.warn('[useNetworkQuality] Failed to get stats:', error);
@@ -242,7 +263,7 @@ export function useNetworkQuality(config: Partial<NetworkQualityConfig> = {}) {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [room, calculateScore, calculateLevel, finalConfig]);
+  }, [room, calculateNetworkScore, calculateDecodeScore, calculateLevel, finalConfig]);
 
   return quality;
 }
