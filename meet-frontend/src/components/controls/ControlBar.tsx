@@ -54,6 +54,8 @@ import { useLobbyPolling } from '../../hooks/useLobbyPolling';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import type { LobbyParticipant } from '../../types/api';
 import logger from '../../utils/logger';
+import { useUser } from '../../store/authStore';
+import { canUseFeature } from '../../utils/features';
 
 // Import memoized button components
 import {
@@ -137,6 +139,16 @@ export function ControlBar() {
   // fight on a landscape phone: useIsMobile → mobile layout everywhere else,
   // but md:flex → desktop control bar rendered → buttons overflowed the edges.
   const isMobile = useIsMobile();
+
+  // Feature-lock checks (Stage 4): hide buttons for features the admin locked.
+  // mute_all + kick are enforced server-side (buttons are in ParticipantsPanel);
+  // the remaining 5 are gated client-side here in the ControlBar.
+  const currentUser = useUser();
+  const canRecord = canUseFeature(currentUser, 'recording');
+  const canShareScreen = canUseFeature(currentUser, 'screen_share');
+  const canUseWhiteboard = canUseFeature(currentUser, 'whiteboard');
+  const canLockMeeting = canUseFeature(currentUser, 'lock_meeting');
+  const canControlLobby = canUseFeature(currentUser, 'lobby_control');
 
   const handleToggleMic = useCallback(async () => {
     if (!localParticipant) return;
@@ -274,15 +286,25 @@ export function ControlBar() {
     setLayout(effectiveLayout === 'grid' ? 'speaker' : 'grid');
   }, [layout, setLayout]);
 
-  const handleToggleWhiteboard = useCallback(() => {
+  const handleToggleWhiteboard = useCallback(async () => {
     if (!isModerator) {
       toast.error('Only moderators can toggle the whiteboard');
       return;
     }
+    const newActive = !whiteboardOpen;
+    // Optimistic local toggle for instant UI feedback
     toggleWhiteboard();
-    if (room) {
-      const msg = JSON.stringify({ type: 'whiteboard-activate', active: !whiteboardOpen });
-      room.localParticipant.publishData(new TextEncoder().encode(msg), { reliable: true, topic: 'whiteboard' }).catch(() => {});
+    if (room?.name) {
+      try {
+        // Server-enforced broadcast (Stage 3): replaces direct P2P publishData.
+        // The server checks the whiteboard feature flag and broadcasts to all.
+        await roomsApi.toggleWhiteboard(room.name, newActive);
+      } catch (err: unknown) {
+        // Revert on failure (403 locked, network error, etc.)
+        toggleWhiteboard();
+        const axiosErr = err as { response?: { data?: { error?: string } } };
+        toast.error(axiosErr.response?.data?.error || 'Failed to toggle whiteboard');
+      }
     }
   }, [toggleWhiteboard, room, whiteboardOpen, isModerator]);
 
@@ -313,24 +335,21 @@ export function ControlBar() {
     const prevVal = meetingLocked;
     const newVal = !meetingLocked;
     setMeetingLocked(newVal);
-    await broadcastMeetingSettings({
-      meetingLocked: newVal, lobbyEnabled, participantsCanShareScreen,
-      participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera,
-    });
     if (room?.name) {
       try {
+        // Server-enforced broadcast (Stage 3): replaces P2P broadcastMeetingSettings.
+        // The server checks the lock_meeting feature flag and broadcasts to all.
+        await roomsApi.toggleMeetingLock(room.name, newVal);
+        // Persist to room settings (existing behavior)
         await updateRoomSettings(room.name, { meetingLocked: newVal });
-      } catch (err) {
+      } catch (err: unknown) {
         logger.error('Failed to persist meeting lock:', err);
         setMeetingLocked(prevVal);
-        await broadcastMeetingSettings({
-          meetingLocked: prevVal, lobbyEnabled, participantsCanShareScreen,
-          participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera,
-        });
-        toast.error('Failed to update setting — reverted');
+        const axiosErr = err as { response?: { data?: { error?: string } } };
+        toast.error(axiosErr.response?.data?.error || 'Failed to update setting — reverted');
       }
     }
-  }, [room, meetingLocked, lobbyEnabled, participantsCanShareScreen, participantsCanChat, participantsCanUnmute, participantsCanTurnOnCamera, setMeetingLocked, broadcastMeetingSettings]);
+  }, [room, meetingLocked, setMeetingLocked]);
 
   const handleToggleLobby = useCallback(async () => {
     const prevVal = lobbyEnabled;
@@ -497,8 +516,8 @@ export function ControlBar() {
             activeCameraId={videoControls.activeCameraId}
             onSwitchCamera={videoControls.switchCamera}
           />
-          <ScreenShareButton isSharing={isScreenSharing} onToggle={handleToggleScreenShare} />
-          {isModerator && (
+          {canShareScreen && <ScreenShareButton isSharing={isScreenSharing} onToggle={handleToggleScreenShare} />}
+          {isModerator && canRecord && (
             <RecordingButton isRecording={isRecording} isLoading={isRecordingLoading} onToggle={toggleRecording} />
           )}
         </div>
@@ -517,7 +536,7 @@ export function ControlBar() {
         <div className="flex items-center gap-2">
           <ChatButton isOpen={chatOpen} unreadCount={unreadCount} mentionCount={mentionCount} onToggle={toggleChat} />
           <ParticipantsButton isOpen={participantsOpen} lobbyCount={lobbyCount} isModerator={isModerator} onToggle={toggleParticipants} />
-          <WhiteboardButton isOpen={whiteboardOpen} onToggle={handleToggleWhiteboard} />
+          {canUseWhiteboard && <WhiteboardButton isOpen={whiteboardOpen} onToggle={handleToggleWhiteboard} />}
 
           {/* Controls - Moderators only */}
           {isModerator && (
@@ -552,8 +571,8 @@ export function ControlBar() {
                 participantsCanChat={participantsCanChat}
                 participantsCanUnmute={participantsCanUnmute}
                 participantsCanTurnOnCamera={participantsCanTurnOnCamera}
-                onToggleLock={handleToggleLock}
-                onToggleLobby={handleToggleLobby}
+                onToggleLock={canLockMeeting ? handleToggleLock : undefined}
+                onToggleLobby={canControlLobby ? handleToggleLobby : undefined}
                 onToggleScreenShare={handleToggleParticipantScreenShare}
                 onToggleChat={handleToggleParticipantChat}
                 onToggleUnmute={handleToggleParticipantUnmute}
@@ -659,9 +678,9 @@ export function ControlBar() {
               onClose={() => setShowMore(false)}
               isRecording={isRecording}
               isRecordingLoading={isRecordingLoading}
-              onToggleRecording={toggleRecording}
+              onToggleRecording={canRecord ? toggleRecording : undefined}
               isScreenSharing={isScreenSharing}
-              onToggleScreenShare={handleToggleScreenShare}
+              onToggleScreenShare={canShareScreen ? handleToggleScreenShare : undefined}
               handRaised={handRaised}
               onToggleHandRaise={toggleHandRaise}
               layout={layout}
@@ -675,7 +694,7 @@ export function ControlBar() {
               onToggleParticipants={toggleParticipants}
               onCopyLink={copyRoomLink}
               whiteboardOpen={whiteboardOpen}
-              onToggleWhiteboard={handleToggleWhiteboard}
+              onToggleWhiteboard={canUseWhiteboard ? handleToggleWhiteboard : undefined}
               isModerator={isModerator}
               meetingLocked={meetingLocked}
               lobbyEnabled={lobbyEnabled}
@@ -683,8 +702,8 @@ export function ControlBar() {
               participantsCanChat={participantsCanChat}
               participantsCanUnmute={participantsCanUnmute}
               participantsCanTurnOnCamera={participantsCanTurnOnCamera}
-              onToggleLock={handleToggleLock}
-              onToggleLobby={handleToggleLobby}
+              onToggleLock={canLockMeeting ? handleToggleLock : undefined}
+              onToggleLobby={canControlLobby ? handleToggleLobby : undefined}
               onToggleParticipantScreenShare={handleToggleParticipantScreenShare}
               onToggleParticipantChat={handleToggleParticipantChat}
               onToggleParticipantUnmute={handleToggleParticipantUnmute}

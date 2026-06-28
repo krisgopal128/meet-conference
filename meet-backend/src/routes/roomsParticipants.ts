@@ -11,6 +11,7 @@ import {
   muteVideoTrack,
   disableScreenShareTrack,
   listParticipants,
+  sendDataMessage,
 } from '../services/livekit.js';
 import { addKickedParticipant } from '../services/redis.js';
 import { processLobbyParticipants } from '../services/lobbyService.js';
@@ -423,8 +424,84 @@ participantsRouter.post('/:name/disable-all-cameras', authenticate, async (req: 
      const participants = await listParticipants(name);
 
      res.json({ participants });
-   } catch (error) {
+     } catch (error) {
      logger.error('List participants error:', error);
      res.status(500).json({ error: 'Failed to list participants' });
-   }
- });
+     }
+     });
+
+     // POST /rooms/:name/whiteboard/toggle - Toggle whiteboard (moderator, feature-locked)
+     // Server-enforced version of the former P2P 'whiteboard-activate' data message.
+     participantsRouter.post('/:name/whiteboard/toggle', authenticate, async (req: AuthRequest, res: Response) => {
+     try {
+     const user = requireUser(req);
+     if (!user) return res.status(401).json({ error: 'Authentication required' });
+     const { name } = req.params;
+
+     const room = await roomService.getRoomByName(name);
+     if (!room) {
+       return res.status(404).json({ error: 'Room not found' });
+     }
+
+     const allowed = await participantCanModerate(name, user.id, room.host_id);
+     if (!allowed) {
+       return res.status(403).json({ error: 'Only moderators can toggle the whiteboard' });
+     }
+
+     // Feature lock: admin may have locked whiteboard for this moderator
+     if (await assertFeature(req, res, room.host_id, 'whiteboard')) return;
+
+     const { active } = req.body as { active?: boolean };
+     const payload = new TextEncoder().encode(JSON.stringify({
+       type: 'whiteboard-activate',
+       active: active ?? true,
+       sentAt: new Date().toISOString(),
+     }));
+
+     await sendDataMessage(name, payload, 'whiteboard');
+
+     res.json({ message: 'Whiteboard toggle broadcast', active: active ?? true });
+     } catch (error) {
+     logger.error('Whiteboard toggle error:', error);
+     res.status(500).json({ error: 'Failed to toggle whiteboard' });
+     }
+     });
+
+     // POST /rooms/:name/lock/toggle - Toggle meeting lock (moderator, feature-locked)
+     // Server-enforced version of the former P2P 'meeting_settings_update' for lock.
+     participantsRouter.post('/:name/lock/toggle', authenticate, async (req: AuthRequest, res: Response) => {
+     try {
+     const user = requireUser(req);
+     if (!user) return res.status(401).json({ error: 'Authentication required' });
+     const { name } = req.params;
+
+     const room = await roomService.getRoomByName(name);
+     if (!room) {
+       return res.status(404).json({ error: 'Room not found' });
+     }
+
+     const allowed = await participantCanModerate(name, user.id, room.host_id);
+     if (!allowed) {
+       return res.status(403).json({ error: 'Only moderators can lock the meeting' });
+     }
+
+     // Feature lock: admin may have locked lock_meeting for this moderator
+     if (await assertFeature(req, res, room.host_id, 'lock_meeting')) return;
+
+     const { meetingLocked } = req.body as { meetingLocked?: boolean };
+
+     // Broadcast to all participants (including sender) via server
+     const payload = new TextEncoder().encode(JSON.stringify({
+       type: 'meeting_settings_update',
+       meetingLocked: meetingLocked ?? true,
+       sentAt: new Date().toISOString(),
+     }));
+
+     await sendDataMessage(name, payload);
+
+     res.json({ message: 'Meeting lock broadcast', meetingLocked: meetingLocked ?? true });
+     } catch (error) {
+     logger.error('Lock toggle error:', error);
+     res.status(500).json({ error: 'Failed to toggle meeting lock' });
+     }
+     });

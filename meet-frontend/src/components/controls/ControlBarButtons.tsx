@@ -880,8 +880,9 @@ interface ControlsMenuProps {
   participantsCanChat: boolean;
   participantsCanUnmute: boolean;
   participantsCanTurnOnCamera: boolean;
-  onToggleLock: () => void;
-  onToggleLobby: () => void;
+  // Lock + lobby are optional — hidden when feature-locked (undefined handler)
+  onToggleLock?: () => void;
+  onToggleLobby?: () => void;
   onToggleScreenShare: () => void;
   onToggleChat: () => void;
   onToggleUnmute: () => void;
@@ -931,8 +932,12 @@ export const ControlsMenu = memo(function ControlsMenu({
               Meeting Controls
             </div>
 
-            <ToggleButton label="Lock Meeting" icon={meetingLocked ? <Lock size={16} className="text-warning-400" /> : <Unlock size={16} />} isActive={meetingLocked} onToggle={onToggleLock} />
-            <ToggleButton label="Enable Lobby" icon={<DoorOpen size={16} />} isActive={lobbyEnabled} onToggle={onToggleLobby} />
+            {onToggleLock && (
+              <ToggleButton label="Lock Meeting" icon={meetingLocked ? <Lock size={16} className="text-warning-400" /> : <Unlock size={16} />} isActive={meetingLocked} onToggle={onToggleLock} />
+            )}
+            {onToggleLobby && (
+              <ToggleButton label="Enable Lobby" icon={<DoorOpen size={16} />} isActive={lobbyEnabled} onToggle={onToggleLobby} />
+            )}
 
             <div className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-surface-400 border-t border-b border-surface-600 my-1 mt-2">
               Allow All Participants To
@@ -1126,9 +1131,9 @@ interface MemoizedMobileMoreMenuProps {
   onClose: () => void;
   isRecording: boolean;
   isRecordingLoading: boolean;
-  onToggleRecording: () => void;
+  onToggleRecording?: () => void;
   isScreenSharing: boolean | undefined;
-  onToggleScreenShare: () => void;
+  onToggleScreenShare?: () => void;
   handRaised: boolean;
   onToggleHandRaise: () => void;
   layout: string;
@@ -1142,7 +1147,7 @@ interface MemoizedMobileMoreMenuProps {
   onToggleParticipants: () => void;
   onCopyLink: () => void;
   whiteboardOpen: boolean;
-  onToggleWhiteboard: () => void;
+  onToggleWhiteboard?: () => void;
   isModerator: boolean;
   meetingLocked: boolean;
   lobbyEnabled: boolean;
@@ -1150,8 +1155,8 @@ interface MemoizedMobileMoreMenuProps {
   participantsCanChat: boolean;
   participantsCanUnmute: boolean;
   participantsCanTurnOnCamera: boolean;
-  onToggleLock: () => void;
-  onToggleLobby: () => void;
+  onToggleLock?: () => void;
+  onToggleLobby?: () => void;
   onToggleParticipantScreenShare: () => void;
   onToggleParticipantChat: () => void;
   onToggleParticipantUnmute: () => void;
@@ -1195,7 +1200,7 @@ export const MemoizedMobileMoreMenu = memo(function MemoizedMobileMoreMenu({
   onToggleParticipantCamera,
 }: MemoizedMobileMoreMenuProps) {
   const items: MoreMenuItem[] = [
-    { icon: <Monitor size={16} />, label: isScreenSharing ? 'Stop Share' : 'Share Screen', onClick: onToggleScreenShare },
+    ...(onToggleScreenShare ? [{ icon: <Monitor size={16} />, label: isScreenSharing ? 'Stop Share' : 'Share Screen', onClick: onToggleScreenShare }] : []),
     { icon: <Hand size={16} className={handRaised ? 'text-warning-500' : ''} />, label: handRaised ? 'Lower Hand' : 'Raise Hand', onClick: onToggleHandRaise },
     { icon: layout === 'grid' ? <SquarePlay size={16} /> : <LayoutGrid size={16} />, label: layout === 'grid' ? 'Speaker View' : 'Grid View', onClick: onToggleLayout },
     ...(meetingRoomConfig.features.joinLeaveSoundToggle ? [{
@@ -1217,11 +1222,11 @@ export const MemoizedMobileMoreMenu = memo(function MemoizedMobileMoreMenu({
     { icon: <Sparkles size={16} />, label: 'Video Effects', onClick: () => onOpenSettings('video-effects') },
     { icon: <Users size={16} />, label: 'People', onClick: onToggleParticipants },
     { icon: <Link2 size={16} />, label: 'Copy Link', onClick: onCopyLink },
-    { icon: <Pencil size={16} />, label: whiteboardOpen ? 'Close Whiteboard' : 'Whiteboard', onClick: onToggleWhiteboard },
+    ...(onToggleWhiteboard ? [{ icon: <Pencil size={16} />, label: whiteboardOpen ? 'Close Whiteboard' : 'Whiteboard', onClick: onToggleWhiteboard }] : []),
     ...(isModerator ? [
-      { icon: isRecordingLoading ? <Loader2 size={16} className="animate-spin" /> : isRecording ? <CircleDot size={16} className="animate-pulse text-danger-400" /> : <Circle size={16} />, label: isRecording ? 'Stop Recording' : 'Start Recording', onClick: onToggleRecording, danger: isRecording },
-      { icon: meetingLocked ? <Lock size={16} className="text-warning-400" /> : <Unlock size={16} />, label: meetingLocked ? 'Unlock Meeting' : 'Lock Meeting', onClick: onToggleLock },
-      { icon: <DoorOpen size={16} />, label: lobbyEnabled ? 'Disable Lobby' : 'Enable Lobby', onClick: onToggleLobby },
+      ...(onToggleRecording ? [{ icon: isRecordingLoading ? <Loader2 size={16} className="animate-spin" /> : isRecording ? <CircleDot size={16} className="animate-pulse text-danger-400" /> : <Circle size={16} />, label: isRecording ? 'Stop Recording' : 'Start Recording', onClick: onToggleRecording, danger: isRecording }] : []),
+      ...(onToggleLock ? [{ icon: meetingLocked ? <Lock size={16} className="text-warning-400" /> : <Unlock size={16} />, label: meetingLocked ? 'Unlock Meeting' : 'Lock Meeting', onClick: onToggleLock }] : []),
+      ...(onToggleLobby ? [{ icon: <DoorOpen size={16} />, label: lobbyEnabled ? 'Disable Lobby' : 'Enable Lobby', onClick: onToggleLobby }] : []),
       { icon: <ScreenShare size={16} className={participantsCanShareScreen ? 'text-brand-400' : ''} />, label: participantsCanShareScreen ? 'Disallow Screen Share' : 'Allow Screen Share', onClick: onToggleParticipantScreenShare },
       { icon: <MessageCircle size={16} className={participantsCanChat ? 'text-brand-400' : ''} />, label: participantsCanChat ? 'Mute Participant Chat' : 'Allow Participant Chat', onClick: onToggleParticipantChat },
       { icon: <MicIcon size={16} className={participantsCanUnmute ? 'text-brand-400' : ''} />, label: participantsCanUnmute ? 'Mute All Participants' : 'Allow Unmute', onClick: onToggleParticipantUnmute },

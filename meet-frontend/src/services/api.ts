@@ -284,6 +284,13 @@ export const roomsApi = {
   denyAllParticipants: (roomName: string): Promise<AxiosResponse<LobbyActionResponse>> =>
     api.post<LobbyActionResponse>(`/rooms/${roomName}/deny-all`),
 
+  // Whiteboard + lock — server-enforced (Stage 3)
+  toggleWhiteboard: (roomName: string, active: boolean): Promise<AxiosResponse<{ message: string; active: boolean }>> =>
+    api.post(`/rooms/${roomName}/whiteboard/toggle`, { active }),
+
+  toggleMeetingLock: (roomName: string, meetingLocked: boolean): Promise<AxiosResponse<{ message: string; meetingLocked: boolean }>> =>
+    api.post(`/rooms/${roomName}/lock/toggle`, { meetingLocked }),
+
   // Meeting control
   startMeeting: (roomName: string): Promise<AxiosResponse<{ message: string; status: string }>> =>
     api.post(`/rooms/${roomName}/start`),
