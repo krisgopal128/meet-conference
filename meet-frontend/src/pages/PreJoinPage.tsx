@@ -567,8 +567,8 @@ export default function PreJoinPage() {
 
       {/* Right side - Join panel */}
       <div className="w-full sm:w-96 bg-white dark:bg-surface-800 border-surface-200 dark:border-surface-700 flex flex-col border-t sm:border-t-0 sm:border-l">
-        <div className="flex-1 flex flex-col justify-center p-4 sm:p-6 overflow-y-auto max-h-[60vh] sm:max-h-none">
-          <div className="mb-6">
+        <div className="flex-1 flex flex-col p-4 sm:p-6 overflow-y-auto max-h-[60vh] sm:max-h-none">
+          <div className="mb-6 my-auto">
             <h1 className="text-2xl font-bold text-surface-800 dark:text-white mb-2">
               {isCreateMode ? 'Quick Meeting' : room?.title || 'Join Meeting'}
             </h1>

@@ -114,6 +114,7 @@ tokenRouter.post('/', authenticate, tokenLimiter, async (req: AuthRequest, res: 
       metadata: JSON.stringify({
         role: actualRole,
         inLobby,
+        featureFlags: req.user!.feature_flags ?? null,
       }),
       ttl,
       // Override permissions for lobby

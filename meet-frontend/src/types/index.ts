@@ -8,7 +8,25 @@ export interface User {
   is_banned?: boolean;
   lastLoginAt?: string | null;
   createdAt?: string;
+  /** Per-moderator feature locks (allow-list). null/undefined = no lock. */
+  featureFlags?: FeatureFlags | null;
 }
+
+/**
+ * Per-moderator feature locks. An allow-list: a key present and true means the
+ * moderator CAN use that feature; absent or false means blocked.
+ * Only meaningful for role === 'moderator'. Room hosts always bypass.
+ */
+export type FeatureFlagKey =
+  | 'whiteboard'
+  | 'recording'
+  | 'screen_share'
+  | 'mute_all'
+  | 'kick'
+  | 'lock_meeting'
+  | 'lobby_control';
+
+export type FeatureFlags = Partial<Record<FeatureFlagKey, boolean>>;
 
 export interface AuthState {
   user: User | null;

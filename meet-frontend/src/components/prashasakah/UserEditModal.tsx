@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AdminUser } from '../../services/prashasakahApi';
+import type { FeatureFlagKey } from '../../types';
+import { MODERATOR_FEATURES, allFeaturesAllowed } from '../../utils/features';
 
 /**
  * UserEditModal - Modal for editing user details
@@ -9,7 +11,7 @@ interface UserEditModalProps {
   user: AdminUser | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (userId: string, data: { name?: string; role?: 'admin' | 'moderator' | 'participant' }) => Promise<void>;
+  onSave: (userId: string, data: { name?: string; role?: 'admin' | 'moderator' | 'participant'; featureFlags?: Record<string, boolean> }) => Promise<void>;
   currentUserId?: string;
   currentUserRole?: string;
 }
@@ -30,6 +32,9 @@ export default function UserEditModal({
 }: UserEditModalProps) {
   const [name, setName] = useState('');
   const [role, setRole] = useState<'admin' | 'moderator' | 'participant'>('participant');
+  // featureFlags local state — only used when role === 'moderator'.
+  // null = no change requested (won't be sent); an object = send these flags.
+  const [featureFlags, setFeatureFlags] = useState<Record<string, boolean> | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,9 +42,23 @@ export default function UserEditModal({
     if (user) {
       setName(user.name || '');
       setRole(user.role);
+      // Seed from existing flags, or default to all-allowed for a moderator
+      // that has no lock yet. null means "don't send featureFlags on save".
+      setFeatureFlags(
+        user.role === 'moderator'
+          ? { ...(user.featureFlags ?? allFeaturesAllowed()) }
+          : null
+      );
       setError(null);
     }
   }, [user]);
+
+  const toggleFeature = (key: FeatureFlagKey) => {
+    setFeatureFlags((prev) => {
+      const base = prev ?? allFeaturesAllowed();
+      return { ...base, [key]: !base[key] };
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,9 +86,12 @@ export default function UserEditModal({
     setError(null);
 
     try {
+      // Only send featureFlags when the target is (or is being set to) moderator.
+      const sendFlags = role === 'moderator' ? featureFlags : undefined;
       await onSave(user.id, {
         name: name.trim(),
         role,
+        featureFlags: sendFlags ?? undefined,
       });
       onClose();
     } catch (err) {
@@ -87,7 +109,7 @@ export default function UserEditModal({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       {/* Backdrop */}
-      <div 
+      <div
         className="fixed inset-0 bg-black/50 transition-opacity"
         onClick={onClose}
       />
@@ -151,7 +173,7 @@ export default function UserEditModal({
               <div className="space-y-2">
                 {roleOptions.map((option) => {
                   const isDisabled = !canChangeRole && option.value !== user.role;
-                  
+
                   return (
                     <label
                       key={option.value}
@@ -182,12 +204,51 @@ export default function UserEditModal({
               </div>
               {!canChangeRole && (
                 <p className="text-xs text-surface-500 mt-2">
-                  {isEditingSelf 
+                  {isEditingSelf
                     ? 'You cannot change your own role.'
                     : 'Only administrators can change user roles.'}
                 </p>
               )}
             </div>
+
+            {/* Feature Flags — only for moderators */}
+            {role === 'moderator' && (
+              <div>
+                <label className="block text-sm font-medium text-surface-600 mb-1">
+                  Moderator Permissions
+                </label>
+                <p className="text-xs text-surface-500 mb-3">
+                  Select which powers this moderator can use. Unchecked features are locked.
+                  Room hosts always bypass these locks.
+                </p>
+                <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                  {MODERATOR_FEATURES.map(({ key, label, description }) => {
+                    const checked = featureFlags?.[key] === true;
+                    return (
+                      <label
+                        key={key}
+                        className={`flex items-start gap-3 p-2.5 border rounded-lg cursor-pointer transition-colors ${
+                          checked
+                            ? 'border-brand-400 bg-brand-50/50'
+                            : 'border-surface-200 hover:bg-surface-50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleFeature(key)}
+                          className="mt-0.5 rounded border-surface-300 text-brand-500 focus:ring-brand-400"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-surface-800">{label}</p>
+                          <p className="text-xs text-surface-500">{description}</p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex gap-3 pt-2">

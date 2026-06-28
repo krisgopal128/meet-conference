@@ -40,6 +40,7 @@ export interface AuthUser {
   name: string | null;
   role: string;
   is_banned?: boolean;
+  feature_flags?: Record<string, boolean> | null;
 }
 
 export interface AuthRequest extends Request {
@@ -128,7 +129,7 @@ if (cached) {
 
   // Fetch from DB
   const user = await queryOne<AuthUser>(
-    'SELECT id, email, name, role, is_banned FROM users WHERE id = $1',
+    'SELECT id, email, name, role, is_banned, feature_flags FROM users WHERE id = $1',
     [userId]
   );
 

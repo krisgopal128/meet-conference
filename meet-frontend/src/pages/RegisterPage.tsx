@@ -99,7 +99,7 @@ export default function RegisterPage() {
   const passwordStrength = getPasswordStrength();
 
   return (
-    <div className="min-h-screen bg-surface-50 dark:bg-surface-900 flex">
+    <div className="min-h-screen min-h-dvh bg-surface-50 dark:bg-surface-900 flex">
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-brand-600 p-12 flex-col justify-between">
         <div>
@@ -126,8 +126,8 @@ export default function RegisterPage() {
       </div>
 
       {/* Right side - Form */}
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
-        <div className="w-full max-w-md">
+      <div className="flex-1 flex justify-center p-4 sm:p-8">
+        <div className="w-full max-w-md my-auto">
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
             <Link to="/" className="inline-flex items-center gap-2.5">

@@ -64,6 +64,7 @@ export interface AdminUser {
   isBanned: boolean;
   lastLoginAt: string | null;
   createdAt: string;
+  featureFlags?: Record<string, boolean> | null;
 }
 
 export interface AdminUsersListResponse {
@@ -368,6 +369,7 @@ export const prashasakahApi = {
   updateUser: (id: string, data: {
     name?: string;
     role?: 'admin' | 'moderator' | 'participant';
+    featureFlags?: Record<string, boolean>;
   }): Promise<AxiosResponse<AdminUserResponse>> =>
     api.patch(`/prashasakah/users/${id}`, data),
 

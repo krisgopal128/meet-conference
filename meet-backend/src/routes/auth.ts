@@ -183,10 +183,10 @@ authRouter.post('/register', authLimiter, async (req, res: Response) => {
     const passwordHash = await bcrypt.hash(password, 12);
 
     const { user, refresh } = await withTransaction(async (client) => {
-      const userResult = await client.query<{ id: string; email: string; name: string | null; role: string }>(
+      const userResult = await client.query<{ id: string; email: string; name: string | null; role: string; feature_flags: Record<string, boolean> | null }>(
         `INSERT INTO users (email, password_hash, name) 
          VALUES ($1, $2, $3) 
-         RETURNING id, email, name, role`,
+         RETURNING id, email, name, role, feature_flags`,
         [email, passwordHash, name]
       );
       const newUser = userResult.rows[0];
@@ -213,6 +213,7 @@ authRouter.post('/register', authLimiter, async (req, res: Response) => {
         email: user.email,
         name: user.name,
         role: user.role,
+        featureFlags: user.feature_flags ?? null,
       },
       token,
     });
@@ -250,8 +251,8 @@ authRouter.post('/login', authLimiter, async (req, res: Response) => {
     }
 
     // Find user
-    const user = await queryOne<{ id: string; email: string; name: string | null; password_hash: string; role: string; is_banned: boolean }>(
-      'SELECT id, email, name, password_hash, role, is_banned FROM users WHERE email = $1',
+    const user = await queryOne<{ id: string; email: string; name: string | null; password_hash: string; role: string; is_banned: boolean; feature_flags: Record<string, boolean> | null }>(
+      'SELECT id, email, name, password_hash, role, is_banned, feature_flags FROM users WHERE email = $1',
       [email]
     );
 
@@ -293,6 +294,7 @@ authRouter.post('/login', authLimiter, async (req, res: Response) => {
         email: user.email,
         name: user.name,
         role: user.role,
+        featureFlags: user.feature_flags ?? null,
       },
       token,
     });
@@ -348,8 +350,8 @@ authRouter.post('/refresh', async (req, res: Response) => {
     }
 
     // Get fresh user data
-    const user = await queryOne<{ id: string; email: string; name: string | null; role: string }>(
-      'SELECT id, email, name, role FROM users WHERE id = $1',
+    const user = await queryOne<{ id: string; email: string; name: string | null; role: string; feature_flags: Record<string, boolean> | null }>(
+      'SELECT id, email, name, role, feature_flags FROM users WHERE id = $1',
       [payload.userId]
     );
 
@@ -390,6 +392,7 @@ authRouter.post('/refresh', async (req, res: Response) => {
         email: user.email,
         name: user.name,
         role: user.role,
+        featureFlags: user.feature_flags ?? null,
       },
       token,
     });

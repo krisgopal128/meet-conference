@@ -125,7 +125,7 @@ export default function UserDetail() {
     fetchUserActivity();
   }, [fetchUser, fetchUserActivity]);
 
-  const handleSaveUser = async (userId: string, data: { name?: string; role?: 'admin' | 'moderator' | 'participant' }) => {
+  const handleSaveUser = async (userId: string, data: { name?: string; role?: 'admin' | 'moderator' | 'participant'; featureFlags?: Record<string, boolean> }) => {
     try {
       await prashasakahApi.updateUser(userId, data);
       toast.success('User updated successfully');

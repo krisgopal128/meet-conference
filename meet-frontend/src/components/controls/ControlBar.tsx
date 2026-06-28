@@ -51,6 +51,7 @@ import { useVideoControls } from '../../hooks/useVideoControls';
 import { useScreenShareControls } from '../../hooks/useScreenShareControls';
 import { useMeetingActions } from '../../hooks/useMeetingActions';
 import { useLobbyPolling } from '../../hooks/useLobbyPolling';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import type { LobbyParticipant } from '../../types/api';
 import logger from '../../utils/logger';
 
@@ -129,6 +130,13 @@ export function ControlBar() {
   const videoControls = useVideoControls(localParticipant, room ?? undefined, qualityMode, gridAspectRatio);
   const { toggleScreenShare } = useScreenShareControls(localParticipant, qualityMode, screenShareMode);
   const { leaveRoom, endMeeting, hasOtherParticipants } = useMeetingActions();
+
+  // Mobile detection must match the rest of the app (UA-based) so a phone in
+  // landscape (>= 768px wide) still gets the compact mobile bar. Tailwind's
+  // md: breakpoint is purely width-based, which previously caused BOTH bars to
+  // fight on a landscape phone: useIsMobile → mobile layout everywhere else,
+  // but md:flex → desktop control bar rendered → buttons overflowed the edges.
+  const isMobile = useIsMobile();
 
   const handleToggleMic = useCallback(async () => {
     if (!localParticipant) return;
@@ -440,8 +448,10 @@ export function ControlBar() {
 
   return (
     <div className="relative">
-      {/* Desktop Layout */}
-      <div className="hidden md:flex items-center justify-center gap-2 bg-surface-800/95 backdrop-blur-sm border-t border-surface-700 py-3 px-4">
+      {/* Desktop Layout — hidden on mobile UA (useIsMobile) even when viewport
+          width >= md, so a phone in landscape gets the compact mobile bar. */}
+      {!isMobile && (
+      <div className="flex items-center justify-center gap-2 bg-surface-800/95 backdrop-blur-sm border-t border-surface-700 py-3 px-4">
         {/* Connection Quality Indicator */}
         {(meetingRoomConfig.features.connectionQualityIndicator || autoFallbackActive) && (
           <div className={cn(
@@ -590,9 +600,12 @@ export function ControlBar() {
           hasOtherParticipants={hasOtherParticipants}
         />
       </div>
+      )}
 
-      {/* Mobile Layout */}
-      <div className="md:hidden flex items-center justify-between bg-surface-800/95 backdrop-blur-sm border-t border-surface-700 py-2 px-4 overscroll-behavior-contain" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))', paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))', paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}>
+      {/* Mobile Layout — shown on mobile UA (useIsMobile) regardless of viewport
+          width, so a phone in landscape keeps the compact bar. */}
+      {isMobile && (
+      <div className="flex items-center justify-between bg-surface-800/95 backdrop-blur-sm border-t border-surface-700 py-2 px-4 overscroll-behavior-contain" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))', paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))', paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}>
         {/* Left: Primary Controls */}
         <div className="flex items-center gap-1">
           <MobileMicButton isMuted={isMicMuted} onToggle={handleToggleMic} />
@@ -680,6 +693,7 @@ export function ControlBar() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

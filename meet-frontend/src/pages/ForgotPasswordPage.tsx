@@ -55,8 +55,8 @@ export default function ForgotPasswordPage() {
   // Success state - show confirmation message
   if (success) {
     return (
-      <div className="min-h-screen bg-surface-50 dark:bg-surface-900 flex items-center justify-center p-4 sm:p-8">
-        <div className="w-full max-w-md">
+      <div className="min-h-screen min-h-dvh bg-surface-50 dark:bg-surface-900 flex justify-center p-4 sm:p-8">
+        <div className="w-full max-w-md my-auto">
           {/* Logo */}
           <div className="text-center mb-8">
             <Link to="/" className="inline-flex items-center gap-2.5">
@@ -101,8 +101,8 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-50 dark:bg-surface-900 flex items-center justify-center p-4 sm:p-8">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen min-h-dvh bg-surface-50 dark:bg-surface-900 flex justify-center p-4 sm:p-8">
+      <div className="w-full max-w-md my-auto">
         {/* Logo */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2.5">

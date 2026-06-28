@@ -36,9 +36,22 @@ const paginationSchema = z.object({
   ]).optional(),
 });
 
+// Allow-list of moderator powers. Only these keys may appear in feature_flags.
+export const MODERATOR_FEATURES = [
+  'whiteboard',
+  'recording',
+  'screen_share',
+  'mute_all',
+  'kick',
+  'lock_meeting',
+  'lobby_control',
+] as const;
+export type ModeratorFeature = (typeof MODERATOR_FEATURES)[number];
+
 const updateUserSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   role: z.enum(['admin', 'moderator', 'participant', 'guest']).optional(),
+  feature_flags: z.record(z.enum(MODERATOR_FEATURES), z.boolean()).optional(),
 });
 
 const changePasswordSchema = z.object({
@@ -200,7 +213,7 @@ router.get('/users/:id', requireModerator(), async (req: AuthRequest, res: Respo
 router.patch('/users/:id', adminActionLimiter, requireModerator(), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, role } = updateUserSchema.parse(req.body);
+    const { name, role, feature_flags } = updateUserSchema.parse(req.body);
 
     const updateFields: string[] = [];
     const params: (string)[] = [];
@@ -221,6 +234,17 @@ router.patch('/users/:id', adminActionLimiter, requireModerator(), async (req: A
       }
     }
 
+    // feature_flags only applies to moderators; block setting it on other roles
+    if (feature_flags !== undefined) {
+      const targetUser = await queryOne<{ role: string }>('SELECT role FROM users WHERE id = $1', [id]);
+      if (!targetUser) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      if (targetUser.role !== 'moderator') {
+        return res.status(400).json({ error: 'Feature flags can only be set on moderator accounts' });
+      }
+    }
+
     if (name !== undefined) {
       updateFields.push(`name = $${paramIndex}`);
       params.push(sanitizeName(name));
@@ -230,6 +254,12 @@ router.patch('/users/:id', adminActionLimiter, requireModerator(), async (req: A
     if (role !== undefined) {
       updateFields.push(`role = $${paramIndex}`);
       params.push(role);
+      paramIndex++;
+    }
+
+    if (feature_flags !== undefined) {
+      updateFields.push(`feature_flags = $${paramIndex}`);
+      params.push(JSON.stringify(feature_flags));
       paramIndex++;
     }
 
@@ -252,14 +282,14 @@ router.patch('/users/:id', adminActionLimiter, requireModerator(), async (req: A
     if (role !== undefined && role !== previousRole) {
       void auditAdminAction(req, 'role_change', 'user', id, { fromRole: previousRole ?? null, toRole: role });
     }
-    void auditAdminAction(req, 'user_update', 'user', id, { name: name ?? undefined, role: role ?? undefined });
+    void auditAdminAction(req, 'user_update', 'user', id, { name: name ?? undefined, role: role ?? undefined, feature_flags: feature_flags ?? undefined });
 
     // Invalidate user caches
     await invalidateCache(`cache:users:detail:${id}`);
     await invalidatePattern('cache:users:*');
     invalidateUserAuth(id);
 
-    const user = await queryOne<UserRow>('SELECT id, email, name, role, is_banned, last_login_at, created_at FROM users WHERE id = $1', [id]);
+    const user = await queryOne<UserRow & { feature_flags: Record<string, boolean> | null }>('SELECT id, email, name, role, is_banned, last_login_at, created_at, feature_flags FROM users WHERE id = $1', [id]);
 
     res.json({
       user: {
@@ -270,6 +300,7 @@ router.patch('/users/:id', adminActionLimiter, requireModerator(), async (req: A
         isBanned: user!.is_banned,
         lastLoginAt: user!.last_login_at,
         createdAt: user!.created_at,
+        featureFlags: user!.feature_flags,
       }
     });
   } catch (error) {

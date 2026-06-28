@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState, Component, ReactNode } from 'react';
+import { memo, useEffect, useRef, useState, useMemo, Component, ReactNode } from 'react';
 import { Track, ParticipantEvent, type RemoteTrackPublication, type Participant } from 'livekit-client';
 import SignalBars from './SignalBars';
 import {
@@ -64,8 +64,29 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
   const isMobile = useIsMobile();
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const cameraTrackRef = useRoomCameraTrack(participant.identity);
-  
+  const contextCameraTrackRef = useRoomCameraTrack(participant.identity);
+
+  // Fallback to the participant's own camera publication when the room-wide
+  // tracks context (RoomCameraTracksContext, driven by useTracks) has not yet
+  // emitted an update for this participant. This closes the multi-second gap
+  // where the tile's own TrackPublished listener has fired (forceRender) but the
+  // context map still holds no entry — the #1 cause of blank tiles on the grid
+  // while the participant panel already shows the camera as live.
+  // participant.trackPublications.size is required as a dependency even though
+  // `participant` is listed: LiveKit mutates the participant object in place, so
+  // its reference is stable across track additions — only .size changes.
+  const fallbackTrackRef = useMemo(() => {
+    if (contextCameraTrackRef) return null;
+    if (participant.isLocal) return null;
+    const pub = Array.from(participant.trackPublications.values())
+      .find(p => p.source === Track.Source.Camera);
+    if (!pub) return null;
+    return { participant: { identity: participant.identity }, publication: pub, source: Track.Source.Camera };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contextCameraTrackRef, participant, participant.trackPublications.size, participant.isLocal]);
+
+  const cameraTrackRef = contextCameraTrackRef || fallbackTrackRef;
+
   // Get track SID for key to VideoTrack
   const trackSid = cameraTrackRef?.publication?.trackSid;
   
@@ -384,9 +405,9 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
       <button
         onClick={() => setPinned(isPinned ? null : participant.identity)}
         className={`absolute top-2 left-2 p-1.5 transition-all ${
-          isPinned 
-            ? 'opacity-100 bg-brand-500 text-white' 
-            : 'opacity-100 md:opacity-0 md:group-hover:opacity-100 bg-black/50 hover:bg-black/70 text-white'
+          isPinned
+            ? 'opacity-100 bg-brand-500 text-white'
+            : `${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} bg-black/50 hover:bg-black/70 text-white`
         }`}
         title={isPinned ? 'Unpin' : 'Pin'}
       >
@@ -395,7 +416,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
       {meetingRoomConfig.features.fullscreenTileView && (
         <button
           onClick={() => { void toggleFullscreen(); }}
-          className="absolute top-2 left-11 p-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 bg-black/50 hover:bg-black/70 text-white transition-all"
+          className={`absolute top-2 left-11 p-1.5 ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} bg-black/50 hover:bg-black/70 text-white transition-all`}
           title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
         >
           {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
