@@ -80,7 +80,8 @@ whiteboardRouter.put('/:roomName', authenticate, async (req: AuthRequest, res) =
     }
 
     // Limit scene size to 1MB
-    const scenePayload = { elements: scene, files: files && typeof files === 'object' ? files : {} };
+    const filesObj = (files && typeof files === 'object' && !Array.isArray(files)) ? files : {};
+    const scenePayload = { elements: scene, files: filesObj };
     const sceneJson = JSON.stringify(scenePayload);
     if (sceneJson.length > 1_000_000) {
       res.status(413).json({ error: 'Scene too large (max 1MB)' });
@@ -160,13 +161,9 @@ whiteboardRouter.patch('/:roomName/lock', authenticate, async (req: AuthRequest,
     }
 
     // Verify user is a room moderator (host/cohost via LiveKit metadata)
-    const canMod = await participantCanModerate(roomName, req.user!.id, room.host_id);
+    const canMod = room.host_id === req.user!.id || await participantCanModerate(roomName, req.user!.id, room.host_id);
     if (!canMod) {
-      // Fallback: allow system admins too
-      const isHost = room.host_id === req.user!.id;
-      if (!isHost) {
-        return res.status(403).json({ error: 'Only room moderators can toggle whiteboard lock' });
-      }
+      return res.status(403).json({ error: 'Only room moderators can toggle whiteboard lock' });
     }
 
     await query(
@@ -199,12 +196,9 @@ whiteboardRouter.delete('/:roomName', authenticate, async (req: AuthRequest, res
     }
 
     // Verify user is a room moderator
-    const canMod = await participantCanModerate(roomName, req.user!.id, room.host_id);
+    const canMod = room.host_id === req.user!.id || await participantCanModerate(roomName, req.user!.id, room.host_id);
     if (!canMod) {
-      const isHost = room.host_id === req.user!.id;
-      if (!isHost) {
-        return res.status(403).json({ error: 'Only room moderators can clear the whiteboard' });
-      }
+      return res.status(403).json({ error: 'Only room moderators can clear the whiteboard' });
     }
 
     await query('DELETE FROM whiteboards WHERE room_id = $1', [room.id]);

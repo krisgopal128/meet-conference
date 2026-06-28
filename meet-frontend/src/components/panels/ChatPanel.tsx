@@ -298,7 +298,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
     void loadHistory();
   }, [roomName, historyLoaded, mergeMessages]);
 
-  const visibleMessages = messages.filter((message) => {
+  const visibleMessages = useMemo(() => messages.filter((message) => {
     if (!message.isPrivate) {
       return true;
     }
@@ -308,7 +308,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
     }
 
     return message.recipientRole === 'moderator' && isModerator;
-  });
+  }), [messages, localParticipant?.identity, isModerator]);
 
   const activeTypers = Object.entries(typingParticipants)
     .filter(([identity]) => identity !== localParticipant?.identity)

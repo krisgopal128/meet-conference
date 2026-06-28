@@ -64,6 +64,7 @@ function HomePageContent() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Validation state
   const [roomNameTouched, setRoomNameTouched] = useState(false);
@@ -283,7 +284,8 @@ function HomePageContent() {
     
     setCopied(name);
     toast.success('Link copied!');
-    setTimeout(() => setCopied(null), 2000);
+    if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    copiedTimerRef.current = setTimeout(() => setCopied(null), 2000);
   }, []);
 
   // Calendar meeting click

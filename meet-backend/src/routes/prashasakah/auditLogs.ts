@@ -35,7 +35,7 @@ router.get('/audit-logs', requireAdmin(), async (req: AuthRequest, res: Response
       conditions.push(`aal.action_type = $${params.length}`);
     }
 
-    if (adminId) {
+    if (adminId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(adminId)) {
       params.push(adminId);
       conditions.push(`aal.admin_id = $${params.length}`);
     }

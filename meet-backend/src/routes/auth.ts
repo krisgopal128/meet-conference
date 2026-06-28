@@ -242,7 +242,7 @@ authRouter.post('/login', authLimiter, async (req, res: Response) => {
     const password = rawData.password;
 
     // Check if account is locked out
-    const { locked, remainingSeconds } = await isAccountLocked(email);
+    const { locked, remainingSeconds } = await isAccountLocked(email).catch(() => ({ locked: false, remainingSeconds: 0 }));
     if (locked) {
       return res.status(429).json({ 
         error: 'Account temporarily locked due to too many failed attempts',
@@ -258,7 +258,7 @@ authRouter.post('/login', authLimiter, async (req, res: Response) => {
 
     if (!user) {
       // Record failed attempt (use sanitized email to prevent enumeration via timing)
-      await recordFailedAttempt(email);
+      await recordFailedAttempt(email).catch(() => {});
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -272,12 +272,12 @@ authRouter.post('/login', authLimiter, async (req, res: Response) => {
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
       // Record failed attempt
-      await recordFailedAttempt(email);
+      await recordFailedAttempt(email).catch(() => {});
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     // Clear failed attempts on successful login
-    await clearFailedAttempts(email);
+    await clearFailedAttempts(email).catch(() => {});
 
     await query('UPDATE users SET last_login_at = NOW() WHERE id = $1', [user.id]);
 

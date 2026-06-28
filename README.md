@@ -108,7 +108,7 @@ A real-time video conferencing platform built with React, Express, and LiveKit �
 meet-conference/
 ├── meet-frontend/          # React + Vite frontend
 │   ├── src/
-│   │   ├── components/     # UI components (chat, controls, room, pip, etc.)
+│   │   ├── components/     # UI components (chat, controls, room, etc.)
 │   │   ├── hooks/          # 30+ custom React hooks
 │   │   ├── pages/          # 15 pages (Home, Login, Room, Schedule, etc.)
 │   │   ├── services/       # API client services

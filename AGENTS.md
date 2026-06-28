@@ -304,7 +304,7 @@ When handling moderator links from external apps:
 | Category | Hooks |
 |----------|-------|
 | Connection | useTokenRefresh, useRequireRole |
-| Media | usePictureInPicture, useAutoPiP, usePermissionEnforcer |
+| Media | usePermissionEnforcer |
 | Performance | useAdaptiveQuality, useCpuMonitor, useFpsMonitor, useNetworkQuality, useQualityMonitoring |
 | Room | useVisibleParticipants, useVideoPool, useLobbyManager, useAdmittedParticipants |
 | Data | useDataChannelHandler |

@@ -209,7 +209,7 @@ router.get('/meetings/:id', requireModerator(), async (req: AuthRequest, res: Re
           participants: participants.map((p) => ({
             userId: p.user_id,
             name: p.name,
-            email: p.email,
+            ...(req.user!.role === 'admin' && { email: p.email }),
             joinedAt: p.joined_at,
             leftAt: p.left_at,
           })),

@@ -3,6 +3,7 @@ import { AuthRequest, authenticate } from '../middleware/authenticate.js';
 import { requireUser } from '../middleware/requireUser.js';
 import { query, queryOne } from '../services/database.js';
 import { sanitizeChatMessage } from '../utils/validation.js';
+import { participantCanModerate } from '../services/livekit.js';
 import logger from '../utils/logger.js';
 import * as roomService from '../services/roomService.js';
 
@@ -84,7 +85,7 @@ chatRouter.post('/:name/chat', authenticate, async (req: AuthRequest, res: Respo
     if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { name } = req.params;
     const { content } = req.body;
-    const validMessageTypes = ['text', 'system', 'file', 'emoji'];
+    const validMessageTypes = ['text', 'file', 'emoji'];
     const messageType = validMessageTypes.includes(req.body.messageType) ? req.body.messageType : 'text';
 
     // Sanitize chat message
@@ -106,8 +107,12 @@ chatRouter.post('/:name/chat', authenticate, async (req: AuthRequest, res: Respo
       return res.status(403).json({ error: 'Only active participants or the host can send room chat messages' });
     }
 
-    if (room.settings?.participantsCanChat === false && room.host_id !== user.id) {
-      return res.status(403).json({ error: 'Chat is disabled for participants in this room' });
+    if (room.settings?.participantsCanChat === false) {
+      const isHost = room.host_id === user.id;
+      const canMod = isHost || await participantCanModerate(name, user.id, room.host_id);
+      if (!canMod) {
+        return res.status(403).json({ error: 'Chat is disabled for participants in this room' });
+      }
     }
 
     const latestMeeting = await queryOne<{ id: string }>(

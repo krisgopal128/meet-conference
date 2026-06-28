@@ -365,7 +365,7 @@ router.post('/token', async (req: Request, res: Response) => {
 
     // Get the requested role
     const requestedRole = role || 'attendee';
-    const isElevatedRole = requestedRole === 'moderator' || requestedRole === 'teacher';
+    const isElevatedRole = requestedRole === 'moderator' || requestedRole === 'teacher' || requestedRole === 'presenter';
     
     // If requesting elevated role (moderator/teacher), must have token.generate permission
     if (isElevatedRole && !canGenerateToken) {

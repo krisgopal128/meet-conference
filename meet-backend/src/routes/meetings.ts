@@ -7,6 +7,7 @@ import { AuthRequest, authenticate } from '../middleware/authenticate.js';
 import { requireUser } from '../middleware/requireUser.js';
 import { query, queryOne, withTransaction } from '../services/database.js';
 import { verifyMeetingAccess } from '../services/meetingService.js';
+import * as roomService from '../services/roomService.js';
 import { scheduleMeetingSchema, diagnosticsPayloadSchema } from '../schemas/meetings.js';
 import { sanitizeChatMessage } from '../utils/validation.js';
 import { getCached, invalidatePattern, TTL_MEDIUM, TTL_SHORT } from '../services/cache.js';
@@ -122,6 +123,27 @@ meetingsRouter.get('/history', authenticate, async (req: AuthRequest, res: Respo
 meetingsRouter.post('/diagnostics', diagnosticsLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const payload = diagnosticsPayloadSchema.parse(req.body);
+
+    // Verify the user is a participant of the room (if roomName is provided)
+    if (payload.roomName) {
+      const room = await roomService.getRoomByName(payload.roomName);
+      if (!room) {
+        return res.status(404).json({ error: 'Room not found' });
+      }
+      const isHost = room.host_id === req.user!.id;
+      if (!isHost) {
+        const isParticipant = await queryOne<{ id: string }>(
+          `SELECT mp.id FROM meeting_participants mp
+           JOIN meetings m ON mp.meeting_id = m.id
+           WHERE m.room_id = $1 AND mp.user_id = $2 LIMIT 1`,
+          [room.id, req.user!.id]
+        );
+        if (!isParticipant) {
+          return res.status(403).json({ error: 'Not a participant of this room' });
+        }
+      }
+    }
+
     const diagnosticsDir = join(process.cwd(), 'runtime', 'diagnostics');
     if (!diagnosticsDirReady) {
       await mkdir(diagnosticsDir, { recursive: true });
@@ -603,7 +625,7 @@ meetingsRouter.post('/:id/chat', authenticate, async (req: AuthRequest, res: Res
     if (!user) return res.status(401).json({ error: 'Authentication required' });
     const { id } = req.params;
     const { content } = req.body;
-    const validMessageTypes = ['text', 'system', 'file', 'emoji'];
+    const validMessageTypes = ['text', 'file', 'emoji'];
     const messageType = validMessageTypes.includes(req.body.messageType) ? req.body.messageType : 'text';
 
     if (!content || typeof content !== 'string' || content.trim().length === 0) {
