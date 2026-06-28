@@ -119,6 +119,8 @@ tokenRouter.post('/', authenticate, tokenLimiter, async (req: AuthRequest, res: 
       ttl,
       // Override permissions for lobby
       lobbyMode: inLobby,
+      // Pass feature flags so screen_share lock restricts canPublishSources
+      featureFlags: req.user!.feature_flags ?? null,
     });
 
     res.json({

@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import { EncodedFileOutput, S3Upload, EgressStatus } from 'livekit-server-sdk';
 import { AuthRequest, authenticate } from '../middleware/authenticate.js';
+import { assertFeature } from '../middleware/checkFeatureFlag.js';
 import { egressClient } from '../services/livekit.js';
 import { query, queryOne } from '../services/database.js';
 import { roomService } from '../services/roomService.js';
@@ -35,6 +36,9 @@ egressRouter.post('/start', authenticate, async (req: AuthRequest, res: Response
     if (hostId !== req.user!.id) {
       return res.status(403).json({ error: 'Only the room host can start recording' });
     }
+
+    // Feature lock: admin may have locked recording for this host's account
+    if (await assertFeature(req, res, hostId, 'recording')) return;
 
     // Acquire per-room lock to prevent concurrent start requests (double-click, retry)
     lockKey = `egress_lock:${roomName}`;
@@ -128,6 +132,9 @@ egressRouter.post('/stop', authenticate, async (req: AuthRequest, res: Response)
       if (!room || room.host_id !== req.user!.id) {
         return res.status(403).json({ error: 'Only the room host can stop recording' });
       }
+
+      // Feature lock: admin may have locked recording for this host's account
+      if (await assertFeature(req, res, room.host_id, 'recording')) return;
     } else {
       // No roomName means we can't verify ownership — deny
       return res.status(403).json({ error: 'Cannot verify recording ownership' });

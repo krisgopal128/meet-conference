@@ -93,10 +93,13 @@ export async function createAccessToken(
     metadata?: string;
     ttl?: number; // seconds
     lobbyMode?: boolean; // Start in lobby (no publish permissions)
+    /** Per-user feature locks (allow-list). When screen_share is locked,
+     *  canPublishSources is restricted to camera/mic only. */
+    featureFlags?: Record<string, boolean> | null;
   } = {}
 ): Promise<string> {
   const ttl = options.ttl || 3600; // Default 1 hour
-  
+
   const at = new AccessToken(apiKey, apiSecret, {
     identity,
     name: options.name,
@@ -106,7 +109,7 @@ export async function createAccessToken(
 
   // Get base grants for role
   const baseGrants = ROLE_GRANTS[role];
-  
+
   // If lobby mode, restrict publish permissions
   const grant: VideoGrant = {
     ...baseGrants,
@@ -117,8 +120,16 @@ export async function createAccessToken(
     }),
   };
 
+  // Feature lock: screen_share — restrict to camera/mic only.
+  // Only applies to moderators with feature_flags present (allow-list model);
+  // a moderator whose screen_share is explicitly false loses the ability
+  // to publish screen share tracks at the LiveKit/SFU level.
+  if (!options.lobbyMode && options.featureFlags && options.featureFlags.screen_share === false) {
+    grant.canPublishSources = [TrackSource.CAMERA, TrackSource.MICROPHONE];
+  }
+
   at.addGrant(grant);
-  
+
   return await at.toJwt();
 }
 

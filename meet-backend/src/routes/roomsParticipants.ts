@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import { AuthRequest, authenticate } from '../middleware/authenticate.js';
+import { assertFeature } from '../middleware/checkFeatureFlag.js';
 import { requireUser } from '../middleware/requireUser.js';
 import {
   getParticipantInfo,
@@ -80,6 +81,9 @@ participantsRouter.delete('/:name/participants/:identity', authenticate, async (
       return res.status(403).json({ error: 'Only moderators can remove participants' });
     }
 
+    // Feature lock: admin may have locked kick for this moderator
+    if (await assertFeature(req, res, room.host_id, 'kick')) return;
+
     if (identity === room.host_id) {
       return res.status(403).json({ error: 'Cannot kick the room host' });
     }
@@ -145,6 +149,9 @@ participantsRouter.post('/:name/mute-all', authenticate, async (req: AuthRequest
     const room = await assertModerator(res, name, req.user!.id, 'mute all participants');
     if (!room) return;
 
+    // Feature lock: admin may have locked mute_all for this moderator
+    if (await assertFeature(req, res, room.host_id, 'mute_all')) return;
+
     // Mute everyone except moderators in parallel
     const participants = await listParticipants(name);
     const nonModerators = participants.filter(p => !isModeratorParticipant(p, room.host_id));
@@ -187,6 +194,9 @@ participantsRouter.post('/:name/kick/:identity', authenticate, async (req: AuthR
       return res.status(403).json({ error: 'Only moderators can remove participants' });
     }
 
+    // Feature lock: admin may have locked kick for this moderator
+    if (await assertFeature(req, res, room.host_id, 'kick')) return;
+
     if (identity === room.host_id) {
       return res.status(403).json({ error: 'Cannot kick the room host' });
     }
@@ -218,6 +228,9 @@ participantsRouter.post('/:name/kick/:identity', authenticate, async (req: AuthR
        return res.status(403).json({ error: 'Only moderators can admit participants' });
      }
 
+     // Feature lock: admin may have locked lobby_control for this moderator
+     if (await assertFeature(req, res, room.host_id, 'lobby_control')) return;
+
      await processLobbyParticipants(name, [{ identity }], 'admit');
      res.json({ message: 'Participant admitted' });
    } catch (error) {
@@ -243,6 +256,9 @@ participantsRouter.post('/:name/kick/:identity', authenticate, async (req: AuthR
      if (!allowed) {
        return res.status(403).json({ error: 'Only moderators can admit participants' });
      }
+
+     // Feature lock: admin may have locked lobby_control for this moderator
+     if (await assertFeature(req, res, room.host_id, 'lobby_control')) return;
 
      const participants = await listParticipants(name);
      const admitted = await processLobbyParticipants(name, participants, 'admit');
@@ -271,6 +287,9 @@ participantsRouter.post('/:name/kick/:identity', authenticate, async (req: AuthR
      if (!allowed) {
        return res.status(403).json({ error: 'Only moderators can deny participants' });
      }
+
+     // Feature lock: admin may have locked lobby_control for this moderator
+     if (await assertFeature(req, res, room.host_id, 'lobby_control')) return;
 
      const participants = await listParticipants(name);
      const denied = await processLobbyParticipants(name, participants, 'deny');
