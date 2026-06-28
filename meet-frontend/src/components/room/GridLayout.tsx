@@ -2,15 +2,15 @@
  * GridLayout Component
  * 
  * Displays participant tiles in a responsive CSS Grid layout.
- * 
- * Key principles:
- * 1. For 1 participant: flexbox centering with aspect ratio
- * 2. For 2-8 participants: fixed grid that fills available space
- * 3. For 9-32 participants: responsive grid using sqrt formula (fills space)
- *    - columns = ceil(sqrt(participant_count))
- *    - rows = ceil(participant_count / columns)
- * 4. For 33+ participants: responsive grid with vertical scroll
- * 5. Video inside tiles uses objectFit for cover/contain
+ *
+ * Mobile rules (portrait + landscape):
+ *   - Max 4 tiles visible at a time (2×2 grid that fills the screen)
+ *   - 5+ participants: same 2×2 viewport, rest scroll vertically
+ *
+ * Desktop rules:
+ *   - 2-8: fixed grid that fills available space
+ *   - 9-24: responsive sqrt grid
+ *   - 25+: scrollable grid with min tile height
  */
 
 import { useParticipants, useLocalParticipant } from '@livekit/components-react';
@@ -21,9 +21,7 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 
 const FIXED_GRID_MAX = 8;
 const SCROLL_THRESHOLD_DESKTOP = 25;
-const SCROLL_THRESHOLD_MOBILE = 12;
 const MIN_TILE_HEIGHT_DESKTOP = 200;
-const MIN_TILE_HEIGHT_MOBILE = 140;
 
 const ASPECT_RATIO_CSS: Record<GridAspectRatio, string> = {
   '16:9': '16/9',
@@ -32,23 +30,9 @@ const ASPECT_RATIO_CSS: Record<GridAspectRatio, string> = {
   '4:3': '4/3',
 };
 
-function getGridDimensions(count: number, ratio: GridAspectRatio, isMobile: boolean): { cols: number; rows: number } {
+function getGridDimensions(count: number, ratio: GridAspectRatio): { cols: number; rows: number } {
   if (count <= 1) return { cols: 1, rows: 1 };
 
-  if (isMobile) {
-    if (ratio === '9:16') {
-      if (count === 2) return { cols: 1, rows: 2 };
-      if (count <= 4) return { cols: 2, rows: 2 };
-      if (count <= 6) return { cols: 2, rows: 3 };
-      if (count <= 9) return { cols: 3, rows: 3 };
-    } else {
-      if (count === 2) return { cols: 2, rows: 1 };
-      if (count <= 4) return { cols: 2, rows: 2 };
-      if (count <= 6) return { cols: 2, rows: 3 };
-      if (count <= 9) return { cols: 3, rows: 3 };
-    }
-  }
-  
   if (ratio === '9:16') {
     if (count === 2) return { cols: 1, rows: 2 };
     if (count <= 4) return { cols: 2, rows: 2 };
@@ -60,10 +44,9 @@ function getGridDimensions(count: number, ratio: GridAspectRatio, isMobile: bool
     if (count <= 6) return { cols: 3, rows: 2 };
     if (count <= 8) return { cols: 4, rows: 2 };
   }
-  
-  const cols = isMobile ? Math.min(Math.ceil(Math.sqrt(count)), 3) : Math.ceil(Math.sqrt(count));
+
+  const cols = Math.ceil(Math.sqrt(count));
   const rows = Math.ceil(count / cols);
-  
   return { cols, rows };
 }
 
@@ -76,7 +59,7 @@ export function GridLayout() {
   const admittedParticipants = useAdmittedParticipants(participants, localParticipant?.identity);
   const count = admittedParticipants.length;
   const isSingleParticipant = count === 1;
-  
+
   const isLandscape = aspectRatio === '16:9' || aspectRatio === '4:3';
 
   if (isSingleParticipant) {
@@ -92,9 +75,9 @@ export function GridLayout() {
             maxHeight: '100%',
           }}
         >
-          <ParticipantTile 
-            participant={admittedParticipants[0]} 
-            className="w-full h-full rounded-2xl" 
+          <ParticipantTile
+            participant={admittedParticipants[0]}
+            className="w-full h-full rounded-2xl"
             isSpeakerTile={true}
             participantCount={count}
           />
@@ -103,21 +86,50 @@ export function GridLayout() {
     );
   }
 
-  const { cols, rows } = getGridDimensions(count, aspectRatio, isMobile);
+  const gap = isMobile ? 4 : 8;
+  const pad = isMobile ? 'p-1' : 'p-2';
+
+  // ── Mobile: 2×2 fills screen, scroll for overflow ──
+  if (isMobile) {
+    // Each row = half the container minus half the gap → exactly 2 rows fill the viewport
+    const rowHeight = `calc(50% - ${gap / 2}px)`;
+    return (
+      <div
+        className={`w-full h-full ${pad} overflow-y-auto overflow-x-hidden`}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gridAutoRows: rowHeight,
+          gridTemplateRows: 'none',
+          alignContent: 'start',
+          gap: `${gap}px`,
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'rgba(255,255,255,0.3) transparent',
+        }}
+      >
+        {admittedParticipants.map((p) => (
+          <div key={p.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden">
+            <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // ── Desktop ──
+  const { cols, rows } = getGridDimensions(count, aspectRatio);
   const useFixedGrid = count <= FIXED_GRID_MAX;
-  const scrollThreshold = isMobile ? SCROLL_THRESHOLD_MOBILE : SCROLL_THRESHOLD_DESKTOP;
-  const needsScroll = count > scrollThreshold;
-  const minTileHeight = isMobile ? MIN_TILE_HEIGHT_MOBILE : MIN_TILE_HEIGHT_DESKTOP;
+  const needsScroll = count > SCROLL_THRESHOLD_DESKTOP;
 
   return (
     <div
-      className={`w-full h-full ${isMobile ? 'p-1' : 'p-2'} ${needsScroll ? 'overflow-y-auto' : 'overflow-hidden'}`}
+      className={`w-full h-full ${pad} ${needsScroll ? 'overflow-y-auto' : 'overflow-hidden'}`}
       style={{
         display: 'grid',
         gridTemplateColumns: `repeat(${cols}, 1fr)`,
         ...(needsScroll
           ? {
-              gridAutoRows: `${minTileHeight}px`,
+              gridAutoRows: `${MIN_TILE_HEIGHT_DESKTOP}px`,
               gridTemplateRows: 'none',
               alignContent: 'start',
               scrollbarWidth: 'thin',
@@ -127,7 +139,7 @@ export function GridLayout() {
               gridTemplateRows: `repeat(${rows}, 1fr)`,
               alignContent: useFixedGrid ? 'center' : 'start',
             }),
-        gap: isMobile ? '4px' : '8px',
+        gap: `${gap}px`,
       }}
     >
       {admittedParticipants.map((p) => (
@@ -136,10 +148,7 @@ export function GridLayout() {
           className="relative flex items-center justify-center overflow-hidden"
           style={{ minWidth: 0, minHeight: 0 }}
         >
-          <div
-            className="relative rounded-2xl bg-surface-900 overflow-hidden"
-            style={{ width: '100%', height: '100%' }}
-          >
+          <div className="relative rounded-2xl bg-surface-900 overflow-hidden" style={{ width: '100%', height: '100%' }}>
             <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
           </div>
         </div>
