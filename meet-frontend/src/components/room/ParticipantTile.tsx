@@ -63,7 +63,6 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
   const layout = useLayout();
   const isMobile = useIsMobile();
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isVideoPaused, setIsVideoPaused] = useState(false);
 
   const cameraTrackRef = useRoomCameraTrack(participant.identity);
   
@@ -244,10 +243,12 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
                    isTrackSubscribed && 
                    cameraTrackRef?.publication?.track;
                    
-  // Phase 2: Only apply visibility culling when it's actually active
+  // ponytail: isVideoPaused removed from shouldShowVideo — with adaptiveStream,
+  // gating <VideoTrack> on streamState creates a deadlock: paused → no <video>
+  // element → adaptiveStream can't detect it → never resumes → permanently paused.
+  // Camera-off is already handled by hasVideo via participant.isCameraEnabled.
   const shouldShowVideo = Boolean(hasVideo) && 
-                          (!isCullingActive || shouldRenderVideoFromContext) &&
-                          (!isVideoPaused || meetingRoomConfig.performance.freezeLastFrameWhenPaused);
+                          (!isCullingActive || shouldRenderVideoFromContext);
   const isMicMuted = !participant.isMicrophoneEnabled;
 
   // Get initials from name or identity
@@ -309,32 +310,6 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, []);
-
-  useEffect(() => {
-    const publication = cameraTrackRef?.publication as RemoteTrackPublication | undefined;
-    if (!publication || participant.isLocal) {
-      setIsVideoPaused(false);
-      return;
-    }
-
-    const syncPausedState = () => {
-      const streamState = publication.track?.streamState;
-      setIsVideoPaused(streamState === Track.StreamState.Paused);
-    };
-
-    const handleStreamStateChanged = (changedPublication: RemoteTrackPublication, streamState: Track.StreamState) => {
-      if (changedPublication.trackSid !== publication.trackSid) {
-        return;
-      }
-      setIsVideoPaused(streamState === Track.StreamState.Paused);
-    };
-
-    syncPausedState();
-    participant.on(ParticipantEvent.TrackStreamStateChanged, handleStreamStateChanged);
-    return () => {
-      participant.off(ParticipantEvent.TrackStreamStateChanged, handleStreamStateChanged);
-    };
-  }, [cameraTrackRef, participant, participant.isLocal]);
 
   return (
     <div
