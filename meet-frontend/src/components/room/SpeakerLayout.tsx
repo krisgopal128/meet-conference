@@ -31,16 +31,20 @@ export function SpeakerLayout({ activeSpeakers }: SpeakerLayoutProps) {
   const aspectRatio = useGridAspectRatio();
   const isMobile = useIsMobile();
 
-  const filmstripHeight = isMobile ? '15dvh' : '140px';
+  const filmstripHeight = isMobile ? '18dvh' : '140px';
 
   const filmstripPx = useMemo(() => {
     if (!isMobile) return 140;
-    return Math.round(window.innerHeight * 0.15);
+    // Clamp mobile filmstrip to a readable minimum so landscape phones
+    // (short viewport heights) don't squash tiles into illegible slivers.
+    return Math.max(90, Math.round(window.innerHeight * 0.18));
   }, [isMobile]);
 
   const filmstripTileWidth = useMemo(() => {
-    const h = isMobile ? filmstripPx : 140;
-    return h * ASPECT_RATIO_MULTIPLIERS[aspectRatio];
+    // Subtract vertical padding from the usable tile height before applying
+    // the aspect multiplier, so tiles fit inside the strip without overflow.
+    const usableH = isMobile ? filmstripPx - Math.max(6, Math.round(filmstripPx * 0.08)) : 140;
+    return Math.round(usableH * ASPECT_RATIO_MULTIPLIERS[aspectRatio]);
   }, [aspectRatio, filmstripPx, isMobile]);
 
   const filmstripGap = useMemo(() => Math.max(6, Math.round(filmstripPx * 0.06)), [filmstripPx]);

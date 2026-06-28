@@ -88,19 +88,17 @@ export function GridLayout() {
 
   const gap = isMobile ? 4 : 8;
   const pad = isMobile ? 'p-1' : 'p-2';
+  const aspectCss = ASPECT_RATIO_CSS[aspectRatio];
 
-  // ── Mobile: 2×2 fills screen, scroll for overflow ──
+  // ── Mobile: 2-column grid, tiles respect aspect ratio, scroll for overflow ──
   if (isMobile) {
-    // Each row = half the container minus half the gap → exactly 2 rows fill the viewport
-    const rowHeight = `calc(50% - ${gap / 2}px)`;
     return (
       <div
         className={`w-full h-full ${pad} overflow-y-auto overflow-x-hidden`}
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(2, 1fr)',
-          gridAutoRows: rowHeight,
-          gridTemplateRows: 'none',
+          gridAutoRows: 'min-content',
           alignContent: 'start',
           gap: `${gap}px`,
           scrollbarWidth: 'thin',
@@ -108,7 +106,7 @@ export function GridLayout() {
         }}
       >
         {admittedParticipants.map((p) => (
-          <div key={p.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden">
+          <div key={p.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden" style={{ aspectRatio: aspectCss }}>
             <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
           </div>
         ))}
