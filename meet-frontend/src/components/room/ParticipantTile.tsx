@@ -393,7 +393,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
           {videoFitMode === 'contain' ? <Square size={10} /> : <Crop size={10} />}
           </span>
         )}
-        {meetingRoomConfig.features.connectionQualityIndicator && !isMobile && isSpeakerTile && (
+        {meetingRoomConfig.features.connectionQualityIndicator && !isMobile && (
           <SignalBars quality={connectionQuality} />
         )}
       </div>
