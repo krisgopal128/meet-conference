@@ -138,17 +138,7 @@ export function GridLayout() {
         >
           <div
             className="relative rounded-2xl bg-surface-900 overflow-hidden"
-            style={
-              isMobile
-                ? { width: '100%', height: '100%' }
-                : {
-                    aspectRatio: ASPECT_RATIO_CSS[aspectRatio],
-                    width: isLandscape ? '100%' : 'auto',
-                    height: isLandscape ? 'auto' : '100%',
-                    maxWidth: '100%',
-                    maxHeight: '100%',
-                  }
-            }
+            style={{ width: '100%', height: '100%' }}
           >
             <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
           </div>
