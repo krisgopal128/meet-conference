@@ -27,8 +27,12 @@ CREATE TABLE IF NOT EXISTS admin_audit_logs (
   target_id VARCHAR(255),
   details JSONB,
   ip_address VARCHAR(45),
+  user_agent VARCHAR(255),
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Ensure user_agent column exists on pre-existing tables (added in a later revision)
+ALTER TABLE admin_audit_logs ADD COLUMN IF NOT EXISTS user_agent VARCHAR(255);
 
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON admin_audit_logs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_admin_id ON admin_audit_logs(admin_id);

@@ -173,16 +173,17 @@ CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created
 -- ADMIN TABLES (from migration 002)
 -- ============================================
 CREATE TABLE IF NOT EXISTS admin_audit_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    admin_id UUID REFERENCES users(id),
-    action_type VARCHAR(100) NOT NULL,
-    target_type VARCHAR(100),
-    target_id VARCHAR(255),
-    details JSONB,
-    ip_address INET,
-    user_agent TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  action_type VARCHAR(50) NOT NULL,
+  target_type VARCHAR(50),
+  target_id VARCHAR(255),
+  details JSONB,
+  ip_address VARCHAR(45),
+  user_agent VARCHAR(255),
+  created_at TIMESTAMP DEFAULT NOW()
 );
+
 
 CREATE INDEX IF NOT EXISTS idx_admin_audit_logs_admin_id ON admin_audit_logs(admin_id);
 CREATE INDEX IF NOT EXISTS idx_admin_audit_logs_action_type ON admin_audit_logs(action_type);

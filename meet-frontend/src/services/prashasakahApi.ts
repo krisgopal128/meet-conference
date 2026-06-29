@@ -215,12 +215,14 @@ export interface AdminConfigResponse {
 export interface AdminAuditLog {
   id: string;
   action: string;
-  targetType: 'user' | 'room' | 'meeting' | 'system';
+  targetType: 'user' | 'room' | 'meeting' | 'system' | 'api_key';
   targetId: string | null;
   actorId: string;
   actorEmail: string;
+  actorName?: string;
   details: Record<string, unknown>;
   ipAddress: string | null;
+  userAgent: string | null;
   createdAt: string;
 }
 
