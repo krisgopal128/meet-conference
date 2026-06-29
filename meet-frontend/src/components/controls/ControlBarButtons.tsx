@@ -1011,6 +1011,7 @@ interface MoreMenuProps {
   onClose: () => void;
   items: MoreMenuItem[];
   isRecording?: boolean;
+  anchorRef?: React.RefObject<HTMLButtonElement | null>;
 }
 
 export const MoreMenu = memo(function MoreMenu({
@@ -1018,8 +1019,19 @@ export const MoreMenu = memo(function MoreMenu({
   onClose,
   items,
   isRecording,
+  anchorRef,
 }: MoreMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<{ bottom: number; right: number } | null>(null);
+
+  useEffect(() => {
+    if (!show || !anchorRef?.current) return;
+    const rect = anchorRef.current.getBoundingClientRect();
+    setPosition({
+      bottom: window.innerHeight - rect.top + 8,
+      right: window.innerWidth - rect.right,
+    });
+  }, [show, anchorRef]);
 
   useEffect(() => {
     if (!show) return;
@@ -1039,7 +1051,8 @@ export const MoreMenu = memo(function MoreMenu({
           <div className="fixed inset-0 z-[9997]" onClick={onClose} />
           <div
             ref={menuRef}
-            className="fixed bottom-20 right-4 bg-surface-700 rounded-xl shadow-lg border border-surface-600 py-1 min-w-[160px] max-w-[calc(100vw-2rem)] max-h-[70vh] overflow-y-auto z-[9998] animate-fade-in"
+            className="fixed bg-surface-700 rounded-xl shadow-lg border border-surface-600 py-1 min-w-[160px] max-w-[calc(100vw-2rem)] max-h-[70vh] overflow-y-auto z-[9998] animate-fade-in"
+            style={position ? { bottom: `${position.bottom}px`, right: `${position.right}px` } : { bottom: '5rem', right: '1rem' }}
             role="menu"
           >
             {items.map((item) => (
@@ -1084,6 +1097,7 @@ interface MemoizedMoreMenuProps {
   settingsOpen: boolean;
   onOpenSettings: (view: SettingsViewType) => void;
   onCopyLink: () => void;
+  anchorRef?: React.RefObject<HTMLButtonElement | null>;
 }
 
 export const MemoizedMoreMenu = memo(function MemoizedMoreMenu({
@@ -1097,6 +1111,7 @@ export const MemoizedMoreMenu = memo(function MemoizedMoreMenu({
   settingsOpen,
   onOpenSettings,
   onCopyLink,
+  anchorRef,
 }: MemoizedMoreMenuProps) {
   const items: MoreMenuItem[] = [
     { icon: <Link2 size={16} />, label: 'Copy Meeting Link', onClick: onCopyLink },
@@ -1119,7 +1134,7 @@ export const MemoizedMoreMenu = memo(function MemoizedMoreMenu({
     { icon: <Sparkles size={16} />, label: 'Video Effects', onClick: () => onOpenSettings('video-effects') },
   ];
 
-  return <MoreMenu show={show} onClose={onClose} items={items} isRecording={isRecording} />;
+  return <MoreMenu show={show} onClose={onClose} items={items} isRecording={isRecording} anchorRef={anchorRef} />;
 });
 
 // ============================================
@@ -1161,6 +1176,7 @@ interface MemoizedMobileMoreMenuProps {
   onToggleParticipantChat: () => void;
   onToggleParticipantUnmute: () => void;
   onToggleParticipantCamera: () => void;
+  anchorRef?: React.RefObject<HTMLButtonElement | null>;
 }
 
 export const MemoizedMobileMoreMenu = memo(function MemoizedMobileMoreMenu({
@@ -1198,6 +1214,7 @@ export const MemoizedMobileMoreMenu = memo(function MemoizedMobileMoreMenu({
   onToggleParticipantChat,
   onToggleParticipantUnmute,
   onToggleParticipantCamera,
+  anchorRef,
 }: MemoizedMobileMoreMenuProps) {
   const items: MoreMenuItem[] = [
     ...(onToggleScreenShare ? [{ icon: <Monitor size={16} />, label: isScreenSharing ? 'Stop Share' : 'Share Screen', onClick: onToggleScreenShare }] : []),
@@ -1234,7 +1251,7 @@ export const MemoizedMobileMoreMenu = memo(function MemoizedMobileMoreMenu({
     ] : []),
   ];
 
-  return <MoreMenu show={show} onClose={onClose} items={items} isRecording={isRecording} />;
+  return <MoreMenu show={show} onClose={onClose} items={items} isRecording={isRecording} anchorRef={anchorRef} />;
 });
 
 // Export icons for use in ControlBar

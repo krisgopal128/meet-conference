@@ -605,6 +605,7 @@ export function ControlBar() {
               settingsOpen={settingsOpen}
               onOpenSettings={openSettingsView}
               onCopyLink={copyRoomLink}
+              anchorRef={moreButtonRefDesktop}
             />
           </div>
         </div>
@@ -708,6 +709,7 @@ export function ControlBar() {
               onToggleParticipantChat={handleToggleParticipantChat}
               onToggleParticipantUnmute={handleToggleParticipantUnmute}
               onToggleParticipantCamera={handleToggleParticipantCamera}
+              anchorRef={moreButtonRefMobile}
             />
           </div>
         </div>
