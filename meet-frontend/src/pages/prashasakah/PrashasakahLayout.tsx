@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Outlet, NavLink, Link, Navigate, useLocation } from 'react-router-dom';
 import { Menu, X, PanelLeftClose, PanelLeftOpen, LogOut, ArrowLeft, Bell } from 'lucide-react';
 import { useUser, useAuthActions } from '../../store/authStore';
@@ -111,8 +111,9 @@ export default function PrashasakahLayout() {
     return <Navigate to="/" replace />;
   }
 
-  const filteredNavItems = navItems.filter(
-    (item) => !item.adminOnly || user?.role === 'admin'
+  const filteredNavItems = useMemo(
+    () => navItems.filter((item) => !item.adminOnly || user?.role === 'admin'),
+    [user]
   );
 
   return (

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { MoreVertical, Eye, Pencil, Ban, Trash2, CheckCircle, Loader2 } from 'lucide-react';
 import { AdminUser } from '../../services/prashasakahApi';
@@ -188,6 +188,25 @@ function RowActionsMenu({
   );
 }
 
+function SortIcon({ field, sortField, sortOrder }: { field: SortField; sortField: SortField; sortOrder: SortOrder }) {
+  if (sortField !== field) {
+    return (
+      <svg className="w-4 h-4 text-surface-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+      </svg>
+    );
+  }
+  return sortOrder === 'asc' ? (
+    <svg className="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+    </svg>
+  ) : (
+    <svg className="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+  );
+}
+
 export default function UserTable({
   users,
   loading = false,
@@ -213,7 +232,7 @@ export default function UserTable({
     }
   };
 
-  const sortedUsers = [...users].sort((a, b) => {
+  const sortedUsers = useMemo(() => [...users].sort((a, b) => {
     let comparison = 0;
     switch (sortField) {
       case 'name':
@@ -236,7 +255,7 @@ export default function UserTable({
       }
     }
     return sortOrder === 'asc' ? comparison : -comparison;
-  });
+  }), [users, sortField, sortOrder]);
 
   const rowVirtualizer = useVirtualizer({
     count: sortedUsers.length,
@@ -252,25 +271,6 @@ export default function UserTable({
     } finally {
       setActionLoading(null);
     }
-  };
-
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) {
-      return (
-        <svg className="w-4 h-4 text-surface-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-        </svg>
-      );
-    }
-    return sortOrder === 'asc' ? (
-      <svg className="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-      </svg>
-    ) : (
-      <svg className="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-      </svg>
-    );
   };
 
   if (loading) {
@@ -316,7 +316,7 @@ export default function UserTable({
                   className="flex items-center gap-1 hover:text-surface-600"
                 >
                   User
-                  <SortIcon field="name" />
+                  <SortIcon field="name" sortField={sortField} sortOrder={sortOrder} />
                 </button>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
@@ -325,7 +325,7 @@ export default function UserTable({
                   className="flex items-center gap-1 hover:text-surface-600"
                 >
                   Email
-                  <SortIcon field="email" />
+                  <SortIcon field="email" sortField={sortField} sortOrder={sortOrder} />
                 </button>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
@@ -334,7 +334,7 @@ export default function UserTable({
                   className="flex items-center gap-1 hover:text-surface-600"
                 >
                   Role
-                  <SortIcon field="role" />
+                  <SortIcon field="role" sortField={sortField} sortOrder={sortOrder} />
                 </button>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
@@ -343,7 +343,7 @@ export default function UserTable({
                   className="flex items-center gap-1 hover:text-surface-600"
                 >
                   Last Login
-                  <SortIcon field="lastLoginAt" />
+                  <SortIcon field="lastLoginAt" sortField={sortField} sortOrder={sortOrder} />
                 </button>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">

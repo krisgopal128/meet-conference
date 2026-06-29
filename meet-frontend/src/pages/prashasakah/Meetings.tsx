@@ -9,6 +9,25 @@ import { prashasakahApi, AdminMeeting } from '../../services/prashasakahApi';
 import DateRangeFilter from '../../components/prashasakah/DateRangeFilter';
 import logger from '../../utils/logger';
 
+const STATUS_BADGE_STYLES: Record<string, string> = {
+  ongoing: 'inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-green-50 text-green-700 ring-1 ring-green-200',
+  ended: 'inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-surface-50 text-surface-600 ring-1 ring-surface-200',
+  scheduled: 'inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-blue-50 text-blue-700 ring-1 ring-blue-200',
+  active: 'inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-green-50 text-green-700 ring-1 ring-green-200',
+};
+const STATUS_DOT_STYLES: Record<string, string> = {
+  ongoing: 'bg-green-500',
+  ended: 'bg-surface-400',
+  scheduled: 'bg-blue-500',
+  active: 'bg-green-500',
+};
+const STATUS_LABELS: Record<string, string> = {
+  ongoing: 'Active',
+  ended: 'Ended',
+  scheduled: 'Scheduled',
+  active: 'Active',
+};
+
 export default function Meetings() {
   const [meetings, setMeetings] = useState<AdminMeeting[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,26 +91,6 @@ export default function Meetings() {
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
-  };
-
-  const getStatusBadge = (status: string) => {
-    const styles: Record<string, string> = {
-      ongoing: 'inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-green-50 text-green-700 ring-1 ring-green-200',
-      ended: 'inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-surface-50 text-surface-600 ring-1 ring-surface-200',
-      scheduled: 'inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-blue-50 text-blue-700 ring-1 ring-blue-200',
-      active: 'inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-green-50 text-green-700 ring-1 ring-green-200',
-    };
-    return styles[status] || styles['ended'];
-  };
-
-  const getStatusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-      ongoing: 'Active',
-      ended: 'Ended',
-      scheduled: 'Scheduled',
-      active: 'Active',
-    };
-    return labels[status] || status;
   };
 
   return (
@@ -204,11 +203,9 @@ export default function Meetings() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={getStatusBadge(meeting.status)}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${
-                        meeting.status === 'ongoing' ? 'bg-green-500' : 'bg-surface-400'
-                      }`}></span>
-                      {getStatusLabel(meeting.status)}
+                    <span className={STATUS_BADGE_STYLES[meeting.status] || STATUS_BADGE_STYLES['ended']}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT_STYLES[meeting.status] || 'bg-surface-400'}`}></span>
+                      {STATUS_LABELS[meeting.status] || meeting.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
