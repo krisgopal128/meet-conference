@@ -220,12 +220,12 @@ export default function PrashasakahLayout() {
           </div>
 
           {/* Actions */}
-          <div className={`flex items-center gap-1 ${collapsed ? 'justify-center' : ''}`}>
+          <div className={`flex flex-col gap-1 ${collapsed ? 'items-center' : ''}`}>
             <Link
               to="/"
               title={collapsed ? 'Back to App' : undefined}
               className={`flex items-center gap-2 text-sm text-surface-300 hover:text-white hover:bg-surface-800 rounded-lg transition-colors ${
-                collapsed ? 'p-2.5' : 'px-3 py-2 flex-1'
+                collapsed ? 'p-2.5 justify-center' : 'px-3 py-2 w-full'
               }`}
             >
               <ArrowLeft className="w-4 h-4 shrink-0" />
@@ -234,10 +234,12 @@ export default function PrashasakahLayout() {
             <button
               onClick={logout}
               title="Sign Out"
-              className={`p-2 text-surface-300 hover:text-white hover:bg-surface-800 rounded-lg transition-colors`}
-              aria-label="Sign Out"
+              className={`flex items-center gap-2 text-sm text-surface-300 hover:text-white hover:bg-surface-800 rounded-lg transition-colors ${
+                collapsed ? 'p-2.5 justify-center' : 'px-3 py-2 w-full'
+              }`}
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-4 h-4 shrink-0" />
+              <span className={collapsed ? 'md:hidden' : ''}>Sign Out</span>
             </button>
           </div>
         </div>
