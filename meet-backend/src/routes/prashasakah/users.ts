@@ -176,8 +176,8 @@ router.get('/users/:id', requireModerator(), async (req: AuthRequest, res: Respo
         const meetingStats = await queryOne<{ hosted: number; attended: number; duration: number }>(`
           SELECT
             (SELECT COUNT(*) FROM rooms WHERE host_id = $1) as hosted,
-            (SELECT COUNT(*) FROM meeting_participants WHERE user_id = $1 AND left_at IS NOT NULL) as attended,
-            (SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (left_at - joined_at)) / 60), 0) FROM meeting_participants WHERE user_id = $1) as duration
+            (SELECT COUNT(*) FROM meeting_participants WHERE user_id = $1) as attended,
+            (SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (COALESCE(left_at, NOW()) - joined_at)) / 60), 0) FROM meeting_participants WHERE user_id = $1) as duration
         `, [id]);
 
         return {

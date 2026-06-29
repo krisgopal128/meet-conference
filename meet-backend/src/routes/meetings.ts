@@ -63,9 +63,15 @@ meetingsRouter.get('/', authenticate, async (req: AuthRequest, res: Response) =>
       TTL_MEDIUM,
       async () => {
         const meetings = await query<MeetingWithParticipants>(
-          `SELECT m.*, r.name as room_name, r.title as room_title
+          `SELECT m.*, r.name as room_name, r.title as room_title,
+                  COALESCE(mp_counts.unique_participants, 0)::integer as "uniqueParticipants"
            FROM meetings m
            JOIN rooms r ON m.room_id = r.id
+           LEFT JOIN (
+             SELECT meeting_id, COUNT(*) as unique_participants
+             FROM meeting_participants
+             GROUP BY meeting_id
+           ) mp_counts ON mp_counts.meeting_id = m.id
            WHERE r.host_id = $1 OR EXISTS (SELECT 1 FROM meeting_participants mp WHERE mp.meeting_id = m.id AND mp.user_id = $1)
            ORDER BY m.started_at DESC
            LIMIT $2 OFFSET $3`,
@@ -314,7 +320,7 @@ meetingsRouter.get('/stats', authenticate, async (req: AuthRequest, res: Respons
           `SELECT
              COUNT(*)::integer as total_meetings,
              COALESCE(SUM(m.participant_count), 0)::integer as total_participants,
-             COALESCE(SUM(EXTRACT(EPOCH FROM (COALESCE(m.ended_at, m.started_at) - m.started_at)) / 60), 0)::integer as total_minutes
+             COALESCE(SUM(EXTRACT(EPOCH FROM (COALESCE(m.ended_at, NOW()) - m.started_at)) / 60), 0)::integer as total_minutes
            FROM meetings m
            JOIN rooms r ON m.room_id = r.id
            WHERE r.host_id = $1

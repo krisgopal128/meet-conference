@@ -7,6 +7,7 @@ import {
   cacheDel,
 } from './redis.js';
 import { sendDataMessage } from './livekit.js';
+import { invalidatePattern } from './cache.js';
 import logger from '../utils/logger.js';
 import { z } from 'zod';
 
@@ -109,6 +110,10 @@ export async function handleRoomStarted(roomName: string): Promise<void> {
      )`,
     [roomName]
   );
+
+  // Invalidate admin caches so new meeting shows immediately
+  await invalidatePattern('cache:meetings:*');
+  await invalidatePattern('cache:stats:*');
 }
 
 export async function handleRoomFinished(roomName: string): Promise<void> {
@@ -141,6 +146,11 @@ export async function handleRoomFinished(roomName: string): Promise<void> {
 
   // Clear participant cache (O(1) delete vs N x sRem)
   await cacheDel(`room:${roomName}:participants`);
+
+  // Invalidate admin caches so ended meeting/room shows immediately
+  await invalidatePattern('cache:meetings:*');
+  await invalidatePattern('cache:rooms:*');
+  await invalidatePattern('cache:stats:*');
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -228,6 +238,10 @@ export async function handleParticipantJoined(roomName: string, identity: string
      ON CONFLICT DO NOTHING`,
     [user?.id || null, identity, roomName]
   );
+
+  // Invalidate admin caches so updated participant count shows immediately
+  await invalidatePattern('cache:meetings:*');
+  await invalidatePattern('cache:stats:*');
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -322,7 +336,7 @@ export async function handleParticipantLeft(roomName: string, identity: string, 
      WHERE identity = $1 
      AND meeting_id = (
        SELECT m.id FROM meetings m
-       JOIN rooms r ON r.id = m.room_id
+       JOIN rooms r ON m.room_id = r.id
        WHERE r.name = $2 AND m.ended_at IS NULL
        ORDER BY m.started_at DESC
        LIMIT 1
@@ -330,6 +344,10 @@ export async function handleParticipantLeft(roomName: string, identity: string, 
      AND left_at IS NULL`,
     [identity, roomName]
   );
+
+  // Invalidate admin caches so updated participant count shows immediately
+  await invalidatePattern('cache:meetings:*');
+  await invalidatePattern('cache:stats:*');
 }
 
 export async function handleEgressStarted(event: unknown): Promise<void> {
