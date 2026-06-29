@@ -1,14 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Outlet, NavLink, Link, Navigate, useLocation } from 'react-router-dom';
-import { Menu, X, PanelLeftClose, PanelLeftOpen, LogOut, ArrowLeft } from 'lucide-react';
+import { Menu, X, PanelLeftClose, PanelLeftOpen, LogOut, ArrowLeft, Bell } from 'lucide-react';
 import { useUser, useAuthActions } from '../../store/authStore';
-
-/**
- * PrashasakahLayout - Admin Panel Layout Component
- * 
- * Provides the sidebar navigation and header for the admin panel.
- * Named "Prashāsakaḥ" (Sanskrit: प्रशासकः) meaning "Administrator"
- */
 
 interface NavItem {
   label: string;
@@ -110,12 +103,10 @@ export default function PrashasakahLayout() {
     });
   }, []);
 
-  // Close mobile menu on route change
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
-  // Admin only
   if (!user || user.role !== 'admin') {
     return <Navigate to="/" replace />;
   }
@@ -125,7 +116,7 @@ export default function PrashasakahLayout() {
   );
 
   return (
-    <div className="min-h-screen bg-surface-100 flex">
+    <div className="min-h-screen bg-surface-50 dark:bg-surface-950 flex">
       {/* Mobile overlay */}
       {mobileMenuOpen && (
         <div
@@ -136,26 +127,25 @@ export default function PrashasakahLayout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 bg-surface-800 text-white flex flex-col transform transition-all duration-200 ease-in-out ${
+        className={`fixed inset-y-0 left-0 z-50 bg-surface-900 text-white flex flex-col transform transition-all duration-200 ease-in-out ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-        } md:translate-x-0 ${collapsed ? 'md:w-16' : 'md:w-64'} w-64`}
+        } md:translate-x-0 ${collapsed ? 'md:w-16' : 'md:w-60'} w-60`}
       >
         {/* Logo + Collapse toggle */}
-        <div className="h-16 flex items-center border-b border-surface-700 px-3">
+        <div className="h-14 flex items-center border-b border-surface-700/50 px-3">
           <Link to="/prashasakah" className="flex items-center gap-2.5 min-w-0">
-            <svg className="w-8 h-8 text-brand-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-7 h-7 text-brand-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
             <div className={`transition-all duration-200 overflow-hidden ${collapsed ? 'md:w-0 md:opacity-0' : 'md:w-auto md:opacity-100'}`}>
-              <h1 className="text-lg font-bold whitespace-nowrap">Prashāsakaḥ</h1>
-              <p className="text-xs text-surface-400 whitespace-nowrap">Admin Panel</p>
+              <h1 className="text-base font-bold whitespace-nowrap leading-tight">Prashāsakaḥ</h1>
+              <p className="text-[10px] text-surface-400 whitespace-nowrap">Admin Panel</p>
             </div>
           </Link>
 
-          {/* Collapse toggle — desktop only */}
           <button
             onClick={toggleCollapsed}
-            className={`ml-auto p-1.5 rounded-lg text-surface-400 hover:text-white hover:bg-surface-700 transition-colors hidden md:flex items-center justify-center ${collapsed ? 'absolute top-4 right-2 z-10' : ''}`}
+            className={`ml-auto p-1.5 rounded-lg text-surface-400 hover:text-white hover:bg-surface-700/50 transition-colors hidden md:flex items-center justify-center ${collapsed ? 'absolute top-3 right-2 z-10' : ''}`}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
@@ -164,8 +154,8 @@ export default function PrashasakahLayout() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-2 overflow-y-auto overflow-x-hidden" aria-label="Admin navigation">
-          <ul className="space-y-1">
+        <nav className="flex-1 px-2 py-3 overflow-y-auto overflow-x-hidden" aria-label="Admin navigation">
+          <ul className="space-y-0.5">
             {filteredNavItems.map((item) => (
               <li key={item.path}>
                 <NavLink
@@ -174,20 +164,18 @@ export default function PrashasakahLayout() {
                   title={collapsed ? item.label : undefined}
                   className={({ isActive }) =>
                     `group relative flex items-center gap-3 rounded-lg transition-colors ${
-                      collapsed ? 'px-0 py-2 justify-center' : 'px-3 py-2'
+                      collapsed ? 'px-0 py-2.5 justify-center' : 'px-3 py-2.5'
                     } ${
                       isActive
-                        ? 'bg-brand-600 text-white'
-                        : 'text-surface-300 hover:bg-surface-700 hover:text-surface-50'
+                        ? 'bg-brand-600 text-white font-medium'
+                        : 'text-surface-300 hover:bg-surface-800 hover:text-white'
                     }`
                   }
                 >
                   {item.icon}
-                  <span className={`transition-all duration-200 whitespace-nowrap ${collapsed ? 'md:hidden' : ''}`}>
+                  <span className={`transition-all duration-200 whitespace-nowrap text-sm ${collapsed ? 'md:hidden' : ''}`}>
                     {item.label}
                   </span>
-
-                  {/* Tooltip in collapsed mode */}
                   {collapsed && (
                     <span className="hidden md:block absolute left-full ml-2 px-2 py-1 text-xs font-medium text-white bg-surface-900 rounded-md shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
                       {item.label}
@@ -199,106 +187,83 @@ export default function PrashasakahLayout() {
           </ul>
         </nav>
 
-        {/* User Info */}
-        <div className="border-t border-surface-700 p-2">
-          <div className={`flex items-center gap-3 ${collapsed ? 'justify-center py-2' : 'px-1 py-1 mb-2'}`}>
+        {/* Bottom section: alerts + user + logout */}
+        <div className="border-t border-surface-700/50 px-2 py-2 space-y-1">
+          {/* Alert bell */}
+          <Link
+            to="/prashasakah/alerts"
+            title={collapsed ? 'Alerts' : undefined}
+            className={`flex items-center gap-3 rounded-lg text-surface-300 hover:bg-surface-800 hover:text-white transition-colors ${
+              collapsed ? 'p-2.5 justify-center' : 'px-3 py-2'
+            }`}
+          >
+            <div className="relative shrink-0">
+              <Bell className="w-5 h-5" />
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-danger-500 rounded-full ring-1 ring-surface-900"></span>
+            </div>
+            <span className={`text-sm ${collapsed ? 'md:hidden' : ''}`}>Alerts</span>
+          </Link>
+
+          {/* Divider */}
+          <div className="border-t border-surface-700/50 my-1"></div>
+
+          {/* User info */}
+          <div className={`flex items-center gap-2.5 ${collapsed ? 'justify-center py-1' : 'px-2 py-1'}`}>
             <div className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
               {user?.name?.charAt(0).toUpperCase() || 'A'}
             </div>
             <div className={`flex-1 min-w-0 transition-all duration-200 ${collapsed ? 'md:hidden' : ''}`}>
-              <p className="text-sm font-medium truncate">{user?.name}</p>
-              <p className="text-xs text-surface-400 capitalize">{user?.role}</p>
+              <p className="text-sm font-medium truncate leading-tight">{user?.name}</p>
+              <p className="text-xs text-surface-400 capitalize leading-tight">{user?.role}</p>
             </div>
           </div>
-          <div className={`flex items-center gap-2 ${collapsed ? 'justify-center' : 'px-1'}`}>
+
+          {/* Actions */}
+          <div className={`flex items-center gap-1 ${collapsed ? 'justify-center' : ''}`}>
             <Link
               to="/"
               title={collapsed ? 'Back to App' : undefined}
-              className={`flex items-center gap-2 text-sm text-surface-400 hover:text-surface-50 transition-colors ${collapsed ? 'p-2 rounded-lg hover:bg-surface-700' : ''}`}
+              className={`flex items-center gap-2 text-sm text-surface-300 hover:text-white hover:bg-surface-800 rounded-lg transition-colors ${
+                collapsed ? 'p-2.5' : 'px-3 py-2 flex-1'
+              }`}
             >
               <ArrowLeft className="w-4 h-4 shrink-0" />
               <span className={collapsed ? 'md:hidden' : ''}>Back to App</span>
             </Link>
-            {collapsed && (
-              <>
-                <div className="w-px h-4 bg-surface-700" />
-                <button
-                  onClick={logout}
-                  title="Sign Out"
-                  className="p-2 text-surface-400 hover:text-surface-50 hover:bg-surface-700 rounded-lg transition-colors"
-                  aria-label="Sign Out"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </>
-            )}
-          </div>
-          {!collapsed && (
             <button
               onClick={logout}
-              className="flex items-center gap-2 text-sm text-surface-400 hover:text-surface-50 transition-colors px-1 mt-1"
+              title="Sign Out"
+              className={`p-2 text-surface-300 hover:text-white hover:bg-surface-800 rounded-lg transition-colors`}
+              aria-label="Sign Out"
             >
-              <LogOut className="w-4 h-4 shrink-0" />
-              Sign Out
+              <LogOut className="w-4 h-4" />
             </button>
-          )}
+          </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <div className={`flex-1 ml-0 md:ml-64 flex flex-col min-w-0 transition-all duration-200 ${collapsed ? 'md:ml-16' : ''}`}>
-        {/* Header */}
-        <header className="bg-white border-b border-surface-200 px-4 md:px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {/* Hamburger menu button - mobile only */}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2 text-surface-500 hover:text-surface-700 transition-colors"
-                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-              >
-                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-              </button>
-            </div>
-            <div className="flex items-center gap-4">
-              {/* Alert Bell */}
-              <Link
-                to="/prashasakah/alerts"
-                className="relative p-2 text-surface-500 hover:text-surface-600 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-                {/* Alert badge - will be dynamic */}
-                <span className="absolute top-1 right-1 w-2 h-2 bg-danger-500 rounded-full"></span>
-              </Link>
-
-              {/* User Menu — hidden on desktop when sidebar is collapsed (sign out moved there) */}
-              <button
-                onClick={logout}
-                className={`text-sm text-surface-500 hover:text-surface-700 transition-colors px-3 py-2 rounded-lg hover:bg-surface-100 ${collapsed ? 'md:hidden' : ''}`}
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
-        </header>
+      <div className={`flex-1 ml-0 md:ml-60 flex flex-col min-w-0 transition-all duration-200 ${collapsed ? 'md:ml-16' : ''}`}>
+        {/* Mobile top bar — only visible on mobile */}
+        <div className="md:hidden sticky top-0 z-30 bg-surface-900 text-white px-4 py-3 flex items-center justify-between">
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-1.5 text-white"
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+          <span className="text-sm font-medium">Admin Panel</span>
+          <Link to="/prashasakah/alerts" className="relative p-1.5">
+            <Bell className="w-5 h-5" />
+            <span className="absolute top-1 right-1 w-2 h-2 bg-danger-500 rounded-full"></span>
+          </Link>
+        </div>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 md:p-6 overflow-auto min-w-0">
+        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto min-w-0">
           <Outlet />
         </main>
-
-        {/* Footer */}
-        <footer className="bg-white border-t border-surface-200 px-4 md:px-6 py-3">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-1 text-sm text-surface-500">
-            <span>Meet Conference Admin Panel v1.0.0</span>
-            <span className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-success-500 rounded-full"></span>
-              System Status: Operational
-            </span>
-          </div>
-        </footer>
       </div>
     </div>
   );

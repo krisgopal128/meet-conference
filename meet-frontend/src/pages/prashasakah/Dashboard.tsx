@@ -276,7 +276,7 @@ export function Dashboard() {
       )}
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
         {statsLoading ? (
           <>
             <StatCardSkeleton />
@@ -300,7 +300,7 @@ export function Dashboard() {
               value={formatNumber(stats.users?.active || 0)}
               color="success"
               icon={<ActiveUsersIcon />}
-              subtitle="Last 24 hours"
+              subtitle="Not banned"
             />
             <StatCard
               title="Guest Users"
@@ -348,7 +348,7 @@ export function Dashboard() {
             <div className="h-64 flex items-center justify-center bg-surface-50 dark:bg-surface-800 rounded-lg border border-surface-200 dark:border-surface-700">
               <p className="text-surface-500 dark:text-surface-400">{bandwidthError}</p>
             </div>
-          ) : (
+          ) : bandwidthData?.data && bandwidthData.data.length > 0 ? (
             <Suspense fallback={<BandwidthChartSkeleton height={256} />}>
               <BandwidthChart
                 data={bandwidthData?.data}
@@ -356,6 +356,13 @@ export function Dashboard() {
                 height={256}
               />
             </Suspense>
+          ) : (
+            <div className="h-64 flex flex-col items-center justify-center bg-surface-50 dark:bg-surface-800 rounded-lg border border-surface-200 dark:border-surface-700">
+              <svg className="w-10 h-10 text-surface-300 dark:text-surface-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              <p className="text-sm text-surface-400 dark:text-surface-500">No bandwidth data yet</p>
+            </div>
           )}
         </div>
 
@@ -385,36 +392,36 @@ export function Dashboard() {
 
       {/* Quick Stats */}
       {!statsLoading && stats && (
-        <div className="bg-gradient-to-r from-brand-600 to-brand-800 rounded-xl shadow p-6 text-white">
-          <h2 className="text-lg font-semibold mb-4">Quick Stats</h2>
+        <div className="bg-white dark:bg-surface-900 rounded-xl border border-surface-200 dark:border-surface-700 p-5">
+          <h2 className="text-sm font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider mb-4">Quick Stats</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-brand-200 text-sm">Active Rate</p>
-              <p className="text-2xl font-bold">
+            <div className="text-center md:text-left">
+              <p className="text-xs text-surface-400 dark:text-surface-500">Active Rate</p>
+              <p className="text-2xl font-bold text-surface-800 dark:text-white mt-0.5">
                 {stats.users?.total > 0 
                   ? Math.round((stats.users?.active / stats.users?.total) * 100) 
                   : 0}%
               </p>
             </div>
-            <div>
-              <p className="text-brand-200 text-sm">Meetings per User</p>
-              <p className="text-2xl font-bold">
+            <div className="text-center md:text-left">
+              <p className="text-xs text-surface-400 dark:text-surface-500">Meetings per User</p>
+              <p className="text-2xl font-bold text-surface-800 dark:text-white mt-0.5">
                 {stats.users?.total > 0 
                   ? (stats.meetings?.total / stats.users?.total).toFixed(1) 
                   : '0.0'}
               </p>
             </div>
-            <div>
-              <p className="text-brand-200 text-sm">Peak Ratio</p>
-              <p className="text-2xl font-bold">
+            <div className="text-center md:text-left">
+              <p className="text-xs text-surface-400 dark:text-surface-500">Peak Ratio</p>
+              <p className="text-2xl font-bold text-surface-800 dark:text-white mt-0.5">
                 {stats.meetings?.total > 0 
                   ? Math.round(stats.peakConcurrentUsers / stats.meetings?.total) 
                   : 0}
               </p>
             </div>
-            <div>
-              <p className="text-brand-200 text-sm">Guest Ratio</p>
-              <p className="text-2xl font-bold">
+            <div className="text-center md:text-left">
+              <p className="text-xs text-surface-400 dark:text-surface-500">Guest Ratio</p>
+              <p className="text-2xl font-bold text-surface-800 dark:text-white mt-0.5">
                 {stats.users?.total > 0 
                   ? Math.round((stats.users?.guests / stats.users?.total) * 100) 
                   : 0}%

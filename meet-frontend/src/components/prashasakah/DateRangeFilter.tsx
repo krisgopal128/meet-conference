@@ -26,7 +26,6 @@ export function DateRangeFilter({ value, onChange, className }: DateRangeFilterP
     if (!value) {
       setLocalFrom(newValue);
     }
-    // Call onChange with appropriate signature
     if (value) {
       (onChange as (range: DateRange) => void)({
         from: new Date(newValue),
@@ -41,7 +40,6 @@ export function DateRangeFilter({ value, onChange, className }: DateRangeFilterP
     if (!value) {
       setLocalTo(newValue);
     }
-    // Call onChange with appropriate signature
     if (value) {
       (onChange as (range: DateRange) => void)({
         from: value.from,
@@ -53,25 +51,25 @@ export function DateRangeFilter({ value, onChange, className }: DateRangeFilterP
   };
 
   return (
-    <div className={`flex items-center gap-2 ${className || ''}`}>
-      <div>
-        <label className="block text-xs text-surface-500 mb-1">From</label>
+    <div className={`flex items-end gap-2 ${className || ''}`}>
+      <div className="flex-1 min-w-[120px]">
+        <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1">From</label>
         <input
           type="date"
           aria-label="From date"
           value={from}
           onChange={(e) => handleFromChange(e.target.value)}
-          className="px-3 py-2 border border-surface-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+          className="w-full px-3 py-2 border border-surface-300 dark:border-surface-600 dark:bg-surface-800 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all"
         />
       </div>
-      <div>
-        <label className="block text-xs text-surface-500 mb-1">To</label>
+      <div className="flex-1 min-w-[120px]">
+        <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1">To</label>
         <input
           type="date"
           aria-label="To date"
           value={to}
           onChange={(e) => handleToChange(e.target.value)}
-          className="px-3 py-2 border border-surface-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+          className="w-full px-3 py-2 border border-surface-300 dark:border-surface-600 dark:bg-surface-800 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all"
         />
       </div>
     </div>

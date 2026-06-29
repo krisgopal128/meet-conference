@@ -1,5 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { MoreVertical, Eye, Pencil, Ban, Trash2, CheckCircle, Loader2 } from 'lucide-react';
 import { AdminUser } from '../../services/prashasakahApi';
 
 /**
@@ -62,6 +63,129 @@ function formatDate(dateStr: string | null): string {
   });
   dateCache.set(dateStr, result);
   return result;
+}
+
+function RowActionsMenu({
+  user,
+  isCurrentUser,
+  isAdmin,
+  isLoading,
+  onView,
+  onEdit,
+  onBan,
+  onUnban,
+  onDelete,
+}: {
+  user: AdminUser;
+  isCurrentUser: boolean;
+  isAdmin: boolean;
+  isLoading: boolean;
+  onView: (user: AdminUser) => void;
+  onEdit: (user: AdminUser) => void;
+  onBan: (user: AdminUser) => void;
+  onUnban: (user: AdminUser) => void;
+  onDelete: (user: AdminUser) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
+  const select = (action: () => void) => {
+    setOpen(false);
+    action();
+  };
+
+  return (
+    <div className="relative inline-block text-left" ref={menuRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        disabled={isLoading}
+        className="p-1.5 text-surface-400 hover:text-surface-600 hover:bg-surface-100 rounded transition-colors disabled:opacity-50"
+        aria-label="User actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        {isLoading ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <MoreVertical className="w-4 h-4" />
+        )}
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full mt-1 w-44 origin-top-right bg-white rounded-lg shadow-lg border border-surface-200 py-1 z-50"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => select(() => onView(user))}
+            className="flex items-center w-full px-3 py-2 text-sm text-surface-700 hover:bg-surface-50 text-left"
+          >
+            <Eye className="w-4 h-4 mr-2 text-surface-400" />
+            View details
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => select(() => onEdit(user))}
+            disabled={isLoading}
+            className="flex items-center w-full px-3 py-2 text-sm text-surface-700 hover:bg-surface-50 text-left disabled:opacity-50"
+          >
+            <Pencil className="w-4 h-4 mr-2 text-surface-400" />
+            Edit user
+          </button>
+          {!isCurrentUser &&
+            (user.isBanned ? (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => select(() => onUnban(user))}
+                disabled={isLoading}
+                className="flex items-center w-full px-3 py-2 text-sm text-green-700 hover:bg-green-50 text-left disabled:opacity-50"
+              >
+                <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
+                Unban user
+              </button>
+            ) : (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => select(() => onBan(user))}
+                disabled={isLoading}
+                className="flex items-center w-full px-3 py-2 text-sm text-orange-600 hover:bg-orange-50 text-left disabled:opacity-50"
+              >
+                <Ban className="w-4 h-4 mr-2 text-orange-500" />
+                Ban user
+              </button>
+            ))}
+          {isAdmin && !isCurrentUser && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => select(() => onDelete(user))}
+              disabled={isLoading}
+              className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 text-left disabled:opacity-50"
+            >
+              <Trash2 className="w-4 h-4 mr-2 text-red-500" />
+              Delete user
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function UserTable({
@@ -289,71 +413,17 @@ export default function UserTable({
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => onView(user)}
-                        className="p-1.5 text-surface-400 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors"
-                        title="View details"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => onEdit(user)}
-                        disabled={isLoading}
-                        className="p-1.5 text-surface-400 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors disabled:opacity-50"
-                        title="Edit user"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      {!isCurrentUser && (
-                        user.isBanned ? (
-                          <button
-                            onClick={() => handleAction(() => onUnban(user), user.id)}
-                            disabled={isLoading}
-                            className="p-1.5 text-surface-400 hover:text-success-600 hover:bg-success-50 rounded transition-colors disabled:opacity-50"
-                            title="Unban user"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleAction(() => onBan(user), user.id)}
-                            disabled={isLoading}
-                            className="p-1.5 text-surface-400 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors disabled:opacity-50"
-                            title="Ban user"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                            </svg>
-                          </button>
-                        )
-                      )}
-                      {isAdmin && !isCurrentUser && (
-                        <button
-                          onClick={() => handleAction(() => onDelete(user), user.id)}
-                          disabled={isLoading}
-                          className="p-1.5 text-surface-400 hover:text-danger-600 hover:bg-danger-50 rounded transition-colors disabled:opacity-50"
-                          title="Delete user"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      )}
-                      {isLoading && (
-                        <svg className="w-4 h-4 animate-spin text-brand-600" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
-                      )}
-                    </div>
+                    <RowActionsMenu
+                      user={user}
+                      isCurrentUser={isCurrentUser}
+                      isAdmin={isAdmin}
+                      isLoading={isLoading}
+                      onView={onView}
+                      onEdit={onEdit}
+                      onBan={(u) => handleAction(() => onBan(u), u.id)}
+                      onUnban={(u) => handleAction(() => onUnban(u), u.id)}
+                      onDelete={(u) => handleAction(() => onDelete(u), u.id)}
+                    />
                   </td>
                 </tr>
               );
