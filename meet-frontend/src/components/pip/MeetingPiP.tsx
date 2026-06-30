@@ -24,7 +24,7 @@ import { Mic, MicOff, Video, VideoOff, PhoneOff, Pencil, LayoutGrid } from 'luci
 // ============================================
 // Excalidraw whiteboard preview — mirrors the real board
 // ============================================
-const WB_POLL_MS = 1500;
+const WB_POLL_MS = 500;
 
 function WhiteboardPreview() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
