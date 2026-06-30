@@ -78,6 +78,10 @@ interface BandwidthDataPoint {
   date: string;
   bytes: number;
   meetings: number;
+  avg_packet_loss: number;
+  avg_jitter: number;
+  avg_rtt: number;
+  snapshots: number;
 }
 
 interface PeakUsersDataPoint {
@@ -164,6 +168,15 @@ router.get('/stats', requireModerator(), async (_req: AuthRequest, res: Response
           WHERE started_at >= DATE_TRUNC('week', CURRENT_DATE)
         `);
 
+        // Bandwidth stats from diagnostics table
+        const bandwidthStats = await queryOne<{ total_bytes: string; today_bytes: string }>(`
+          SELECT
+            COALESCE(SUM(bytes_sent + bytes_received), 0)::text as total_bytes,
+            COALESCE(SUM(CASE WHEN DATE(created_at) = CURRENT_DATE THEN bytes_sent + bytes_received ELSE 0 END), 0)::text as today_bytes
+          FROM meeting_diagnostics
+          WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+        `);
+
         return {
           users: {
             total: userStats?.total || 0,
@@ -189,8 +202,8 @@ router.get('/stats', requireModerator(), async (_req: AuthRequest, res: Response
           },
           peakConcurrentUsers: peakStats?.peak || 0,
           bandwidth: {
-            totalBytes: 0,
-            todayBytes: 0,
+            totalBytes: bandwidthStats ? parseInt(bandwidthStats.total_bytes, 10) : 0,
+            todayBytes: bandwidthStats ? parseInt(bandwidthStats.today_bytes, 10) : 0,
           },
           alerts: {
             unread: alertStats?.unread || 0,
@@ -217,22 +230,20 @@ router.get('/stats/bandwidth', requireModerator(), async (req: AuthRequest, res:
       `cache:stats:bandwidth:${daysNum}`,
       TTL_LONG,
       async () => {
-        let bandwidthData: BandwidthDataPoint[] = [];
-        try {
-          bandwidthData = await query<BandwidthDataPoint>(`
+        const bandwidthData = await query<BandwidthDataPoint>(`
             SELECT
               DATE(created_at) as date,
               COALESCE(SUM(bytes_sent + bytes_received), 0) as bytes,
-              COUNT(DISTINCT meeting_id) as meetings
+              COUNT(DISTINCT meeting_id) as meetings,
+              COALESCE(ROUND(AVG(packet_loss_pct), 2), 0) as avg_packet_loss,
+              COALESCE(ROUND(AVG(jitter_ms)), 0) as avg_jitter,
+              COALESCE(ROUND(AVG(rtt_ms)), 0) as avg_rtt,
+              COUNT(*) as snapshots
             FROM meeting_diagnostics
             WHERE created_at >= CURRENT_DATE - $1 * INTERVAL '1 day'
             GROUP BY DATE(created_at)
             ORDER BY date ASC
           `, [daysNum]);
-        } catch {
-          // meeting_diagnostics table may not exist yet — return empty data
-          logger.info('[Admin] meeting_diagnostics table not available, returning empty bandwidth data');
-        }
 
         const total = bandwidthData.reduce((sum, row) => sum + Number(row.bytes), 0);
         return { data: bandwidthData, total };

@@ -113,6 +113,7 @@ interface UIState {
   backgroundFeather: number;
   backgroundBgColor: string;
   backgroundImagePath: string | null;
+  diagnosticsIntervalSec: number;
   diagnosticsLog: Array<{
     id: string;
     at: string;
@@ -151,6 +152,7 @@ interface UIActions {
   setBackgroundBgColor: (color: string) => void;
   setBackgroundImagePath: (path: string | null) => void;
   toggleBackgroundBlur: () => void;
+  setDiagnosticsIntervalSec: (sec: number) => void;
   addDiagnosticsEvent: (event: Omit<UIState['diagnosticsLog'][number], 'id' | 'at'>) => void;
   clearDiagnosticsLog: () => void;
   resetUI: () => void;
@@ -189,6 +191,7 @@ const initialUIState: UIState = {
   backgroundFeather: 3,
   backgroundBgColor: '#1e1e2e',
   backgroundImagePath: null,
+  diagnosticsIntervalSec: 120,
   _prevLayout: undefined,
   diagnosticsLog: [],
 };
@@ -409,6 +412,7 @@ export const useRoomStore = create<RoomStore>()(
           toggleBackgroundBlur: () => set((state) => ({
             backgroundBlurEnabled: !state.backgroundBlurEnabled,
           }), false, 'toggleBackgroundBlur'),
+          setDiagnosticsIntervalSec: (sec) => set({ diagnosticsIntervalSec: sec }, false, 'setDiagnosticsIntervalSec'),
           addDiagnosticsEvent: (event) => set((state) => ({
             diagnosticsLog: [
               {
@@ -662,6 +666,7 @@ export const useBatteryLevelPercent = () => useRoomStore((state) => state.batter
 export const useBatteryCharging = () => useRoomStore((state) => state.batteryCharging);
 export const useGridAspectRatio = () => useRoomStore((state) => state.gridAspectRatio);
 export const useVideoFitMode = () => useRoomStore((state) => state.videoFitMode);
+export const useDiagnosticsIntervalSec = () => useRoomStore((state) => state.diagnosticsIntervalSec);
 export const useBackgroundBlurEnabled = () => useRoomStore((state) => state.backgroundBlurEnabled);
 export const useBackgroundBlurLevel = () => useRoomStore((state) => state.backgroundBlurLevel);
 export const useBackgroundMode = () => useRoomStore((state) => state.backgroundMode);
@@ -752,6 +757,7 @@ export const useUIActions = () => useRoomStore(
     setBackgroundBgColor: state.setBackgroundBgColor,
     setBackgroundImagePath: state.setBackgroundImagePath,
     toggleBackgroundBlur: state.toggleBackgroundBlur,
+    setDiagnosticsIntervalSec: state.setDiagnosticsIntervalSec,
     addDiagnosticsEvent: state.addDiagnosticsEvent,
     clearDiagnosticsLog: state.clearDiagnosticsLog,
   }),

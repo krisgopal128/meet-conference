@@ -94,8 +94,6 @@ export interface AdminUserActivityResponse {
 }
 
 export interface AdminUserDetail extends AdminUser {
-  emailVerified: boolean;
-  lastLoginIp: string | null;
   meetingsAttended: number;
   meetingsHosted: number;
   totalDurationMinutes: number;

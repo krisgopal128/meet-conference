@@ -423,6 +423,20 @@ export const meetingsApi = {
   }): Promise<AxiosResponse<{ message: string; file: string }>> =>
     api.post<{ message: string; file: string }>('/meetings/diagnostics', data),
 
+  uploadDiagnosticsSnapshot: (data: {
+    roomName: string;
+    bytesSent: number | null;
+    bytesReceived: number | null;
+    packetsLost: number | null;
+    rttMs: number | null;
+    codec: string | null;
+    packetLossPct: number | null;
+    jitterMs: number | null;
+    availableBitrateKbps: number | null;
+    framesDropped: number | null;
+  }): Promise<AxiosResponse<{ message: string }>> =>
+    api.post<{ message: string }>('/meetings/diagnostics/snapshot', data),
+
   getChat: (id: string, limit = 100, before?: string): Promise<AxiosResponse<ChatHistoryResponse>> => {
     const params = new URLSearchParams({ limit: String(limit) });
     if (before) params.append('before', before);

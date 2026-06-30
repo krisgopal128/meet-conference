@@ -8,7 +8,7 @@ import { requireUser } from '../middleware/requireUser.js';
 import { query, queryOne, withTransaction } from '../services/database.js';
 import { verifyMeetingAccess } from '../services/meetingService.js';
 import * as roomService from '../services/roomService.js';
-import { scheduleMeetingSchema, diagnosticsPayloadSchema } from '../schemas/meetings.js';
+import { scheduleMeetingSchema, diagnosticsPayloadSchema, diagnosticsSnapshotSchema } from '../schemas/meetings.js';
 import { sanitizeChatMessage } from '../utils/validation.js';
 import { getCached, invalidatePattern, TTL_MEDIUM, TTL_SHORT } from '../services/cache.js';
 import logger from '../utils/logger.js';
@@ -194,6 +194,54 @@ meetingsRouter.post('/diagnostics', diagnosticsLimiter, authenticate, async (req
     }
     logger.error('Upload diagnostics error:', error);
     res.status(500).json({ error: 'Failed to upload diagnostics' });
+  }
+});
+
+// POST /meetings/diagnostics/snapshot - Periodic RTC stats snapshot → DB
+meetingsRouter.post('/diagnostics/snapshot', diagnosticsLimiter, authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = requireUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required' });
+    const payload = diagnosticsSnapshotSchema.parse(req.body);
+
+    // Resolve the most recent meeting for this room
+    const room = await roomService.getRoomByName(payload.roomName);
+    let meetingId: string | null = null;
+    if (room) {
+      const meeting = await queryOne<{ id: string }>(
+        `SELECT id FROM meetings WHERE room_id = $1 ORDER BY started_at DESC LIMIT 1`,
+        [room.id],
+      );
+      meetingId = meeting?.id ?? null;
+    }
+
+    await query(
+      `INSERT INTO meeting_diagnostics
+        (meeting_id, user_id, bytes_sent, bytes_received, packets_lost, rtt_ms, codec,
+         packet_loss_pct, jitter_ms, available_bitrate_kbps, frames_dropped)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+      [
+        meetingId,
+        user.id,
+        payload.bytesSent ?? 0,
+        payload.bytesReceived ?? 0,
+        payload.packetsLost ?? 0,
+        payload.rttMs,
+        payload.codec,
+        payload.packetLossPct,
+        payload.jitterMs,
+        payload.availableBitrateKbps,
+        payload.framesDropped,
+      ],
+    );
+
+    res.status(201).json({ message: 'Snapshot recorded' });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    logger.error('Diagnostics snapshot error:', error);
+    res.status(500).json({ error: 'Failed to record diagnostics snapshot' });
   }
 });
 

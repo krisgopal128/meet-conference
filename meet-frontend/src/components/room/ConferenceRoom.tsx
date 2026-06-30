@@ -18,6 +18,7 @@ import {
   useJoinLeaveSoundsEnabled,
   useSelectedQualityMode,
   useUIActions,
+  useDiagnosticsIntervalSec,
 } from '../../store/roomStore';
 import { ControlBar } from '../controls/ControlBar';
 
@@ -31,6 +32,8 @@ import { useDataChannelHandler } from '../../hooks/useDataChannelHandler';
 import { useJoinLeaveSounds } from '../../hooks/useJoinLeaveSounds';
 import { useQualityMonitoring } from '../../hooks/useQualityMonitoring';
 import { useCallHealthMonitor } from '../../hooks/useCallHealthMonitor';
+import { useDiagnosticsReporting } from '../../hooks/useDiagnosticsReporting';
+import { useMeetingPiP } from '../pip/MeetingPiP';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { Users, Loader2 } from 'lucide-react';
 import { meetingRoomConfig } from '../../config/meetingRoomConfig';
@@ -70,6 +73,7 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
   const isModerator = useIsModerator();
   const joinLeaveSoundsEnabled = useJoinLeaveSoundsEnabled();
   const selectedQualityMode = useSelectedQualityMode();
+  const diagnosticsIntervalSec = useDiagnosticsIntervalSec();
   
   // Action hooks
   const {
@@ -98,6 +102,36 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
     room,
     localParticipant,
     selectedQualityMode,
+  });
+
+  useDiagnosticsReporting({ roomName: _props.roomName, intervalMs: diagnosticsIntervalSec * 1000 });
+
+  // Picture-in-Picture floating window
+  const handleToggleMicPiP = useCallback(async () => {
+    if (!localParticipant) return;
+    await localParticipant.setMicrophoneEnabled(!localParticipant.isMicrophoneEnabled);
+  }, [localParticipant]);
+
+  const handleToggleCameraPiP = useCallback(async () => {
+    if (!localParticipant) return;
+    await localParticipant.setCameraEnabled(!localParticipant.isCameraEnabled);
+  }, [localParticipant]);
+
+  const handleLeavePiP = useCallback(() => {
+    room.disconnect(true);
+    navigate('/thank-you', { state: { roomName: room.name, reason: 'left' }, replace: true });
+  }, [room, navigate]);
+
+  const {
+    isSupported: pipSupported,
+    pipWindow: pipWin,
+    togglePiP: togglePiPWindow,
+    pipContent,
+  } = useMeetingPiP({
+    activeSpeakers,
+    onToggleMic: handleToggleMicPiP,
+    onToggleCamera: handleToggleCameraPiP,
+    onLeave: handleLeavePiP,
   });
 
   // Handle meeting ended - navigate to ThankYou page
@@ -407,8 +441,14 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
           </MobileSheet>
         )}
 
-        <ControlBar />
-        
+        <ControlBar
+          pipIsActive={!!pipWin}
+          pipIsSupported={pipSupported}
+          onTogglePiP={togglePiPWindow}
+        />
+
+        {pipContent}
+
         <RoomAudioRenderer />
       </div>
       </RoomCameraTracksProvider>

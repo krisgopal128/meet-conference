@@ -23,6 +23,7 @@ import {
   useBackgroundImagePath,
   useGridAspectRatio,
   useVideoFitMode,
+  useDiagnosticsIntervalSec,
   useUIActions,
   useIsModerator,
   useRoomName,
@@ -61,11 +62,12 @@ export function SettingsPanel() {
   const backgroundImagePath = useBackgroundImagePath();
   const gridAspectRatio = useGridAspectRatio();
   const videoFitMode = useVideoFitMode();
+  const diagnosticsIntervalSec = useDiagnosticsIntervalSec();
   const isModerator = useIsModerator();
   const roomName = useRoomName();
 
   // Action hooks
-  const { toggleSettings, openSettingsView, toggleMirrorLocalVideo, toggleBackgroundBlur, setBackgroundBlurLevel, setBackgroundBlurIntensity, setBackgroundMode, setBackgroundBgColor, setBackgroundImagePath, setQualityMode, setScreenShareMode, setGridAspectRatio, setVideoFitMode, clearDiagnosticsLog } = useUIActions();
+  const { toggleSettings, openSettingsView, toggleMirrorLocalVideo, toggleBackgroundBlur, setBackgroundBlurLevel, setBackgroundBlurIntensity, setBackgroundMode, setBackgroundBgColor, setBackgroundImagePath, setQualityMode, setScreenShareMode, setGridAspectRatio, setVideoFitMode, setDiagnosticsIntervalSec, clearDiagnosticsLog } = useUIActions();
   
   const persistedSpeakerVolumeRef = useRef(100);
   const [speakerVolume, setSpeakerVolume] = useState(() => persistedSpeakerVolumeRef.current);
@@ -542,6 +544,29 @@ export function SettingsPanel() {
                   <span>{localParticipant?.isCameraEnabled ? 'On' : 'Off'}</span>
                 </div>
               </div>
+            </div>
+
+            {/* Diagnostics Reporting Interval */}
+            <div className="rounded-xl border border-surface-700 bg-surface-750/50 p-4 space-y-3">
+              <div className="flex items-center gap-2 text-surface-200">
+                <Activity size={16} />
+                <span className="text-sm font-medium">Reporting Interval</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400">Personal</span>
+              </div>
+              <select
+                value={diagnosticsIntervalSec}
+                onChange={(e) => setDiagnosticsIntervalSec(parseInt(e.target.value, 10))}
+                className="w-full bg-surface-700 text-surface-100 rounded-lg px-3 py-2.5 text-sm border border-surface-600 focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 focus:outline-none"
+              >
+                <option value={30}>Every 30 seconds</option>
+                <option value={60}>Every 1 minute</option>
+                <option value={120}>Every 2 minutes</option>
+                <option value={300}>Every 5 minutes</option>
+                <option value={0}>Off (no reporting)</option>
+              </select>
+              <p className="text-xs text-surface-500">
+                How often your browser sends network quality stats (bandwidth, packet loss, RTT) to the server for the admin dashboard.
+              </p>
             </div>
 
             <div className="rounded-xl border border-surface-700 bg-surface-750/50 p-4 space-y-2">

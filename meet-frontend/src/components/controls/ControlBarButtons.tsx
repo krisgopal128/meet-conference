@@ -14,6 +14,7 @@ import {
   SquarePlay, Lock, Unlock, DoorOpen, ScreenShare, MessageCircle, Mic as MicIcon, Camera,
   CircleDot, Loader2, Pencil,
   Link2, Bell, BellOff, FlipHorizontal, Activity, Sparkles,
+  PictureInPicture2,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { meetingRoomConfig } from '../../config/meetingRoomConfig';
@@ -400,6 +401,34 @@ export const LayoutButton = memo(function LayoutButton({
     >
       {layout === 'grid' ? <SquarePlay size={18} /> : <LayoutGrid size={18} />}
       <span>{layout === 'grid' ? 'Speaker' : 'Grid'}</span>
+    </button>
+  );
+});
+
+// ============================================
+// PiP Button
+// ============================================
+
+interface PiPButtonProps {
+  isActive: boolean;
+  isSupported: boolean;
+  onToggle: () => void;
+}
+
+export const PiPButton = memo(function PiPButton({
+  isActive,
+  isSupported,
+  onToggle,
+}: PiPButtonProps) {
+  if (!isSupported) return null;
+  return (
+    <button
+      onClick={onToggle}
+      aria-label={isActive ? 'Exit picture-in-picture' : 'Enter picture-in-picture'}
+      className={cn(btnBase, isActive ? btnAccent : btnSecondary)}
+    >
+      <PictureInPicture2 size={18} />
+      <span>{isActive ? 'PiP On' : 'PiP'}</span>
     </button>
   );
 });

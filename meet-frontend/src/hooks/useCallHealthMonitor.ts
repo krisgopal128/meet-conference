@@ -7,7 +7,7 @@
  * Computes warning/critical thresholds and applies quality overrides.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { Room, Participant } from 'livekit-client';
 import { meetingRoomConfig, type QualityModeName } from '../config/meetingRoomConfig';
 import type { QualityOverrideReason } from '../store/roomStore';
@@ -48,11 +48,16 @@ export function useCallHealthMonitor({
   qualityOverrideReasonRef,
   scheduleRecovery,
 }: UseCallHealthMonitorProps) {
+  const prevLostRef = useRef(0);
+  const prevReceivedRef = useRef(0);
+  const hasBaselineRef = useRef(false);
+
   useEffect(() => {
     if (!isActive) {
       return;
     }
 
+    hasBaselineRef.current = false;
     let cancelled = false;
 
     const sampleStats = async () => {
@@ -71,7 +76,8 @@ export function useCallHealthMonitor({
         return;
       }
 
-      const packetCounters = { lost: 0, received: 0 };
+      let totalLost = 0;
+      let totalReceived = 0;
       const rtts: number[] = [];
       const jitters: number[] = [];
       const bitrates: number[] = [];
@@ -91,15 +97,21 @@ export function useCallHealthMonitor({
             }
           }
 
-          if (stat.type === 'inbound-rtp' || stat.type === 'remote-inbound-rtp') {
+          if (stat.type === 'inbound-rtp') {
             if (typeof inbound.packetsLost === 'number') {
-              packetCounters.lost += inbound.packetsLost;
+              totalLost += inbound.packetsLost;
             }
             if (typeof inbound.packetsReceived === 'number') {
-              packetCounters.received += inbound.packetsReceived;
+              totalReceived += inbound.packetsReceived;
             }
             if (typeof inbound.jitter === 'number') {
               jitters.push(inbound.jitter * 1000);
+            }
+          }
+
+          if (stat.type === 'remote-inbound-rtp') {
+            if (typeof remoteInbound.jitter === 'number') {
+              jitters.push(remoteInbound.jitter * 1000);
             }
             if (typeof remoteInbound.roundTripTime === 'number') {
               rtts.push(remoteInbound.roundTripTime * 1000);
@@ -108,8 +120,22 @@ export function useCallHealthMonitor({
         });
       });
 
-      const packetLossPercent = packetCounters.received + packetCounters.lost > 0
-        ? (packetCounters.lost / (packetCounters.received + packetCounters.lost)) * 100
+      // First sample establishes baseline — deltas are meaningless on first tick
+      if (!hasBaselineRef.current) {
+        prevLostRef.current = totalLost;
+        prevReceivedRef.current = totalReceived;
+        hasBaselineRef.current = true;
+        setCallMetrics({ packetLossPercent: null, rttMs: null, jitterMs: null, availableBitrateKbps: null });
+        return;
+      }
+
+      const deltaLost = Math.max(0, totalLost - prevLostRef.current);
+      const deltaReceived = Math.max(0, totalReceived - prevReceivedRef.current);
+      prevLostRef.current = totalLost;
+      prevReceivedRef.current = totalReceived;
+
+      const packetLossPercent = deltaLost + deltaReceived > 0
+        ? (deltaLost / (deltaLost + deltaReceived)) * 100
         : null;
       const rttMs = rtts.length ? Math.max(...rtts) : null;
       const jitterMs = jitters.length ? Math.max(...jitters) : null;

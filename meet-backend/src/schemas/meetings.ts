@@ -15,6 +15,19 @@ const diagnosticsEventSchema = z.object({
   message: z.string(),
 });
 
+export const diagnosticsSnapshotSchema = z.object({
+  roomName: z.string().min(1).max(255),
+  bytesSent: z.number().nullable(),
+  bytesReceived: z.number().nullable(),
+  packetsLost: z.number().nullable(),
+  rttMs: z.number().nullable(),
+  codec: z.string().max(50).nullable(),
+  packetLossPct: z.number().min(0).max(100).nullable(),
+  jitterMs: z.number().nullable(),
+  availableBitrateKbps: z.number().nullable(),
+  framesDropped: z.number().nullable(),
+});
+
 export const diagnosticsPayloadSchema = z.object({
   roomName: z.string().min(1).max(255).optional(),
   participantIdentity: z.string().min(1).max(255).optional(),
