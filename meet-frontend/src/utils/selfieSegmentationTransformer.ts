@@ -69,9 +69,9 @@ export class SelfieSegmentationTransformer extends VideoTransformer<SelfieSegmen
       ...options,
     };
     this.workCanvas = document.createElement('canvas');
-    this.workCtx = this.workCanvas.getContext('2d', { alpha: false })!;
+    this.workCtx = this.workCanvas.getContext('2d', { alpha: false, desynchronized: true })!;
     this.outputCanvas = document.createElement('canvas');
-    this.outputCtx = this.outputCanvas.getContext('2d', { alpha: false })!;
+    this.outputCtx = this.outputCanvas.getContext('2d', { alpha: false, desynchronized: true })!;
   }
 
   override async init({

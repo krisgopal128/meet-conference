@@ -37,13 +37,19 @@ function getDuration(room: Room): number {
 }
 
 async function stopLocalTracks(localParticipant: { isScreenShareEnabled: boolean; isCameraEnabled: boolean; isMicrophoneEnabled: boolean; setScreenShareEnabled: (v: boolean) => Promise<unknown>; setCameraEnabled: (v: boolean) => Promise<unknown>; setMicrophoneEnabled: (v: boolean) => Promise<unknown> }) {
-  try {
-    if (localParticipant.isScreenShareEnabled) await withOperationTimeout(localParticipant.setScreenShareEnabled(false), 'MEDIA_TOGGLE', 'Stop screen share');
-    if (localParticipant.isCameraEnabled) await withOperationTimeout(localParticipant.setCameraEnabled(false), 'MEDIA_TOGGLE', 'Stop camera');
-    if (localParticipant.isMicrophoneEnabled) await withOperationTimeout(localParticipant.setMicrophoneEnabled(false), 'MEDIA_TOGGLE', 'Stop microphone');
-  } catch (error) {
-    logger.error('Failed to stop local media before disconnect:', error);
-  }
+  // Stop each track independently so one failure doesn't skip the others.
+  const stopOne = async (condition: boolean, fn: () => Promise<unknown>, label: string) => {
+    if (!condition) return;
+    try {
+      await withOperationTimeout(fn(), 'MEDIA_TOGGLE', label);
+    } catch (error) {
+      logger.warn(`Failed to stop ${label.toLowerCase()}:`, error);
+    }
+  };
+
+  await stopOne(localParticipant.isScreenShareEnabled, () => localParticipant.setScreenShareEnabled(false), 'Stop screen share');
+  await stopOne(localParticipant.isCameraEnabled, () => localParticipant.setCameraEnabled(false), 'Stop camera');
+  await stopOne(localParticipant.isMicrophoneEnabled, () => localParticipant.setMicrophoneEnabled(false), 'Stop microphone');
 }
 
 export function useMeetingActions() {
@@ -61,11 +67,7 @@ export function useMeetingActions() {
     // Save whiteboard before leaving (best-effort)
     await saveAllWhiteboards();
 
-    try {
-      await stopLocalTracks(localParticipant);
-    } catch (e) {
-      // Best-effort — tracks may already be stopped
-    }
+    await stopLocalTracks(localParticipant);
     try {
       await room.disconnect();
     } catch (e) {
@@ -105,11 +107,7 @@ export function useMeetingActions() {
     // Save whiteboard before disconnecting (best-effort)
     await saveAllWhiteboards();
 
-    try {
-      await stopLocalTracks(localParticipant);
-    } catch (e) {
-      // Best-effort
-    }
+    await stopLocalTracks(localParticipant);
     try {
       await room.disconnect();
     } catch (e) {

@@ -6,6 +6,7 @@ import { useBackgroundBlurPreview } from '../hooks/useBackgroundBlurPreview';
 import { useMicLevelMeter } from '../hooks/useMicLevelMeter';
 import { usePreJoinMedia } from '../hooks/usePreJoinMedia';
 import { usePreJoinAuth } from '../hooks/usePreJoinAuth';
+import { preInitBlurWorker } from '../utils/backgroundEffectsManager';
 import {
   isAudioOnlyMode,
   meetingRoomConfig,
@@ -114,6 +115,15 @@ export default function PreJoinPage() {
     markTracksTransferred,
   } = usePreJoinMedia({ roomName, isCreateMode });
 
+  // Pre-initialize the conference blur worker as soon as the user enables blur
+  // in PreJoin. This loads WASM + MediaPipe model in the background so that
+  // RoomPage can apply the processor instantly on join — no unblurred frames.
+  useEffect(() => {
+    if (backgroundBlur) {
+      preInitBlurWorker();
+    }
+  }, [backgroundBlur]);
+
   const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -216,6 +226,9 @@ export default function PreJoinPage() {
       let audioTrack: MediaStreamTrack | null = null;
       if (audioEnabled) {
         try {
+          if (!navigator.mediaDevices?.getUserMedia) {
+            throw new Error('getUserMedia not supported');
+          }
           const audioStream = await navigator.mediaDevices.getUserMedia({
             audio: {
               deviceId: selectedMic ? { exact: selectedMic } : undefined,

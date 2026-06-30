@@ -269,6 +269,10 @@ CREATE TABLE IF NOT EXISTS meeting_diagnostics (
     packets_lost INTEGER DEFAULT 0,
     rtt_ms INTEGER,
     codec VARCHAR(50),
+    packet_loss_pct NUMERIC(5,2),
+    jitter_ms INTEGER,
+    available_bitrate_kbps INTEGER,
+    frames_dropped INTEGER,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

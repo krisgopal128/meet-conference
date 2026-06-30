@@ -127,7 +127,7 @@ export function useBackgroundBlurPreview(
       videoElement.parentElement?.appendChild(canvas);
       canvasRef.current = canvas;
 
-      const ctx = canvas.getContext('2d', { alpha: false });
+      const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
       if (!ctx) {
         canvas.remove();
         canvasRef.current = null;

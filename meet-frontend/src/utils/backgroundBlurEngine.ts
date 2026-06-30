@@ -75,15 +75,15 @@ export class BackgroundBlurEngine {
     this.optionsRef = { ...DEFAULT_BLUR_OPTIONS, ...options };
 
     this.bgCanvas = document.createElement('canvas');
-    this.bgCtx = this.bgCanvas.getContext('2d')!;
+    this.bgCtx = this.bgCanvas.getContext('2d', { alpha: false, desynchronized: true })!;
     this.personCanvas = document.createElement('canvas');
-    this.personCtx = this.personCanvas.getContext('2d')!;
+    this.personCtx = this.personCanvas.getContext('2d', { alpha: false, desynchronized: true })!;
     this.knockoutCanvas = document.createElement('canvas');
-    this.knockoutCtx = this.knockoutCanvas.getContext('2d')!;
+    this.knockoutCtx = this.knockoutCanvas.getContext('2d', { alpha: false, desynchronized: true })!;
     this.blurCanvas = document.createElement('canvas');
-    this.blurCtx = this.blurCanvas.getContext('2d')!;
+    this.blurCtx = this.blurCanvas.getContext('2d', { alpha: false, desynchronized: true })!;
     this.maskCanvas = document.createElement('canvas');
-    this.maskCtx = this.maskCanvas.getContext('2d')!;
+    this.maskCtx = this.maskCanvas.getContext('2d', { alpha: true })!;
   }
 
   get options(): BackgroundBlurOptions {

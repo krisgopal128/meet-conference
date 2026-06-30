@@ -188,6 +188,7 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
   }, []);
 
   async function loadDevices() {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
     try {
       const all = await navigator.mediaDevices.enumerateDevices();
       setDevices({
@@ -306,6 +307,13 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
         return;
       }
       hasRequestedPermissionsRef.current = true;
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setInitStatus('Media devices not supported');
+        toast.error('Camera and microphone are not supported in this browser. Try Chrome or Firefox.');
+        setInitializing(false);
+        return;
+      }
 
       try {
         setInitStatus('Requesting camera access...');

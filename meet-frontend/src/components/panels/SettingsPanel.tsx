@@ -198,6 +198,7 @@ export function SettingsPanel() {
   }, []);
 
   useEffect(() => {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
     // Load devices
     navigator.mediaDevices.enumerateDevices().then(devices => {
       setCameras(devices.filter(d => d.kind === 'videoinput'));

@@ -33,6 +33,7 @@ interface VideoTrack {
 // The SelfieSegmentationTransformer reuses this worker instead of creating a new one.
 let preInitWorker: Worker | null = null;
 let preInitWorkerReady = false;
+let preInitReadyResolvers: Array<() => void> = [];
 
 export function preInitBlurWorker(): void {
   if (preInitWorker) return;
@@ -45,11 +46,15 @@ export function preInitBlurWorker(): void {
       if (e.data?.type === 'ready') {
         preInitWorkerReady = true;
         logger.info('[BgEffects] Pre-init worker ready for conference blur');
+        for (const resolve of preInitReadyResolvers) resolve();
+        preInitReadyResolvers = [];
       }
     };
     preInitWorker.onerror = () => {
       logger.warn('[BgEffects] Pre-init worker failed — will create on demand');
       preInitWorker = null;
+      for (const resolve of preInitReadyResolvers) resolve();
+      preInitReadyResolvers = [];
     };
     preInitWorker.postMessage({ type: 'init' });
     logger.info('[BgEffects] Pre-initializing conference blur worker...');
@@ -57,6 +62,18 @@ export function preInitBlurWorker(): void {
     logger.warn('[BgEffects] Failed to pre-init worker:', e);
     preInitWorker = null;
   }
+}
+
+/**
+ * Returns a promise that resolves when the pre-init worker is ready (WASM +
+ * model loaded), or immediately if pre-init was never called or already failed.
+ * Used by RoomPage to gate camera publishing until blur is ready.
+ */
+export function waitForBlurWorkerReady(): Promise<void> {
+  if (preInitWorkerReady || !preInitWorker) return Promise.resolve();
+  return new Promise((resolve) => {
+    preInitReadyResolvers.push(resolve);
+  });
 }
 
 function consumePreInitWorker(): Worker | null {

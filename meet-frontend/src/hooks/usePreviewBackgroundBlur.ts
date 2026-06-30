@@ -107,7 +107,7 @@ export function usePreviewBackgroundBlur(
       videoElement.parentElement?.appendChild(canvas);
       canvasRef.current = canvas;
 
-      const ctx = canvas.getContext('2d', { alpha: false });
+      const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
       if (!ctx) {
         canvas.remove();
         canvasRef.current = null;
@@ -204,7 +204,7 @@ export function usePreviewBackgroundBlur(
       const segC = segCanvasRef.current;
       segC.width = SEG_W;
       segC.height = segH;
-      const segCtx = segC.getContext('2d')!;
+      const segCtx = segC.getContext('2d', { alpha: false, desynchronized: true })!;
       segCtx.drawImage(videoElement, srcX, srcY, srcW, srcH, 0, 0, SEG_W, segH);
 
       try {
@@ -223,12 +223,12 @@ export function usePreviewBackgroundBlur(
         sharpC.width = cw;
         sharpC.height = ch;
 
-        const blurCtx = blurC.getContext('2d')!;
+        const blurCtx = blurC.getContext('2d', { alpha: false, desynchronized: true })!;
         blurCtx.filter = `blur(${blurRadius}px)`;
         blurCtx.drawImage(videoElement, srcX, srcY, srcW, srcH, 0, 0, cw, ch);
         blurCtx.filter = 'none';
 
-        const sharpCtx = sharpC.getContext('2d')!;
+        const sharpCtx = sharpC.getContext('2d', { alpha: false, desynchronized: true })!;
         sharpCtx.drawImage(videoElement, srcX, srcY, srcW, srcH, 0, 0, cw, ch);
 
         ctx.drawImage(blurC, 0, 0);

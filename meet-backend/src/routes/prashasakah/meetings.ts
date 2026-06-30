@@ -25,6 +25,7 @@ interface MeetingRow {
   host_id: string;
   host_name: string;
   participant_count: number;
+  chat_message_count: number;
   started_at: Date;
   ended_at: Date | null;
   status: string;
@@ -178,9 +179,11 @@ router.get('/meetings/:id', requireModerator(), async (req: AuthRequest, res: Re
       async () => {
         const meeting = await queryOne<MeetingRow>(`
           SELECT m.id, m.room_id, m.started_at, m.ended_at, m.status, m.recording_url,
-            r.name as room_name, r.title as room_title, r.host_id
+            r.name as room_name, r.title as room_title, r.host_id,
+            COALESCE(cc.cnt, 0) as chat_message_count
           FROM meetings m
           LEFT JOIN rooms r ON r.id = m.room_id
+          LEFT JOIN (SELECT meeting_id, COUNT(*) AS cnt FROM chat_messages GROUP BY meeting_id) cc ON cc.meeting_id = m.id
           WHERE m.id = $1
         `, [id]);
 
@@ -205,6 +208,7 @@ router.get('/meetings/:id', requireModerator(), async (req: AuthRequest, res: Re
             endedAt: meeting.ended_at,
             status: meeting.status,
             recordingUrl: meeting.recording_url,
+            chatMessageCount: Number(meeting.chat_message_count),
           },
           participants: participants.map((p) => ({
             userId: p.user_id,

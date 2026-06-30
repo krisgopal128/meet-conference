@@ -9,9 +9,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { LocalParticipant, Room } from 'livekit-client';
 import type { QualityModeName } from '../config/meetingRoomConfig';
 import type { GridAspectRatio } from '../store/roomStore';
-import { buildCameraCaptureOptions, isAudioOnlyMode, meetingRoomConfig } from '../config/meetingRoomConfig';
+import { isAudioOnlyMode, meetingRoomConfig } from '../config/meetingRoomConfig';
 import { usePrejoinCameraId } from '../store/roomStore';
 import { withOperationTimeout } from '../utils/asyncTimeout';
+import { getMediaErrorMessage } from '../utils/mediaErrors';
 import toast from 'react-hot-toast';
 import logger from '../utils/logger';
 
@@ -19,7 +20,7 @@ export function useVideoControls(
   localParticipant: LocalParticipant | undefined,
   room: Room | undefined,
   qualityMode: QualityModeName,
-  gridAspectRatio: GridAspectRatio,
+  _gridAspectRatio: GridAspectRatio,
 ) {
   const prejoinCameraId = usePrejoinCameraId();
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
@@ -28,6 +29,7 @@ export function useVideoControls(
   // Device enumeration for video
   useEffect(() => {
     if (!room) return;
+    if (!navigator.mediaDevices?.enumerateDevices) return;
 
     const refreshDevices = async () => {
       try {
@@ -76,22 +78,42 @@ export function useVideoControls(
       let lastApplied: boolean | null = null;
       while (lastApplied !== pendingTargetRef.current) {
         lastApplied = pendingTargetRef.current;
-        await withOperationTimeout(
-          localParticipant.setCameraEnabled(
-            lastApplied,
-            lastApplied ? buildCameraCaptureOptions(activeCameraId || undefined, qualityMode, gridAspectRatio) : undefined,
-          ),
-          'MEDIA_TOGGLE',
-          'Toggle camera',
-        );
+        // Pass only deviceId — LiveKit merges this on top of the room's
+        // videoCaptureDefaults (which already has the correct quality mode
+        // resolution, hardwareCaps, and aspect ratio from room setup).
+        // Quality changes are handled by the adaptive simulcast system.
+        try {
+          await withOperationTimeout(
+            localParticipant.setCameraEnabled(
+              lastApplied,
+              lastApplied ? { deviceId: activeCameraId || undefined } : undefined,
+            ),
+            'MEDIA_TOGGLE',
+            'Toggle camera',
+          );
+        } catch (e) {
+          // Graceful degradation: if enabling with specific constraints fails
+          // for a non-permission reason, retry with bare-minimum constraints.
+          if (lastApplied && !(e instanceof DOMException && e.name === 'NotAllowedError')) {
+            logger.warn('Camera enable failed, retrying with minimal constraints:', e);
+            await withOperationTimeout(
+              localParticipant.setCameraEnabled(true, { deviceId: activeCameraId || undefined }),
+              'MEDIA_TOGGLE',
+              'Toggle camera (minimal)',
+            );
+          } else {
+            throw e;
+          }
+        }
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'NotAllowedError') return;
       logger.error('Failed to toggle camera:', error);
-      toast.error('Failed to toggle camera');
+      toast.error(getMediaErrorMessage(error, 'Camera toggle'));
     } finally {
       pendingTargetRef.current = null;
     }
-  }, [localParticipant, qualityMode, gridAspectRatio, activeCameraId]);
+  }, [localParticipant, qualityMode, activeCameraId]);
 
   const switchCamera = useCallback(async (deviceId: string) => {
     if (!room) return;
@@ -104,7 +126,7 @@ export function useVideoControls(
       setActiveCameraId(deviceId);
     } catch (error) {
       logger.error('Failed to switch camera:', error);
-      toast.error('Failed to switch camera');
+      toast.error(getMediaErrorMessage(error, 'Camera switch'));
     }
   }, [room]);
 

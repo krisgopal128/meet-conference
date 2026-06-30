@@ -36,6 +36,10 @@ export function useMicLevelMeter(
     let cancelled = false;
 
     const start = async () => {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        if (meterEl) meterEl.style.width = '0%';
+        return;
+      }
       try {
         const constraints: MediaStreamConstraints = {
           audio: micDeviceId

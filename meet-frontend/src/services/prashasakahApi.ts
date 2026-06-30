@@ -145,6 +145,7 @@ export interface AdminMeeting {
   endedAt: string | null;
   duration: number | null;
   status: 'ongoing' | 'ended';
+  chatMessageCount?: number;
 }
 
 export interface AdminMeetingsListResponse {

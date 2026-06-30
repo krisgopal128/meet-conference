@@ -6,7 +6,7 @@ import { ConferenceRoom } from '../components/room/ConferenceRoom';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { LobbyWaiting } from '../components/room/LobbyWaiting';
 import { useConnectionActions, useQualityMode, useScreenShareMode, useUIActions, useGridAspectRatio, useBackgroundBlurEnabled, useBackgroundBlurIntensity, useBackgroundMode, useBackgroundBgColor, useBackgroundImagePath, useMeetingControlsActions, useRoomStore } from '../store/roomStore';
-import { enableBackgroundEffect, disableBackgroundEffect, updateBackgroundEffect, cleanupBackgroundEffect } from '../utils/backgroundEffectsManager';
+import { enableBackgroundEffect, disableBackgroundEffect, updateBackgroundEffect, cleanupBackgroundEffect, waitForBlurWorkerReady } from '../utils/backgroundEffectsManager';
 import { withOperationTimeout } from '../utils/asyncTimeout';
 import { getRoomSettings, roomsApi } from '../services/api';
 import {
@@ -345,6 +345,14 @@ function RoomContent({
     pendingPublishedRef.current = true;
 
     const publish = async () => {
+      // If background blur was enabled in PreJoin, wait for the pre-init
+      // worker (WASM + model) to be ready before publishing the camera track.
+      // This ensures the blur processor can be applied instantly — no window
+      // of unblurred video for the local or remote participants.
+      if (state.backgroundBlur) {
+        await waitForBlurWorkerReady();
+      }
+
       if (pendingVideoTrack) {
         if (state.videoEnabled && pendingVideoTrack.readyState === 'live') {
           try {
@@ -375,7 +383,7 @@ function RoomContent({
     };
 
     void publish();
-  }, [localParticipant, localParticipant.identity, pendingVideoTrack, pendingAudioTrack, state.videoEnabled, state.audioEnabled]);
+  }, [localParticipant, localParticipant.identity, pendingVideoTrack, pendingAudioTrack, state.videoEnabled, state.audioEnabled, state.backgroundBlur]);
 
   // Switch video input (camera) to prejoin selection
   useEffect(() => {

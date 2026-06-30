@@ -232,12 +232,28 @@ export function ControlBar() {
   const copyRoomLink = useCallback(async () => {
     if (!room?.name) return;
     const joinUrl = `${window.location.origin}/join/${room.name}`;
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(joinUrl);
+        toast.success('Meeting link copied');
+        return;
+      } catch (error) {
+        logger.error('Clipboard writeText failed:', error);
+      }
+    }
+    // Fallback: execCommand copy via temporary textarea
     try {
-      await navigator.clipboard.writeText(joinUrl);
+      const textarea = document.createElement('textarea');
+      textarea.value = joinUrl;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
       toast.success('Meeting link copied');
-    } catch (error) {
-      logger.error('Failed to copy meeting link:', error);
-      toast.error('Failed to copy meeting link');
+    } catch {
+      toast.error('Copy not supported — long-press the link to copy manually');
     }
   }, [room]);
 

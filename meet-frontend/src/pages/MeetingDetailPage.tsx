@@ -72,6 +72,7 @@ function MeetingDetailContent() {
           endedAt: apiMeeting.ended_at || apiMeeting.endedAt ? String(apiMeeting.ended_at || apiMeeting.endedAt) : undefined,
           maxParticipants: apiMeeting.max_participants || apiMeeting.maxParticipants ? Number(apiMeeting.max_participants || apiMeeting.maxParticipants) : undefined,
           recordingUrl: apiMeeting.recording_url || apiMeeting.recordingUrl || undefined,
+          chatMessageCount: Number(apiMeeting.chatMessageCount || 0),
           participants: (apiParticipants as unknown as Array<Record<string, unknown>>).map((p) => ({
             id: String(p.id || ''),
             identity: String(p.identity || ''),
@@ -192,41 +193,21 @@ function MeetingDetailContent() {
     });
 
     if (participantList.length > 0 && meeting.startedAt && meeting.endedAt) {
-      const startTime = parseISO(meeting.startedAt);
-      const endTime = parseISO(meeting.endedAt);
-      const dur = endTime.getTime() - startTime.getTime();
-
-      if ((() => { let h = 0; for (const c of (meeting?.id || '')) h = ((h << 5) - h + c.charCodeAt(0)) | 0; return (Math.abs(h) % 1000) / 1000; })() > 0.5) {
-        const shareTime = new Date(startTime.getTime() + dur * 0.3);
+      const chatCount = meeting.chatMessageCount ?? 0;
+      if (chatCount > 0) {
+        const startTime = parseISO(meeting.startedAt);
+        const endTime = parseISO(meeting.endedAt);
+        const dur = endTime.getTime() - startTime.getTime();
+        const chatTime = new Date(startTime.getTime() + dur * 0.4);
         details.push({
-          id: 'screen-share',
-          action: 'Screen Share Started',
-          description: `${participantList[0]?.name || 'Host'} shared their screen`,
-          timestamp: shareTime.toISOString(),
-          icon: VideoIcon,
-          iconColor: 'text-info-500',
-        });
-
-        const stopTime = new Date(startTime.getTime() + dur * 0.5);
-        details.push({
-          id: 'screen-share-end',
-          action: 'Screen Share Ended',
-          description: 'Screen sharing stopped',
-          timestamp: stopTime.toISOString(),
-          icon: VideoIcon,
-          iconColor: 'text-surface-400',
+          id: 'chat-activity',
+          action: 'Chat Activity',
+          description: `${chatCount} ${chatCount === 1 ? 'message' : 'messages'} sent during meeting`,
+          timestamp: chatTime.toISOString(),
+          icon: Clock4,
+          iconColor: 'text-purple-500',
         });
       }
-
-      const chatTime = new Date(startTime.getTime() + dur * 0.4);
-      details.push({
-        id: 'chat-activity',
-        action: 'Chat Activity',
-        description: `${Math.floor((() => { let h = 0; for (const c of (meeting?.id || '')) h = ((h << 5) - h + c.charCodeAt(0)) | 0; return (Math.abs(h) % 1000) / 1000; })() * 10 + 5)} messages sent during meeting`,
-        timestamp: chatTime.toISOString(),
-        icon: Clock4,
-        iconColor: 'text-purple-500',
-      });
     }
 
     if (meeting.endedAt) {

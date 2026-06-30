@@ -7,8 +7,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { LocalParticipant, Room } from 'livekit-client';
-import { buildAudioCaptureOptions } from '../config/meetingRoomConfig';
 import { usePrejoinMicId } from '../store/roomStore';
+import { getMediaErrorMessage } from '../utils/mediaErrors';
 import toast from 'react-hot-toast';
 import logger from '../utils/logger';
 
@@ -25,6 +25,7 @@ export function useAudioControls(
   // Device enumeration for audio
   useEffect(() => {
     if (!room) return;
+    if (!navigator.mediaDevices?.enumerateDevices) return;
 
     const refreshDevices = async () => {
       try {
@@ -73,12 +74,16 @@ export function useAudioControls(
         lastApplied = pendingTargetRef.current;
         await localParticipant.setMicrophoneEnabled(
           lastApplied,
-          lastApplied ? buildAudioCaptureOptions(activeMicId || undefined) : undefined,
+          // Pass only deviceId — LiveKit merges this on top of the room's
+          // audioCaptureDefaults (which already has the user's prejoin
+          // noiseSuppression/echoCancellation/micLevel settings).
+          lastApplied ? { deviceId: activeMicId || undefined } : undefined,
         );
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'NotAllowedError') return;
       logger.error('Failed to toggle microphone:', error);
-      toast.error('Failed to toggle microphone');
+      toast.error(getMediaErrorMessage(error, 'Microphone toggle'));
     } finally {
       pendingTargetRef.current = null;
     }
@@ -91,7 +96,7 @@ export function useAudioControls(
       setActiveMicId(deviceId);
     } catch (error) {
       logger.error('Failed to switch microphone:', error);
-      toast.error('Failed to switch microphone');
+      toast.error(getMediaErrorMessage(error, 'Microphone switch'));
     }
   }, [room]);
 
@@ -102,7 +107,7 @@ export function useAudioControls(
       setActiveSpeakerId(deviceId);
     } catch (error) {
       logger.error('Failed to switch speaker:', error);
-      toast.error('Failed to switch speaker');
+      toast.error(getMediaErrorMessage(error, 'Speaker switch'));
     }
   }, [room]);
 

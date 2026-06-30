@@ -69,6 +69,7 @@ export interface Meeting {
   recordingUrl?: string;
   startedAt: string;
   endedAt?: string;
+  chatMessageCount?: number;
   participants?: MeetingParticipant[];
   // Legacy snake_case fields
   room_id?: string;

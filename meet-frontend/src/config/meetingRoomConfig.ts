@@ -464,7 +464,7 @@ const fallbackConfig: MeetingRoomConfig = {
       contentHint: 'detail',
       surfaceSwitching: 'include',
       systemAudio: 'include',
-      selfBrowserSurface: 'exclude',
+      selfBrowserSurface: 'include',
       modes: {
         documents: { width: 1920, height: 1080, frameRate: 12, maxBitrate: 1000000 },
         motion: { width: 1920, height: 1080, frameRate: 30, maxBitrate: 2500000 },

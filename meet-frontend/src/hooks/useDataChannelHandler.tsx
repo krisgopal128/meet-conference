@@ -194,12 +194,19 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
           }
         } else if (payload.type === 'moderation_control' && payload.targetIdentity === localParticipantRef.current.identity) {
           if (!isServerOrigin && !isPrivilegedSender) return;
-          if (payload.action === 'disable_camera' && localParticipantRef.current.isCameraEnabled) {
-            await localParticipantRef.current.setCameraEnabled(false);
-          } else if (payload.action === 'mute_microphone' && localParticipantRef.current.isMicrophoneEnabled) {
-            await localParticipantRef.current.setMicrophoneEnabled(false);
-          } else if (payload.action === 'disable_screenshare' && localParticipantRef.current.isScreenShareEnabled) {
-            await localParticipantRef.current.setScreenShareEnabled(false);
+          // Wrap each moderation action independently so a failure (e.g.
+          // device error) doesn't abort the data channel handler or get
+          // misclassified as a malformed message by the outer catch.
+          try {
+            if (payload.action === 'disable_camera' && localParticipantRef.current.isCameraEnabled) {
+              await localParticipantRef.current.setCameraEnabled(false);
+            } else if (payload.action === 'mute_microphone' && localParticipantRef.current.isMicrophoneEnabled) {
+              await localParticipantRef.current.setMicrophoneEnabled(false);
+            } else if (payload.action === 'disable_screenshare' && localParticipantRef.current.isScreenShareEnabled) {
+              await localParticipantRef.current.setScreenShareEnabled(false);
+            }
+          } catch (modErr) {
+            console.error('[DataChannel] Moderation action failed:', modErr);
           }
         }
       } catch (err) {
