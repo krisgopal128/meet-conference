@@ -16,7 +16,6 @@ A real-time video conferencing platform built with React, Express, and LiveKit �
 - 💬 Real-time in-meeting chat
 - 🎙️ Speaker detection & adaptive layout
 - 🔇 Mute/unmute audio & video controls
-- 📊 Network quality indicator
 - 🔔 Join/leave sound notifications
 
 ### Meeting Management
@@ -30,34 +29,24 @@ A real-time video conferencing platform built with React, Express, and LiveKit �
 ### Roles & Permissions
 - 👑 **Moderator**: Full control — admit/deny from lobby, kick participants, mute others, end meeting
 - 👤 **Participant**: Join meetings, chat, share screen (if allowed)
-- 🔒 Security hardening: CSRF protection, rate limiting, input sanitization, audit logging
 - 🛡️ Role-based route protection
 
 ### Admin Panel (Prashasakah)
 - 👥 User management (list, edit, delete)
 - 📊 Dashboard with stats & charts
 - 🗄️ Meeting oversight & audit logs
-- 🔑 API key management for external integrations
 - ⚠️ Alert system
 - ⚙️ System settings
 
 ### Advanced Features
 - 🖼️ **Picture-in-Picture** (Chrome 116+) — floating mini window with participant tiles
-- 🎨 **Background Effects** — blur, solid color, image replacement, or passthrough (MediaPipe Selfie Segmentation, runs on-device)
+- 🎨 **Background Effects** — blur, solid color, image replacement, or passthrough (MediaPipe Selfie Segmentation)
 - 🪞 **Camera Mirror** — toggle selfie-view mirroring on/off
 - 🎤 **Voice Level Meter** — real-time microphone input indicator on PreJoin page
 - 📐 Video fit mode sync (letterbox/crop) across participants
 - 📱 Fully responsive — mobile-first design with bottom nav
-- 🔐 JWT authentication with token refresh
 - ⏱️ Remember me (30-day sessions)
 - 📋 **Collaborative Whiteboard** — real-time drawing with Excalidraw, lock/unlock for moderators
-
-### External API (SDK)
-- REST API for third-party integrations
-- API key authentication
-- Room CRUD operations
-- Teacher/student token generation
-- Used by [Tuition Notebook](docs/tuition-notebook-integration.md) integration
 
 ---
 
@@ -97,8 +86,6 @@ A real-time video conferencing platform built with React, Express, and LiveKit �
 | **Database** | PostgreSQL 16 |
 | **Cache** | Redis |
 | **Reverse Proxy** | Caddy (auto HTTPS) |
-| **Auth** | JWT with bcrypt password hashing |
-| **Testing** | Vitest (frontend & backend) |
 
 ---
 
@@ -111,7 +98,7 @@ meet-conference/
 │   │   ├── components/     # UI components (chat, controls, room, etc.)
 │   │   ├── hooks/          # 30+ custom React hooks
 │   │   ├── pages/          # 15 pages (Home, Login, Room, Schedule, etc.)
-│   │   ├── services/       # API client services
+│   │   ├── services/       # Client services
 │   │   ├── store/          # Zustand state management (5 slices)
 │   │   ├── types/          # TypeScript type definitions
 │   │   ├── utils/          # Utilities (blur engine, aspect ratios, livekit data)
@@ -122,9 +109,9 @@ meet-conference/
 │
 ├── meet-backend/           # Express + TypeScript backend
 │   ├── src/
-│   │   ├── routes/         # API routes (auth, rooms, roomsParticipants, roomsChat, external, webhook, etc.)
-│   │   ├── services/       # Business logic (database, redis, participantPresence, livekit, webhookService, etc.)
-│   │   ├── middleware/     # Auth, rate limiting, role checks
+│   │   ├── routes/         # Route handlers (auth, rooms, chat, participants, etc.)
+│   │   ├── services/       # Business logic (database, redis, livekit, etc.)
+│   │   ├── middleware/     # Auth & role checks
 │   │   ├── db/             # Database schema
 │   │   └── migrations/     # SQL migrations
 │   └── scripts/            # Database seed scripts
@@ -169,7 +156,7 @@ cp meet-frontend/.env.example meet-frontend/.env
 
 # Backend (.env)
 cp meet-backend/.env.example meet-backend/.env
-# Edit with your database, Redis, LiveKit, and JWT secrets
+# Edit with your database, Redis, and LiveKit settings
 ```
 
 ### 3. Set Up Database
@@ -199,8 +186,6 @@ cd meet-frontend && npm run dev
 ### 5. Access the App
 
 - Frontend: `http://localhost:5173`
-- Backend API: `http://localhost:4000`
-- Health check: `http://localhost:4000/health`
 
 📖 For full deployment with HTTPS, see [SETUP.md](SETUP.md)
 
@@ -218,38 +203,10 @@ cd meet-frontend && npm run dev
 | Schedule | `/schedule` | Schedule new meetings |
 | History | `/history` | Past meeting history |
 | Meeting Detail | `/history/:id` | Individual meeting details |
-| API Keys | `/api-keys` | API key management (moderators) |
 | Admin Panel | `/prashasakah/*` | Admin dashboard & management |
-
----
-
-## 🧪 Testing
-
-```bash
-# Frontend tests
-cd meet-frontend && npm test
-
-# Backend tests
-cd meet-backend && npm test
-
-# Lint
-npm run lint
-```
-
----
-
-## 🔒 Security
-
-- All secrets managed via `.env` files (gitignored)
-- JWT authentication with bcrypt password hashing
-- Rate limiting on API endpoints
-- CORS configured for allowed origins
-- Input validation with Zod schemas
-- SQL parameterized queries (no injection risk)
 
 ---
 
 ## 📄 License
 
-Private repository. All rights reserved.
-
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
