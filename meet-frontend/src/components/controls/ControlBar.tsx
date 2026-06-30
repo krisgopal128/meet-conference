@@ -64,6 +64,7 @@ import {
   ScreenShareButton,
   HandButton,
   LayoutButton,
+  PiPButton,
   ChatButton,
   ParticipantsButton,
   WhiteboardButton,
@@ -81,7 +82,15 @@ import {
   MemoizedMobileMoreMenu,
 } from './ControlBarButtons';
 
-export function ControlBar() {
+export function ControlBar({
+  pipIsActive,
+  pipIsSupported,
+  onTogglePiP,
+}: {
+  pipIsActive?: boolean;
+  pipIsSupported?: boolean;
+  onTogglePiP?: () => void;
+} = {}) {
   const { localParticipant } = useLocalParticipant();
   const room = useMaybeRoomContext();
 
@@ -544,6 +553,9 @@ export function ControlBar() {
         <div className="flex items-center gap-2">
           <HandButton isRaised={handRaised} onToggle={toggleHandRaise} />
           <LayoutButton layout={layout} onToggle={toggleLayout} />
+          {onTogglePiP && (
+            <PiPButton isActive={!!pipIsActive} isSupported={!!pipIsSupported} onToggle={onTogglePiP} />
+          )}
         </div>
 
         <div className="w-px h-10 bg-surface-600 mx-2" />

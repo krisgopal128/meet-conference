@@ -189,8 +189,6 @@ router.get('/users/:id', requireModerator(), async (req: AuthRequest, res: Respo
             isBanned: user.is_banned,
             lastLoginAt: user.last_login_at,
             createdAt: user.created_at,
-            emailVerified: false,
-            lastLoginIp: null,
             meetingsAttended: Number(meetingStats?.attended || 0),
             meetingsHosted: Number(meetingStats?.hosted || 0),
             totalDurationMinutes: Math.round(Number(meetingStats?.duration || 0)),
