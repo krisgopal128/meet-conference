@@ -6,14 +6,14 @@
  * + live Excalidraw whiteboard preview (read-only mirror of the real board).
  *
  * ── Video rendering strategy ──
- * MediaStreamTrack set as srcObject on a <video> in the PiP document stops
- * receiving frames after ~1 second because the browser's media pipeline is
- * document-scoped.  Instead we:
- *   1. Create a hidden <video> in the MAIN document (tracks work here).
- *   2. Clone the participant's camera track onto it.
- *   3. Use PiP-window requestAnimationFrame + canvas.drawImage to mirror
- *      frames onto a <canvas> in the PiP document.
- * Cross-document drawImage works for same-origin Document PiP windows.
+ * Video tiles use track.attach() on <video> elements rendered inside the PiP
+ * document (via React portal).  LiveKit's adaptive stream controller detects
+ * that the element is inside documentPictureInPicture.window and keeps the
+ * track subscribed even when the main tab is backgrounded.
+ *
+ * Previous canvas-mirror approach failed because the hidden <video> in the
+ * backgrounded main tab stopped decoding (browser power optimisation),
+ * causing the canvas to go blank after ~1 second.
  */
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
@@ -136,17 +136,15 @@ function WhiteboardPreview() {
 }
 
 // ============================================
-// CanvasVideoTile — participant video rendered via canvas.
+// PipVideoTile — participant video via LiveKit track.attach().
 //
-// This is the core fix for PiP video not displaying.
-//
-// A hidden <video> source element is created in the MAIN document where
-// the cloned MediaStreamTrack works reliably.  A requestAnimationFrame loop
-// (driven by the PiP window so it keeps running when the main tab is
-// backgrounded) copies frames onto a <canvas> in the PiP document.
+// The <video> element is rendered inside the PiP document (via React portal).
+// Calling track.attach() registers it with LiveKit's adaptive stream,
+// which detects the Document PiP window and keeps the track subscribed
+// even when the main tab is backgrounded.  No canvas, no cloning, no rAF.
 // ============================================
 
-interface CanvasVideoTileProps {
+interface PipVideoTileProps {
   /** Real participant to display (mutually exclusive with useLocalTrack) */
   participant?: Participant;
   /** Clone local camera track instead of a participant's (for dummy tiles) */
@@ -161,150 +159,98 @@ interface CanvasVideoTileProps {
   dummy?: boolean;
 }
 
-function CanvasVideoTile({
+function PipVideoTile({
   participant,
   useLocalTrack = false,
   displayName,
   isLocal = false,
   isSpeakerTile,
   dummy = false,
-}: CanvasVideoTileProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+}: PipVideoTileProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
   const { localParticipant } = useLocalParticipant();
 
-  // Camera / mic state (read at render time for the label + fallback avatar)
   const sourceParticipant = useLocalTrack ? localParticipant : participant;
   const cameraEnabled = sourceParticipant?.isCameraEnabled ?? false;
   const micOn = sourceParticipant?.isMicrophoneEnabled ?? false;
 
-  // Stable identity for the effect dependency — avoids re-running the
-  // pipeline on every LiveKit property tick (audio level, etc.)
+  // Stable identity for the effect dependency — avoids re-running on
+  // every LiveKit property tick (audio level, etc.)
   const participantIdentity = sourceParticipant?.identity;
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !cameraEnabled) {
+    const videoEl = videoRef.current;
+    if (!videoEl || !cameraEnabled) {
       setVideoReady(false);
       return;
     }
 
     let disposed = false;
-    let sourceVideo: HTMLVideoElement | null = null;
-    let sourceStream: MediaStream | null = null;
-    let rafId: number | null = null;
     let retryTimer: ReturnType<typeof setInterval> | null = null;
 
-    // Use the PiP window's rAF so the loop keeps running even when the
-    // main tab is backgrounded (user is looking at the floating window).
-    const rafWin: Window & typeof globalThis =
-      (window as any).documentPictureInPicture?.window ?? window;
-
-    // ── Source video: lives in the MAIN document ──
-    // The cloned MediaStreamTrack works reliably here (same browsing context
-    // as the LiveKit room).  opacity:0.01 keeps it rendering (browsers may
-    // skip 0-opacity video) while making it invisible to the user.
-    sourceVideo = document.createElement('video');
-    sourceVideo.muted = true;
-    sourceVideo.playsInline = true;
-    sourceVideo.autoplay = true;
-    sourceVideo.style.cssText =
-      'position:fixed;top:0;left:0;width:320px;height:240px;' +
-      'opacity:0.01;pointer-events:none;z-index:-1;';
-    document.body.appendChild(sourceVideo);
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      sourceVideo.remove();
-      return;
-    }
-
-    // Resolve the raw MediaStreamTrack to clone
-    const getTrack = (): MediaStreamTrack | null => {
+    const getTrack = () => {
       const p = useLocalTrack ? localParticipant : participant;
       if (!p) return null;
       const pub = p.getTrackPublication(Track.Source.Camera);
-      const t = pub?.track?.mediaStreamTrack;
-      if (!t || t.readyState === 'ended') return null;
-      return t;
+      return pub?.track ?? null;
     };
 
-    const attach = (): boolean => {
+    const onLoadedData = () => {
+      if (!disposed) setVideoReady(true);
+    };
+
+    const doAttach = (): boolean => {
       const track = getTrack();
-      if (!track || !sourceVideo) return false;
-      sourceStream = new MediaStream([track.clone()]);
-      sourceVideo.srcObject = sourceStream;
-      void sourceVideo.play().catch(() => {});
+      if (!track) return false;
+
+      try {
+        // track.attach() sets srcObject and registers the element with
+        // LiveKit's adaptive stream — which detects Document PiP and
+        // keeps the track subscribed when the main tab backgrounds.
+        track.attach(videoEl);
+      } catch (err) {
+        // Fallback: some browsers throw on IntersectionObserver for
+        // cross-document elements — manually set srcObject instead.
+        console.warn('[PiP] track.attach() threw, using manual srcObject:', err);
+        videoEl.srcObject = new MediaStream([track.mediaStreamTrack]);
+        void videoEl.play().catch(() => {});
+      }
+
+      if (videoEl.readyState >= 2) {
+        setVideoReady(true);
+      } else {
+        videoEl.addEventListener('loadeddata', onLoadedData, { once: true });
+      }
       return true;
     };
 
-    // rAF loop: draw source video → PiP canvas with object-fit:cover
-    const drawFrame = () => {
-      if (disposed || !sourceVideo || !ctx) return;
-
-      if (sourceVideo.readyState >= 2 && sourceVideo.videoWidth > 0) {
-        const vw = sourceVideo.videoWidth;
-        const vh = sourceVideo.videoHeight;
-        const cw = canvas.width;
-        const ch = canvas.height;
-
-        if (vw > 0 && vh > 0 && cw > 0 && ch > 0) {
-          // Manual object-fit: cover — crop source to match canvas AR
-          const vAR = vw / vh;
-          const cAR = cw / ch;
-          let sx = 0, sy = 0, sw = vw, sh = vh;
-
-          if (vAR > cAR) {
-            // Source is wider — crop horizontally
-            sw = vh * cAR;
-            sx = (vw - sw) / 2;
-          } else {
-            // Source is taller — crop vertically
-            sh = vw / cAR;
-            sy = (vh - sh) / 2;
-          }
-
-          ctx.drawImage(sourceVideo, sx, sy, sw, sh, 0, 0, cw, ch);
-        }
-      }
-
-      rafId = rafWin.requestAnimationFrame(drawFrame);
-    };
-
-    const onSourceReady = () => {
-      if (disposed) return;
-      setVideoReady(true);
-      drawFrame();
-    };
-
-    // Phase 1: attach track (retry until camera publication is available)
-    if (attach()) {
-      sourceVideo.addEventListener('loadeddata', onSourceReady, { once: true });
-    } else {
+    if (!doAttach()) {
       retryTimer = setInterval(() => {
         if (disposed) {
           clearInterval(retryTimer!);
           return;
         }
-        if (attach()) {
+        if (doAttach()) {
           clearInterval(retryTimer!);
           retryTimer = null;
-          sourceVideo!.addEventListener('loadeddata', onSourceReady, { once: true });
         }
       }, 500);
     }
 
-    // ── Cleanup ──
     return () => {
       disposed = true;
-      if (rafId !== null) rafWin.cancelAnimationFrame(rafId);
       if (retryTimer) clearInterval(retryTimer);
-      sourceVideo?.removeEventListener('loadeddata', onSourceReady);
-      sourceStream?.getTracks().forEach((t) => t.stop());
-      if (sourceVideo) {
-        sourceVideo.srcObject = null;
-        sourceVideo.remove();
+      videoEl?.removeEventListener('loadeddata', onLoadedData);
+      const track = getTrack();
+      if (track) {
+        try {
+          track.detach(videoEl);
+        } catch {
+          // ignore detach errors on cleanup
+        }
       }
+      videoEl.srcObject = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cameraEnabled, participantIdentity, useLocalTrack]);
@@ -326,12 +272,13 @@ function CanvasVideoTile({
           : 'bg-surface-800'
       }`}
     >
-      {/* Canvas mirrors frames from the hidden main-doc source video */}
-      <canvas
-        ref={canvasRef}
-        width={isSpeakerTile ? 480 : 160}
-        height={isSpeakerTile ? 360 : 120}
-        className={`absolute inset-0 w-full h-full transition-opacity duration-300 ${
+      {/* LiveKit-managed <video> — track.attach() keeps it subscribed */}
+      <video
+        ref={videoRef}
+        autoPlay
+        muted
+        playsInline
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
           showVideo ? 'opacity-100' : 'opacity-0'
         }`}
         style={isLocal ? { transform: 'scaleX(-1)' } : undefined}
@@ -441,7 +388,7 @@ function MeetingPiPContent({
         <div className="flex-1 flex min-h-0">
           <div className="flex-1 relative overflow-hidden bg-black min-h-0">
             {activeSpeaker && (
-              <CanvasVideoTile
+              <PipVideoTile
                 participant={activeSpeaker}
                 displayName={activeSpeaker.name || activeSpeaker.identity}
                 isLocal={activeSpeaker.isLocal}
@@ -449,7 +396,7 @@ function MeetingPiPContent({
               />
             )}
             {debugMain && (
-              <CanvasVideoTile
+              <PipVideoTile
                 useLocalTrack
                 displayName={debugMain}
                 isLocal
@@ -465,7 +412,7 @@ function MeetingPiPContent({
             >
               {others.map((p) => (
                 <div key={p.identity} className="h-20 shrink-0">
-                  <CanvasVideoTile
+                  <PipVideoTile
                     participant={p}
                     displayName={p.name || p.identity}
                     isLocal={p.isLocal}
@@ -475,7 +422,7 @@ function MeetingPiPContent({
               ))}
               {debugOthers.map((name) => (
                 <div key={`debug-${name}`} className="h-20 shrink-0">
-                  <CanvasVideoTile
+                  <PipVideoTile
                     useLocalTrack
                     displayName={name}
                     isLocal
