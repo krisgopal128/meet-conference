@@ -7,14 +7,17 @@
  *
  * ── Video rendering strategy ──
  * Each tile attaches the LiveKit track to a hidden 1x1 <video> in the MAIN
- * document (keeps the subscription alive) and sets srcObject directly on the
- * PiP <video> from the raw MediaStreamTrack.  This bypasses LiveKit's
- * adaptive stream engine entirely — no IntersectionObserver, no rAF, no
- * isElementInPiP check — so video keeps playing when the main tab backgrounds.
+ * document (keeps the adaptive stream subscription alive for remote tracks)
+ * and sets srcObject DIRECTLY on the PiP <video> from the raw
+ * MediaStreamTrack — `new MediaStream([track.mediaStreamTrack])`.
  *
- * track.attach() on the PiP element itself fails because LiveKit's
- * onEnterPiP handler defers via requestAnimationFrame (suspended in a
- * backgrounded tab), so isPiP never becomes true and the track is paused.
+ * We must NOT call track.attach(videoEl) on the PiP element because LiveKit's
+ * adaptive stream creates an IntersectionObserver in the MAIN document's
+ * realm, which cannot observe elements in the PiP window's separate document.
+ * The observer never reports the element as visible, so the track gets paused
+ * (0 video layers) and the tile stays black.  Direct srcObject bypasses this
+ * entirely — MediaStreamTrack objects are not document-bound, so the same
+ * technique that powers the /pip-test page works here.
  */
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
@@ -182,60 +185,117 @@ function PipVideoTile({
 
   useEffect(() => {
     const videoEl = videoRef.current;
-    if (!videoEl || !cameraEnabled) {
+    if (!videoEl) {
+      console.warn('[PiP-Tile] no videoEl ref — aborting');
+      return;
+    }
+    if (!cameraEnabled) {
+      console.log('[PiP-Tile] camera not enabled, showing avatar only');
       setVideoReady(false);
       return;
     }
 
     let disposed = false;
     let retryTimer: ReturnType<typeof setInterval> | null = null;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
 
     const getTrack = () => {
       const p = useLocalTrack ? localParticipant : participant;
-      if (!p) return null;
+      if (!p) {
+        console.log('[PiP-Tile] no participant for track lookup');
+        return null;
+      }
       const pub = p.getTrackPublication(Track.Source.Camera);
-      return pub?.track ?? null;
+      const t = pub?.track ?? null;
+      if (!t) {
+        console.log('[PiP-Tile] no camera track (publication has no .track)');
+      }
+      return t;
     };
 
-    const onLoadedData = () => {
-      if (!disposed) setVideoReady(true);
-    };
-
-    // Hidden <video> in the MAIN document.  track.attach() on this element
-    // keeps LiveKit's adaptive stream subscribed — it sees a visible
-    // (non-zero offsetWidth) element in the main tab, so the remote track
-    // is never paused even when the tab backgrounds.  Without this, setting
-    // srcObject alone would stop receiving frames once LiveKit pauses the
-    // subscription.
+    // Hidden <video> in the MAIN document.
+    // track.attach() on this element keeps LiveKit's adaptive stream
+    // subscribed for remote tracks — the IntersectionObserver sees a
+    // visible element in the main tab, so the remote track is never paused
+    // even when the main tab backgrounds.  Without this, the remote track
+    // would be unsubscribed (no frames) because the PiP element lives in
+    // a different document that the main-tab IntersectionObserver can't see.
     const hiddenVideo = document.createElement('video');
     hiddenVideo.style.cssText =
-      'position:fixed;width:1px;height:1px;left:0;top:0;opacity:0;pointer-events:none;';
+      'position:fixed;width:2px;height:2px;left:0;top:0;opacity:0.01;pointer-events:none;z-index:-1;';
     hiddenVideo.muted = true;
+    (hiddenVideo as HTMLVideoElement).autoplay = true;
     document.body.appendChild(hiddenVideo);
+
+    const markReady = (reason: string) => {
+      if (disposed) return;
+      console.log('[PiP-Tile] video ready via', reason, {
+        readyState: videoEl.readyState,
+        videoWidth: videoEl.videoWidth,
+        videoHeight: videoEl.videoHeight,
+      });
+      setVideoReady(true);
+    };
 
     const doAttach = (): boolean => {
       const track = getTrack();
       if (!track) return false;
 
-      // 1. Attach to the hidden main-document element → keeps LiveKit subscribed.
+      const mst = track.mediaStreamTrack;
+      if (!mst) {
+        console.log('[PiP-Tile] track exists but mediaStreamTrack is null');
+        return false;
+      }
+      console.log('[PiP-Tile] attaching', {
+        isLocal: useLocalTrack,
+        kind: track.kind,
+        mstState: `${mst.readyState}/${mst.enabled}/${mst.muted}`,
+      });
+
+      // 1. Attach to hidden main-doc element → keeps LiveKit's adaptive stream
+      //    subscribed for remote tracks (IntersectionObserver in main doc sees it).
       try {
         track.attach(hiddenVideo);
       } catch (err) {
-        console.warn('[PiP] track.attach() on hidden element threw:', err);
+        console.warn('[PiP-Tile] hidden attach threw:', err);
       }
 
-      // 2. Set srcObject directly on the PiP <video> from the raw
-      //    MediaStreamTrack.  Bypasses LiveKit's adaptive stream engine
-      //    entirely (no IntersectionObserver, no rAF, no isElementInPiP),
-      //    so the video keeps rendering when the main tab backgrounds.
-      videoEl.srcObject = new MediaStream([track.mediaStreamTrack]);
-      void videoEl.play().catch(() => {});
+      // 2. Set srcObject directly on the PiP video element.  We must NOT use
+      //    track.attach(videoEl) — LiveKit creates an IntersectionObserver in
+      //    the MAIN document which cannot observe the PiP element (different
+      //    document), so the track gets paused and the tile stays black.
+      //    MediaStreamTrack objects are not document-bound, so direct srcObject
+      //    works across documents — same technique as the /pip-test page.
+      videoEl.srcObject = new MediaStream([mst]);
 
-      if (videoEl.readyState >= 2) {
-        setVideoReady(true);
+      // 3. Kick off playback explicitly (autoPlay may not fire cross-document).
+      const p = videoEl.play();
+      if (p && typeof p.then === 'function') {
+        p.then(() => console.log('[PiP-Tile] play() resolved')).catch((e) =>
+          console.warn('[PiP-Tile] play() rejected:', e?.message || e),
+        );
+      }
+
+      // 4. Detect frame rendering.  loadeddata can be unreliable for live
+      //    MediaStreams in a cross-document window, so poll videoWidth too.
+      const onLoadedData = () => markReady('loadeddata');
+      if (videoEl.readyState >= 2 || videoEl.videoWidth > 0) {
+        markReady('immediate');
       } else {
         videoEl.addEventListener('loadeddata', onLoadedData, { once: true });
+        pollTimer = setInterval(() => {
+          if (disposed) {
+            if (pollTimer) clearInterval(pollTimer);
+            return;
+          }
+          if (videoEl.videoWidth > 0 || videoEl.readyState >= 2) {
+            if (pollTimer) clearInterval(pollTimer);
+            pollTimer = null;
+            markReady('poll');
+          }
+        }, 200);
       }
+
       return true;
     };
 
@@ -255,7 +315,7 @@ function PipVideoTile({
     return () => {
       disposed = true;
       if (retryTimer) clearInterval(retryTimer);
-      videoEl?.removeEventListener('loadeddata', onLoadedData);
+      if (pollTimer) clearInterval(pollTimer);
       const track = getTrack();
       if (track) {
         try {

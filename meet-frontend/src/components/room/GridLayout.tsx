@@ -56,8 +56,7 @@ export function GridLayout() {
   const { localParticipant } = useLocalParticipant();
   const aspectRatio = useGridAspectRatio();
   const isMobile = useIsMobile();
-  const { dummyParticipants } = useDebugParticipants();
-
+  const { dummyParticipants, dummyStates } = useDebugParticipants();
   const admittedParticipants = useAdmittedParticipants(participants, localParticipant?.identity);
   const count = admittedParticipants.length + dummyParticipants.length;
   const isSingleParticipant = count === 1;
@@ -114,7 +113,7 @@ export function GridLayout() {
         ))}
         {dummyParticipants.map((d) => (
           <div key={d.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden" style={{ aspectRatio: aspectCss }}>
-            <DummyParticipantTile name={d.name} size="small" />
+            <DummyParticipantTile name={d.name} size="small" state={dummyStates[d.identity]} />
           </div>
         ))}
       </div>
@@ -165,7 +164,7 @@ export function GridLayout() {
           style={{ minWidth: 0, minHeight: 0 }}
         >
           <div className="relative rounded-2xl bg-surface-900 overflow-hidden" style={{ width: '100%', height: '100%' }}>
-            <DummyParticipantTile name={d.name} size="small" />
+            <DummyParticipantTile name={d.name} size="small" state={dummyStates[d.identity]} />
           </div>
         </div>
       ))}
