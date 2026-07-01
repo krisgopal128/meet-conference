@@ -68,11 +68,19 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
   const aspectRatio = useGridAspectRatio();
   const isMobile = useIsMobile();
 
-  const filmstripHeightCss = isMobile ? '12dvh' : '119px';
-  const filmstripPx = isMobile ? Math.round(window.innerHeight * 0.12) : 119;
-  const filmstripGap = Math.max(6, Math.round(filmstripPx * 0.06));
-  const filmstripPaddingX = Math.max(6, Math.round(filmstripPx * 0.08));
-  const filmstripPaddingBottom = Math.max(6, Math.round(filmstripPx * 0.08));
+  // Filmstrip dimensions — kept in sync with SpeakerLayout for visual consistency
+  const filmstripHeightCss = isMobile ? '18dvh' : '140px';
+  const filmstripPx = useMemo(() => {
+    if (!isMobile) return 140;
+    return Math.max(90, Math.round(window.innerHeight * 0.18));
+  }, [isMobile]);
+  const filmstripTileWidth = useMemo(() => {
+    const usableH = isMobile ? filmstripPx - Math.max(6, Math.round(filmstripPx * 0.08)) : 140;
+    return Math.round(usableH * ASPECT_RATIO_MULTIPLIERS[aspectRatio]);
+  }, [aspectRatio, filmstripPx, isMobile]);
+  const filmstripGap = useMemo(() => Math.max(6, Math.round(filmstripPx * 0.06)), [filmstripPx]);
+  const filmstripPaddingX = useMemo(() => Math.max(6, Math.round(filmstripPx * 0.08)), [filmstripPx]);
+  const filmstripPaddingBottom = useMemo(() => Math.max(6, Math.round(filmstripPx * 0.08)), [filmstripPx]);
 
   const admittedParticipants = useAdmittedParticipants(allParticipants, localIdentity);
 
@@ -661,13 +669,13 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
         >
           <div
             className="flex-shrink-0 h-full rounded-2xl bg-surface-900"
-            style={{ width: filmstripPx * ASPECT_RATIO_MULTIPLIERS[aspectRatio] }}
+            style={{ width: filmstripTileWidth }}
           >
             <WhiteboardPreviewTile
               excalidrawAPI={excalidrawAPIRef.current}
               sourceElement={whiteboardContainerRef.current}
               sceneVersion={sceneVersionTick}
-              width={Math.round(filmstripPx * ASPECT_RATIO_MULTIPLIERS[aspectRatio])}
+              width={filmstripTileWidth}
               height={filmstripPx}
             />
           </div>
@@ -675,7 +683,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
             <div
               key={p.identity}
               className="flex-shrink-0 h-full rounded-2xl bg-surface-900"
-              style={{ width: filmstripPx * ASPECT_RATIO_MULTIPLIERS[aspectRatio] }}
+              style={{ width: filmstripTileWidth }}
             >
               <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} />
             </div>
