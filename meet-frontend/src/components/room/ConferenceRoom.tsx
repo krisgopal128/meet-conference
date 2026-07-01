@@ -383,16 +383,24 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
                   Loading layout…
                 </div>
               }>
-                {/* Keep both grid and speaker layouts mounted to preserve video
-                    track subscriptions across layout switches. Use opacity — NOT
-                    display:none — so adaptiveStream sees non-zero element sizes
-                    and keeps streams flowing. */}
-                <div className={`absolute inset-0 transition-opacity duration-150 ${layout === 'grid' ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none'}`}>
-                  <GridLayout />
-                </div>
-                <div className={`absolute inset-0 transition-opacity duration-150 ${layout === 'speaker' ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none'}`}>
-                  <SpeakerLayout activeSpeakers={activeSpeakers} />
-                </div>
+                {/* Grid and Speaker layouts are mounted only when one of them
+                    is the active layout. This preserves video track subscriptions
+                    for the common grid↔speaker toggle (instant switch, no
+                    re-subscribe). When whiteboard or screenshare is active, both
+                    are unmounted — this avoids hidden filmstrips rendering
+                    invisible video tiles (wasted CPU/bandwidth) and eliminates
+                    the "two filmstrip" visual bug where the SpeakerLayout's
+                    hidden filmstrip bled through during opacity transitions. */}
+                {(layout === 'grid' || layout === 'speaker') && (
+                  <>
+                    <div className={`absolute inset-0 transition-opacity duration-150 ${layout === 'grid' ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none'}`}>
+                      <GridLayout />
+                    </div>
+                    <div className={`absolute inset-0 transition-opacity duration-150 ${layout === 'speaker' ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none'}`}>
+                      <SpeakerLayout activeSpeakers={activeSpeakers} />
+                    </div>
+                  </>
+                )}
                 {layout === 'screenshare' && <ScreenShareLayout />}
                 {layout === 'whiteboard' && <WhiteboardLayout room={room} roomName={_props.roomName} />}
               </Suspense>
@@ -475,19 +483,21 @@ export const ConferenceRoom = memo(function ConferenceRoom(props: ConferenceRoom
   );
 });
 
-/** Renders a horizontal strip of dummy participant tiles in the main view. */
+/** Renders a horizontal strip of dummy participant tiles in the main view.
+ *  Hidden in grid mode — dummies are rendered inside GridLayout itself. */
 function DebugDummyTiles() {
-  const { names } = useDebugParticipants();
-  if (names.length === 0) return null;
+  const { names, dummyParticipants, dummyStates } = useDebugParticipants();
+  const layout = useLayout();
+  if (names.length === 0 || layout === 'grid' || layout === 'whiteboard' || layout === 'screenshare') return null;
 
   return (
     <div className="absolute bottom-0 left-0 right-0 z-40 flex gap-1.5 p-1.5 bg-surface-900/85 backdrop-blur-sm overflow-x-auto">
-      {names.map((name) => (
+      {dummyParticipants.map((d) => (
         <div
-          key={name}
+          key={d.identity}
           className="shrink-0 w-28 h-16 sm:w-40 sm:h-24"
         >
-          <DummyParticipantTile name={name} size="small" />
+          <DummyParticipantTile name={d.name} size="small" state={dummyStates[d.identity]} />
         </div>
       ))}
     </div>

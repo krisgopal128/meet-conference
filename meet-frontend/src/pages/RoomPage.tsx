@@ -560,7 +560,9 @@ function RoomContent({
       try {
         const md = localParticipant.metadata ? JSON.parse(localParticipant.metadata) : {};
         metadataInLobby = md.inLobby === true;
-      } catch {}
+      } catch {
+        // Malformed metadata JSON — default to not in lobby
+      }
 
       logger.info('[RoomPage] Permission changed event:', {
         canPublish: permissions?.canPublish,

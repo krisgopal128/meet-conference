@@ -107,14 +107,14 @@ export default function PrashasakahLayout() {
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
-  if (!user || user.role !== 'admin') {
-    return <Navigate to="/" replace />;
-  }
-
   const filteredNavItems = useMemo(
     () => navItems.filter((item) => !item.adminOnly || user?.role === 'admin'),
     [user]
   );
+
+  if (!user || user.role !== 'admin') {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div className="min-h-screen bg-surface-50 dark:bg-surface-950 flex">

@@ -18,6 +18,7 @@ import { SafeParticipantTile as ParticipantTile } from './ParticipantTile';
 import { useGridAspectRatio, type GridAspectRatio } from '../../store/roomStore';
 import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { useDebugParticipants, DummyParticipantTile } from '../../debug/DebugParticipants';
 
 const FIXED_GRID_MAX = 8;
 const SCROLL_THRESHOLD_DESKTOP = 25;
@@ -42,7 +43,8 @@ function getGridDimensions(count: number, ratio: GridAspectRatio): { cols: numbe
     if (count === 2) return { cols: 2, rows: 1 };
     if (count <= 4) return { cols: 2, rows: 2 };
     if (count <= 6) return { cols: 3, rows: 2 };
-    if (count <= 8) return { cols: 4, rows: 2 };
+    if (count === 7) return { cols: 3, rows: 3 };
+    if (count === 8) return { cols: 3, rows: 3 };
   }
 
   const cols = Math.ceil(Math.sqrt(count));
@@ -55,9 +57,9 @@ export function GridLayout() {
   const { localParticipant } = useLocalParticipant();
   const aspectRatio = useGridAspectRatio();
   const isMobile = useIsMobile();
-
+  const { dummyParticipants, dummyStates } = useDebugParticipants();
   const admittedParticipants = useAdmittedParticipants(participants, localParticipant?.identity);
-  const count = admittedParticipants.length;
+  const count = admittedParticipants.length + dummyParticipants.length;
   const isSingleParticipant = count === 1;
 
   const isLandscape = aspectRatio === '16:9' || aspectRatio === '4:3';
@@ -110,6 +112,11 @@ export function GridLayout() {
             <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
           </div>
         ))}
+        {dummyParticipants.map((d) => (
+          <div key={d.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden" style={{ aspectRatio: aspectCss }}>
+            <DummyParticipantTile name={d.name} size="small" state={dummyStates[d.identity]} />
+          </div>
+        ))}
       </div>
     );
   }
@@ -143,12 +150,19 @@ export function GridLayout() {
       {admittedParticipants.map((p) => (
         <div
           key={p.identity}
-          className="relative flex items-center justify-center overflow-hidden"
+          className="relative rounded-2xl bg-surface-900 overflow-hidden"
           style={{ minWidth: 0, minHeight: 0 }}
         >
-          <div className="relative rounded-2xl bg-surface-900 overflow-hidden" style={{ width: '100%', height: '100%' }}>
-            <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
-          </div>
+          <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
+        </div>
+      ))}
+      {dummyParticipants.map((d) => (
+        <div
+          key={d.identity}
+          className="relative rounded-2xl bg-surface-900 overflow-hidden"
+          style={{ minWidth: 0, minHeight: 0 }}
+        >
+          <DummyParticipantTile name={d.name} size="small" state={dummyStates[d.identity]} />
         </div>
       ))}
     </div>

@@ -64,7 +64,7 @@ export function useParticipantActions(
           setLobbyCount(next.length);
           return next;
         });
-      } catch (err) {
+      } catch {
         toast.error('Failed to admit participant');
       }
     });

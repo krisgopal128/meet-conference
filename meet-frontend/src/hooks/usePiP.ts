@@ -30,9 +30,22 @@ export function usePiP() {
         height: 400,
       });
 
-      // Clone all stylesheets from main document into PiP document
-      document.querySelectorAll('style, link[rel="stylesheet"]').forEach((node) => {
-        win.document.head.appendChild(node.cloneNode(true));
+      // Clone all stylesheets from main document into PiP document.
+      // Strip inline event handlers (e.g. onload) — the PiP document inherits
+      // the main page CSP (script-src 'self' 'unsafe-eval') which blocks
+      // 'unsafe-inline', so inline handlers like onload="this.media='all'"
+      // on the font <link> would trigger CSP violations.
+      document.querySelectorAll<HTMLStyleElement | HTMLLinkElement>('style, link[rel="stylesheet"]').forEach((node) => {
+        const clone = node.cloneNode(true) as HTMLElement;
+        if (clone.tagName === 'LINK') {
+          clone.removeAttribute('onload');
+          // The font preload link uses media="print" + onload swap to "all".
+          // Without onload, set media to "all" so styles apply immediately.
+          if (clone.getAttribute('media') === 'print') {
+            clone.setAttribute('media', 'all');
+          }
+        }
+        win.document.head.appendChild(clone);
       });
 
       // Set dark background + full height on PiP window to fill entire canvas

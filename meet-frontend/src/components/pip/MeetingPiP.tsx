@@ -5,9 +5,19 @@
  * Shows active speaker video (large) + filmstrip of others + compact controls
  * + live Excalidraw whiteboard preview (read-only mirror of the real board).
  *
- * Video tiles use the SAME SafeParticipantTile as the main room grid, so
- * adaptive stream, quality indicators, connection quality, and avatar/name
- * styling are identical between PiP and main room.
+ * ── Video rendering strategy ──
+ * Each tile attaches the LiveKit track to a hidden 1x1 <video> in the MAIN
+ * document (keeps the adaptive stream subscription alive for remote tracks)
+ * and sets srcObject DIRECTLY on the PiP <video> from the raw
+ * MediaStreamTrack — `new MediaStream([track.mediaStreamTrack])`.
+ *
+ * We must NOT call track.attach(videoEl) on the PiP element because LiveKit's
+ * adaptive stream creates an IntersectionObserver in the MAIN document's
+ * realm, which cannot observe elements in the PiP window's separate document.
+ * The observer never reports the element as visible, so the track gets paused
+ * (0 video layers) and the tile stays black.  Direct srcObject bypasses this
+ * entirely — MediaStreamTrack objects are not document-bound, so the same
+ * technique that powers the /pip-test page works here.
  */
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
@@ -19,7 +29,7 @@ import { usePiP } from '../../hooks/usePiP';
 import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
 import { useWhiteboardOpen, useUIActions } from '../../store/roomStore';
 import { getWhiteboardAPI } from '../../services/whiteboardAPIBridge';
-import { useDebugParticipants, DummyParticipantTile } from '../../debug/DebugParticipants';
+import { useDebugParticipants } from '../../debug/DebugParticipants';
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Pencil, LayoutGrid } from 'lucide-react';
 
 // ============================================
@@ -130,88 +140,219 @@ function WhiteboardPreview() {
 }
 
 // ============================================
-// PiPVideoTile — participant video that bypasses LiveKit adaptive stream
+// PipVideoTile — participant video via direct srcObject.
 //
-// LiveKit's adaptive stream uses IntersectionObserver/ResizeObserver bound to
-// the MAIN document. A <video> living inside the Document PiP window (a separate
-// document) is invisible to those observers, so LiveKit pauses the track after
-// ~1s. Cloning the MediaStreamTrack onto a plain <video> sidesteps this entirely.
+// track.attach() is called on a hidden 1x1 <video> in the MAIN document to
+// keep LiveKit's subscription alive.  The PiP <video> gets srcObject set
+// directly from track.mediaStreamTrack — bypassing the adaptive stream
+// engine so the video survives main-tab backgrounding.
 // ============================================
 
-interface PiPVideoTileProps {
-  participant: Participant;
+interface PipVideoTileProps {
+  /** Real participant to display (mutually exclusive with useLocalTrack) */
+  participant?: Participant;
+  /** Clone local camera track instead of a participant's (for dummy tiles) */
+  useLocalTrack?: boolean;
+  /** Display name shown in the label */
+  displayName: string;
+  /** Whether this is the local user (applies mirror) */
+  isLocal?: boolean;
+  /** Large speaker tile vs small filmstrip tile */
   isSpeakerTile: boolean;
+  /** Dummy/debug tile styling */
+  dummy?: boolean;
 }
 
-function PiPVideoTile({ participant, isSpeakerTile }: PiPVideoTileProps) {
+function PipVideoTile({
+  participant,
+  useLocalTrack = false,
+  displayName,
+  isLocal = false,
+  isSpeakerTile,
+  dummy = false,
+}: PipVideoTileProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
-  const isLocal = participant.isLocal;
-  const cameraEnabled = participant.isCameraEnabled;
+  const { localParticipant } = useLocalParticipant();
+
+  const sourceParticipant = useLocalTrack ? localParticipant : participant;
+  const cameraEnabled = sourceParticipant?.isCameraEnabled ?? false;
+  const micOn = sourceParticipant?.isMicrophoneEnabled ?? false;
+
+  // Stable identity for the effect dependency — avoids re-running on
+  // every LiveKit property tick (audio level, etc.)
+  const participantIdentity = sourceParticipant?.identity;
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !cameraEnabled) {
+    const videoEl = videoRef.current;
+    if (!videoEl) {
+      console.warn('[PiP-Tile] no videoEl ref — aborting');
+      return;
+    }
+    if (!cameraEnabled) {
+      console.log('[PiP-Tile] camera not enabled, showing avatar only');
       setVideoReady(false);
       return;
     }
 
-    let stream: MediaStream | null = null;
-    let interval: ReturnType<typeof setInterval> | null = null;
+    let disposed = false;
+    let retryTimer: ReturnType<typeof setInterval> | null = null;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
 
-    const setup = (): boolean => {
-      const pub = participant.getTrackPublication(Track.Source.Camera);
-      const track = pub?.track?.mediaStreamTrack;
-      if (!track || track.readyState === 'ended') return false;
+    const getTrack = () => {
+      const p = useLocalTrack ? localParticipant : participant;
+      if (!p) {
+        console.log('[PiP-Tile] no participant for track lookup');
+        return null;
+      }
+      const pub = p.getTrackPublication(Track.Source.Camera);
+      const t = pub?.track ?? null;
+      if (!t) {
+        console.log('[PiP-Tile] no camera track (publication has no .track)');
+      }
+      return t;
+    };
 
-      // Clone the track so the PiP <video> is independent of LiveKit's
-      // adaptive-stream control — works inside the separate PiP document.
-      stream = new MediaStream([track.clone()]);
-      video.srcObject = stream;
-      void video.play().catch(() => {});
+    // Hidden <video> in the MAIN document.
+    // track.attach() on this element keeps LiveKit's adaptive stream
+    // subscribed for remote tracks — the IntersectionObserver sees a
+    // visible element in the main tab, so the remote track is never paused
+    // even when the main tab backgrounds.  Without this, the remote track
+    // would be unsubscribed (no frames) because the PiP element lives in
+    // a different document that the main-tab IntersectionObserver can't see.
+    const hiddenVideo = document.createElement('video');
+    hiddenVideo.style.cssText =
+      'position:fixed;width:2px;height:2px;left:0;top:0;opacity:0.01;pointer-events:none;z-index:-1;';
+    hiddenVideo.muted = true;
+    (hiddenVideo as HTMLVideoElement).autoplay = true;
+    document.body.appendChild(hiddenVideo);
+
+    const markReady = (reason: string) => {
+      if (disposed) return;
+      console.log('[PiP-Tile] video ready via', reason, {
+        readyState: videoEl.readyState,
+        videoWidth: videoEl.videoWidth,
+        videoHeight: videoEl.videoHeight,
+      });
+      setVideoReady(true);
+    };
+
+    const doAttach = (): boolean => {
+      const track = getTrack();
+      if (!track) return false;
+
+      const mst = track.mediaStreamTrack;
+      if (!mst) {
+        console.log('[PiP-Tile] track exists but mediaStreamTrack is null');
+        return false;
+      }
+      console.log('[PiP-Tile] attaching', {
+        isLocal: useLocalTrack,
+        kind: track.kind,
+        mstState: `${mst.readyState}/${mst.enabled}/${mst.muted}`,
+      });
+
+      // 1. Attach to hidden main-doc element → keeps LiveKit's adaptive stream
+      //    subscribed for remote tracks (IntersectionObserver in main doc sees it).
+      try {
+        track.attach(hiddenVideo);
+      } catch (err) {
+        console.warn('[PiP-Tile] hidden attach threw:', err);
+      }
+
+      // 2. Set srcObject directly on the PiP video element.  We must NOT use
+      //    track.attach(videoEl) — LiveKit creates an IntersectionObserver in
+      //    the MAIN document which cannot observe the PiP element (different
+      //    document), so the track gets paused and the tile stays black.
+      //    MediaStreamTrack objects are not document-bound, so direct srcObject
+      //    works across documents — same technique as the /pip-test page.
+      videoEl.srcObject = new MediaStream([mst]);
+
+      // 3. Kick off playback explicitly (autoPlay may not fire cross-document).
+      const p = videoEl.play();
+      if (p && typeof p.then === 'function') {
+        p.then(() => console.log('[PiP-Tile] play() resolved')).catch((e) =>
+          console.warn('[PiP-Tile] play() rejected:', e?.message || e),
+        );
+      }
+
+      // 4. Detect frame rendering.  loadeddata can be unreliable for live
+      //    MediaStreams in a cross-document window, so poll videoWidth too.
+      const onLoadedData = () => markReady('loadeddata');
+      if (videoEl.readyState >= 2 || videoEl.videoWidth > 0) {
+        markReady('immediate');
+      } else {
+        videoEl.addEventListener('loadeddata', onLoadedData, { once: true });
+        pollTimer = setInterval(() => {
+          if (disposed) {
+            if (pollTimer) clearInterval(pollTimer);
+            return;
+          }
+          if (videoEl.videoWidth > 0 || videoEl.readyState >= 2) {
+            if (pollTimer) clearInterval(pollTimer);
+            pollTimer = null;
+            markReady('poll');
+          }
+        }, 200);
+      }
+
       return true;
     };
 
-    if (setup()) {
-      setVideoReady(true);
-    } else {
-      interval = setInterval(() => {
-        if (setup()) {
-          setVideoReady(true);
-          if (interval) {
-            clearInterval(interval);
-            interval = null;
-          }
+    if (!doAttach()) {
+      retryTimer = setInterval(() => {
+        if (disposed) {
+          clearInterval(retryTimer!);
+          return;
+        }
+        if (doAttach()) {
+          clearInterval(retryTimer!);
+          retryTimer = null;
         }
       }, 500);
     }
 
     return () => {
-      if (interval) clearInterval(interval);
-      stream?.getTracks().forEach((t) => t.stop());
-      video.srcObject = null;
+      disposed = true;
+      if (retryTimer) clearInterval(retryTimer);
+      if (pollTimer) clearInterval(pollTimer);
+      const track = getTrack();
+      if (track) {
+        try {
+          track.detach(hiddenVideo);
+        } catch {
+          // ignore detach errors on cleanup
+        }
+      }
+      videoEl.srcObject = null;
+      hiddenVideo.remove();
     };
-  }, [participant, cameraEnabled]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraEnabled, participantIdentity, useLocalTrack]);
 
-  const initials = (participant.name || participant.identity)
+  const initials = displayName
     .split(' ')
     .map((w) => w[0])
     .join('')
     .slice(0, 2)
     .toUpperCase();
 
-  const micOn = participant.isMicrophoneEnabled;
   const showVideo = videoReady && cameraEnabled;
 
   return (
-    <div className="relative w-full h-full bg-surface-800 rounded-lg overflow-hidden">
-      {/* Cloned camera video */}
+    <div
+      className={`relative w-full h-full rounded-lg overflow-hidden ${
+        dummy
+          ? 'bg-gradient-to-br from-surface-700 to-surface-800 ring-1 ring-warning-500/40'
+          : 'bg-surface-800'
+      }`}
+    >
+      {/* PiP <video> — srcObject set directly from track.mediaStreamTrack */}
       <video
         ref={videoRef}
         autoPlay
-        playsInline
         muted
-        onLoadedData={() => setVideoReady(true)}
+        playsInline
         className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
           showVideo ? 'opacity-100' : 'opacity-0'
         }`}
@@ -224,7 +365,9 @@ function PiPVideoTile({ participant, isSpeakerTile }: PiPVideoTileProps) {
           <div
             className={`${
               isSpeakerTile ? 'w-16 h-16 text-xl' : 'w-8 h-8 text-xs'
-            } rounded-full bg-surface-600 flex items-center justify-center font-bold text-white`}
+            } rounded-full ${
+              dummy ? 'bg-warning-600' : 'bg-surface-600'
+            } flex items-center justify-center font-bold text-white`}
           >
             {initials}
           </div>
@@ -237,13 +380,19 @@ function PiPVideoTile({ participant, isSpeakerTile }: PiPVideoTileProps) {
           isSpeakerTile ? 'bottom-1.5 left-1.5' : 'bottom-0.5 left-0.5'
         } flex items-center gap-1 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-sm`}
       >
-        {!micOn && <MicOff className={isSpeakerTile ? 'w-3 h-3' : 'w-2.5 h-2.5'} style={{ color: '#f87171' }} />}
+        {dummy && <span className="text-[9px]">🤖</span>}
+        {!micOn && (
+          <MicOff
+            className={isSpeakerTile ? 'w-3 h-3' : 'w-2.5 h-2.5'}
+            style={{ color: '#f87171' }}
+          />
+        )}
         <span
           className={`text-white font-medium truncate ${
             isSpeakerTile ? 'text-xs max-w-[200px]' : 'text-[10px] max-w-[80px]'
           }`}
         >
-          {participant.name || participant.identity}
+          {displayName}
           {isLocal && ' (You)'}
         </span>
       </div>
@@ -314,25 +463,47 @@ function MeetingPiPContent({
         <div className="flex-1 flex min-h-0">
           <div className="flex-1 relative overflow-hidden bg-black min-h-0">
             {activeSpeaker && (
-              <PiPVideoTile participant={activeSpeaker} isSpeakerTile />
+              <PipVideoTile
+                participant={activeSpeaker}
+                displayName={activeSpeaker.name || activeSpeaker.identity}
+                isLocal={activeSpeaker.isLocal}
+                isSpeakerTile
+              />
             )}
             {debugMain && (
-              <DummyParticipantTile name={debugMain} />
+              <PipVideoTile
+                useLocalTrack
+                displayName={debugMain}
+                isLocal
+                isSpeakerTile
+                dummy
+              />
             )}
           </div>
           {(others.length > 0 || debugOthers.length > 0) && (
             <div
-              className="w-[100px] flex flex-col gap-1.5 p-1.5 bg-surface-950 overflow-y-auto"
+              className="w-[100px] flex flex-col gap-1.5 p-1.5 bg-surface-900 overflow-y-auto"
               style={{ maxHeight: '100%' }}
             >
               {others.map((p) => (
                 <div key={p.identity} className="h-20 shrink-0">
-                  <PiPVideoTile participant={p} isSpeakerTile={false} />
+                  <PipVideoTile
+                    participant={p}
+                    displayName={p.name || p.identity}
+                    isLocal={p.isLocal}
+                    isSpeakerTile={false}
+                  />
                 </div>
               ))}
               {debugOthers.map((name) => (
                 <div key={`debug-${name}`} className="h-20 shrink-0">
-                  <DummyParticipantTile name={name} size="small" />
+                  <PipVideoTile
+                    useLocalTrack
+                    displayName={name}
+                    isLocal
+                    isSpeakerTile={false}
+                    dummy
+                  />
                 </div>
               ))}
             </div>

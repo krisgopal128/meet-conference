@@ -282,7 +282,9 @@ export function ControlBar({
         try {
           const msg = JSON.stringify({ type: 'recording_state', isRecording: false });
           localParticipant.publishData(new TextEncoder().encode(msg), { reliable: true, topic: 'meeting' });
-        } catch {}
+        } catch {
+          // Best-effort — broadcast may fail if no data channel is open
+        }
       } else {
         const res = await withOperationTimeout(
           roomsApi.startRecording(room.name),
@@ -294,7 +296,9 @@ export function ControlBar({
         try {
           const msg = JSON.stringify({ type: 'recording_state', isRecording: true, egressId: newEgressId });
           localParticipant.publishData(new TextEncoder().encode(msg), { reliable: true, topic: 'meeting' });
-        } catch {}
+        } catch {
+          // Best-effort — broadcast may fail if no data channel is open
+        }
         toast.success('Recording started');
       }
     } catch (error) {
@@ -495,7 +499,7 @@ export function ControlBar({
       {/* Desktop Layout — hidden on mobile UA (useIsMobile) even when viewport
           width >= md, so a phone in landscape gets the compact mobile bar. */}
       {!isMobile && (
-      <div className="flex items-center justify-center gap-2 bg-surface-800/95 backdrop-blur-sm border-t border-surface-700 py-3 px-4">
+      <div className="flex items-center justify-center gap-2 bg-surface-800/95 backdrop-blur-sm border-t border-surface-700 py-3 px-4 overflow-x-auto overflow-y-hidden">
         {/* Connection Quality Indicator */}
         {(meetingRoomConfig.features.connectionQualityIndicator || autoFallbackActive) && (
           <div className={cn(

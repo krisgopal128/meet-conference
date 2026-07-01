@@ -20,7 +20,7 @@
     "adaptiveStream": true,
     "dynacast": true,
     "simulcast": true,
-    "pauseOffscreenVideo": true,
+    "pauseOffscreenVideo": false,  // Disabled - was causing blank tiles, especially when both grid+speaker layouts are mounted
     "joinLeaveSoundsEnabled": true,
     "mirrorLocalVideo": true,
     "showChatTimestamps": false,

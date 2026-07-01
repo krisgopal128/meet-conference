@@ -144,7 +144,9 @@ export function useWhiteboardAutoSave(
         const apiBase = import.meta.env.VITE_API_URL || '/api';
         const url = apiBase + '/whiteboard/' + encodeURIComponent(roomName);
         saveWithAuth(url, scene as object[]);
-      } catch {}
+      } catch {
+        // Best-effort save during beforeunload — errors are non-blocking
+      }
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);

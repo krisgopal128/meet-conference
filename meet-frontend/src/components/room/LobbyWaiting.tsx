@@ -55,7 +55,7 @@ export function LobbyWaiting({ roomName }: LobbyWaitingProps) {
         'DISCONNECT',
         'Disconnect from room'
       );
-    } catch (e) {
+    } catch {
       // Best-effort — may already be disconnected
     }
     navigate('/');

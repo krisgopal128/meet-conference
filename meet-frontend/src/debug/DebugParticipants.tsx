@@ -25,6 +25,7 @@ import {
 import { useLocalParticipant } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import { Mic, MicOff, Video, VideoOff, LogOut, Monitor } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 // ─── Dummy name pool ───
 
@@ -107,27 +108,40 @@ export function DebugParticipantsProvider({ children }: { children: ReactNode })
     });
   }, []);
 
-  const muteDummy = useCallback((identity: string) => {
-    setDummyStates((prev) => ({
-      ...prev,
-      [identity]: {
-        muted: true,
-        cameraOff: prev[identity]?.cameraOff ?? false,
-        screenShareOff: prev[identity]?.screenShareOff ?? false,
-      },
-    }));
+  const getDummyName = useCallback((identity: string): string => {
+    const idx = DUMMY_NAMES.findIndex((_, i) => `dummy-${i}` === identity);
+    return idx >= 0 ? DUMMY_NAMES[idx] : 'dummy';
   }, []);
 
+  const muteDummy = useCallback((identity: string) => {
+    setDummyStates((prev) => {
+      if (prev[identity]?.muted) return prev;
+      toast.success(`Muted ${getDummyName(identity)}`, { duration: 2000 });
+      return {
+        ...prev,
+        [identity]: {
+          muted: true,
+          cameraOff: prev[identity]?.cameraOff ?? false,
+          screenShareOff: prev[identity]?.screenShareOff ?? false,
+        },
+      };
+    });
+  }, [getDummyName]);
+
   const disableDummyCamera = useCallback((identity: string) => {
-    setDummyStates((prev) => ({
-      ...prev,
-      [identity]: {
-        muted: prev[identity]?.muted ?? false,
-        cameraOff: true,
-        screenShareOff: prev[identity]?.screenShareOff ?? false,
-      },
-    }));
-  }, []);
+    setDummyStates((prev) => {
+      if (prev[identity]?.cameraOff) return prev;
+      toast.success(`Camera disabled for ${getDummyName(identity)}`, { duration: 2000 });
+      return {
+        ...prev,
+        [identity]: {
+          muted: prev[identity]?.muted ?? false,
+          cameraOff: true,
+          screenShareOff: prev[identity]?.screenShareOff ?? false,
+        },
+      };
+    });
+  }, [getDummyName]);
 
   const disableDummyScreenShare = useCallback((identity: string) => {
     setDummyStates((prev) => ({
@@ -138,11 +152,16 @@ export function DebugParticipantsProvider({ children }: { children: ReactNode })
         screenShareOff: true,
       },
     }));
+    toast.success('Screen share disabled', { duration: 2000 });
   }, []);
 
   const kickDummy = useCallback((identity: string) => {
-    setKicked((prev) => new Set(prev).add(identity));
-  }, []);
+    setKicked((prev) => {
+      if (prev.has(identity)) return prev;
+      toast.success(`Removed ${getDummyName(identity)}`, { duration: 2000 });
+      return new Set(prev).add(identity);
+    });
+  }, [getDummyName]);
 
   const names = DUMMY_NAMES.slice(0, count);
   const dummyParticipants = useMemo<DummyParticipant[]>(
@@ -168,13 +187,17 @@ interface DummyTileProps {
   name: string;
   /** "small" for filmstrip, "normal" for grid */
   size?: 'normal' | 'small';
+  /** Current dummy state — controls mute/camera display */
+  state?: DummyState;
 }
 
-export function DummyParticipantTile({ name, size = 'normal' }: DummyTileProps) {
+export function DummyParticipantTile({ name, size = 'normal', state }: DummyTileProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { localParticipant } = useLocalParticipant();
   const [videoReady, setVideoReady] = useState(false);
   const isSmall = size === 'small';
+  const cameraOff = state?.cameraOff ?? false;
+  const muted = state?.muted ?? false;
 
   useEffect(() => {
     const video = videoRef.current;
@@ -227,33 +250,35 @@ export function DummyParticipantTile({ name, size = 'normal' }: DummyTileProps) 
         isSmall ? 'h-full w-full' : 'aspect-video w-full h-full'
       }`}
     >
-      {/* Cloned local camera video */}
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        onLoadedData={() => setVideoReady(true)}
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-          videoReady ? 'opacity-100' : 'opacity-0'
-        }`}
-        style={{ transform: 'scaleX(-1)' }} // mirror like local video
-      />
-
-      {/* Fallback avatar (shown until/unless video loads) */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div
-          className={`${
-            isSmall ? 'w-8 h-8 text-xs' : 'w-16 h-16 text-xl'
-          } rounded-full bg-surface-600 flex items-center justify-center font-bold text-white transition-opacity duration-300 ${
-            videoReady ? 'opacity-0' : 'opacity-100'
+      {/* Cloned local camera video — hidden when camera disabled */}
+      {!cameraOff && (
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          onLoadedData={() => setVideoReady(true)}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+            videoReady ? 'opacity-100' : 'opacity-0'
           }`}
-        >
-          {initials}
-        </div>
-      </div>
+          style={{ transform: 'scaleX(-1)' }}
+        />
+      )}
 
-      {/* Name label with robot indicator */}
+      {/* Avatar — shown when camera is off or video not yet ready */}
+      {(cameraOff || !videoReady) && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div
+            className={`${
+              isSmall ? 'w-8 h-8 text-xs' : 'w-16 h-16 text-xl'
+            } rounded-full ${cameraOff ? 'bg-danger-600' : 'bg-surface-600'} flex items-center justify-center font-bold text-white transition-opacity duration-300 opacity-100`}
+          >
+            {initials}
+          </div>
+        </div>
+      )}
+
+      {/* Name label with robot indicator + mic indicator */}
       <div
         className={`absolute ${
           isSmall ? 'bottom-0.5 left-0.5' : 'bottom-1 left-1'
@@ -262,8 +287,16 @@ export function DummyParticipantTile({ name, size = 'normal' }: DummyTileProps) 
         } text-white`}
       >
         <span>🤖</span>
+        {muted && <MicOff className={isSmall ? 'w-2 h-2 text-danger-400' : 'w-3 h-3 text-danger-400'} />}
         <span className="truncate max-w-[60px]">{name}</span>
       </div>
+
+      {/* Camera-off indicator badge */}
+      {cameraOff && (
+        <div className={`absolute ${isSmall ? 'top-0.5 right-0.5' : 'top-1 right-1'} bg-danger-500/80 rounded-full p-0.5`}>
+          <VideoOff className={isSmall ? 'w-2 h-2 text-white' : 'w-3 h-3 text-white'} />
+        </div>
+      )}
     </div>
   );
 }

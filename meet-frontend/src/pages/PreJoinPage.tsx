@@ -330,9 +330,9 @@ export default function PreJoinPage() {
   useMicLevelMeter(selectedMic, audioEnabled, micMeterFillRef, noiseSuppression, echoCancellation);
 
   return (
-    <div className="min-h-screen min-h-dvh bg-surface-50 dark:bg-surface-900 flex flex-col sm:flex-row overscroll-none">
+    <div className="h-dvh bg-surface-50 dark:bg-surface-900 flex flex-col sm:flex-row overscroll-none overflow-hidden">
       {/* Left side - Preview */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Header */}
         <header className="h-14 sm:h-16 px-4 sm:px-6 flex items-center justify-between border-b border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800">
           <Link to="/" className="flex items-center gap-2.5">
@@ -358,7 +358,7 @@ export default function PreJoinPage() {
             </div>
           )}
 
-          <div className="w-full max-w-2xl">
+          <div className="w-full max-w-2xl max-h-full overflow-y-auto">
             {/* Video preview */}
             <div
               className={cn(
@@ -579,8 +579,8 @@ export default function PreJoinPage() {
       </div>
 
       {/* Right side - Join panel */}
-      <div className="w-full sm:w-96 bg-white dark:bg-surface-800 border-surface-200 dark:border-surface-700 flex flex-col border-t sm:border-t-0 sm:border-l">
-        <div className="flex-1 flex flex-col p-4 sm:p-6 overflow-y-auto max-h-[60vh] sm:max-h-none">
+      <div className="w-full sm:w-96 bg-white dark:bg-surface-800 border-surface-200 dark:border-surface-700 flex flex-col border-t sm:border-t-0 sm:border-l min-h-0">
+        <div className="flex-1 flex flex-col p-4 sm:p-6 overflow-y-auto">
           <div className="mb-6 my-auto">
             <h1 className="text-2xl font-bold text-surface-800 dark:text-white mb-2">
               {isCreateMode ? 'Quick Meeting' : room?.title || 'Join Meeting'}
