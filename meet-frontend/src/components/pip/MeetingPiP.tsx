@@ -5,9 +5,15 @@
  * Shows active speaker video (large) + filmstrip of others + compact controls
  * + live Excalidraw whiteboard preview (read-only mirror of the real board).
  *
- * Video tiles use the SAME SafeParticipantTile as the main room grid, so
- * adaptive stream, quality indicators, connection quality, and avatar/name
- * styling are identical between PiP and main room.
+ * ── Video rendering strategy ──
+ * MediaStreamTrack set as srcObject on a <video> in the PiP document stops
+ * receiving frames after ~1 second because the browser's media pipeline is
+ * document-scoped.  Instead we:
+ *   1. Create a hidden <video> in the MAIN document (tracks work here).
+ *   2. Clone the participant's camera track onto it.
+ *   3. Use PiP-window requestAnimationFrame + canvas.drawImage to mirror
+ *      frames onto a <canvas> in the PiP document.
+ * Cross-document drawImage works for same-origin Document PiP windows.
  */
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
@@ -19,7 +25,7 @@ import { usePiP } from '../../hooks/usePiP';
 import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
 import { useWhiteboardOpen, useUIActions } from '../../store/roomStore';
 import { getWhiteboardAPI } from '../../services/whiteboardAPIBridge';
-import { useDebugParticipants, DummyParticipantTile } from '../../debug/DebugParticipants';
+import { useDebugParticipants } from '../../debug/DebugParticipants';
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Pencil, LayoutGrid } from 'lucide-react';
 
 // ============================================
@@ -130,89 +136,202 @@ function WhiteboardPreview() {
 }
 
 // ============================================
-// PiPVideoTile — participant video that bypasses LiveKit adaptive stream
+// CanvasVideoTile — participant video rendered via canvas.
 //
-// LiveKit's adaptive stream uses IntersectionObserver/ResizeObserver bound to
-// the MAIN document. A <video> living inside the Document PiP window (a separate
-// document) is invisible to those observers, so LiveKit pauses the track after
-// ~1s. Cloning the MediaStreamTrack onto a plain <video> sidesteps this entirely.
+// This is the core fix for PiP video not displaying.
+//
+// A hidden <video> source element is created in the MAIN document where
+// the cloned MediaStreamTrack works reliably.  A requestAnimationFrame loop
+// (driven by the PiP window so it keeps running when the main tab is
+// backgrounded) copies frames onto a <canvas> in the PiP document.
 // ============================================
 
-interface PiPVideoTileProps {
-  participant: Participant;
+interface CanvasVideoTileProps {
+  /** Real participant to display (mutually exclusive with useLocalTrack) */
+  participant?: Participant;
+  /** Clone local camera track instead of a participant's (for dummy tiles) */
+  useLocalTrack?: boolean;
+  /** Display name shown in the label */
+  displayName: string;
+  /** Whether this is the local user (applies mirror) */
+  isLocal?: boolean;
+  /** Large speaker tile vs small filmstrip tile */
   isSpeakerTile: boolean;
+  /** Dummy/debug tile styling */
+  dummy?: boolean;
 }
 
-function PiPVideoTile({ participant, isSpeakerTile }: PiPVideoTileProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+function CanvasVideoTile({
+  participant,
+  useLocalTrack = false,
+  displayName,
+  isLocal = false,
+  isSpeakerTile,
+  dummy = false,
+}: CanvasVideoTileProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [videoReady, setVideoReady] = useState(false);
-  const isLocal = participant.isLocal;
-  const cameraEnabled = participant.isCameraEnabled;
+  const { localParticipant } = useLocalParticipant();
+
+  // Camera / mic state (read at render time for the label + fallback avatar)
+  const sourceParticipant = useLocalTrack ? localParticipant : participant;
+  const cameraEnabled = sourceParticipant?.isCameraEnabled ?? false;
+  const micOn = sourceParticipant?.isMicrophoneEnabled ?? false;
+
+  // Stable identity for the effect dependency — avoids re-running the
+  // pipeline on every LiveKit property tick (audio level, etc.)
+  const participantIdentity = sourceParticipant?.identity;
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !cameraEnabled) {
+    const canvas = canvasRef.current;
+    if (!canvas || !cameraEnabled) {
       setVideoReady(false);
       return;
     }
 
-    let stream: MediaStream | null = null;
-    let interval: ReturnType<typeof setInterval> | null = null;
+    let disposed = false;
+    let sourceVideo: HTMLVideoElement | null = null;
+    let sourceStream: MediaStream | null = null;
+    let rafId: number | null = null;
+    let retryTimer: ReturnType<typeof setInterval> | null = null;
 
-    const setup = (): boolean => {
-      const pub = participant.getTrackPublication(Track.Source.Camera);
-      const track = pub?.track?.mediaStreamTrack;
-      if (!track || track.readyState === 'ended') return false;
+    // Use the PiP window's rAF so the loop keeps running even when the
+    // main tab is backgrounded (user is looking at the floating window).
+    const rafWin: Window & typeof globalThis =
+      (window as any).documentPictureInPicture?.window ?? window;
 
-      // Clone the track so the PiP <video> is independent of LiveKit's
-      // adaptive-stream control — works inside the separate PiP document.
-      stream = new MediaStream([track.clone()]);
-      video.srcObject = stream;
-      void video.play().catch(() => {});
+    // ── Source video: lives in the MAIN document ──
+    // The cloned MediaStreamTrack works reliably here (same browsing context
+    // as the LiveKit room).  opacity:0.01 keeps it rendering (browsers may
+    // skip 0-opacity video) while making it invisible to the user.
+    sourceVideo = document.createElement('video');
+    sourceVideo.muted = true;
+    sourceVideo.playsInline = true;
+    sourceVideo.autoplay = true;
+    sourceVideo.style.cssText =
+      'position:fixed;top:0;left:0;width:320px;height:240px;' +
+      'opacity:0.01;pointer-events:none;z-index:-1;';
+    document.body.appendChild(sourceVideo);
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      sourceVideo.remove();
+      return;
+    }
+
+    // Resolve the raw MediaStreamTrack to clone
+    const getTrack = (): MediaStreamTrack | null => {
+      const p = useLocalTrack ? localParticipant : participant;
+      if (!p) return null;
+      const pub = p.getTrackPublication(Track.Source.Camera);
+      const t = pub?.track?.mediaStreamTrack;
+      if (!t || t.readyState === 'ended') return null;
+      return t;
+    };
+
+    const attach = (): boolean => {
+      const track = getTrack();
+      if (!track || !sourceVideo) return false;
+      sourceStream = new MediaStream([track.clone()]);
+      sourceVideo.srcObject = sourceStream;
+      void sourceVideo.play().catch(() => {});
       return true;
     };
 
-    if (setup()) {
-      setVideoReady(true);
-    } else {
-      interval = setInterval(() => {
-        if (setup()) {
-          setVideoReady(true);
-          if (interval) {
-            clearInterval(interval);
-            interval = null;
+    // rAF loop: draw source video → PiP canvas with object-fit:cover
+    const drawFrame = () => {
+      if (disposed || !sourceVideo || !ctx) return;
+
+      if (sourceVideo.readyState >= 2 && sourceVideo.videoWidth > 0) {
+        const vw = sourceVideo.videoWidth;
+        const vh = sourceVideo.videoHeight;
+        const cw = canvas.width;
+        const ch = canvas.height;
+
+        if (vw > 0 && vh > 0 && cw > 0 && ch > 0) {
+          // Manual object-fit: cover — crop source to match canvas AR
+          const vAR = vw / vh;
+          const cAR = cw / ch;
+          let sx = 0, sy = 0, sw = vw, sh = vh;
+
+          if (vAR > cAR) {
+            // Source is wider — crop horizontally
+            sw = vh * cAR;
+            sx = (vw - sw) / 2;
+          } else {
+            // Source is taller — crop vertically
+            sh = vw / cAR;
+            sy = (vh - sh) / 2;
           }
+
+          ctx.drawImage(sourceVideo, sx, sy, sw, sh, 0, 0, cw, ch);
+        }
+      }
+
+      rafId = rafWin.requestAnimationFrame(drawFrame);
+    };
+
+    const onSourceReady = () => {
+      if (disposed) return;
+      setVideoReady(true);
+      drawFrame();
+    };
+
+    // Phase 1: attach track (retry until camera publication is available)
+    if (attach()) {
+      sourceVideo.addEventListener('loadeddata', onSourceReady, { once: true });
+    } else {
+      retryTimer = setInterval(() => {
+        if (disposed) {
+          clearInterval(retryTimer!);
+          return;
+        }
+        if (attach()) {
+          clearInterval(retryTimer!);
+          retryTimer = null;
+          sourceVideo!.addEventListener('loadeddata', onSourceReady, { once: true });
         }
       }, 500);
     }
 
+    // ── Cleanup ──
     return () => {
-      if (interval) clearInterval(interval);
-      stream?.getTracks().forEach((t) => t.stop());
-      video.srcObject = null;
+      disposed = true;
+      if (rafId !== null) rafWin.cancelAnimationFrame(rafId);
+      if (retryTimer) clearInterval(retryTimer);
+      sourceVideo?.removeEventListener('loadeddata', onSourceReady);
+      sourceStream?.getTracks().forEach((t) => t.stop());
+      if (sourceVideo) {
+        sourceVideo.srcObject = null;
+        sourceVideo.remove();
+      }
     };
-  }, [participant, cameraEnabled]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraEnabled, participantIdentity, useLocalTrack]);
 
-  const initials = (participant.name || participant.identity)
+  const initials = displayName
     .split(' ')
     .map((w) => w[0])
     .join('')
     .slice(0, 2)
     .toUpperCase();
 
-  const micOn = participant.isMicrophoneEnabled;
   const showVideo = videoReady && cameraEnabled;
 
   return (
-    <div className="relative w-full h-full bg-surface-800 rounded-lg overflow-hidden">
-      {/* Cloned camera video */}
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        onLoadedData={() => setVideoReady(true)}
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+    <div
+      className={`relative w-full h-full rounded-lg overflow-hidden ${
+        dummy
+          ? 'bg-gradient-to-br from-surface-700 to-surface-800 ring-1 ring-warning-500/40'
+          : 'bg-surface-800'
+      }`}
+    >
+      {/* Canvas mirrors frames from the hidden main-doc source video */}
+      <canvas
+        ref={canvasRef}
+        width={isSpeakerTile ? 480 : 160}
+        height={isSpeakerTile ? 360 : 120}
+        className={`absolute inset-0 w-full h-full transition-opacity duration-300 ${
           showVideo ? 'opacity-100' : 'opacity-0'
         }`}
         style={isLocal ? { transform: 'scaleX(-1)' } : undefined}
@@ -224,7 +343,9 @@ function PiPVideoTile({ participant, isSpeakerTile }: PiPVideoTileProps) {
           <div
             className={`${
               isSpeakerTile ? 'w-16 h-16 text-xl' : 'w-8 h-8 text-xs'
-            } rounded-full bg-surface-600 flex items-center justify-center font-bold text-white`}
+            } rounded-full ${
+              dummy ? 'bg-warning-600' : 'bg-surface-600'
+            } flex items-center justify-center font-bold text-white`}
           >
             {initials}
           </div>
@@ -237,13 +358,19 @@ function PiPVideoTile({ participant, isSpeakerTile }: PiPVideoTileProps) {
           isSpeakerTile ? 'bottom-1.5 left-1.5' : 'bottom-0.5 left-0.5'
         } flex items-center gap-1 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-sm`}
       >
-        {!micOn && <MicOff className={isSpeakerTile ? 'w-3 h-3' : 'w-2.5 h-2.5'} style={{ color: '#f87171' }} />}
+        {dummy && <span className="text-[9px]">🤖</span>}
+        {!micOn && (
+          <MicOff
+            className={isSpeakerTile ? 'w-3 h-3' : 'w-2.5 h-2.5'}
+            style={{ color: '#f87171' }}
+          />
+        )}
         <span
           className={`text-white font-medium truncate ${
             isSpeakerTile ? 'text-xs max-w-[200px]' : 'text-[10px] max-w-[80px]'
           }`}
         >
-          {participant.name || participant.identity}
+          {displayName}
           {isLocal && ' (You)'}
         </span>
       </div>
@@ -314,25 +441,47 @@ function MeetingPiPContent({
         <div className="flex-1 flex min-h-0">
           <div className="flex-1 relative overflow-hidden bg-black min-h-0">
             {activeSpeaker && (
-              <PiPVideoTile participant={activeSpeaker} isSpeakerTile />
+              <CanvasVideoTile
+                participant={activeSpeaker}
+                displayName={activeSpeaker.name || activeSpeaker.identity}
+                isLocal={activeSpeaker.isLocal}
+                isSpeakerTile
+              />
             )}
             {debugMain && (
-              <DummyParticipantTile name={debugMain} />
+              <CanvasVideoTile
+                useLocalTrack
+                displayName={debugMain}
+                isLocal
+                isSpeakerTile
+                dummy
+              />
             )}
           </div>
           {(others.length > 0 || debugOthers.length > 0) && (
             <div
-              className="w-[100px] flex flex-col gap-1.5 p-1.5 bg-surface-950 overflow-y-auto"
+              className="w-[100px] flex flex-col gap-1.5 p-1.5 bg-surface-900 overflow-y-auto"
               style={{ maxHeight: '100%' }}
             >
               {others.map((p) => (
                 <div key={p.identity} className="h-20 shrink-0">
-                  <PiPVideoTile participant={p} isSpeakerTile={false} />
+                  <CanvasVideoTile
+                    participant={p}
+                    displayName={p.name || p.identity}
+                    isLocal={p.isLocal}
+                    isSpeakerTile={false}
+                  />
                 </div>
               ))}
               {debugOthers.map((name) => (
                 <div key={`debug-${name}`} className="h-20 shrink-0">
-                  <DummyParticipantTile name={name} size="small" />
+                  <CanvasVideoTile
+                    useLocalTrack
+                    displayName={name}
+                    isLocal
+                    isSpeakerTile={false}
+                    dummy
+                  />
                 </div>
               ))}
             </div>
