@@ -188,6 +188,7 @@ function PipVideoTile({
 
     let disposed = false;
     let retryTimer: ReturnType<typeof setInterval> | null = null;
+    const pipTimers: ReturnType<typeof setTimeout>[] = [];
 
     const getTrack = () => {
       const p = useLocalTrack ? localParticipant : participant;
@@ -225,6 +226,42 @@ function PipVideoTile({
       return true;
     };
 
+    // ── PiP adaptive-stream re-detection ──
+    //
+    // LiveKit's HTMLElementInfo checks isElementInPiP() during track.attach().
+    // If the PiP document's CSS hasn't loaded yet, the <video> has zero
+    // dimensions → isElementInPiP() returns false → isPiP = false.
+    // The documentPictureInPicture 'enter' event already fired before this
+    // element existed, so LiveKit never re-checks automatically.  Result:
+    // when the main tab backgrounds the track is treated as invisible and
+    // paused → blank video.
+    //
+    // Fix: dispatch 'enterpictureinpicture' after layout settles. LiveKit's
+    // onEnterPiP handler defers via queueMicrotask → requestAnimationFrame,
+    // then re-checks isElementInPiP(). By then CSS is loaded, the check
+    // succeeds, and the track stays subscribed.
+    const triggerPiPDetection = () => {
+      try {
+        videoEl.dispatchEvent(new Event('enterpictureinpicture'));
+      } catch {
+        // synthetic event dispatch not critical
+      }
+    };
+
+    // Dispatch at increasing intervals: covers fast CSS (100 ms), moderate
+    // (500 ms), slow + throttled background-tab rAF (1.5 s, 3 s).
+    [100, 500, 1500, 3000].forEach((ms) => {
+      pipTimers.push(setTimeout(triggerPiPDetection, ms));
+    });
+
+    // Also re-trigger when the main tab returns to foreground — the rAF
+    // inside onEnterPiP is suspended while the main tab is backgrounded,
+    // so a prior dispatch may have been deferred indefinitely.
+    const onVisChange = () => {
+      if (!document.hidden) triggerPiPDetection();
+    };
+    document.addEventListener('visibilitychange', onVisChange);
+
     if (!doAttach()) {
       retryTimer = setInterval(() => {
         if (disposed) {
@@ -241,6 +278,8 @@ function PipVideoTile({
     return () => {
       disposed = true;
       if (retryTimer) clearInterval(retryTimer);
+      pipTimers.forEach(clearTimeout);
+      document.removeEventListener('visibilitychange', onVisChange);
       videoEl?.removeEventListener('loadeddata', onLoadedData);
       const track = getTrack();
       if (track) {
