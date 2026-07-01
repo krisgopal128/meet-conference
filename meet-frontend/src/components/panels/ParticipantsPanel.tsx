@@ -13,6 +13,7 @@ import { meetingRoomConfig } from '../../config/meetingRoomConfig';
 import ParticipantListItem, { getInitials } from './ParticipantListItem';
 import { useParticipantActions } from '../../hooks/useParticipantActions';
 import { useLobbyPolling } from '../../hooks/useLobbyPolling';
+import { useDebugParticipants, DummyParticipantListItem } from '../../debug/DebugParticipants';
 
 // Sort options for participants
 type SortOption = 'name' | 'joinTime' | 'role';
@@ -61,6 +62,9 @@ export function ParticipantsPanel() {
   // Optimized selectors
   const raisedHands = useRaisedHands();
   const isModerator = useIsModerator();
+
+  // Debug dummy participants (appear in the list for testing)
+  const { dummyParticipants, dummyStates, muteDummy, disableDummyCamera, disableDummyScreenShare, kickDummy } = useDebugParticipants();
 
   // Action hooks
   const { toggleParticipants, setLobbyCount } = useUIActions();
@@ -206,7 +210,7 @@ export function ParticipantsPanel() {
       <div className="px-4 py-3 border-b border-surface-700">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-surface-100">
-            Participants ({activeParticipants.length})
+            Participants ({activeParticipants.length + dummyParticipants.length})
           </h2>
           <button 
             onClick={toggleParticipants} 
@@ -355,6 +359,19 @@ export function ParticipantsPanel() {
             onKick={handleKick}
           />
         )}
+        {dummyParticipants.map((d) => (
+          <DummyParticipantListItem
+            key={d.identity}
+            identity={d.identity}
+            name={d.name}
+            state={dummyStates[d.identity] ?? { muted: false, cameraOff: false, screenShareOff: false }}
+            isModerator={isModerator}
+            onMute={muteDummy}
+            onDisableCamera={disableDummyCamera}
+            onDisableScreenShare={disableDummyScreenShare}
+            onKick={kickDummy}
+          />
+        ))}
       </div>
     </div>
   );

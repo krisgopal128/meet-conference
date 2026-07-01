@@ -18,6 +18,7 @@ import { ChatHeader } from '../chat/ChatHeader';
 import { ChatMessageList } from '../chat/ChatMessageList';
 import { ChatInput } from '../chat/ChatInput';
 import { parseMentions, type MentionableParticipant } from '../chat/chatUtils';
+import { useDebugParticipants } from '../../debug/DebugParticipants';
 import logger from '../../utils/logger';
 import toast from 'react-hot-toast';
 
@@ -98,6 +99,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
 
   const { localParticipant } = useLocalParticipant();
   const participants = useParticipants();
+  const { dummyParticipants } = useDebugParticipants();
   const [input, setInput] = useState(cachedDraft?.input || '');
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [sendPrivateToModerators, setSendPrivateToModerators] = useState(cachedDraft?.sendPrivateToModerators || false);
@@ -142,7 +144,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
 
   // Build participant list for mentions with roles
   const mentionableParticipants = useMemo((): MentionableParticipant[] => {
-    return participants
+    const real = participants
       .filter((p) => p.identity !== localParticipant?.identity)
       .map((p) => {
         const participantRole = getParticipantRole(p.metadata, hostId, p.identity);
@@ -153,14 +155,21 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
           role: participantRole,
           isModerator: isParticipantModerator,
         };
-      })
-      .sort((a, b) => {
-        // Sort moderators first, then alphabetically
-        if (a.isModerator && !b.isModerator) return -1;
-        if (!a.isModerator && b.isModerator) return 1;
-        return a.name.localeCompare(b.name);
       });
-  }, [participants, localParticipant?.identity, hostId]);
+    // Append debug dummy participants so they show in @ mentions
+    const dummies: MentionableParticipant[] = dummyParticipants.map((d) => ({
+      identity: d.identity,
+      name: d.name,
+      role: 'attendee',
+      isModerator: false,
+    }));
+    return [...real, ...dummies].sort((a, b) => {
+      // Sort moderators first, then alphabetically
+      if (a.isModerator && !b.isModerator) return -1;
+      if (!a.isModerator && b.isModerator) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [participants, localParticipant?.identity, hostId, dummyParticipants]);
 
   // Filter participants by mention query
   const filteredParticipants = useMemo(() => {

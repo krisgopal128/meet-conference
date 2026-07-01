@@ -13,12 +13,13 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useParticipants, useLocalParticipant } from '@livekit/components-react';
+import { Track } from 'livekit-client';
 import type { Participant } from 'livekit-client';
 import { usePiP } from '../../hooks/usePiP';
 import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
 import { useWhiteboardOpen, useUIActions } from '../../store/roomStore';
 import { getWhiteboardAPI } from '../../services/whiteboardAPIBridge';
-import { SafeParticipantTile as ParticipantTile } from '../room/ParticipantTile';
+import { useDebugParticipants, DummyParticipantTile } from '../../debug/DebugParticipants';
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Pencil, LayoutGrid } from 'lucide-react';
 
 // ============================================
@@ -129,6 +130,128 @@ function WhiteboardPreview() {
 }
 
 // ============================================
+// PiPVideoTile — participant video that bypasses LiveKit adaptive stream
+//
+// LiveKit's adaptive stream uses IntersectionObserver/ResizeObserver bound to
+// the MAIN document. A <video> living inside the Document PiP window (a separate
+// document) is invisible to those observers, so LiveKit pauses the track after
+// ~1s. Cloning the MediaStreamTrack onto a plain <video> sidesteps this entirely.
+// ============================================
+
+interface PiPVideoTileProps {
+  participant: Participant;
+  isSpeakerTile: boolean;
+}
+
+function PiPVideoTile({ participant, isSpeakerTile }: PiPVideoTileProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoReady, setVideoReady] = useState(false);
+  const isLocal = participant.isLocal;
+  const cameraEnabled = participant.isCameraEnabled;
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !cameraEnabled) {
+      setVideoReady(false);
+      return;
+    }
+
+    let stream: MediaStream | null = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const setup = (): boolean => {
+      const pub = participant.getTrackPublication(Track.Source.Camera);
+      const track = pub?.track?.mediaStreamTrack;
+      if (!track || track.readyState === 'ended') return false;
+
+      // Clone the track so the PiP <video> is independent of LiveKit's
+      // adaptive-stream control — works inside the separate PiP document.
+      stream = new MediaStream([track.clone()]);
+      video.srcObject = stream;
+      void video.play().catch(() => {});
+      return true;
+    };
+
+    if (setup()) {
+      setVideoReady(true);
+    } else {
+      interval = setInterval(() => {
+        if (setup()) {
+          setVideoReady(true);
+          if (interval) {
+            clearInterval(interval);
+            interval = null;
+          }
+        }
+      }, 500);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+      stream?.getTracks().forEach((t) => t.stop());
+      video.srcObject = null;
+    };
+  }, [participant, cameraEnabled]);
+
+  const initials = (participant.name || participant.identity)
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+  const micOn = participant.isMicrophoneEnabled;
+  const showVideo = videoReady && cameraEnabled;
+
+  return (
+    <div className="relative w-full h-full bg-surface-800 rounded-lg overflow-hidden">
+      {/* Cloned camera video */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        onLoadedData={() => setVideoReady(true)}
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+          showVideo ? 'opacity-100' : 'opacity-0'
+        }`}
+        style={isLocal ? { transform: 'scaleX(-1)' } : undefined}
+      />
+
+      {/* Avatar fallback */}
+      {!showVideo && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div
+            className={`${
+              isSpeakerTile ? 'w-16 h-16 text-xl' : 'w-8 h-8 text-xs'
+            } rounded-full bg-surface-600 flex items-center justify-center font-bold text-white`}
+          >
+            {initials}
+          </div>
+        </div>
+      )}
+
+      {/* Name + mic indicator */}
+      <div
+        className={`absolute ${
+          isSpeakerTile ? 'bottom-1.5 left-1.5' : 'bottom-0.5 left-0.5'
+        } flex items-center gap-1 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-sm`}
+      >
+        {!micOn && <MicOff className={isSpeakerTile ? 'w-3 h-3' : 'w-2.5 h-2.5'} style={{ color: '#f87171' }} />}
+        <span
+          className={`text-white font-medium truncate ${
+            isSpeakerTile ? 'text-xs max-w-[200px]' : 'text-[10px] max-w-[80px]'
+          }`}
+        >
+          {participant.name || participant.identity}
+          {isLocal && ' (You)'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
 // PiP content — rendered inside the floating window via portal
 // ============================================
 interface MeetingPiPContentProps {
@@ -155,6 +278,7 @@ function MeetingPiPContent({
   const participants = useParticipants();
   const { localParticipant } = useLocalParticipant();
   const admitted = useAdmittedParticipants(participants, localParticipant?.identity);
+  const { names: debugNames } = useDebugParticipants();
   const [showWhiteboardView, setShowWhiteboardView] = useState(true);
 
   useEffect(() => {
@@ -178,6 +302,10 @@ function MeetingPiPContent({
     [admitted, activeSpeaker]
   );
 
+  // Debug: dummy tiles shown as main speaker fallback + filmstrip extras
+  const debugMain = !activeSpeaker && debugNames.length > 0 ? debugNames[0] : null;
+  const debugOthers = debugNames.slice(activeSpeaker ? 0 : 1);
+
   return (
     <div className="w-full h-full flex flex-col bg-surface-900">
       {whiteboardOn && showWhiteboardView ? (
@@ -186,17 +314,25 @@ function MeetingPiPContent({
         <div className="flex-1 flex min-h-0">
           <div className="flex-1 relative overflow-hidden bg-black min-h-0">
             {activeSpeaker && (
-              <ParticipantTile participant={activeSpeaker} isSpeakerTile />
+              <PiPVideoTile participant={activeSpeaker} isSpeakerTile />
+            )}
+            {debugMain && (
+              <DummyParticipantTile name={debugMain} />
             )}
           </div>
-          {others.length > 0 && (
+          {(others.length > 0 || debugOthers.length > 0) && (
             <div
               className="w-[100px] flex flex-col gap-1.5 p-1.5 bg-surface-950 overflow-y-auto"
               style={{ maxHeight: '100%' }}
             >
               {others.map((p) => (
                 <div key={p.identity} className="h-20 shrink-0">
-                  <ParticipantTile participant={p} isSpeakerTile={false} />
+                  <PiPVideoTile participant={p} isSpeakerTile={false} />
+                </div>
+              ))}
+              {debugOthers.map((name) => (
+                <div key={`debug-${name}`} className="h-20 shrink-0">
+                  <DummyParticipantTile name={name} size="small" />
                 </div>
               ))}
             </div>

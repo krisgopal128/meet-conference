@@ -80,7 +80,7 @@ A real-time video conferencing platform built with React, Express, and LiveKit �
 
 | Layer | Technology |
 |-------|-----------|
-| **Frontend** | React 19, TypeScript, Vite, Tailwind CSS, Zustand |
+| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, Zustand |
 | **Backend** | Express.js, TypeScript, Zod validation |
 | **WebRTC** | LiveKit Server 1.10.0, LiveKit Client SDK |
 | **Database** | PostgreSQL 16 |
@@ -93,34 +93,58 @@ A real-time video conferencing platform built with React, Express, and LiveKit �
 
 ```
 meet-conference/
-├── meet-frontend/          # React + Vite frontend
+├── meet-frontend/             # React + Vite frontend
 │   ├── src/
-│   │   ├── components/     # UI components (chat, controls, room, etc.)
-│   │   ├── hooks/          # 30+ custom React hooks
-│   │   ├── pages/          # 15 pages (Home, Login, Room, Schedule, etc.)
-│   │   ├── services/       # Client services
-│   │   ├── store/          # Zustand state management (5 slices)
-│   │   ├── types/          # TypeScript type definitions
-│   │   ├── utils/          # Utilities (blur engine, aspect ratios, livekit data)
-│   │   └── config/         # Meeting room configuration
-│   └── public/
-│       ├── models/         # MediaPipe selfie segmenter model
-│       └── wasm/           # MediaPipe tasks-vision WASM runtime
+│   │   ├── components/
+│   │   │   ├── chat/          # Chat panel, message list, polls
+│   │   │   ├── controls/      # ControlBar, buttons, quality indicator
+│   │   │   ├── panels/        # Chat, participants, settings side panels
+│   │   │   ├── pip/           # Picture-in-Picture floating window
+│   │   │   ├── prejoin/       # Device settings, join/create forms
+│   │   │   ├── room/          # ConferenceRoom, GridLayout, SpeakerLayout, tiles
+│   │   │   ├── prashasakah/   # Admin widgets (charts, tables, modals)
+│   │   │   ├── schedule/      # Meeting form modal
+│   │   │   ├── settings/      # API key manager
+│   │   │   ├── shared/        # Dashboard cards, skeletons, error boundary
+│   │   │   ├── ErrorBoundary.tsx
+│   │   │   ├── Layout.tsx
+│   │   │   └── ProtectedRoute.tsx
+│   │   ├── config/            # Meeting room configuration
+│   │   ├── contexts/          # Participant visibility & camera tracks contexts
+│   │   ├── debug/             # Debug tools (dummy participants for testing)
+│   │   ├── hooks/             # 33 custom React hooks
+│   │   ├── media/             # Shared media tracks
+│   │   ├── pages/             # 15 main + 10 admin pages
+│   │   │   └── prashasakah/   # Admin panel pages (Dashboard, Users, Audit, etc.)
+│   │   ├── services/          # API clients (auth, admin, whiteboard, API keys)
+│   │   ├── store/             # Zustand state (authStore, roomStore)
+│   │   ├── types/             # TypeScript type definitions
+│   │   └── utils/             # 16 utilities (blur engine, dates, security, etc.)
+│   ├── public/
+│   │   ├── models/            # MediaPipe selfie segmenter model
+│   │   └── wasm/              # MediaPipe tasks-vision WASM runtime
+│   └── scripts/               # Build & seed scripts
 │
-├── meet-backend/           # Express + TypeScript backend
+├── meet-backend/              # Express + TypeScript backend
 │   ├── src/
-│   │   ├── routes/         # Route handlers (auth, rooms, chat, participants, etc.)
-│   │   ├── services/       # Business logic (database, redis, livekit, etc.)
-│   │   ├── middleware/     # Auth & role checks
-│   │   ├── db/             # Database schema
-│   │   └── migrations/     # SQL migrations
-│   └── scripts/            # Database seed scripts
+│   │   ├── routes/
+│   │   │   ├── prashasakah/   # Admin API (stats, users, meetings, audit, alerts)
+│   │   │   └── *.ts           # Auth, rooms, token, meetings, whiteboard, etc.
+│   │   ├── services/          # Database, Redis, LiveKit, cache, lobby, etc.
+│   │   ├── middleware/        # Auth, CSRF, rate limiter, role checks
+│   │   ├── schemas/           # Zod validation schemas
+│   │   ├── db/                # schema.sql
+│   │   ├── migrations/        # SQL migrations (7 files)
+│   │   ├── utils/             # Audit log, logger, validation
+│   │   └── __tests__/         # Jest tests (routes, services, middleware)
+│   ├── migrations/            # Additional admin-table migrations
+│   └── scripts/               # Database seed scripts
 │
-├── livekit/                # LiveKit server configuration (template only)
-├── docs/                   # Project documentation
-├── start-meet.sh           # Service startup script
-├── backup.sh               # Daily backup script
-└── SETUP.md                # Full deployment guide
+├── livekit/                   # LiveKit server configuration (template only)
+├── docs/                      # Project documentation
+├── start-meet.sh              # Service startup script
+├── backup.sh                  # Daily backup script
+└── SETUP.md                   # Full deployment guide
 ```
 
 ---
@@ -203,7 +227,10 @@ cd meet-frontend && npm run dev
 | Schedule | `/schedule` | Schedule new meetings |
 | History | `/history` | Past meeting history |
 | Meeting Detail | `/history/:id` | Individual meeting details |
-| Admin Panel | `/prashasakah/*` | Admin dashboard & management |
+| PiP Test | `/piptest` | Picture-in-Picture testing page |
+| Recordings | `/recordings` | Egress recording list |
+| API Keys | `/api-keys` | API key management (moderators) |
+| Admin Panel | `/prashasakah/*` | Admin dashboard & management (10 sub-pages) |
 
 ---
 
