@@ -26,6 +26,6 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['dist/**', 'node_modules/**', 'src/__tests__/**'],
+    ignores: ['dist/**', 'node_modules/**', 'public/**', 'src/__tests__/**'],
   },
 );

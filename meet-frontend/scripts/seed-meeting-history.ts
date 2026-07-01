@@ -121,12 +121,10 @@ async function seedMeetings() {
   console.log(`🔑 Got auth token: ${authToken.substring(0, 20)}...\n`);
 
   // Step 3: Create mock meetings
-  const now = new Date();
   let successCount = 0;
   let failCount = 0;
 
   for (let i = 0; i < config.meetingCount; i++) {
-    const daysAgo = i * 2 + Math.floor(Math.random() * 3);
     const title = TITLES[i % TITLES.length];
     // Generate clean room name (no consecutive hyphens)
     const roomName = `seeded-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${i}-${Date.now()}`;

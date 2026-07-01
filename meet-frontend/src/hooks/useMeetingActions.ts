@@ -70,7 +70,7 @@ export function useMeetingActions() {
     await stopLocalTracks(localParticipant);
     try {
       await room.disconnect();
-    } catch (e) {
+    } catch {
       // Best-effort — may already be disconnected
     }
     reset();

@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 
+/* eslint-disable no-var -- ambient global declarations require `declare var` */
+
 interface ImportMetaEnv {
   readonly VITE_API_URL: string
   readonly VITE_LIVEKIT_URL: string

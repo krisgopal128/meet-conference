@@ -282,7 +282,9 @@ export function ControlBar({
         try {
           const msg = JSON.stringify({ type: 'recording_state', isRecording: false });
           localParticipant.publishData(new TextEncoder().encode(msg), { reliable: true, topic: 'meeting' });
-        } catch {}
+        } catch {
+          // Best-effort — broadcast may fail if no data channel is open
+        }
       } else {
         const res = await withOperationTimeout(
           roomsApi.startRecording(room.name),
@@ -294,7 +296,9 @@ export function ControlBar({
         try {
           const msg = JSON.stringify({ type: 'recording_state', isRecording: true, egressId: newEgressId });
           localParticipant.publishData(new TextEncoder().encode(msg), { reliable: true, topic: 'meeting' });
-        } catch {}
+        } catch {
+          // Best-effort — broadcast may fail if no data channel is open
+        }
         toast.success('Recording started');
       }
     } catch (error) {

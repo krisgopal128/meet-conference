@@ -263,7 +263,7 @@ export function usePreviewBackgroundBlur(
 
         ctx.putImageData(outData, 0, 0);
         categoryMask?.close?.();
-      } catch (e) {
+      } catch {
         ctx.drawImage(videoElement, srcX, srcY, srcW, srcH, 0, 0, cw, ch);
       }
 

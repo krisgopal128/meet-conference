@@ -559,7 +559,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
             <button
               onClick={async () => {
                 if (isFullscreen && document.fullscreenElement) {
-                  try { await document.exitFullscreen(); } catch {}
+                  try { await document.exitFullscreen(); } catch { /* fullscreen exit may reject if not active */ }
                   setWhiteboardFullscreen(false);
                 }
                 // Save in background — don't block close

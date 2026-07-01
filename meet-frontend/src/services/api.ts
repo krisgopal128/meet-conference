@@ -49,7 +49,7 @@ const api = axios.create({
 
 // Attach auth token + CSRF token to requests
 api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().token;
+  const token = (_authStoreGetState?.() ?? useAuthStore.getState()).token;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

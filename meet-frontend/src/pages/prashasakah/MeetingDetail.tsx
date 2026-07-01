@@ -11,8 +11,7 @@ import logger from '../../utils/logger';
  * Shows meeting information, participant list, and chat logs.
  */
 
-interface MeetingData extends AdminMeeting {
-}
+type MeetingData = AdminMeeting;
 
 function formatDateTime(dateStr: string | null | undefined): string {
   if (!dateStr) return '-';
