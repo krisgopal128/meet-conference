@@ -6,14 +6,15 @@
  * + live Excalidraw whiteboard preview (read-only mirror of the real board).
  *
  * ── Video rendering strategy ──
- * Video tiles use track.attach() on <video> elements rendered inside the PiP
- * document (via React portal).  LiveKit's adaptive stream controller detects
- * that the element is inside documentPictureInPicture.window and keeps the
- * track subscribed even when the main tab is backgrounded.
+ * Each tile attaches the LiveKit track to a hidden 1x1 <video> in the MAIN
+ * document (keeps the subscription alive) and sets srcObject directly on the
+ * PiP <video> from the raw MediaStreamTrack.  This bypasses LiveKit's
+ * adaptive stream engine entirely — no IntersectionObserver, no rAF, no
+ * isElementInPiP check — so video keeps playing when the main tab backgrounds.
  *
- * Previous canvas-mirror approach failed because the hidden <video> in the
- * backgrounded main tab stopped decoding (browser power optimisation),
- * causing the canvas to go blank after ~1 second.
+ * track.attach() on the PiP element itself fails because LiveKit's
+ * onEnterPiP handler defers via requestAnimationFrame (suspended in a
+ * backgrounded tab), so isPiP never becomes true and the track is paused.
  */
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
@@ -136,12 +137,12 @@ function WhiteboardPreview() {
 }
 
 // ============================================
-// PipVideoTile — participant video via LiveKit track.attach().
+// PipVideoTile — participant video via direct srcObject.
 //
-// The <video> element is rendered inside the PiP document (via React portal).
-// Calling track.attach() registers it with LiveKit's adaptive stream,
-// which detects the Document PiP window and keeps the track subscribed
-// even when the main tab is backgrounded.  No canvas, no cloning, no rAF.
+// track.attach() is called on a hidden 1x1 <video> in the MAIN document to
+// keep LiveKit's subscription alive.  The PiP <video> gets srcObject set
+// directly from track.mediaStreamTrack — bypassing the adaptive stream
+// engine so the video survives main-tab backgrounding.
 // ============================================
 
 interface PipVideoTileProps {
@@ -188,7 +189,6 @@ function PipVideoTile({
 
     let disposed = false;
     let retryTimer: ReturnType<typeof setInterval> | null = null;
-    const pipTimers: ReturnType<typeof setTimeout>[] = [];
 
     const getTrack = () => {
       const p = useLocalTrack ? localParticipant : participant;
@@ -201,22 +201,35 @@ function PipVideoTile({
       if (!disposed) setVideoReady(true);
     };
 
+    // Hidden <video> in the MAIN document.  track.attach() on this element
+    // keeps LiveKit's adaptive stream subscribed — it sees a visible
+    // (non-zero offsetWidth) element in the main tab, so the remote track
+    // is never paused even when the tab backgrounds.  Without this, setting
+    // srcObject alone would stop receiving frames once LiveKit pauses the
+    // subscription.
+    const hiddenVideo = document.createElement('video');
+    hiddenVideo.style.cssText =
+      'position:fixed;width:1px;height:1px;left:0;top:0;opacity:0;pointer-events:none;';
+    hiddenVideo.muted = true;
+    document.body.appendChild(hiddenVideo);
+
     const doAttach = (): boolean => {
       const track = getTrack();
       if (!track) return false;
 
+      // 1. Attach to the hidden main-document element → keeps LiveKit subscribed.
       try {
-        // track.attach() sets srcObject and registers the element with
-        // LiveKit's adaptive stream — which detects Document PiP and
-        // keeps the track subscribed when the main tab backgrounds.
-        track.attach(videoEl);
+        track.attach(hiddenVideo);
       } catch (err) {
-        // Fallback: some browsers throw on IntersectionObserver for
-        // cross-document elements — manually set srcObject instead.
-        console.warn('[PiP] track.attach() threw, using manual srcObject:', err);
-        videoEl.srcObject = new MediaStream([track.mediaStreamTrack]);
-        void videoEl.play().catch(() => {});
+        console.warn('[PiP] track.attach() on hidden element threw:', err);
       }
+
+      // 2. Set srcObject directly on the PiP <video> from the raw
+      //    MediaStreamTrack.  Bypasses LiveKit's adaptive stream engine
+      //    entirely (no IntersectionObserver, no rAF, no isElementInPiP),
+      //    so the video keeps rendering when the main tab backgrounds.
+      videoEl.srcObject = new MediaStream([track.mediaStreamTrack]);
+      void videoEl.play().catch(() => {});
 
       if (videoEl.readyState >= 2) {
         setVideoReady(true);
@@ -225,42 +238,6 @@ function PipVideoTile({
       }
       return true;
     };
-
-    // ── PiP adaptive-stream re-detection ──
-    //
-    // LiveKit's HTMLElementInfo checks isElementInPiP() during track.attach().
-    // If the PiP document's CSS hasn't loaded yet, the <video> has zero
-    // dimensions → isElementInPiP() returns false → isPiP = false.
-    // The documentPictureInPicture 'enter' event already fired before this
-    // element existed, so LiveKit never re-checks automatically.  Result:
-    // when the main tab backgrounds the track is treated as invisible and
-    // paused → blank video.
-    //
-    // Fix: dispatch 'enterpictureinpicture' after layout settles. LiveKit's
-    // onEnterPiP handler defers via queueMicrotask → requestAnimationFrame,
-    // then re-checks isElementInPiP(). By then CSS is loaded, the check
-    // succeeds, and the track stays subscribed.
-    const triggerPiPDetection = () => {
-      try {
-        videoEl.dispatchEvent(new Event('enterpictureinpicture'));
-      } catch {
-        // synthetic event dispatch not critical
-      }
-    };
-
-    // Dispatch at increasing intervals: covers fast CSS (100 ms), moderate
-    // (500 ms), slow + throttled background-tab rAF (1.5 s, 3 s).
-    [100, 500, 1500, 3000].forEach((ms) => {
-      pipTimers.push(setTimeout(triggerPiPDetection, ms));
-    });
-
-    // Also re-trigger when the main tab returns to foreground — the rAF
-    // inside onEnterPiP is suspended while the main tab is backgrounded,
-    // so a prior dispatch may have been deferred indefinitely.
-    const onVisChange = () => {
-      if (!document.hidden) triggerPiPDetection();
-    };
-    document.addEventListener('visibilitychange', onVisChange);
 
     if (!doAttach()) {
       retryTimer = setInterval(() => {
@@ -278,18 +255,17 @@ function PipVideoTile({
     return () => {
       disposed = true;
       if (retryTimer) clearInterval(retryTimer);
-      pipTimers.forEach(clearTimeout);
-      document.removeEventListener('visibilitychange', onVisChange);
       videoEl?.removeEventListener('loadeddata', onLoadedData);
       const track = getTrack();
       if (track) {
         try {
-          track.detach(videoEl);
+          track.detach(hiddenVideo);
         } catch {
           // ignore detach errors on cleanup
         }
       }
       videoEl.srcObject = null;
+      hiddenVideo.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cameraEnabled, participantIdentity, useLocalTrack]);
@@ -311,7 +287,7 @@ function PipVideoTile({
           : 'bg-surface-800'
       }`}
     >
-      {/* LiveKit-managed <video> — track.attach() keeps it subscribed */}
+      {/* PiP <video> — srcObject set directly from track.mediaStreamTrack */}
       <video
         ref={videoRef}
         autoPlay
