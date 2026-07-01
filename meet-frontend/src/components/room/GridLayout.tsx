@@ -18,6 +18,7 @@ import { SafeParticipantTile as ParticipantTile } from './ParticipantTile';
 import { useGridAspectRatio, type GridAspectRatio } from '../../store/roomStore';
 import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { useDebugParticipants, DummyParticipantTile } from '../../debug/DebugParticipants';
 
 const FIXED_GRID_MAX = 8;
 const SCROLL_THRESHOLD_DESKTOP = 25;
@@ -55,9 +56,10 @@ export function GridLayout() {
   const { localParticipant } = useLocalParticipant();
   const aspectRatio = useGridAspectRatio();
   const isMobile = useIsMobile();
+  const { dummyParticipants } = useDebugParticipants();
 
   const admittedParticipants = useAdmittedParticipants(participants, localParticipant?.identity);
-  const count = admittedParticipants.length;
+  const count = admittedParticipants.length + dummyParticipants.length;
   const isSingleParticipant = count === 1;
 
   const isLandscape = aspectRatio === '16:9' || aspectRatio === '4:3';
@@ -110,6 +112,11 @@ export function GridLayout() {
             <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
           </div>
         ))}
+        {dummyParticipants.map((d) => (
+          <div key={d.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden" style={{ aspectRatio: aspectCss }}>
+            <DummyParticipantTile name={d.name} size="small" />
+          </div>
+        ))}
       </div>
     );
   }
@@ -148,6 +155,17 @@ export function GridLayout() {
         >
           <div className="relative rounded-2xl bg-surface-900 overflow-hidden" style={{ width: '100%', height: '100%' }}>
             <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
+          </div>
+        </div>
+      ))}
+      {dummyParticipants.map((d) => (
+        <div
+          key={d.identity}
+          className="relative flex items-center justify-center overflow-hidden"
+          style={{ minWidth: 0, minHeight: 0 }}
+        >
+          <div className="relative rounded-2xl bg-surface-900 overflow-hidden" style={{ width: '100%', height: '100%' }}>
+            <DummyParticipantTile name={d.name} size="small" />
           </div>
         </div>
       ))}

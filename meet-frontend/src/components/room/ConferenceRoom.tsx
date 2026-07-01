@@ -475,10 +475,12 @@ export const ConferenceRoom = memo(function ConferenceRoom(props: ConferenceRoom
   );
 });
 
-/** Renders a horizontal strip of dummy participant tiles in the main view. */
+/** Renders a horizontal strip of dummy participant tiles in the main view.
+ *  Hidden in grid mode — dummies are rendered inside GridLayout itself. */
 function DebugDummyTiles() {
   const { names } = useDebugParticipants();
-  if (names.length === 0) return null;
+  const layout = useLayout();
+  if (names.length === 0 || layout === 'grid') return null;
 
   return (
     <div className="absolute bottom-0 left-0 right-0 z-40 flex gap-1.5 p-1.5 bg-surface-900/85 backdrop-blur-sm overflow-x-auto">
