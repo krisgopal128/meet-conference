@@ -36,6 +36,12 @@ import { useDiagnosticsReporting } from '../../hooks/useDiagnosticsReporting';
 import { useMeetingPiP } from '../pip/MeetingPiP';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { Users, Loader2 } from 'lucide-react';
+import {
+  DebugParticipantsProvider,
+  DebugBar,
+  DummyParticipantTile,
+  useDebugParticipants,
+} from '../../debug/DebugParticipants';
 import { meetingRoomConfig } from '../../config/meetingRoomConfig';
 import toast from 'react-hot-toast';
 import logger from '../../utils/logger';
@@ -368,6 +374,9 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
             )}
             
             <div className="flex-1 min-h-0 relative">
+              {/* Debug +/− bar */}
+              <DebugBar />
+
               <Suspense fallback={
                 <div className="flex items-center justify-center h-full text-surface-400 text-sm">
                   <div className="w-6 h-6 border-2 border-brand-400 border-t-transparent rounded-full animate-spin mr-2" />
@@ -387,7 +396,9 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
                 {layout === 'screenshare' && <ScreenShareLayout />}
                 {layout === 'whiteboard' && <WhiteboardLayout room={room} roomName={_props.roomName} />}
               </Suspense>
-              
+
+              {/* Debug dummy tiles strip */}
+              <DebugDummyTiles />
 
             </div>
           </div>
@@ -456,4 +467,29 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
   );
 }
 
-export const ConferenceRoom = memo(ConferenceRoomInner);
+export const ConferenceRoom = memo(function ConferenceRoom(props: ConferenceRoomProps) {
+  return (
+    <DebugParticipantsProvider>
+      <ConferenceRoomInner {...props} />
+    </DebugParticipantsProvider>
+  );
+});
+
+/** Renders a horizontal strip of dummy participant tiles in the main view. */
+function DebugDummyTiles() {
+  const { names } = useDebugParticipants();
+  if (names.length === 0) return null;
+
+  return (
+    <div className="absolute bottom-0 left-0 right-0 z-40 flex gap-1.5 p-1.5 bg-surface-900/85 backdrop-blur-sm overflow-x-auto">
+      {names.map((name) => (
+        <div
+          key={name}
+          className="shrink-0 w-28 h-16 sm:w-40 sm:h-24"
+        >
+          <DummyParticipantTile name={name} size="small" />
+        </div>
+      ))}
+    </div>
+  );
+}
