@@ -387,10 +387,10 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
                     track subscriptions across layout switches. Use opacity — NOT
                     display:none — so adaptiveStream sees non-zero element sizes
                     and keeps streams flowing. */}
-                <div className={`absolute inset-0 transition-opacity duration-150 ${layout === 'grid' ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none'}`}>
+                <div className={`absolute inset-0 transition-opacity duration-150 ${layout === 'grid' ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none invisible'}`}>
                   <GridLayout />
                 </div>
-                <div className={`absolute inset-0 transition-opacity duration-150 ${layout === 'speaker' ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none'}`}>
+                <div className={`absolute inset-0 transition-opacity duration-150 ${layout === 'speaker' ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none invisible'}`}>
                   <SpeakerLayout activeSpeakers={activeSpeakers} />
                 </div>
                 {layout === 'screenshare' && <ScreenShareLayout />}
