@@ -17,7 +17,6 @@ import {
   useUIActions,
   useIsModerator,
   useWhiteboardFullscreen,
-  useGridAspectRatio,
 } from '../../store/roomStore';
 import {
   useWhiteboardSync,
@@ -27,12 +26,9 @@ import {
 import { useWhiteboardAutoSave } from '../../hooks/useWhiteboardAutoSave';
 import { whiteboardApi } from '../../services/whiteboardApi';
 import { setWhiteboardAPI } from '../../services/whiteboardAPIBridge';
-import { SafeParticipantTile as ParticipantTile } from './ParticipantTile';
 import { FloatingParticipantPanel } from './FloatingParticipantPanel';
-import { WhiteboardPreviewTile } from './WhiteboardPreviewTile';
 import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
 import { useIsMobile } from '../../hooks/useIsMobile';
-import { ASPECT_RATIO_MULTIPLIERS } from '../../utils/aspectRatio';
 import logger from '../../utils/logger';
 
 const Excalidraw = React.lazy(() =>
@@ -65,22 +61,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
   const { localParticipant } = useLocalParticipant();
   const allParticipants = useParticipants();
   const localIdentity = localParticipant?.identity ?? '';
-  const aspectRatio = useGridAspectRatio();
   const isMobile = useIsMobile();
-
-  // Filmstrip dimensions — kept in sync with SpeakerLayout for visual consistency
-  const filmstripHeightCss = isMobile ? '18dvh' : '140px';
-  const filmstripPx = useMemo(() => {
-    if (!isMobile) return 140;
-    return Math.max(90, Math.round(window.innerHeight * 0.18));
-  }, [isMobile]);
-  const filmstripTileWidth = useMemo(() => {
-    const usableH = isMobile ? filmstripPx - Math.max(6, Math.round(filmstripPx * 0.08)) : 140;
-    return Math.round(usableH * ASPECT_RATIO_MULTIPLIERS[aspectRatio]);
-  }, [aspectRatio, filmstripPx, isMobile]);
-  const filmstripGap = useMemo(() => Math.max(6, Math.round(filmstripPx * 0.06)), [filmstripPx]);
-  const filmstripPaddingX = useMemo(() => Math.max(6, Math.round(filmstripPx * 0.08)), [filmstripPx]);
-  const filmstripPaddingBottom = useMemo(() => Math.max(6, Math.round(filmstripPx * 0.08)), [filmstripPx]);
 
   const admittedParticipants = useAdmittedParticipants(allParticipants, localIdentity);
 
@@ -97,7 +78,6 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
   const [excalidrawReady, setExcalidrawReady] = useState(false);
   const sceneVersionRef = useRef(0);
   const sceneVersionTickRef = useRef(0);
-  const [sceneVersionTick, setSceneVersionTick] = useState(0);
   const sceneRafRef = useRef<number | null>(null);
 
   // Track what each participant is viewing on the canvas
@@ -152,7 +132,6 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
       sceneRafRef.current = requestAnimationFrame(() => {
         sceneRafRef.current = null;
         sceneVersionTickRef.current = sceneVersionRef.current;
-        setSceneVersionTick((n) => n + 1);
       });
     }
   }, []);
@@ -486,9 +465,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
   return (
     <div
       ref={whiteboardContainerRef}
-      className={`flex flex-col w-full h-full bg-surface-900 relative overscroll-none ${
-        (!isFullscreen && admittedParticipants.length > 0) ? 'gap-1 sm:gap-2' : ''
-      }`}
+      className="flex flex-col w-full h-full bg-surface-900 relative overscroll-none"
       style={{ touchAction: 'none' }}
     >
       {/* Main whiteboard area — intercept anchor clicks from Excalidraw internals to prevent page reload */}
@@ -657,41 +634,6 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
         </div>
       </div>
 
-      {!isFullscreen && admittedParticipants.length > 0 && (
-        <div
-          className="flex flex-shrink-0 overflow-x-auto overflow-y-hidden"
-          style={{
-            height: filmstripHeightCss,
-            gap: `${filmstripGap}px`,
-            paddingInline: `${filmstripPaddingX}px`,
-            paddingBottom: `${filmstripPaddingBottom}px`,
-            scrollbarWidth: 'thin',
-            scrollbarColor: 'rgba(255,255,255,0.3) transparent',
-          }}
-        >
-          <div
-            className="flex-shrink-0 h-full rounded-2xl bg-surface-900"
-            style={{ width: filmstripTileWidth }}
-          >
-            <WhiteboardPreviewTile
-              excalidrawAPI={excalidrawAPIRef.current}
-              sourceElement={whiteboardContainerRef.current}
-              sceneVersion={sceneVersionTick}
-              width={filmstripTileWidth}
-              height={filmstripPx}
-            />
-          </div>
-          {admittedParticipants.map((p) => (
-            <div
-              key={p.identity}
-              className="flex-shrink-0 h-full rounded-2xl bg-surface-900"
-              style={{ width: filmstripTileWidth }}
-            >
-              <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} />
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
