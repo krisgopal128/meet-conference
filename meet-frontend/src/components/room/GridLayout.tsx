@@ -1,15 +1,14 @@
 /**
  * GridLayout Component
  * 
- * Displays participant tiles in a responsive CSS Grid layout.
+ * Displays participant tiles in a responsive grid layout.
  *
  * Mobile rules (portrait + landscape):
- *   - Max 4 tiles visible at a time (2×2 grid that fills the screen)
- *   - 5+ participants: same 2×2 viewport, rest scroll vertically
+ *   - 2-column grid, tiles respect aspect ratio, scroll for overflow
  *
  * Desktop rules:
- *   - 2-8: fixed grid that fills available space
- *   - 9-24: responsive sqrt grid
+ *   - 2-8: fixed grid with aspect-ratio-correct tiles (no video cropping)
+ *   - 9-24: responsive sqrt grid with aspect-ratio-correct tiles
  *   - 25+: scrollable grid with min tile height
  */
 
@@ -19,11 +18,13 @@ import { useGridAspectRatio, type GridAspectRatio } from '../../store/roomStore'
 import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useDebugParticipants, DummyParticipantTile } from '../../debug/DebugParticipants';
-import { ASPECT_RATIO_CSS } from '../../utils/aspectRatio';
+import { ASPECT_RATIO_CSS, ASPECT_RATIO_MULTIPLIERS } from '../../utils/aspectRatio';
+import { useRef, useState, useEffect, useMemo } from 'react';
 
-const FIXED_GRID_MAX = 8;
 const SCROLL_THRESHOLD_DESKTOP = 25;
 const MIN_TILE_HEIGHT_DESKTOP = 200;
+const DESKTOP_PADDING_PX = 8;
+const DESKTOP_GAP_PX = 8;
 
 function getGridDimensions(count: number, ratio: GridAspectRatio): { cols: number; rows: number } {
   if (count <= 1) return { cols: 1, rows: 1 };
@@ -58,6 +59,22 @@ export function GridLayout() {
 
   const isLandscape = aspectRatio === '16:9' || aspectRatio === '4:3';
 
+  // Track grid container size for aspect-ratio-correct tile computation
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [gridSize, setGridSize] = useState({ w: 0, h: 0 });
+
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el || isMobile) return;
+    const update = () => {
+      setGridSize({ w: el.clientWidth, h: el.clientHeight });
+    };
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    update();
+    return () => ro.disconnect();
+  }, [isMobile]);
+
   if (isSingleParticipant) {
     return (
       <div className="w-full h-full flex items-center justify-center">
@@ -82,7 +99,7 @@ export function GridLayout() {
     );
   }
 
-  const gap = isMobile ? 4 : 8;
+  const gap = isMobile ? 4 : DESKTOP_GAP_PX;
   const pad = isMobile ? 'p-1' : 'p-2';
   const aspectCss = ASPECT_RATIO_CSS[aspectRatio];
 
@@ -117,27 +134,74 @@ export function GridLayout() {
 
   // ── Desktop ──
   const { cols, rows } = getGridDimensions(count, aspectRatio);
-  const useFixedGrid = count <= FIXED_GRID_MAX;
   const needsScroll = count > SCROLL_THRESHOLD_DESKTOP;
+  const ratioMultiplier = ASPECT_RATIO_MULTIPLIERS[aspectRatio];
 
+  // Compute explicit tile pixel dimensions that maintain the video aspect ratio.
+  // Without this, 1fr×1fr grid cells produce arbitrary shapes that don't match
+  // the video, causing object-fit:cover to crop increasingly as tiles shrink.
+  const tileDims = useMemo(() => {
+    if (needsScroll || gridSize.w === 0 || gridSize.h === 0) return null;
+
+    const availW = gridSize.w - DESKTOP_PADDING_PX * 2 - gap * (cols - 1);
+    const availH = gridSize.h - DESKTOP_PADDING_PX * 2 - gap * (rows - 1);
+    if (availW <= 0 || availH <= 0) return null;
+
+    // Strategy: try both fit-by-width and fit-by-height, pick the one that
+    // fits ALL tiles within the available space.
+    const wByWidth = availW / cols;
+    const hByWidth = wByWidth / ratioMultiplier;
+
+    const hByHeight = availH / rows;
+    const wByHeight = hByHeight * ratioMultiplier;
+
+    if (hByWidth * rows <= availH) {
+      return { width: Math.floor(wByWidth), height: Math.floor(hByWidth) };
+    }
+    return { width: Math.floor(wByHeight), height: Math.floor(hByHeight) };
+  }, [gridSize, cols, rows, gap, ratioMultiplier, needsScroll]);
+
+  // Scrollable grid (25+): use min-height rows, scroll overflow
+  if (needsScroll) {
+    return (
+      <div
+        className={`w-full h-full ${pad} overflow-y-auto`}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${cols}, 1fr)`,
+          gridAutoRows: `${MIN_TILE_HEIGHT_DESKTOP}px`,
+          gridTemplateRows: 'none',
+          alignContent: 'start',
+          gap: `${gap}px`,
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'rgba(255,255,255,0.3) transparent',
+        }}
+      >
+        {admittedParticipants.map((p) => (
+          <div key={p.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden" style={{ aspectRatio: aspectCss }}>
+            <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
+          </div>
+        ))}
+        {dummyParticipants.map((d) => (
+          <div key={d.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden" style={{ aspectRatio: aspectCss }}>
+            <DummyParticipantTile name={d.name} size="small" state={dummyStates[d.identity]} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Fixed/responsive desktop grid with aspect-ratio-correct tiles
   return (
     <div
-      className={`w-full h-full ${pad} ${needsScroll ? 'overflow-y-auto' : 'overflow-hidden'}`}
+      ref={gridRef}
+      className={`w-full h-full ${pad} overflow-hidden`}
       style={{
         display: 'grid',
-        gridTemplateColumns: `repeat(${cols}, 1fr)`,
-        ...(needsScroll
-          ? {
-              gridAutoRows: `${MIN_TILE_HEIGHT_DESKTOP}px`,
-              gridTemplateRows: 'none',
-              alignContent: 'start',
-              scrollbarWidth: 'thin',
-              scrollbarColor: 'rgba(255,255,255,0.3) transparent',
-            }
-          : {
-              gridTemplateRows: `repeat(${rows}, 1fr)`,
-              alignContent: useFixedGrid ? 'center' : 'start',
-            }),
+        gridTemplateColumns: tileDims ? `repeat(${cols}, ${tileDims.width}px)` : `repeat(${cols}, 1fr)`,
+        gridTemplateRows: tileDims ? `repeat(${rows}, ${tileDims.height}px)` : `repeat(${rows}, 1fr)`,
+        justifyContent: 'center',
+        alignContent: 'center',
         gap: `${gap}px`,
       }}
     >
@@ -145,7 +209,7 @@ export function GridLayout() {
         <div
           key={p.identity}
           className="relative rounded-2xl bg-surface-900 overflow-hidden"
-          style={{ minWidth: 0, minHeight: 0 }}
+          style={tileDims ? { width: tileDims.width, height: tileDims.height } : { minWidth: 0, minHeight: 0, aspectRatio: aspectCss }}
         >
           <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
         </div>
@@ -154,7 +218,7 @@ export function GridLayout() {
         <div
           key={d.identity}
           className="relative rounded-2xl bg-surface-900 overflow-hidden"
-          style={{ minWidth: 0, minHeight: 0 }}
+          style={tileDims ? { width: tileDims.width, height: tileDims.height } : { minWidth: 0, minHeight: 0, aspectRatio: aspectCss }}
         >
           <DummyParticipantTile name={d.name} size="small" state={dummyStates[d.identity]} />
         </div>
