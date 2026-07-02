@@ -486,7 +486,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
   return (
     <div
       ref={whiteboardContainerRef}
-      className="flex flex-col w-full h-full bg-surface-900 relative overscroll-none"
+      className="flex flex-col w-full h-full bg-surface-900 relative overscroll-none gap-1 sm:gap-2"
       style={{ touchAction: 'none' }}
     >
       {/* Main whiteboard area — intercept anchor clicks from Excalidraw internals to prevent page reload */}

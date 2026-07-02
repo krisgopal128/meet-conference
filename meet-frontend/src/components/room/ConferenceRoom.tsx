@@ -401,8 +401,16 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
                     </div>
                   </>
                 )}
-                {layout === 'screenshare' && <ScreenShareLayout />}
-                {layout === 'whiteboard' && <WhiteboardLayout room={room} roomName={_props.roomName} />}
+                {layout === 'screenshare' && (
+                  <div className="absolute inset-0">
+                    <ScreenShareLayout />
+                  </div>
+                )}
+                {layout === 'whiteboard' && (
+                  <div className="absolute inset-0">
+                    <WhiteboardLayout room={room} roomName={_props.roomName} />
+                  </div>
+                )}
               </Suspense>
 
               {/* Debug dummy tiles strip */}
