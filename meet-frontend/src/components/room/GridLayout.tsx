@@ -19,17 +19,11 @@ import { useGridAspectRatio, type GridAspectRatio } from '../../store/roomStore'
 import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useDebugParticipants, DummyParticipantTile } from '../../debug/DebugParticipants';
+import { ASPECT_RATIO_CSS } from '../../utils/aspectRatio';
 
 const FIXED_GRID_MAX = 8;
 const SCROLL_THRESHOLD_DESKTOP = 25;
 const MIN_TILE_HEIGHT_DESKTOP = 200;
-
-const ASPECT_RATIO_CSS: Record<GridAspectRatio, string> = {
-  '16:9': '16/9',
-  '9:16': '9/16',
-  '1:1': '1/1',
-  '4:3': '4/3',
-};
 
 function getGridDimensions(count: number, ratio: GridAspectRatio): { cols: number; rows: number } {
   if (count <= 1) return { cols: 1, rows: 1 };
