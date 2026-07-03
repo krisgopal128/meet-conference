@@ -19,11 +19,10 @@ import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useDebugParticipants, DummyParticipantTile } from '../../debug/DebugParticipants';
 import { ASPECT_RATIO_CSS } from '../../utils/aspectRatio';
-import { useRef, useState, useEffect, useMemo } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
 const SCROLL_THRESHOLD_DESKTOP = 25;
 const MIN_TILE_HEIGHT_DESKTOP = 200;
-const DESKTOP_PADDING_PX = 8;
 const DESKTOP_GAP_PX = 8;
 
 function getGridDimensions(count: number, ratio: GridAspectRatio): { cols: number; rows: number } {
@@ -65,7 +64,7 @@ export function GridLayout() {
 
   useEffect(() => {
     const el = gridRef.current;
-    if (!el || isMobile) return;
+    if (!el) return;
     const update = () => {
       setGridSize({ w: el.clientWidth, h: el.clientHeight });
     };
@@ -73,7 +72,7 @@ export function GridLayout() {
     ro.observe(el);
     update();
     return () => ro.disconnect();
-  }, [isMobile]);
+  }, []);
 
   // Desktop grid dimensions — computed unconditionally (before any early
   // returns) to satisfy the Rules of Hooks. Without this, going from 1
@@ -83,23 +82,6 @@ export function GridLayout() {
   const desktopGap = DESKTOP_GAP_PX;
   const { cols, rows } = getGridDimensions(count, aspectRatio);
   const needsScroll = count > SCROLL_THRESHOLD_DESKTOP;
-
-  const tileDims = useMemo(() => {
-    if (needsScroll || gridSize.w === 0 || gridSize.h === 0) return null;
-
-    const availW = gridSize.w - DESKTOP_PADDING_PX * 2 - desktopGap * (cols - 1);
-    const availH = gridSize.h - DESKTOP_PADDING_PX * 2 - desktopGap * (rows - 1);
-    if (availW <= 0 || availH <= 0) return null;
-
-    // Fill the container completely — divide available space evenly.
-    // Video uses object-fit: cover so it fills each tile regardless of
-    // the tile's shape. This eliminates the large empty gaps that occurred
-    // when forcing tiles to match the video's exact aspect ratio.
-    return {
-      width: Math.floor(availW / cols),
-      height: Math.floor(availH / rows),
-    };
-  }, [gridSize, cols, rows, desktopGap, needsScroll]);
 
   if (isSingleParticipant) {
     return (
@@ -129,28 +111,30 @@ export function GridLayout() {
   const pad = isMobile ? 'p-1' : 'p-2';
   const aspectCss = ASPECT_RATIO_CSS[aspectRatio];
 
-  // ── Mobile: 2-column grid, tiles respect aspect ratio, scroll for overflow ──
+  // ── Mobile: 2-column grid, tiles fill available space ──
   if (isMobile) {
+    // Calculate rows needed for mobile (2 columns)
+    const mobileRows = Math.ceil(count / 2);
     return (
       <div
+        ref={gridRef}
         className={`w-full h-full ${pad} overflow-y-auto overflow-x-hidden`}
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gridAutoRows: 'min-content',
-          alignContent: 'start',
+          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+          gridAutoRows: `${Math.floor(gridSize.h > 0 ? gridSize.h / mobileRows : 200)}px`,
           gap: `${gap}px`,
           scrollbarWidth: 'thin',
           scrollbarColor: 'rgba(255,255,255,0.3) transparent',
         }}
       >
         {admittedParticipants.map((p) => (
-          <div key={p.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden" style={{ aspectRatio: aspectCss }}>
+          <div key={p.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden min-h-0">
             <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
           </div>
         ))}
         {dummyParticipants.map((d) => (
-          <div key={d.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden" style={{ aspectRatio: aspectCss }}>
+          <div key={d.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden min-h-0">
             <DummyParticipantTile name={d.name} size="small" state={dummyStates[d.identity]} />
           </div>
         ))}
@@ -188,25 +172,22 @@ export function GridLayout() {
     );
   }
 
-  // Fixed/responsive desktop grid with aspect-ratio-correct tiles
+  // Fixed/responsive desktop grid — tiles fill the container completely
   return (
     <div
       ref={gridRef}
       className={`w-full h-full ${pad} overflow-hidden`}
       style={{
         display: 'grid',
-        gridTemplateColumns: tileDims ? `repeat(${cols}, ${tileDims.width}px)` : `repeat(${cols}, 1fr)`,
-        gridTemplateRows: tileDims ? `repeat(${rows}, ${tileDims.height}px)` : `repeat(${rows}, 1fr)`,
-        justifyContent: 'center',
-        alignContent: 'center',
+        gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+        gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
         gap: `${gap}px`,
       }}
     >
       {admittedParticipants.map((p) => (
         <div
           key={p.identity}
-          className="relative rounded-2xl bg-surface-900 overflow-hidden"
-          style={tileDims ? { width: tileDims.width, height: tileDims.height } : { minWidth: 0, minHeight: 0, aspectRatio: aspectCss }}
+          className="relative rounded-2xl bg-surface-900 overflow-hidden min-w-0 min-h-0"
         >
           <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
         </div>
@@ -214,8 +195,7 @@ export function GridLayout() {
       {dummyParticipants.map((d) => (
         <div
           key={d.identity}
-          className="relative rounded-2xl bg-surface-900 overflow-hidden"
-          style={tileDims ? { width: tileDims.width, height: tileDims.height } : { minWidth: 0, minHeight: 0, aspectRatio: aspectCss }}
+          className="relative rounded-2xl bg-surface-900 overflow-hidden min-w-0 min-h-0"
         >
           <DummyParticipantTile name={d.name} size="small" state={dummyStates[d.identity]} />
         </div>
