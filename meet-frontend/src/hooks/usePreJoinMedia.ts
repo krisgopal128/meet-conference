@@ -78,7 +78,7 @@ interface UsePreJoinMediaParams {
   isCreateMode: boolean;
 }
 
-export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParams) {
+export function usePreJoinMedia({ roomName: _roomName, isCreateMode: _isCreateMode }: UsePreJoinMediaParams) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewStreamRef = useRef<MediaStream | null>(null);
   const isMountedRef = useRef(true);
