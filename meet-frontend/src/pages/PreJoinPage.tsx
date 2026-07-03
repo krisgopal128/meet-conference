@@ -335,9 +335,9 @@ export default function PreJoinPage() {
 
       {/* Centered content */}
       <div className="flex-1 flex items-start sm:items-center justify-center overflow-y-auto p-4 sm:p-6">
-        <div className="w-full max-w-2xl flex flex-col items-center gap-4 sm:gap-6">
+        <div className="w-full max-w-5xl flex flex-col gap-4 sm:gap-6">
 
-          {/* Loading overlay */}
+          {/* Loading overlay — auto-requesting camera/mic permissions */}
           {initializing && (
             <div className="flex flex-col items-center justify-center py-20">
               <div className="w-12 h-12 border-4 border-brand-200 border-t-brand-500 rounded-full animate-spin mb-4"></div>
@@ -345,9 +345,12 @@ export default function PreJoinPage() {
             </div>
           )}
 
-          {/* Video preview */}
-          {!initializing && (
-            <>
+          {/* Content — always rendered (even during loading) */}
+          {/* so videoRef.current is available when startPreview() attaches the stream */}
+          <div className={initializing ? 'hidden' : 'flex flex-col lg:flex-row gap-4 sm:gap-6 w-full'}>
+
+            {/* ── LEFT COLUMN: video preview + controls + devices ── */}
+            <div className="flex-1 flex flex-col gap-4">
               <div
                 className={cn(
                   'relative bg-surface-800 dark:bg-surface-950 rounded-2xl overflow-hidden shadow-xl w-full',
@@ -411,7 +414,7 @@ export default function PreJoinPage() {
               </div>
 
               {/* Toggle buttons — Google Meet style */}
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
                 <button
                   onClick={() => setAudioEnabled(!audioEnabled)}
                   className={cn(
@@ -452,6 +455,30 @@ export default function PreJoinPage() {
                   {showOptions ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </button>
               </div>
+
+              {/* Device selection — always visible */}
+              <div className="w-full card p-4">
+                <DeviceSettings
+                  devices={devices}
+                  selectedCamera={selectedCamera}
+                  selectedMic={selectedMic}
+                  selectedSpeaker={selectedSpeaker}
+                  micLevel={micLevel}
+                  speakerLevel={speakerLevel}
+                  onCameraChange={setSelectedCamera}
+                  onMicChange={setSelectedMic}
+                  onSpeakerChange={setSelectedSpeaker}
+                  onMicLevelChange={setMicLevel}
+                  onSpeakerLevelChange={setSpeakerLevel}
+                  isExpanded={expandedSections.devices}
+                  onToggle={() => toggleSection('devices')}
+                />
+              </div>
+
+            </div>{/* /left column */}
+
+            {/* ── RIGHT COLUMN: name, password, join button ── */}
+            <div className="w-full lg:w-80 xl:w-96 flex flex-col gap-4">
 
               {/* Error message */}
               {error && (
@@ -606,7 +633,7 @@ export default function PreJoinPage() {
                     <Check size={16} className="text-white" />
                   </div>
                   <p className="text-sm font-medium text-surface-700 dark:text-surface-200">
-                    Signed in as {(requestedRole === 'moderator' ? 'Moderator' : 'Participant')}
+                    Signed in as {(user?.role === 'admin' || user?.role === 'moderator' || requestedRole === 'moderator') ? 'Moderator' : 'Participant'}
                   </p>
                 </div>
               )}
@@ -632,22 +659,6 @@ export default function PreJoinPage() {
               {/* Advanced Options — collapsible */}
               {showOptions && (
                 <div className="w-full max-h-[50vh] overflow-y-auto card p-4 space-y-4 animate-fade-in">
-                  <DeviceSettings
-                    devices={devices}
-                    selectedCamera={selectedCamera}
-                    selectedMic={selectedMic}
-                    selectedSpeaker={selectedSpeaker}
-                    micLevel={micLevel}
-                    speakerLevel={speakerLevel}
-                    onCameraChange={setSelectedCamera}
-                    onMicChange={setSelectedMic}
-                    onSpeakerChange={setSelectedSpeaker}
-                    onMicLevelChange={setMicLevel}
-                    onSpeakerLevelChange={setSpeakerLevel}
-                    isExpanded={expandedSections.devices}
-                    onToggle={() => toggleSection('devices')}
-                  />
-
                   <AudioSettings
                     noiseSuppression={noiseSuppression}
                     echoCancellation={echoCancellation}
@@ -761,8 +772,8 @@ export default function PreJoinPage() {
                   )}
                 </div>
               )}
-            </>
-          )}
+            </div>{/* /right column */}
+          </div>{/* /content */}
         </div>
       </div>
     </div>

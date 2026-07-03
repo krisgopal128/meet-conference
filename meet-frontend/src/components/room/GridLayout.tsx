@@ -57,8 +57,6 @@ export function GridLayout() {
   const count = admittedParticipants.length + dummyParticipants.length;
   const isSingleParticipant = count === 1;
 
-  const isLandscape = aspectRatio === '16:9' || aspectRatio === '4:3';
-
   // Track grid container size for aspect-ratio-correct tile computation
   const gridRef = useRef<HTMLDivElement>(null);
   const [gridSize, setGridSize] = useState({ w: 0, h: 0 });
@@ -74,6 +72,32 @@ export function GridLayout() {
     update();
     return () => ro.disconnect();
   }, [isMobile]);
+
+  // Desktop grid dimensions — computed unconditionally (before any early
+  // returns) to satisfy the Rules of Hooks. Without this, going from 1
+  // participant to 2 (e.g. adding a dummy) changes the hook count and
+  // throws React error #310.
+  const isLandscape = aspectRatio === '16:9' || aspectRatio === '4:3';
+  const desktopGap = DESKTOP_GAP_PX;
+  const { cols, rows } = getGridDimensions(count, aspectRatio);
+  const needsScroll = count > SCROLL_THRESHOLD_DESKTOP;
+
+  const tileDims = useMemo(() => {
+    if (needsScroll || gridSize.w === 0 || gridSize.h === 0) return null;
+
+    const availW = gridSize.w - DESKTOP_PADDING_PX * 2 - desktopGap * (cols - 1);
+    const availH = gridSize.h - DESKTOP_PADDING_PX * 2 - desktopGap * (rows - 1);
+    if (availW <= 0 || availH <= 0) return null;
+
+    // Fill the container completely — divide available space evenly.
+    // Video uses object-fit: cover so it fills each tile regardless of
+    // the tile's shape. This eliminates the large empty gaps that occurred
+    // when forcing tiles to match the video's exact aspect ratio.
+    return {
+      width: Math.floor(availW / cols),
+      height: Math.floor(availH / rows),
+    };
+  }, [gridSize, cols, rows, desktopGap, needsScroll]);
 
   if (isSingleParticipant) {
     return (
@@ -99,7 +123,7 @@ export function GridLayout() {
     );
   }
 
-  const gap = isMobile ? 4 : DESKTOP_GAP_PX;
+  const gap = isMobile ? 4 : desktopGap;
   const pad = isMobile ? 'p-1' : 'p-2';
   const aspectCss = ASPECT_RATIO_CSS[aspectRatio];
 
@@ -132,36 +156,7 @@ export function GridLayout() {
     );
   }
 
-  // ── Desktop ──
-  const { cols, rows } = getGridDimensions(count, aspectRatio);
-  const needsScroll = count > SCROLL_THRESHOLD_DESKTOP;
-  const ratioMultiplier = ASPECT_RATIO_MULTIPLIERS[aspectRatio];
-
-  // Compute explicit tile pixel dimensions that maintain the video aspect ratio.
-  // Without this, 1fr×1fr grid cells produce arbitrary shapes that don't match
-  // the video, causing object-fit:cover to crop increasingly as tiles shrink.
-  const tileDims = useMemo(() => {
-    if (needsScroll || gridSize.w === 0 || gridSize.h === 0) return null;
-
-    const availW = gridSize.w - DESKTOP_PADDING_PX * 2 - gap * (cols - 1);
-    const availH = gridSize.h - DESKTOP_PADDING_PX * 2 - gap * (rows - 1);
-    if (availW <= 0 || availH <= 0) return null;
-
-    // Strategy: try both fit-by-width and fit-by-height, pick the one that
-    // fits ALL tiles within the available space.
-    const wByWidth = availW / cols;
-    const hByWidth = wByWidth / ratioMultiplier;
-
-    const hByHeight = availH / rows;
-    const wByHeight = hByHeight * ratioMultiplier;
-
-    if (hByWidth * rows <= availH) {
-      return { width: Math.floor(wByWidth), height: Math.floor(hByWidth) };
-    }
-    return { width: Math.floor(wByHeight), height: Math.floor(hByHeight) };
-  }, [gridSize, cols, rows, gap, ratioMultiplier, needsScroll]);
-
-  // Scrollable grid (25+): use min-height rows, scroll overflow
+  // ── Desktop: Scrollable grid (25+): use min-height rows, scroll overflow ──
   if (needsScroll) {
     return (
       <div

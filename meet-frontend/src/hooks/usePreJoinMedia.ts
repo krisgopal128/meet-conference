@@ -297,69 +297,61 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
     }
   }, [videoEnabled, selectedCamera, qualityMode, gridAspectRatio, cameraHardwareCaps, stopPreview]);
 
-  // Init preview effect
+  // Auto-init on page load — requests camera and mic separately so one
+  // failing doesn't kill the other. Shows a loading spinner while requesting.
   useEffect(() => {
     isMountedRef.current = true;
 
     const initPreview = async () => {
-      // Prevent multiple permission requests (React StrictMode double-mount)
-      if (hasRequestedPermissionsRef.current) {
-        return;
-      }
+      if (hasRequestedPermissionsRef.current) return;
       hasRequestedPermissionsRef.current = true;
 
       if (!navigator.mediaDevices?.getUserMedia) {
-        setInitStatus('Media devices not supported');
         toast.error('Camera and microphone are not supported in this browser. Try Chrome or Firefox.');
         setInitializing(false);
         return;
       }
 
+      let videoTrack: MediaStreamTrack | null = null;
+      let hasAudio = false;
+
+      setInitStatus('Requesting camera access...');
       try {
-        setInitStatus('Requesting camera access...');
-        const stream = await navigator.mediaDevices.getUserMedia({
+        const videoStream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'user' },
-          audio: true,
         });
+        videoTrack = videoStream.getVideoTracks()[0] ?? null;
+      } catch (videoErr) {
+        logger.error('Camera permission denied:', videoErr);
+        setVideoEnabled(false);
+      }
 
-        // Extract video track for preview reuse (avoid 2nd request)
-        const videoTrack = stream.getVideoTracks()[0];
+      setInitStatus('Requesting microphone access...');
+      try {
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        hasAudio = true;
+        audioStream.getAudioTracks().forEach((t) => t.stop());
+      } catch (audioErr) {
+        logger.error('Mic permission denied:', audioErr);
+        setAudioEnabled(false);
+      }
 
-        // Stop only audio tracks, keep video for preview
-        stream.getAudioTracks().forEach((track) => track.stop());
+      setInitStatus('Loading devices...');
+      await loadDevices();
 
-        setInitStatus('Loading devices...');
-        await loadDevices();
-
+      if (videoTrack) {
         setInitStatus('Starting preview...');
         await startPreview(videoTrack);
+      }
 
-        if (isMountedRef.current) {
-          setInitializing(false);
-        }
-      } catch (e) {
-        logger.error('Failed to get permissions:', e);
-        toast.error('Could not access camera and microphone. Please check permissions.');
-        try {
-          setInitStatus('Requesting camera only...');
-          const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
-          const videoTrack = videoStream.getVideoTracks()[0];
-
-          setVideoEnabled(true);
-          setAudioEnabled(false);
-          await loadDevices();
-          await startPreview(videoTrack);
-          if (isMountedRef.current) {
-            setInitializing(false);
-          }
-        } catch (videoError) {
-          logger.error('Video permission denied:', videoError);
+      if (isMountedRef.current) {
+        setInitializing(false);
+        if (!videoTrack && !hasAudio) {
           toast.error('Camera and microphone access denied. You may still join with limited functionality.');
-          setVideoEnabled(false);
-          setAudioEnabled(false);
-          if (isMountedRef.current) {
-            setInitializing(false);
-          }
+        } else if (!videoTrack) {
+          toast.error('Camera access denied. Continuing with audio only.');
+        } else if (!hasAudio) {
+          toast.error('Microphone access denied. Continuing with video only.');
         }
       }
     };
@@ -371,15 +363,9 @@ export function usePreJoinMedia({ roomName, isCreateMode }: UsePreJoinMediaParam
       if (!tracksTransferredRef.current) {
         stopPreview();
       }
-      hasRequestedPermissionsRef.current = false;
     };
-    // startPreview and loadDevices are intentionally omitted — they are plain
-    // functions (new reference each render) which would cause the effect to
-    // re-run on every state change, calling stopPreview() in cleanup and
-    // killing the camera stream immediately after it starts.
-    // The hasRequestedPermissionsRef guard ensures they only execute once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomName, isCreateMode, stopPreview]);
+  }, []);
 
   // Camera change effect
   useEffect(() => {
