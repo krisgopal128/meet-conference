@@ -22,7 +22,7 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { useParticipants, useLocalParticipant } from '@livekit/components-react';
+import { useParticipants, useLocalParticipant, useTracks } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import type { Participant } from 'livekit-client';
 import { usePiP } from '../../hooks/usePiP';
@@ -30,7 +30,7 @@ import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
 import { useWhiteboardOpen, useUIActions } from '../../store/roomStore';
 import { getWhiteboardAPI } from '../../services/whiteboardAPIBridge';
 import { useDebugParticipants } from '../../debug/DebugParticipants';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Pencil, LayoutGrid } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Pencil, LayoutGrid, Monitor } from 'lucide-react';
 
 // ============================================
 // Excalidraw whiteboard preview — mirrors the real board
@@ -134,6 +134,61 @@ function WhiteboardPreview() {
       <div className="absolute top-2 left-2 px-2 py-1 rounded bg-black/50 text-white text-[10px] flex items-center gap-1.5">
         <Pencil className="w-3 h-3" />
         Whiteboard
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// ScreenShare preview — mirrors active screen share via direct srcObject.
+// Same technique as PipVideoTile: hidden main-doc track.attach() keeps the
+// subscription alive; direct srcObject on the PiP <video> bypasses the
+// IntersectionObserver issue.
+// ============================================
+function ScreenSharePreview({ participant }: { participant: Participant | null }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !participant) return;
+
+    const pub = participant.getTrackPublication(Track.Source.ScreenShare);
+    const track = pub?.track;
+    if (!track?.mediaStreamTrack) return;
+
+    // Hidden main-doc element keeps LiveKit's adaptive stream subscribed
+    const hidden = document.createElement('video');
+    hidden.style.cssText =
+      'position:fixed;width:2px;height:2px;left:0;top:0;opacity:0.01;pointer-events:none;z-index:-1;';
+    hidden.muted = true;
+    (hidden as HTMLVideoElement).autoplay = true;
+    document.body.appendChild(hidden);
+
+    try { track.attach(hidden); } catch {}
+
+    // Direct srcObject on PiP element — bypasses IntersectionObserver
+    el.srcObject = new MediaStream([track.mediaStreamTrack]);
+    el.play().catch(() => {});
+
+    return () => {
+      try { track.detach(hidden); } catch {}
+      el.srcObject = null;
+      hidden.remove();
+    };
+  }, [participant]);
+
+  return (
+    <div className="flex-1 relative overflow-hidden min-h-0 bg-black">
+      <video
+        ref={videoRef}
+        autoPlay
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-contain"
+      />
+      <div className="absolute top-2 left-2 px-2 py-1 rounded bg-black/50 text-white text-[10px] flex items-center gap-1.5">
+        <Monitor className="w-3 h-3" />
+        Screen Share
       </div>
     </div>
   );
@@ -429,10 +484,23 @@ function MeetingPiPContent({
   const admitted = useAdmittedParticipants(participants, localParticipant?.identity);
   const { names: debugNames } = useDebugParticipants();
   const [showWhiteboardView, setShowWhiteboardView] = useState(true);
+  const [showScreenShareView, setShowScreenShareView] = useState(true);
+
+  // Detect active screen share tracks
+  const screenShareTracks = useTracks([Track.Source.ScreenShare], { onlySubscribed: true });
+  const screenShareParticipant = useMemo(() => {
+    const track = screenShareTracks.find((t) => t.publication?.isSubscribed);
+    return track?.participant ?? null;
+  }, [screenShareTracks]);
+  const hasScreenShare = !!screenShareParticipant;
 
   useEffect(() => {
     if (whiteboardOn) setShowWhiteboardView(true);
   }, [whiteboardOn]);
+
+  useEffect(() => {
+    if (hasScreenShare) setShowScreenShareView(true);
+  }, [hasScreenShare]);
 
   const activeSpeaker = useMemo(() => {
     const speaking = activeSpeakers.find((s) =>
@@ -457,7 +525,9 @@ function MeetingPiPContent({
 
   return (
     <div className="w-full h-full flex flex-col bg-surface-900">
-      {whiteboardOn && showWhiteboardView ? (
+      {hasScreenShare && showScreenShareView ? (
+        <ScreenSharePreview participant={screenShareParticipant} />
+      ) : whiteboardOn && showWhiteboardView ? (
         <WhiteboardPreview />
       ) : (
         <div className="flex-1 flex min-h-0">
@@ -530,6 +600,17 @@ function MeetingPiPContent({
         >
           {cameraEnabled ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
         </button>
+        {hasScreenShare && (
+          <button
+            onClick={() => setShowScreenShareView((v) => !v)}
+            aria-label={showScreenShareView ? 'Switch to video view' : 'Switch to screen share view'}
+            className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+              showScreenShareView ? 'bg-brand-500 text-white' : 'bg-surface-600 text-white'
+            }`}
+          >
+            {showScreenShareView ? <LayoutGrid className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}
+          </button>
+        )}
         {whiteboardOn && (
           <button
             onClick={() => setShowWhiteboardView((v) => !v)}
