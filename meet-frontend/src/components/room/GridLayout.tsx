@@ -19,7 +19,6 @@ import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useDebugParticipants, DummyParticipantTile } from '../../debug/DebugParticipants';
 import { ASPECT_RATIO_CSS } from '../../utils/aspectRatio';
-import { useRef, useState, useEffect } from 'react';
 
 const SCROLL_THRESHOLD_DESKTOP = 25;
 const MIN_TILE_HEIGHT_DESKTOP = 200;
@@ -57,22 +56,6 @@ export function GridLayout() {
   const admittedParticipants = useAdmittedParticipants(participants, localParticipant?.identity);
   const count = admittedParticipants.length + dummyParticipants.length;
   const isSingleParticipant = count === 1;
-
-  // Track grid container size for aspect-ratio-correct tile computation
-  const gridRef = useRef<HTMLDivElement>(null);
-  const [gridSize, setGridSize] = useState({ w: 0, h: 0 });
-
-  useEffect(() => {
-    const el = gridRef.current;
-    if (!el) return;
-    const update = () => {
-      setGridSize({ w: el.clientWidth, h: el.clientHeight });
-    };
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    update();
-    return () => ro.disconnect();
-  }, []);
 
   // Desktop grid dimensions — computed unconditionally (before any early
   // returns) to satisfy the Rules of Hooks. Without this, going from 1
@@ -113,28 +96,31 @@ export function GridLayout() {
 
   // ── Mobile: 2-column grid, tiles fill available space ──
   if (isMobile) {
-    // Calculate rows needed for mobile (2 columns)
     const mobileRows = Math.ceil(count / 2);
+    // When few enough to fit on screen, fill the viewport (no scroll).
+    // Beyond that, use fixed-height rows with scroll.
+    const fitsOnScreen = mobileRows <= 3;
     return (
       <div
-        ref={gridRef}
-        className={`w-full h-full ${pad} overflow-y-auto overflow-x-hidden`}
+        className={`w-full h-full ${pad} ${fitsOnScreen ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden'}`}
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-          gridAutoRows: `${Math.floor(gridSize.h > 0 ? gridSize.h / mobileRows : 200)}px`,
+          ...(fitsOnScreen
+            ? { gridTemplateRows: `repeat(${mobileRows}, minmax(0, 1fr))` }
+            : { gridAutoRows: '200px' }),
           gap: `${gap}px`,
           scrollbarWidth: 'thin',
           scrollbarColor: 'rgba(255,255,255,0.3) transparent',
         }}
       >
         {admittedParticipants.map((p) => (
-          <div key={p.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden min-h-0">
+          <div key={p.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden min-w-0 min-h-0">
             <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
           </div>
         ))}
         {dummyParticipants.map((d) => (
-          <div key={d.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden min-h-0">
+          <div key={d.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden min-w-0 min-h-0">
             <DummyParticipantTile name={d.name} size="small" state={dummyStates[d.identity]} />
           </div>
         ))}
@@ -175,7 +161,6 @@ export function GridLayout() {
   // Fixed/responsive desktop grid — tiles fill the container completely
   return (
     <div
-      ref={gridRef}
       className={`w-full h-full ${pad} overflow-hidden`}
       style={{
         display: 'grid',
