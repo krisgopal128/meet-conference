@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState, useMemo, Component, ReactNode } from 'react';
 import { Track, ParticipantEvent, type RemoteTrackPublication, type Participant } from 'livekit-client';
 import SignalBars from './SignalBars';
+import { useFaceFraming } from '../../hooks/useFaceFraming';
 import {
   VideoTrack,
   ParticipantName,
@@ -15,6 +16,7 @@ import {
   useLayout,
   useQualityMode,
   useVideoFitMode,
+  useFaceFramingEnabled,
   useSelectedQualityMode,
   useQualityOverrideReason,
   useDisplayName,
@@ -63,6 +65,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
   const videoElementRef = useRef<HTMLVideoElement>(null);
   const layout = useLayout();
   const isMobile = useIsMobile();
+  const faceFramingStoreEnabled = useFaceFramingEnabled();
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const contextCameraTrackRef = useRoomCameraTrack(participant.identity);
@@ -333,6 +336,10 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
     };
   }, []);
 
+  // AI face framing — detect faces and center video on the face (max 15% shift)
+  const faceFramingEnabled = meetingRoomConfig.features.faceFraming && faceFramingStoreEnabled && shouldShowVideo && !isFilmstrip;
+  const facePosition = useFaceFraming(videoElementRef, faceFramingEnabled, participant.isLocal && mirrorLocalVideo);
+
   return (
     <div
       ref={tileRef}
@@ -356,7 +363,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
               className={`w-full h-full ${participant.isLocal && mirrorLocalVideo ? 'scale-x-[-1]' : ''}`}
               style={{ 
                 objectFit: videoFitMode,
-                objectPosition: 'center',
+                objectPosition: faceFramingEnabled ? facePosition : 'center',
                 width: '100%',
                 height: '100%',
               }}

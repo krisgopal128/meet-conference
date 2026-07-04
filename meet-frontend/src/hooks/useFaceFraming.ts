@@ -137,9 +137,9 @@ export function useFaceFraming(
             faceCx = 1 - faceCx;
           }
 
-          // Clamp to valid range (avoid extreme edges)
-          const targetX = Math.max(0.1, Math.min(0.9, faceCx));
-          const targetY = Math.max(0.1, Math.min(0.9, faceCy));
+          // Clamp to ±7.5% from center (max 15% shift = 85% video visible)
+          const targetX = Math.max(0.425, Math.min(0.575, faceCx));
+          const targetY = Math.max(0.425, Math.min(0.575, faceCy));
 
           // Smooth interpolation toward target
           smoothedRef.current.x += (targetX - smoothedRef.current.x) * SMOOTHING_FACTOR;
