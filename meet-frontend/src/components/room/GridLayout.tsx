@@ -22,7 +22,7 @@ import { ASPECT_RATIO_CSS } from '../../utils/aspectRatio';
 
 const SCROLL_THRESHOLD_DESKTOP = 25;
 const MIN_TILE_HEIGHT_DESKTOP = 200;
-const DESKTOP_GAP_PX = 8;
+const DESKTOP_GAP_PX = 4;
 
 function getGridDimensions(count: number, ratio: GridAspectRatio): { cols: number; rows: number } {
   if (count <= 1) return { cols: 1, rows: 1 };
@@ -90,8 +90,8 @@ export function GridLayout() {
     );
   }
 
-  const gap = isMobile ? 4 : desktopGap;
-  const pad = isMobile ? 'p-1' : 'p-2';
+  const gap = isMobile ? 2 : desktopGap;
+  const pad = isMobile ? 'p-0.5' : 'p-1';
   const aspectCss = ASPECT_RATIO_CSS[aspectRatio];
 
   // ── Mobile: 2-column grid, tiles maintain video aspect ratio ──

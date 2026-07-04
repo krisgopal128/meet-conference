@@ -68,7 +68,7 @@ export function SpeakerLayout({ activeSpeakers }: SpeakerLayoutProps) {
   const isLandscape = aspectRatio === '16:9' || aspectRatio === '4:3';
 
   return (
-    <div className={`flex flex-col h-full ${rest.length > 0 ? 'gap-1 sm:gap-2' : ''}`}>
+    <div className={`flex flex-col h-full ${rest.length > 0 ? 'gap-0.5 sm:gap-1' : ''}`}>
       <div className="flex-1 min-h-0 flex items-center justify-center">
         {featured ? (
           <div
