@@ -106,6 +106,7 @@ interface UIState {
   batteryCharging: boolean | null;
   gridAspectRatio: GridAspectRatio;
   videoFitMode: VideoFitMode;
+  faceFramingEnabled: boolean;
   backgroundBlurEnabled: boolean;
   backgroundBlurLevel: number;
   backgroundMode: BackgroundMode;
@@ -144,6 +145,7 @@ interface UIActions {
   setCallMetrics: (metrics: Partial<Pick<UIState, 'packetLossPercent' | 'rttMs' | 'jitterMs' | 'availableBitrateKbps' | 'batteryLevelPercent' | 'batteryCharging'>>) => void;
   setGridAspectRatio: (ratio: GridAspectRatio) => void;
   setVideoFitMode: (mode: VideoFitMode) => void;
+  setFaceFramingEnabled: (enabled: boolean) => void;
   setBackgroundBlurEnabled: (enabled: boolean) => void;
   setBackgroundBlurLevel: (level: number) => void;
   setBackgroundMode: (mode: BackgroundMode) => void;
@@ -184,6 +186,7 @@ const initialUIState: UIState = {
     batteryCharging: null,
   gridAspectRatio: '16:9',
   videoFitMode: 'contain',
+  faceFramingEnabled: true,
   backgroundBlurEnabled: false,
   backgroundBlurLevel: 10,
   backgroundMode: 'blur' as BackgroundMode,
@@ -402,6 +405,7 @@ export const useRoomStore = create<RoomStore>()(
           setCallMetrics: (metrics) => set(metrics, false, 'setCallMetrics'),
           setGridAspectRatio: (gridAspectRatio) => set({ gridAspectRatio }, false, 'setGridAspectRatio'),
           setVideoFitMode: (videoFitMode) => set({ videoFitMode }, false, 'setVideoFitMode'),
+          setFaceFramingEnabled: (faceFramingEnabled: boolean) => set({ faceFramingEnabled }, false, 'setFaceFramingEnabled'),
           setBackgroundBlurEnabled: (backgroundBlurEnabled) => set({ backgroundBlurEnabled }, false, 'setBackgroundBlurEnabled'),
           setBackgroundBlurLevel: (backgroundBlurLevel) => set({ backgroundBlurLevel }, false, 'setBackgroundBlurLevel'),
           setBackgroundMode: (backgroundMode) => set({ backgroundMode }, false, 'setBackgroundMode'),
@@ -593,6 +597,7 @@ export const useRoomStore = create<RoomStore>()(
             screenShareMode: state.screenShareMode,
             gridAspectRatio: state.gridAspectRatio,
             videoFitMode: state.videoFitMode,
+            faceFramingEnabled: state.faceFramingEnabled,
             backgroundBlurEnabled: state.backgroundBlurEnabled,
             ...initialChatState,
             ...initialFeaturesState,
@@ -666,6 +671,7 @@ export const useBatteryLevelPercent = () => useRoomStore((state) => state.batter
 export const useBatteryCharging = () => useRoomStore((state) => state.batteryCharging);
 export const useGridAspectRatio = () => useRoomStore((state) => state.gridAspectRatio);
 export const useVideoFitMode = () => useRoomStore((state) => state.videoFitMode);
+export const useFaceFramingEnabled = () => useRoomStore((state) => state.faceFramingEnabled);
 export const useDiagnosticsIntervalSec = () => useRoomStore((state) => state.diagnosticsIntervalSec);
 export const useBackgroundBlurEnabled = () => useRoomStore((state) => state.backgroundBlurEnabled);
 export const useBackgroundBlurLevel = () => useRoomStore((state) => state.backgroundBlurLevel);
@@ -749,6 +755,7 @@ export const useUIActions = () => useRoomStore(
     setCallMetrics: state.setCallMetrics,
     setGridAspectRatio: state.setGridAspectRatio,
     setVideoFitMode: state.setVideoFitMode,
+    setFaceFramingEnabled: state.setFaceFramingEnabled,
     setBackgroundBlurEnabled: state.setBackgroundBlurEnabled,
     setBackgroundBlurLevel: state.setBackgroundBlurLevel,
     setBackgroundMode: state.setBackgroundMode,

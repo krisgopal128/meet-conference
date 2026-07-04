@@ -64,6 +64,7 @@ export interface MeetingRoomConfig {
     connectionQualityIndicator: boolean;
     networkRecoveryToasts: boolean;
     screenshareModeSelector: boolean;
+    faceFraming: boolean;
   };
   moderation: {
     muteParticipant: boolean;
@@ -313,6 +314,7 @@ const fallbackConfig: MeetingRoomConfig = {
     connectionQualityIndicator: true,
     networkRecoveryToasts: true,
     screenshareModeSelector: true,
+    faceFraming: true,
   },
   moderation: {
     muteParticipant: true,

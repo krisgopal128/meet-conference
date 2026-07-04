@@ -23,6 +23,7 @@ import {
   useBackgroundImagePath,
   useGridAspectRatio,
   useVideoFitMode,
+  useFaceFramingEnabled,
   useDiagnosticsIntervalSec,
   useUIActions,
   useIsModerator,
@@ -62,12 +63,13 @@ export function SettingsPanel() {
   const backgroundImagePath = useBackgroundImagePath();
   const gridAspectRatio = useGridAspectRatio();
   const videoFitMode = useVideoFitMode();
+  const faceFramingEnabled = useFaceFramingEnabled();
   const diagnosticsIntervalSec = useDiagnosticsIntervalSec();
   const isModerator = useIsModerator();
   const roomName = useRoomName();
 
   // Action hooks
-  const { toggleSettings, openSettingsView, toggleMirrorLocalVideo, toggleBackgroundBlur, setBackgroundBlurLevel, setBackgroundBlurIntensity, setBackgroundMode, setBackgroundBgColor, setBackgroundImagePath, setQualityMode, setScreenShareMode, setGridAspectRatio, setVideoFitMode, setDiagnosticsIntervalSec, clearDiagnosticsLog } = useUIActions();
+  const { toggleSettings, openSettingsView, toggleMirrorLocalVideo, toggleBackgroundBlur, setBackgroundBlurLevel, setBackgroundBlurIntensity, setBackgroundMode, setBackgroundBgColor, setBackgroundImagePath, setQualityMode, setScreenShareMode, setGridAspectRatio, setVideoFitMode, setFaceFramingEnabled, setDiagnosticsIntervalSec, clearDiagnosticsLog } = useUIActions();
   
   const persistedSpeakerVolumeRef = useRef(100);
   const [speakerVolume, setSpeakerVolume] = useState(() => persistedSpeakerVolumeRef.current);
@@ -752,6 +754,30 @@ export function SettingsPanel() {
               </div>
               <p className="mt-1 text-xs text-surface-400">Flip your video horizontally (mirror effect)</p>
             </button>
+
+            {/* AI Face Framing */}
+            {meetingRoomConfig.features.faceFraming && (
+              <button
+                onClick={() => setFaceFramingEnabled(!faceFramingEnabled)}
+                className="w-full rounded-xl border border-surface-700 bg-surface-750/50 px-4 py-3 text-left transition hover:bg-surface-700"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-surface-200">
+                    <Eye size={16} />
+                    <span className="text-sm font-medium">AI Face Framing</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400">AI</span>
+                  </div>
+                  <span className={`text-xs ${faceFramingEnabled ? 'text-success-400' : 'text-surface-400'}`}>
+                    {faceFramingEnabled ? 'On' : 'Off'}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-surface-400">
+                  {faceFramingEnabled
+                    ? 'Detects faces and centers video on them (smart framing)'
+                    : 'Standard center-crop — faces may be off-center'}
+                </p>
+              </button>
+            )}
 
             {/* Background Effects */}
             <div className="rounded-xl border border-surface-200 dark:border-surface-700 px-4 py-3">
