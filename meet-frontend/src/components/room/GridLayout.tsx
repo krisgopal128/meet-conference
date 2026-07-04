@@ -108,19 +108,22 @@ export function GridLayout() {
             ? { gridTemplateRows: `repeat(${mobileRows}, minmax(0, 1fr))` }
             : { gridAutoRows: '200px' }),
           gap: `${gap}px`,
-          placeItems: 'center',
           scrollbarWidth: 'thin',
           scrollbarColor: 'rgba(255,255,255,0.3) transparent',
         }}
       >
         {admittedParticipants.map((p) => (
-          <div key={p.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden min-w-0 min-h-0 w-full h-full" style={{ aspectRatio: aspectCss }}>
-            <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
+          <div key={p.identity} className="relative min-w-0 min-h-0 flex items-center justify-center">
+            <div className="relative rounded-2xl bg-surface-900 overflow-hidden" style={{ aspectRatio: aspectCss, height: '100%', maxWidth: '100%' }}>
+              <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
+            </div>
           </div>
         ))}
         {dummyParticipants.map((d) => (
-          <div key={d.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden min-w-0 min-h-0 w-full h-full" style={{ aspectRatio: aspectCss }}>
-            <DummyParticipantTile name={d.name} size="small" state={dummyStates[d.identity]} />
+          <div key={d.identity} className="relative min-w-0 min-h-0 flex items-center justify-center">
+            <div className="relative rounded-2xl bg-surface-900 overflow-hidden" style={{ aspectRatio: aspectCss, height: '100%', maxWidth: '100%' }}>
+              <DummyParticipantTile name={d.name} size="small" state={dummyStates[d.identity]} />
+            </div>
           </div>
         ))}
       </div>
@@ -157,7 +160,7 @@ export function GridLayout() {
     );
   }
 
-  // Fixed/responsive desktop grid — tiles maintain video aspect ratio (no cropping)
+  // Fixed/responsive desktop grid — tiles match video aspect ratio (no crop)
   return (
     <div
       className={`w-full h-full ${pad} overflow-hidden`}
@@ -166,25 +169,26 @@ export function GridLayout() {
         gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
         gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
         gap: `${gap}px`,
-        placeItems: 'center',
       }}
     >
       {admittedParticipants.map((p) => (
         <div
           key={p.identity}
-          className="relative rounded-2xl bg-surface-900 overflow-hidden min-w-0 min-h-0 w-full h-full"
-          style={{ aspectRatio: aspectCss }}
+          className="relative rounded-2xl bg-surface-900 overflow-hidden min-w-0 min-h-0 flex items-center justify-center"
         >
-          <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
+          <div className="relative rounded-2xl bg-surface-900 overflow-hidden" style={{ aspectRatio: aspectCss, height: '100%', maxWidth: '100%' }}>
+            <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
+          </div>
         </div>
       ))}
       {dummyParticipants.map((d) => (
         <div
           key={d.identity}
-          className="relative rounded-2xl bg-surface-900 overflow-hidden min-w-0 min-h-0 w-full h-full"
-          style={{ aspectRatio: aspectCss }}
+          className="relative rounded-2xl bg-surface-900 overflow-hidden min-w-0 min-h-0 flex items-center justify-center"
         >
-          <DummyParticipantTile name={d.name} size="small" state={dummyStates[d.identity]} />
+          <div className="relative rounded-2xl bg-surface-900 overflow-hidden" style={{ aspectRatio: aspectCss, height: '100%', maxWidth: '100%' }}>
+            <DummyParticipantTile name={d.name} size="small" state={dummyStates[d.identity]} />
+          </div>
         </div>
       ))}
     </div>
