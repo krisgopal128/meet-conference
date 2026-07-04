@@ -53,19 +53,34 @@ export default defineConfig(({ mode }) => ({
     modulePreload: {
       polyfill: false,
       resolveDependencies: (_filename: string, deps: string[]) => {
-        return deps.filter((dep) => !dep.includes('excalidraw') && !dep.includes('blur-processor') && !dep.includes('cytoscape') && !dep.includes('katex'));
+        return deps.filter((dep) =>
+          !dep.includes('excalidraw') &&
+          !dep.includes('blur-processor') &&
+          !dep.includes('cytoscape') &&
+          !dep.includes('katex') &&
+          !dep.includes('mermaid') &&
+          !dep.includes('livekit') &&
+          !dep.includes('RoomPage') &&
+          !dep.includes('PreJoin')
+        );
       },
     },
     rollupOptions: {
       output: {
-        // Let Rolldown handle code splitting automatically.
-        // WhiteboardLayout already uses dynamic import('@excalidraw/excalidraw'),
-        // so excalidraw will be split into its own lazy-loaded chunk.
         advancedChunks: {
           groups: [
-            { name: 'vendor', test: /node_modules\/(react|react-dom|scheduler|react-router|@radix-ui|clsx|tailwind-merge)\// },
+            // Core React runtime — changes rarely, cached aggressively
+            { name: 'vendor', test: /node_modules\/(react|react-dom|scheduler)\// },
+            // Router + Radix UI primitives
+            { name: 'vendor-router', test: /node_modules\/(react-router|@radix-ui|clsx|tailwind-merge)\// },
+            // LiveKit SDK — large, changes rarely
             { name: 'livekit', test: /node_modules\/(livekit-client|@livekit)\// },
+            // Icons
             { name: 'icons', test: /node_modules\/lucide-react\// },
+            // Mermaid diagrams — lazy-loaded by admin pages only
+            { name: 'mermaid', test: /node_modules\/(mermaid|cytoscape)\// },
+            // KaTeX math rendering — lazy-loaded
+            { name: 'katex', test: /node_modules\/katex\// },
           ],
         },
       },
