@@ -77,10 +77,6 @@ export default defineConfig(({ mode }) => ({
             { name: 'livekit', test: /node_modules\/(livekit-client|@livekit)\// },
             // Icons
             { name: 'icons', test: /node_modules\/lucide-react\// },
-            // Mermaid diagrams — lazy-loaded by admin pages only
-            { name: 'mermaid', test: /node_modules\/(mermaid|cytoscape)\// },
-            // KaTeX math rendering — lazy-loaded
-            { name: 'katex', test: /node_modules\/katex\// },
           ],
         },
       },
