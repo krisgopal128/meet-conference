@@ -185,7 +185,7 @@ const initialUIState: UIState = {
     batteryLevelPercent: null,
     batteryCharging: null,
   gridAspectRatio: '16:9',
-  videoFitMode: 'contain',
+  videoFitMode: 'cover',
   faceFramingEnabled: true,
   backgroundBlurEnabled: false,
   backgroundBlurLevel: 10,
