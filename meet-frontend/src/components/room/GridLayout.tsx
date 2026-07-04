@@ -114,12 +114,12 @@ export function GridLayout() {
         }}
       >
         {admittedParticipants.map((p) => (
-          <div key={p.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden min-w-0 min-h-0" style={{ aspectRatio: aspectCss, maxHeight: '100%', maxWidth: '100%', width: '100%' }}>
+          <div key={p.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden min-w-0 min-h-0 w-full h-full" style={{ aspectRatio: aspectCss }}>
             <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
           </div>
         ))}
         {dummyParticipants.map((d) => (
-          <div key={d.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden min-w-0 min-h-0" style={{ aspectRatio: aspectCss, maxHeight: '100%', maxWidth: '100%', width: '100%' }}>
+          <div key={d.identity} className="relative rounded-2xl bg-surface-900 overflow-hidden min-w-0 min-h-0 w-full h-full" style={{ aspectRatio: aspectCss }}>
             <DummyParticipantTile name={d.name} size="small" state={dummyStates[d.identity]} />
           </div>
         ))}
@@ -172,8 +172,8 @@ export function GridLayout() {
       {admittedParticipants.map((p) => (
         <div
           key={p.identity}
-          className="relative rounded-2xl bg-surface-900 overflow-hidden min-w-0 min-h-0"
-          style={{ aspectRatio: aspectCss, maxHeight: '100%', maxWidth: '100%', width: '100%' }}
+          className="relative rounded-2xl bg-surface-900 overflow-hidden min-w-0 min-h-0 w-full h-full"
+          style={{ aspectRatio: aspectCss }}
         >
           <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
         </div>
@@ -181,8 +181,8 @@ export function GridLayout() {
       {dummyParticipants.map((d) => (
         <div
           key={d.identity}
-          className="relative rounded-2xl bg-surface-900 overflow-hidden min-w-0 min-h-0"
-          style={{ aspectRatio: aspectCss, maxHeight: '100%', maxWidth: '100%', width: '100%' }}
+          className="relative rounded-2xl bg-surface-900 overflow-hidden min-w-0 min-h-0 w-full h-full"
+          style={{ aspectRatio: aspectCss }}
         >
           <DummyParticipantTile name={d.name} size="small" state={dummyStates[d.identity]} />
         </div>
