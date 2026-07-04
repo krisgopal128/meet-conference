@@ -616,6 +616,7 @@ export const useRoomStore = create<RoomStore>()(
           screenShareMode: state.screenShareMode,
           gridAspectRatio: state.gridAspectRatio,
           videoFitMode: state.videoFitMode,
+          faceFramingEnabled: state.faceFramingEnabled,
           backgroundBlurEnabled: state.backgroundBlurEnabled,
         }),
       }

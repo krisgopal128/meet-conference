@@ -338,7 +338,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
 
   // AI face framing — detect faces and center video on the face
   const faceFramingEnabled = meetingRoomConfig.features.faceFraming && faceFramingStoreEnabled && shouldShowVideo && !isFilmstrip;
-  const facePosition = useFaceFraming(videoElementRef, faceFramingEnabled);
+  const facePosition = useFaceFraming(videoElementRef, faceFramingEnabled, participant.isLocal && mirrorLocalVideo);
 
   return (
     <div

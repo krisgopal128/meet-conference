@@ -30,11 +30,12 @@ type FaceDetectorType = {
 
 let _sharedDetector: FaceDetectorType | null = null;
 let _loadingPromise: Promise<FaceDetectorType | null> | null = null;
-let _loadFailed = false;
+let _loadFailedCount = 0;
+const MAX_LOAD_RETRIES = 3;
 
 async function getFaceDetector(): Promise<FaceDetectorType | null> {
   if (_sharedDetector) return _sharedDetector;
-  if (_loadFailed) return null;
+  if (_loadFailedCount >= MAX_LOAD_RETRIES) return null;
   if (_loadingPromise) return _loadingPromise;
 
   _loadingPromise = (async () => {
@@ -48,8 +49,10 @@ async function getFaceDetector(): Promise<FaceDetectorType | null> {
       };
       return _sharedDetector;
     } catch {
-      _loadFailed = true;
+      _loadFailedCount++;
       return null;
+    } finally {
+      _loadingPromise = null;
     }
   })();
 
@@ -63,17 +66,28 @@ interface TargetPosition {
 
 export function useFaceFraming(
   videoRef: React.RefObject<HTMLVideoElement | null>,
-  enabled: boolean
+  enabled: boolean,
+  mirrored: boolean,
 ): string {
   const [objectPosition, setObjectPosition] = useState('50% 50%');
   const rafRef = useRef<number | null>(null);
   const lastDetectRef = useRef(0);
   const smoothedRef = useRef<TargetPosition>({ x: 0.5, y: 0.5 });
-  const hasFaceRef = useRef(false);
+  const mountedRef = useRef(true);
+  const mirroredRef = useRef(mirrored);
+  mirroredRef.current = mirrored;
 
   const computePosition = useCallback(() => {
+    if (!mountedRef.current) return;
+
     const video = videoRef.current;
     if (!video || video.readyState < 2 || video.videoWidth === 0) {
+      rafRef.current = requestAnimationFrame(computePosition);
+      return;
+    }
+
+    // Skip detection when tab is hidden — resume when visible
+    if (document.hidden) {
       rafRef.current = requestAnimationFrame(computePosition);
       return;
     }
@@ -86,7 +100,7 @@ export function useFaceFraming(
     lastDetectRef.current = now;
 
     getFaceDetector().then((detector) => {
-      if (!detector || document.hidden) {
+      if (!mountedRef.current || !detector) {
         rafRef.current = requestAnimationFrame(computePosition);
         return;
       }
@@ -101,14 +115,10 @@ export function useFaceFraming(
 
         if (detections.length === 0) {
           // No face — gently drift back to center
-          if (hasFaceRef.current) {
-            hasFaceRef.current = false;
-          }
           smoothedRef.current.x += (0.5 - smoothedRef.current.x) * SMOOTHING_FACTOR;
           smoothedRef.current.y += (0.5 - smoothedRef.current.y) * SMOOTHING_FACTOR;
         } else {
-          hasFaceRef.current = true;
-          // Use the largest/most confident face
+          // Use the largest face (most prominent)
           const best = detections.reduce((max, d) => {
             const area = d.boundingBox.width * d.boundingBox.height;
             const maxArea = max.boundingBox.width * max.boundingBox.height;
@@ -118,10 +128,16 @@ export function useFaceFraming(
           // Face center in normalized coordinates [0, 1]
           const vw = video.videoWidth;
           const vh = video.videoHeight;
-          const faceCx = (best.boundingBox.originX + best.boundingBox.width / 2) / vw;
+          let faceCx = (best.boundingBox.originX + best.boundingBox.width / 2) / vw;
           const faceCy = (best.boundingBox.originY + best.boundingBox.height / 2) / vh;
 
-          // Clamp to valid range
+          // If video is displayed mirrored (local participant), flip the X axis
+          // so object-position follows the face as the user sees it
+          if (mirroredRef.current) {
+            faceCx = 1 - faceCx;
+          }
+
+          // Clamp to valid range (avoid extreme edges)
           const targetX = Math.max(0.1, Math.min(0.9, faceCx));
           const targetY = Math.max(0.1, Math.min(0.9, faceCy));
 
@@ -130,19 +146,24 @@ export function useFaceFraming(
           smoothedRef.current.y += (targetY - smoothedRef.current.y) * SMOOTHING_FACTOR;
         }
 
-        // Convert normalized position to CSS percentages
+        // Only update state if position actually changed (avoid needless re-renders)
         const cssX = Math.round(smoothedRef.current.x * 100);
         const cssY = Math.round(smoothedRef.current.y * 100);
-        setObjectPosition(`${cssX}% ${cssY}%`);
+        const newPos = `${cssX}% ${cssY}%`;
+        setObjectPosition((prev) => (prev !== newPos ? newPos : prev));
       } catch {
-        // Detection error — silently ignore
+        // Detection error — silently ignore, keep previous position
       }
 
-      rafRef.current = requestAnimationFrame(computePosition);
+      if (mountedRef.current) {
+        rafRef.current = requestAnimationFrame(computePosition);
+      }
     });
   }, [videoRef]);
 
   useEffect(() => {
+    mountedRef.current = true;
+
     if (!enabled) {
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
@@ -155,11 +176,22 @@ export function useFaceFraming(
 
     rafRef.current = requestAnimationFrame(computePosition);
 
+    // Handle visibility change — resume detection immediately when tab becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden && mountedRef.current && !rafRef.current) {
+        lastDetectRef.current = 0; // Force immediate detection on resume
+        rafRef.current = requestAnimationFrame(computePosition);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
+      mountedRef.current = false;
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
       }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [enabled, computePosition]);
 
