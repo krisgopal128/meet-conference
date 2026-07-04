@@ -18,7 +18,7 @@ import { usePinnedIdentity, useGridAspectRatio } from '../../store/roomStore';
 import { useMemo } from 'react';
 import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
 import { useIsMobile } from '../../hooks/useIsMobile';
-import { ASPECT_RATIO_MULTIPLIERS } from '../../utils/aspectRatio';
+import { ASPECT_RATIO_MULTIPLIERS, ASPECT_RATIO_CSS } from '../../utils/aspectRatio';
 
 interface SpeakerLayoutProps {
   activeSpeakers: Participant[];
@@ -65,14 +65,26 @@ export function SpeakerLayout({ activeSpeakers }: SpeakerLayoutProps) {
 
   const rest = admittedParticipants.filter(p => p !== featured);
 
+  const isLandscape = aspectRatio === '16:9' || aspectRatio === '4:3';
+
   return (
     <div className={`flex flex-col h-full ${rest.length > 0 ? 'gap-1 sm:gap-2' : ''}`}>
-      <div className="flex-1 min-h-0 flex">
+      <div className="flex-1 min-h-0 flex items-center justify-center">
         {featured ? (
-          <div className="relative rounded-2xl bg-surface-900 w-full h-full overflow-hidden">
-            <ParticipantTile 
-              participant={featured} 
-              className="w-full h-full rounded-2xl" 
+          <div
+            className="relative rounded-2xl bg-surface-900 overflow-hidden"
+            style={{
+              aspectRatio: ASPECT_RATIO_CSS[aspectRatio],
+              maxWidth: '100%',
+              maxHeight: '100%',
+              ...(isLandscape
+                ? { width: '100%', height: 'auto' }
+                : { height: '100%', width: 'auto' }),
+            }}
+          >
+            <ParticipantTile
+              participant={featured}
+              className="w-full h-full rounded-2xl"
               isSpeakerTile={true}
               participantCount={admittedParticipants.length}
             />
