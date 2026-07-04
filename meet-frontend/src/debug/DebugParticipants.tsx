@@ -27,22 +27,29 @@ import { Track } from 'livekit-client';
 import { Mic, MicOff, Video, VideoOff, LogOut, Monitor } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-// ─── Dummy name pool ───
+// ─── Dummy name pool (generated up to 99) ───
 
-const DUMMY_NAMES = [
-  'Alice Chen',
-  'Bob Smith',
-  'Charlie Davis',
-  'Diana Lopez',
-  'Eve Martin',
-  'Frank Wang',
-  'Grace Kim',
-  'Henry Park',
-  'Iris Nair',
-  'Jack Roy',
-  'Karen Lee',
-  'Liam Das',
+const MAX_DUMMIES = 99;
+
+const FIRST_NAMES = [
+  'Alice', 'Bob', 'Charlie', 'Diana', 'Eve', 'Frank', 'Grace', 'Henry',
+  'Iris', 'Jack', 'Karen', 'Liam', 'Mona', 'Nathan', 'Olivia', 'Paul',
+  'Quinn', 'Rita', 'Sam', 'Tina', 'Uma', 'Victor', 'Wendy', 'Xavier',
+  'Yara', 'Zane',
 ];
+
+const LAST_NAMES = [
+  'Chen', 'Smith', 'Davis', 'Lopez', 'Martin', 'Wang', 'Kim', 'Park',
+  'Nair', 'Roy', 'Lee', 'Das', 'Brown', 'Garcia', 'Patel', 'Khan',
+  'Singh', 'Cohen', 'Reed', 'Ford',
+];
+
+const DUMMY_NAMES: string[] = Array.from({ length: MAX_DUMMIES }, (_, i) => {
+  const first = FIRST_NAMES[i % FIRST_NAMES.length];
+  const last = LAST_NAMES[Math.floor(i / FIRST_NAMES.length) % LAST_NAMES.length];
+  const suffix = i >= FIRST_NAMES.length * LAST_NAMES.length ? ` ${Math.floor(i / (FIRST_NAMES.length * LAST_NAMES.length)) + 1}` : '';
+  return `${first} ${last}${suffix}`;
+});
 
 // ─── Context ───
 
