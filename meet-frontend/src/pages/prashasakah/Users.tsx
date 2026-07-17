@@ -184,9 +184,9 @@ export default function Users() {
 
       {/* Filters */}
       <div className="bg-white rounded-xl border border-surface-200 p-4">
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-col md:flex-row gap-4 overflow-x-auto">
           {/* Search */}
-          <div className="flex-1">
+          <div className="flex-1 min-w-[200px]">
             <div className="relative">
               <svg 
                 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400" 
@@ -207,7 +207,7 @@ export default function Users() {
           </div>
 
           {/* Role Filter */}
-          <div className="w-full md:w-40">
+          <div className="w-full md:w-40 min-w-[120px]">
             <select aria-label="Filter by role"
               value={roleFilter}
               onChange={(e) => {
@@ -224,7 +224,7 @@ export default function Users() {
           </div>
 
           {/* Status Filter */}
-          <div className="w-full md:w-40">
+          <div className="w-full md:w-40 min-w-[120px]">
             <select aria-label="Filter by status"
               value={statusFilter}
               onChange={(e) => {
@@ -256,7 +256,7 @@ export default function Users() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between bg-white rounded-xl border border-surface-200 px-4 py-3">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-xl border border-surface-200 px-4 py-3 overflow-x-auto">
           <div className="flex items-center gap-2">
             <span className="text-sm text-surface-500">Show</span>
             <select aria-label="Items per page"

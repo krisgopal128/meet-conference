@@ -31,3 +31,8 @@ coverage/
 # Misc
 *.tgz
 .npm
+# Test files with hardcoded secrets
+__tests__/
+*.test.ts
+*.test.tsx
+vitest.config.ts

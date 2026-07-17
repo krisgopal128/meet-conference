@@ -7,7 +7,7 @@
  * This avoids downloading the 9MB WASM on page load.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BackgroundBlurEngine, type BackgroundBlurOptions } from '../utils/backgroundBlurEngine';
 import logger from '../utils/logger';
 
@@ -22,7 +22,9 @@ export function useBackgroundBlurPreview(
   options: BackgroundBlurOptions,
   mirror: boolean = false,
   fitMode: 'cover' | 'contain' = 'cover',
-) {
+  coverScale: number = 1,
+): { loading: boolean } {
+  const [loading, setLoading] = useState(false);
   const engineRef = useRef<BackgroundBlurEngine | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const workerReadyRef = useRef(false);
@@ -35,6 +37,8 @@ export function useBackgroundBlurPreview(
   mirrorRef.current = mirror;
   const fitModeRef = useRef(fitMode);
   fitModeRef.current = fitMode;
+  const coverScaleRef = useRef(coverScale);
+  coverScaleRef.current = coverScale;
   const lastMaskRef = useRef<MaskData | null>(null);
   const isFrameInFlightRef = useRef(false);
   const retryCountRef = useRef(0);
@@ -44,9 +48,16 @@ export function useBackgroundBlurPreview(
   // Avoids downloading the 9MB WASM on page load for users who don't use blur.
   const blurEnabled = options.enabled;
   useEffect(() => {
-    if (!blurEnabled) return;
-    if (workerRef.current) return;
+    if (!blurEnabled) {
+      setLoading(false);
+      return;
+    }
+    if (workerRef.current) {
+      setLoading(false);
+      return;
+    }
 
+    setLoading(true);
     logger.info('[useBackgroundBlurPreview] Initializing segmentation worker...');
     const worker = new Worker(
       new URL('../utils/segmentationWorker.ts', import.meta.url),
@@ -58,6 +69,7 @@ export function useBackgroundBlurPreview(
       if (msg.type === 'ready') {
         workerReadyRef.current = true;
         retryCountRef.current = 0;
+        setLoading(false);
         logger.info('[useBackgroundBlurPreview] Worker ready — segmentation active');
       } else if (msg.type === 'mask') {
         lastMaskRef.current = {
@@ -120,7 +132,7 @@ export function useBackgroundBlurPreview(
       canvas.style.inset = '0';
       canvas.style.width = '100%';
       canvas.style.height = '100%';
-      canvas.style.objectFit = fitModeRef.current;
+      canvas.style.objectFit = fitModeRef.current === 'cover' ? 'contain' : fitModeRef.current;
       canvas.style.pointerEvents = 'none';
       canvas.style.zIndex = '5';
       canvas.style.display = 'none';
@@ -166,8 +178,13 @@ export function useBackgroundBlurPreview(
         videoElement.style.opacity = '0';
       }
 
-      canvas.style.transform = mirrorRef.current ? 'scaleX(-1)' : 'none';
-      canvas.style.objectFit = fitModeRef.current;
+      canvas.style.transform = (() => {
+        const parts: string[] = [];
+        if (mirrorRef.current) parts.push('scaleX(-1)');
+        if (coverScaleRef.current > 1) parts.push(`scale(${coverScaleRef.current})`);
+        return parts.length > 0 ? parts.join(' ') : 'none';
+      })();
+      canvas.style.objectFit = fitModeRef.current === 'cover' ? 'contain' : fitModeRef.current;
 
       engine.updateOptions(opts);
 
@@ -225,4 +242,8 @@ export function useBackgroundBlurPreview(
       lastMaskRef.current = null;
     };
   }, []);
+
+  return { loading };
 }
+
+export type BackgroundBlurPreviewResult = { loading: boolean };

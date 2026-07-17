@@ -61,10 +61,7 @@ export function usePreviewBackgroundBlur(
     segmenterLoadingRef.current = false;
   };
 
-  useEffect(() => {
-    if (!videoElement) return;
-    void ensureSegmenter();
-  }, [videoElement]);
+  // Removed eager segmenter loading - now only loads when blur is enabled
 
   useEffect(() => {
     if (!videoElement) return;

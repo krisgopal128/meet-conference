@@ -128,6 +128,11 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
     navigate('/thank-you', { state: { roomName: room.name, reason: 'left' }, replace: true });
   }, [room, navigate]);
 
+  const handleToggleScreenSharePiP = useCallback(async () => {
+    if (!localParticipant) return;
+    await localParticipant.setScreenShareEnabled(!localParticipant.isScreenShareEnabled);
+  }, [localParticipant]);
+
   const {
     isSupported: pipSupported,
     pipWindow: pipWin,
@@ -137,6 +142,7 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
     activeSpeakers,
     onToggleMic: handleToggleMicPiP,
     onToggleCamera: handleToggleCameraPiP,
+    onToggleScreenShare: handleToggleScreenSharePiP,
     onLeave: handleLeavePiP,
   });
 

@@ -30,7 +30,7 @@ import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
 import { useWhiteboardOpen, useUIActions } from '../../store/roomStore';
 import { getWhiteboardAPI } from '../../services/whiteboardAPIBridge';
 import { useDebugParticipants } from '../../debug/DebugParticipants';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Pencil, LayoutGrid, Monitor } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Pencil, LayoutGrid, Monitor, MonitorOff } from 'lucide-react';
 
 // ============================================
 // Excalidraw whiteboard preview — mirrors the real board
@@ -463,9 +463,11 @@ interface MeetingPiPContentProps {
   micEnabled: boolean;
   cameraEnabled: boolean;
   whiteboardOn: boolean;
+  isScreenSharing: boolean;
   onToggleMic: () => void;
   onToggleCamera: () => void;
   onToggleWhiteboard: () => void;
+  onToggleScreenShare: () => void;
   onClose: () => void;
 }
 
@@ -474,9 +476,11 @@ function MeetingPiPContent({
   micEnabled,
   cameraEnabled,
   whiteboardOn,
+  isScreenSharing,
   onToggleMic,
   onToggleCamera,
   onToggleWhiteboard,
+  onToggleScreenShare,
   onClose,
 }: MeetingPiPContentProps) {
   const participants = useParticipants();
@@ -600,6 +604,15 @@ function MeetingPiPContent({
         >
           {cameraEnabled ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
         </button>
+        <button
+          onClick={onToggleScreenShare}
+          aria-label={isScreenSharing ? 'Stop screen share' : 'Start screen share'}
+          className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+            isScreenSharing ? 'bg-brand-500 text-white' : 'bg-surface-600 text-white'
+          }`}
+        >
+          {isScreenSharing ? <MonitorOff className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}
+        </button>
         {hasScreenShare && (
           <button
             onClick={() => setShowScreenShareView((v) => !v)}
@@ -648,10 +661,11 @@ interface UseMeetingPiPOptions {
   activeSpeakers: Participant[];
   onToggleMic: () => void;
   onToggleCamera: () => void;
+  onToggleScreenShare: () => void;
   onLeave: () => void;
 }
 
-export function useMeetingPiP({ activeSpeakers, onToggleMic, onToggleCamera, onLeave }: UseMeetingPiPOptions) {
+export function useMeetingPiP({ activeSpeakers, onToggleMic, onToggleCamera, onToggleScreenShare, onLeave }: UseMeetingPiPOptions) {
   const { pipWindow, isSupported, togglePiP, closePiP } = usePiP();
   const whiteboardOpen = useWhiteboardOpen();
   const { toggleWhiteboard } = useUIActions();
@@ -659,6 +673,7 @@ export function useMeetingPiP({ activeSpeakers, onToggleMic, onToggleCamera, onL
   const { localParticipant } = useLocalParticipant();
   const micEnabled = localParticipant?.isMicrophoneEnabled ?? false;
   const cameraEnabled = localParticipant?.isCameraEnabled ?? false;
+  const isScreenSharing = localParticipant?.isScreenShareEnabled ?? false;
 
   const handleClose = useCallback(() => {
     closePiP();
@@ -671,9 +686,11 @@ export function useMeetingPiP({ activeSpeakers, onToggleMic, onToggleCamera, onL
       micEnabled={micEnabled}
       cameraEnabled={cameraEnabled}
       whiteboardOn={whiteboardOpen}
+      isScreenSharing={isScreenSharing}
       onToggleMic={onToggleMic}
       onToggleCamera={onToggleCamera}
       onToggleWhiteboard={toggleWhiteboard}
+      onToggleScreenShare={onToggleScreenShare}
       onClose={handleClose}
     />
   ) : null;

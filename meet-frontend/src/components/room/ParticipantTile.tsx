@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, useState, useMemo, Component, ReactNode } from
 import { Track, ParticipantEvent, type RemoteTrackPublication, type Participant } from 'livekit-client';
 import SignalBars from './SignalBars';
 import { useFaceFraming } from '../../hooks/useFaceFraming';
+import { useCappedCoverScale } from '../../hooks/useCappedCoverScale';
 import {
   VideoTrack,
   ParticipantName,
@@ -340,6 +341,15 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
   const faceFramingEnabled = meetingRoomConfig.features.faceFraming && faceFramingStoreEnabled && shouldShowVideo && !isFilmstrip;
   const facePosition = useFaceFraming(videoElementRef, faceFramingEnabled, participant.isLocal && mirrorLocalVideo);
 
+  // Smart cover: cap crop at 10% when videoFitMode is 'cover'
+  const coverScale = useCappedCoverScale(tileRef, videoElementRef, videoFitMode, shouldShowVideo);
+
+  // Build transform string — combine mirror + cover scale without conflicts
+  const isMirrored = participant.isLocal && mirrorLocalVideo;
+  const coverTransform = videoFitMode === 'cover' && coverScale > 1 ? `scale(${coverScale})` : '';
+  const mirrorTransform = isMirrored ? 'scaleX(-1)' : '';
+  const videoTransform = [mirrorTransform, coverTransform].filter(Boolean).join(' ') || undefined;
+
   return (
     <div
       ref={tileRef}
@@ -360,12 +370,13 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
               key={trackSid || 'no-track'}
               ref={videoElementRef}
               trackRef={cameraTrackRef as any}
-              className={`w-full h-full ${participant.isLocal && mirrorLocalVideo ? 'scale-x-[-1]' : ''}`}
+              className="w-full h-full"
               style={{ 
-                objectFit: videoFitMode,
+                objectFit: videoFitMode === 'cover' ? 'contain' : videoFitMode,
                 objectPosition: faceFramingEnabled ? facePosition : 'center',
                 width: '100%',
                 height: '100%',
+                transform: videoTransform,
               }}
             />
           </div>

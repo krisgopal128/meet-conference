@@ -5,6 +5,7 @@ import { useLightweightPreviewFilter } from '../hooks/useLightweightVideoFilter'
 import { useBackgroundBlurPreview } from '../hooks/useBackgroundBlurPreview';
 import { useMicLevelMeter } from '../hooks/useMicLevelMeter';
 import { usePreJoinMedia } from '../hooks/usePreJoinMedia';
+import { useCappedCoverScale } from '../hooks/useCappedCoverScale';
 import { usePreJoinAuth } from '../hooks/usePreJoinAuth';
 import { preInitBlurWorker } from '../utils/backgroundEffectsManager';
 import {
@@ -86,6 +87,8 @@ export default function PreJoinPage() {
     setBackgroundBlur,
     backgroundBlurLevel,
     setBackgroundBlurLevel,
+    backgroundBlurIntensity,
+    setBackgroundBlurIntensity,
     backgroundMode,
     setBackgroundMode,
     backgroundBgColor,
@@ -134,6 +137,47 @@ export default function PreJoinPage() {
   const [meetingPassword, setMeetingPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [creatingRoom, setCreatingRoom] = useState(false);
+
+  // Load saved PreJoin settings from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('prejoinSettings');
+      if (saved) {
+        const settings = JSON.parse(saved);
+        if (settings.videoFitMode) setVideoFitMode(settings.videoFitMode);
+        if (settings.backgroundBlur !== undefined) setBackgroundBlur(settings.backgroundBlur);
+        if (settings.backgroundBlurLevel !== undefined) setBackgroundBlurLevel(settings.backgroundBlurLevel);
+        if (settings.backgroundBlurIntensity !== undefined) setBackgroundBlurIntensity(settings.backgroundBlurIntensity);
+        if (settings.backgroundMode) setBackgroundMode(settings.backgroundMode);
+        if (settings.backgroundBgColor) setBackgroundBgColor(settings.backgroundBgColor);
+        if (settings.backgroundImagePath !== undefined) setBackgroundImagePath(settings.backgroundImagePath);
+        if (settings.mirrorCamera !== undefined) setMirrorCamera(settings.mirrorCamera);
+        if (settings.videoFilter) setVideoFilter(settings.videoFilter);
+      }
+    } catch (err) {
+      // Silently fail if localStorage is not available or corrupted
+    }
+  }, [setVideoFitMode, setBackgroundBlur, setBackgroundBlurLevel, setBackgroundBlurIntensity, setBackgroundMode, setBackgroundBgColor, setBackgroundImagePath, setMirrorCamera, setVideoFilter]);
+
+  // Save PreJoin settings to localStorage when they change
+  useEffect(() => {
+    try {
+      const settings = {
+        videoFitMode,
+        backgroundBlur,
+        backgroundBlurLevel,
+        backgroundBlurIntensity,
+        backgroundMode,
+        backgroundBgColor,
+        backgroundImagePath,
+        mirrorCamera,
+        videoFilter,
+      };
+      localStorage.setItem('prejoinSettings', JSON.stringify(settings));
+    } catch (err) {
+      // Silently fail if localStorage is not available
+    }
+  }, [videoFitMode, backgroundBlur, backgroundBlurLevel, backgroundBlurIntensity, backgroundMode, backgroundBgColor, backgroundImagePath, mirrorCamera, videoFilter]);
 
   async function handleJoin() {
     const targetRoomName = isCreateMode ? meetingRoomCode : roomName;
@@ -239,6 +283,13 @@ export default function PreJoinPage() {
         stopPreview();
       }
 
+      // Clear localStorage after settings are applied
+      try {
+        localStorage.removeItem('prejoinSettings');
+      } catch (err) {
+        // Silently fail if localStorage is not available
+      }
+
       navigate(`/room/${targetRoomName}`, {
         state: {
           token,
@@ -253,6 +304,7 @@ export default function PreJoinPage() {
           echoCancellation,
           backgroundBlur,
           backgroundBlurLevel,
+          backgroundBlurIntensity,
           backgroundMode,
           backgroundBgColor,
           backgroundImagePath,
@@ -293,6 +345,18 @@ export default function PreJoinPage() {
   const showModeratorLinkPrompt = !isAuthenticatedFromStore && requestedRole === 'moderator' && !isCreateMode;
 
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
+
+  // Smart cover: cap crop at 10% — same logic as meeting ParticipantTile
+  const coverScale = useCappedCoverScale(previewContainerRef, videoRef, videoFitMode, videoEnabled);
+
+  // Build transform — combine mirror + cover scale (same as ParticipantTile)
+  const previewTransform = (() => {
+    const parts: string[] = [];
+    if (mirrorCamera) parts.push('scaleX(-1)');
+    if (videoFitMode === 'cover' && coverScale > 1) parts.push(`scale(${coverScale})`);
+    return parts.length > 0 ? parts.join(' ') : undefined;
+  })();
 
   useLightweightPreviewFilter(videoElement, {
     enabled: videoFilter === 'lightweight' && videoEnabled && !backgroundBlur,
@@ -307,7 +371,7 @@ export default function PreJoinPage() {
     feather: 3,
     bgColor: backgroundBgColor,
     bgImage: backgroundImagePath ? (() => { const img = new Image(); img.src = backgroundImagePath; return img; })() : null,
-  }, mirrorCamera, videoFitMode === 'contain' ? 'contain' : 'cover');
+  }, mirrorCamera, videoFitMode === 'contain' ? 'contain' : 'cover', coverScale);
 
   useEffect(() => {
     setVideoElement(videoRef.current);
@@ -361,6 +425,7 @@ export default function PreJoinPage() {
                 )}
               >
                 <div
+                  ref={previewContainerRef}
                   className={cn(
                     'absolute inset-0 overflow-hidden',
                     videoFitMode === 'contain' && 'bg-black'
@@ -372,13 +437,15 @@ export default function PreJoinPage() {
                     autoPlay
                     muted
                     playsInline
-                    style={{ objectPosition: 'center' }}
                     className={cn(
                       'w-full h-full',
-                      mirrorCamera && 'scale-x-[-1]',
-                      videoFitMode === 'contain' ? 'object-contain' : 'object-cover',
                       !videoEnabled && 'invisible'
                     )}
+                    style={{
+                      objectFit: videoFitMode === 'cover' ? 'contain' : videoFitMode,
+                      objectPosition: 'center',
+                      transform: previewTransform,
+                    }}
                   />
                 </div>
 
