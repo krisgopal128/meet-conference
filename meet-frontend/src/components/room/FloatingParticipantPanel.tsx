@@ -60,7 +60,7 @@ const MiniTile = memo(function MiniTile({ participant, isLocal }: MiniTileProps)
   return (
     <div className={`relative w-full bg-surface-800 rounded-lg overflow-hidden ${
       isSpeaking ? 'ring-2 ring-brand-400' : ''
-    }`} style={{ aspectRatio: '16/9' }}>
+    }`} style={{ aspectRatio: '16/9', minHeight: '60px', minWidth: '107px' }}>
       {/* Video or avatar */}
       {hasVideo && cameraTrack?.track ? (
         <VideoTrack
