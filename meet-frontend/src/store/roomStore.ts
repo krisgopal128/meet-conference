@@ -724,6 +724,13 @@ export const useConnectionActions = () => useRoomStore(
     setError: state.setError,
     reset: state.reset,
     setPrejoinDevices: state.setPrejoinDevices,
+    setVideoFitMode: state.setVideoFitMode,
+    setBackgroundBlurEnabled: state.setBackgroundBlurEnabled,
+    setBackgroundBlurLevel: state.setBackgroundBlurLevel,
+    setBackgroundMode: state.setBackgroundMode,
+    setBackgroundBlurIntensity: state.setBackgroundBlurIntensity,
+    setBackgroundBgColor: state.setBackgroundBgColor,
+    setBackgroundImagePath: state.setBackgroundImagePath,
   }),
   shallow
 );

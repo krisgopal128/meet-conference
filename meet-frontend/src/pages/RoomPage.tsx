@@ -45,6 +45,7 @@ interface LocationState {
   echoCancellation?: boolean;
   backgroundBlur?: boolean;
   backgroundBlurLevel?: number;
+  backgroundBlurIntensity?: number; // Intensity for blur effect
   backgroundMode?: 'none' | 'blur' | 'color' | 'image';
   backgroundBgColor?: string;
   backgroundImagePath?: string | null;

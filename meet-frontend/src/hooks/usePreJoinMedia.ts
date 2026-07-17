@@ -102,6 +102,7 @@ export function usePreJoinMedia({ roomName: _roomName, isCreateMode: _isCreateMo
   const [echoCancellation, setEchoCancellation] = useState(meetingRoomConfig.prejoin.echoCancellation);
   const [backgroundBlur, setBackgroundBlur] = useState(false);
   const [backgroundBlurLevel, setBackgroundBlurLevel] = useState(10);
+  const [backgroundBlurIntensity, setBackgroundBlurIntensity] = useState(10);
   const [backgroundMode, setBackgroundMode] = useState<'blur' | 'image' | 'color' | 'none'>('blur');
   const [backgroundBgColor, setBackgroundBgColor] = useState('#1e1e2e');
   const [backgroundImagePath, setBackgroundImagePath] = useState<string | null>(null);
@@ -470,6 +471,8 @@ export function usePreJoinMedia({ roomName: _roomName, isCreateMode: _isCreateMo
     setBackgroundBlur,
     backgroundBlurLevel,
     setBackgroundBlurLevel,
+    backgroundBlurIntensity,
+    setBackgroundBlurIntensity,
     backgroundMode,
     setBackgroundMode,
     backgroundBgColor,

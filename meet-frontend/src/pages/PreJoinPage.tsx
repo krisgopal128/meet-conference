@@ -87,6 +87,8 @@ export default function PreJoinPage() {
     setBackgroundBlur,
     backgroundBlurLevel,
     setBackgroundBlurLevel,
+    backgroundBlurIntensity,
+    setBackgroundBlurIntensity,
     backgroundMode,
     setBackgroundMode,
     backgroundBgColor,
@@ -135,6 +137,47 @@ export default function PreJoinPage() {
   const [meetingPassword, setMeetingPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [creatingRoom, setCreatingRoom] = useState(false);
+
+  // Load saved PreJoin settings from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('prejoinSettings');
+      if (saved) {
+        const settings = JSON.parse(saved);
+        if (settings.videoFitMode) setVideoFitMode(settings.videoFitMode);
+        if (settings.backgroundBlur !== undefined) setBackgroundBlur(settings.backgroundBlur);
+        if (settings.backgroundBlurLevel !== undefined) setBackgroundBlurLevel(settings.backgroundBlurLevel);
+        if (settings.backgroundBlurIntensity !== undefined) setBackgroundBlurIntensity(settings.backgroundBlurIntensity);
+        if (settings.backgroundMode) setBackgroundMode(settings.backgroundMode);
+        if (settings.backgroundBgColor) setBackgroundBgColor(settings.backgroundBgColor);
+        if (settings.backgroundImagePath !== undefined) setBackgroundImagePath(settings.backgroundImagePath);
+        if (settings.mirrorCamera !== undefined) setMirrorCamera(settings.mirrorCamera);
+        if (settings.videoFilter) setVideoFilter(settings.videoFilter);
+      }
+    } catch (err) {
+      // Silently fail if localStorage is not available or corrupted
+    }
+  }, [setVideoFitMode, setBackgroundBlur, setBackgroundBlurLevel, setBackgroundBlurIntensity, setBackgroundMode, setBackgroundBgColor, setBackgroundImagePath, setMirrorCamera, setVideoFilter]);
+
+  // Save PreJoin settings to localStorage when they change
+  useEffect(() => {
+    try {
+      const settings = {
+        videoFitMode,
+        backgroundBlur,
+        backgroundBlurLevel,
+        backgroundBlurIntensity,
+        backgroundMode,
+        backgroundBgColor,
+        backgroundImagePath,
+        mirrorCamera,
+        videoFilter,
+      };
+      localStorage.setItem('prejoinSettings', JSON.stringify(settings));
+    } catch (err) {
+      // Silently fail if localStorage is not available
+    }
+  }, [videoFitMode, backgroundBlur, backgroundBlurLevel, backgroundBlurIntensity, backgroundMode, backgroundBgColor, backgroundImagePath, mirrorCamera, videoFilter]);
 
   async function handleJoin() {
     const targetRoomName = isCreateMode ? meetingRoomCode : roomName;
@@ -240,6 +283,13 @@ export default function PreJoinPage() {
         stopPreview();
       }
 
+      // Clear localStorage after settings are applied
+      try {
+        localStorage.removeItem('prejoinSettings');
+      } catch (err) {
+        // Silently fail if localStorage is not available
+      }
+
       navigate(`/room/${targetRoomName}`, {
         state: {
           token,
@@ -254,6 +304,7 @@ export default function PreJoinPage() {
           echoCancellation,
           backgroundBlur,
           backgroundBlurLevel,
+          backgroundBlurIntensity,
           backgroundMode,
           backgroundBgColor,
           backgroundImagePath,
