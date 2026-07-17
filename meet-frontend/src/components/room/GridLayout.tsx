@@ -170,7 +170,8 @@ export function GridLayout() {
       {admittedParticipants.map((p) => (
         <div
           key={p.identity}
-          className="relative rounded-2xl bg-surface-900 overflow-hidden min-w-0 min-h-0"
+          className="relative rounded-2xl bg-surface-900 overflow-hidden"
+          style={{ aspectRatio: aspectCss }}
         >
           <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={count} />
         </div>
@@ -178,7 +179,8 @@ export function GridLayout() {
       {dummyParticipants.map((d) => (
         <div
           key={d.identity}
-          className="relative rounded-2xl bg-surface-900 overflow-hidden min-w-0 min-h-0"
+          className="relative rounded-2xl bg-surface-900 overflow-hidden"
+          style={{ aspectRatio: aspectCss }}
         >
           <DummyParticipantTile name={d.name} size="small" state={dummyStates[d.identity]} />
         </div>
