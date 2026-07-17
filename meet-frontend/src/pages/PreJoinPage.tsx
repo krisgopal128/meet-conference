@@ -5,6 +5,7 @@ import { useLightweightPreviewFilter } from '../hooks/useLightweightVideoFilter'
 import { useBackgroundBlurPreview } from '../hooks/useBackgroundBlurPreview';
 import { useMicLevelMeter } from '../hooks/useMicLevelMeter';
 import { usePreJoinMedia } from '../hooks/usePreJoinMedia';
+import { useCappedCoverScale } from '../hooks/useCappedCoverScale';
 import { usePreJoinAuth } from '../hooks/usePreJoinAuth';
 import { preInitBlurWorker } from '../utils/backgroundEffectsManager';
 import {
@@ -293,6 +294,18 @@ export default function PreJoinPage() {
   const showModeratorLinkPrompt = !isAuthenticatedFromStore && requestedRole === 'moderator' && !isCreateMode;
 
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
+
+  // Smart cover: cap crop at 10% — same logic as meeting ParticipantTile
+  const coverScale = useCappedCoverScale(previewContainerRef, videoRef, videoFitMode, videoEnabled);
+
+  // Build transform — combine mirror + cover scale (same as ParticipantTile)
+  const previewTransform = (() => {
+    const parts: string[] = [];
+    if (mirrorCamera) parts.push('scaleX(-1)');
+    if (videoFitMode === 'cover' && coverScale > 1) parts.push(`scale(${coverScale})`);
+    return parts.length > 0 ? parts.join(' ') : undefined;
+  })();
 
   useLightweightPreviewFilter(videoElement, {
     enabled: videoFilter === 'lightweight' && videoEnabled && !backgroundBlur,
@@ -307,7 +320,7 @@ export default function PreJoinPage() {
     feather: 3,
     bgColor: backgroundBgColor,
     bgImage: backgroundImagePath ? (() => { const img = new Image(); img.src = backgroundImagePath; return img; })() : null,
-  }, mirrorCamera, videoFitMode === 'contain' ? 'contain' : 'cover');
+  }, mirrorCamera, videoFitMode === 'contain' ? 'contain' : 'cover', coverScale);
 
   useEffect(() => {
     setVideoElement(videoRef.current);
@@ -361,6 +374,7 @@ export default function PreJoinPage() {
                 )}
               >
                 <div
+                  ref={previewContainerRef}
                   className={cn(
                     'absolute inset-0 overflow-hidden',
                     videoFitMode === 'contain' && 'bg-black'
@@ -372,13 +386,15 @@ export default function PreJoinPage() {
                     autoPlay
                     muted
                     playsInline
-                    style={{ objectPosition: 'center' }}
                     className={cn(
                       'w-full h-full',
-                      mirrorCamera && 'scale-x-[-1]',
-                      videoFitMode === 'contain' ? 'object-contain' : 'object-cover',
                       !videoEnabled && 'invisible'
                     )}
+                    style={{
+                      objectFit: videoFitMode === 'cover' ? 'contain' : videoFitMode,
+                      objectPosition: 'center',
+                      transform: previewTransform,
+                    }}
                   />
                 </div>
 

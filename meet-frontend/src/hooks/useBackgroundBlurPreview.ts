@@ -22,6 +22,7 @@ export function useBackgroundBlurPreview(
   options: BackgroundBlurOptions,
   mirror: boolean = false,
   fitMode: 'cover' | 'contain' = 'cover',
+  coverScale: number = 1,
 ) {
   const engineRef = useRef<BackgroundBlurEngine | null>(null);
   const workerRef = useRef<Worker | null>(null);
@@ -35,6 +36,8 @@ export function useBackgroundBlurPreview(
   mirrorRef.current = mirror;
   const fitModeRef = useRef(fitMode);
   fitModeRef.current = fitMode;
+  const coverScaleRef = useRef(coverScale);
+  coverScaleRef.current = coverScale;
   const lastMaskRef = useRef<MaskData | null>(null);
   const isFrameInFlightRef = useRef(false);
   const retryCountRef = useRef(0);
@@ -120,7 +123,7 @@ export function useBackgroundBlurPreview(
       canvas.style.inset = '0';
       canvas.style.width = '100%';
       canvas.style.height = '100%';
-      canvas.style.objectFit = fitModeRef.current;
+      canvas.style.objectFit = fitModeRef.current === 'cover' ? 'contain' : fitModeRef.current;
       canvas.style.pointerEvents = 'none';
       canvas.style.zIndex = '5';
       canvas.style.display = 'none';
@@ -166,8 +169,13 @@ export function useBackgroundBlurPreview(
         videoElement.style.opacity = '0';
       }
 
-      canvas.style.transform = mirrorRef.current ? 'scaleX(-1)' : 'none';
-      canvas.style.objectFit = fitModeRef.current;
+      canvas.style.transform = (() => {
+        const parts: string[] = [];
+        if (mirrorRef.current) parts.push('scaleX(-1)');
+        if (coverScaleRef.current > 1) parts.push(`scale(${coverScaleRef.current})`);
+        return parts.length > 0 ? parts.join(' ') : 'none';
+      })();
+      canvas.style.objectFit = fitModeRef.current === 'cover' ? 'contain' : fitModeRef.current;
 
       engine.updateOptions(opts);
 

@@ -178,7 +178,7 @@ function RoomContent({
   const room = useRoomContext();
   const navigate = useNavigate();
   const connectionState = useConnectionState();
-  const { setToken, setHostId, setRole, setDisplayName, setPrejoinDevices } = useConnectionActions();
+  const { setToken, setHostId, setRole, setDisplayName, setPrejoinDevices, setVideoFitMode, setBackgroundBlurEnabled, setBackgroundBlurLevel, setBackgroundMode, setBackgroundBlurIntensity, setBackgroundBgColor, setBackgroundImagePath } = useConnectionActions();
   
   // Get current grid aspect ratio from store for camera options
   const currentGridAspectRatio = useGridAspectRatio();
@@ -308,6 +308,10 @@ function RoomContent({
         videoEnabled: state.videoEnabled,
         audioEnabled: state.audioEnabled,
         displayName: state.displayName,
+        videoFitMode: state.videoFitMode,
+        backgroundBlur: state.backgroundBlur,
+        backgroundBlurLevel: state.backgroundBlurLevel,
+        backgroundMode: state.backgroundMode,
       });
     }
     if (localParticipant.identity) {
@@ -325,7 +329,29 @@ function RoomContent({
     if (state.selectedCamera || state.selectedMic) {
       setPrejoinDevices(state.selectedCamera || null, state.selectedMic || null);
     }
-  }, [localParticipant.identity, state.token, state.hostId, state.role, state.displayName, state.selectedCamera, state.selectedMic, setToken, setHostId, setRole, setDisplayName, setPrejoinDevices]);
+    // Apply PreJoin settings to store
+    if (state.videoFitMode) {
+      setVideoFitMode(state.videoFitMode);
+    }
+    if (state.backgroundBlur !== undefined) {
+      setBackgroundBlurEnabled(state.backgroundBlur);
+    }
+    if (state.backgroundBlurLevel !== undefined) {
+      setBackgroundBlurLevel(state.backgroundBlurLevel);
+    }
+    if (state.backgroundMode) {
+      setBackgroundMode(state.backgroundMode);
+    }
+    if (state.backgroundBlurIntensity !== undefined) {
+      setBackgroundBlurIntensity(state.backgroundBlurIntensity);
+    }
+    if (state.backgroundBgColor) {
+      setBackgroundBgColor(state.backgroundBgColor);
+    }
+    if (state.backgroundImagePath !== undefined) {
+      setBackgroundImagePath(state.backgroundImagePath);
+    }
+  }, [localParticipant.identity, state.token, state.hostId, state.role, state.displayName, state.selectedCamera, state.selectedMic, state.videoFitMode, state.backgroundBlur, state.backgroundBlurLevel, state.backgroundMode, state.backgroundBlurIntensity, state.backgroundBgColor, state.backgroundImagePath, setToken, setHostId, setRole, setDisplayName, setPrejoinDevices, setVideoFitMode, setBackgroundBlurEnabled, setBackgroundBlurLevel, setBackgroundMode, setBackgroundBlurIntensity, setBackgroundBgColor, setBackgroundImagePath]);
 
   // Switch audio output (speaker) to prejoin selection
   useEffect(() => {
