@@ -49,7 +49,7 @@ async function seedMeetings() {
     method: string,
     endpoint: string,
     body?: object
-  ): Promise<{ ok: boolean; status: number; data: any }> {
+  ): Promise<{ ok: boolean; status: number; data: unknown }> {
     const url = `${API_BASE}${endpoint}`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',

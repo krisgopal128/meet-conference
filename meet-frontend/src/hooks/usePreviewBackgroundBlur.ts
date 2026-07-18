@@ -14,7 +14,7 @@ export function usePreviewBackgroundBlur(
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const animationRef = useRef<number | null>(null);
-  const segmenterRef = useRef<any>(null);
+  const segmenterRef = useRef<unknown>(null);
   const segmenterReadyRef = useRef(false);
   const segmenterLoadingRef = useRef(false);
   const segCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -30,7 +30,7 @@ export function usePreviewBackgroundBlur(
     segmenterLoadingRef.current = true;
     try {
       const vision = await import('@mediapipe/tasks-vision');
-      let wasmFileset: any;
+      let wasmFileset: unknown;
       try {
         wasmFileset = await vision.FilesetResolver.forVisionTasks('/wasm');
       } catch {
@@ -38,7 +38,14 @@ export function usePreviewBackgroundBlur(
           'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
         );
       }
-      const opts: any = {
+      const createOpts: {
+        baseOptions: {
+          modelAssetPath: string;
+          delegate: 'GPU' | 'CPU';
+        };
+        outputCategoryMask: boolean;
+        runningMode: 'IMAGE' | 'VIDEO';
+      } = {
         baseOptions: {
           modelAssetPath: '/models/selfie_segmenter.tflite',
           delegate: 'GPU',
@@ -47,11 +54,11 @@ export function usePreviewBackgroundBlur(
         runningMode: 'IMAGE',
       };
       try {
-        segmenterRef.current = await vision.ImageSegmenter.createFromOptions(wasmFileset, opts);
+        segmenterRef.current = await vision.ImageSegmenter.createFromOptions(wasmFileset, createOpts);
       } catch {
-        opts.baseOptions.modelAssetPath =
+        createOpts.baseOptions.modelAssetPath =
           'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite';
-        segmenterRef.current = await vision.ImageSegmenter.createFromOptions(wasmFileset, opts);
+        segmenterRef.current = await vision.ImageSegmenter.createFromOptions(wasmFileset, createOpts);
       }
       segmenterReadyRef.current = true;
       logger.info('[PreviewBlur] Segmenter ready');

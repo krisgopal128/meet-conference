@@ -11,6 +11,7 @@ import type { Room, LocalParticipant } from 'livekit-client';
 import toast from 'react-hot-toast';
 import { useChatActions, useFeatureActions, useUIActions, useWhiteboardOpen, useMeetingControlsActions, useHostId } from '../store/roomStore';
 import type { ChatMessage } from '../types';
+import logger from '../utils/logger';
 
 interface UseDataChannelHandlerProps {
   room: Room;
@@ -62,7 +63,8 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
     try {
       const parsed = JSON.parse(metadata) as { role?: string };
       return parsed.role || 'attendee';
-    } catch {
+    } catch (err) {
+      logger.warn('[useDataChannelHandler] Failed to parse metadata:', err);
       return 'attendee';
     }
   };
@@ -92,7 +94,7 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
         if (senderIdentity && isRateLimited(senderIdentity)) {
           return;
         }
-        
+
         // Handle meeting_ended - all participants navigate to ThankYou
         if (payload.type === 'meeting_ended') {
           if (payload.source !== 'server' && !isPrivilegedSender) return;
@@ -119,19 +121,19 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
             sentAt: new Date(payload.sentAt),
           } as ChatMessage;
           addMessage(message);
-          
+
           // Check if current user is mentioned (don't notify for own messages)
           if (senderIdentity !== localParticipantRef.current.identity && message.mentions) {
             const localIdentity = localParticipantRef.current.identity?.toLowerCase().trim();
             const isMentioned = message.mentions.some(
               (m: string) => m.toLowerCase().trim() === localIdentity
             );
-            
+
             if (isMentioned) {
               incrementMentionCount(1);
               // Show toast notification
-              const preview = message.message.length > 50 
-                ? message.message.substring(0, 50) + '...' 
+              const preview = message.message.length > 50
+                ? message.message.substring(0, 50) + '...'
                 : message.message;
               toast.custom((t) => (
                 <div className={`${

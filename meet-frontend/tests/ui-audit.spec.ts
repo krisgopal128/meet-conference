@@ -252,7 +252,7 @@ test.describe('Comprehensive UI Audit', () => {
         }
       });
 
-      test('should not have console errors', async ({ page, context }) => {
+      test('should not have console errors', async ({ page }) => {
         const consoleErrors: string[] = [];
         page.on('console', msg => {
           if (msg.type() === 'error') {

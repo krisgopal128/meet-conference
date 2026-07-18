@@ -13,6 +13,7 @@ import { meetingRoomConfig } from '../../config/meetingRoomConfig';
 import ParticipantListItem, { getInitials } from './ParticipantListItem';
 import { useParticipantActions } from '../../hooks/useParticipantActions';
 import { useLobbyPolling } from '../../hooks/useLobbyPolling';
+import logger from '../../utils/logger';
 import { useDebugParticipants, DummyParticipantListItem } from '../../debug/DebugParticipants';
 
 // Sort options for participants
@@ -39,8 +40,8 @@ function getPersistedSortPreference(): SortOption {
     if (stored && sortOptions.some(opt => opt.value === stored)) {
       return stored as SortOption;
     }
-  } catch {
-    // Ignore localStorage errors
+  } catch (err) {
+    logger.warn('[ParticipantsPanel] Failed to read sort preference:', err);
   }
   return 'name'; // Default sort
 }
@@ -49,8 +50,8 @@ function getPersistedSortPreference(): SortOption {
 function persistSortPreference(sort: SortOption): void {
   try {
     localStorage.setItem(SORT_PREFERENCE_KEY, sort);
-  } catch {
-    // Ignore localStorage errors
+  } catch (err) {
+    logger.warn('[ParticipantsPanel] Failed to persist sort preference:', err);
   }
 }
 

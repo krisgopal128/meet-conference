@@ -80,7 +80,7 @@ export function SettingsPanel() {
     room.remoteParticipants.forEach((participant) => {
       participant.audioTrackPublications.forEach((pub) => {
         if (pub.track) {
-          (pub.track as any).setVolume?.(normalizedVolume);
+          (pub.track as { setVolume?: (v: number) => void })?.setVolume?.(normalizedVolume);
         }
       });
     });

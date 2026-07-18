@@ -8,6 +8,7 @@ import { usePreJoinMedia } from '../hooks/usePreJoinMedia';
 import { useCappedCoverScale } from '../hooks/useCappedCoverScale';
 import { usePreJoinAuth } from '../hooks/usePreJoinAuth';
 import { preInitBlurWorker } from '../utils/backgroundEffectsManager';
+import logger from '../utils/logger';
 import {
   isAudioOnlyMode,
   meetingRoomConfig,
@@ -154,8 +155,8 @@ export default function PreJoinPage() {
         if (settings.mirrorCamera !== undefined) setMirrorCamera(settings.mirrorCamera);
         if (settings.videoFilter) setVideoFilter(settings.videoFilter);
       }
-    } catch {
-      // Silently fail if localStorage is not available or corrupted
+    } catch (err) {
+      logger.warn('[PreJoinPage] Failed to load PreJoin settings:', err);
     }
   }, [setVideoFitMode, setBackgroundBlur, setBackgroundBlurLevel, setBackgroundBlurIntensity, setBackgroundMode, setBackgroundBgColor, setBackgroundImagePath, setMirrorCamera, setVideoFilter]);
 
@@ -174,7 +175,7 @@ export default function PreJoinPage() {
         videoFilter,
       };
       localStorage.setItem('prejoinSettings', JSON.stringify(settings));
-    } catch (err) {
+    } catch {
       // Silently fail if localStorage is not available
     }
   }, [videoFitMode, backgroundBlur, backgroundBlurLevel, backgroundBlurIntensity, backgroundMode, backgroundBgColor, backgroundImagePath, mirrorCamera, videoFilter]);
@@ -247,7 +248,7 @@ export default function PreJoinPage() {
         if (requestedRole === 'moderator') {
           try {
             await updateRoomSettings(targetRoomName, { gridAspectRatio, videoFitMode });
-          } catch (err) {
+          } catch {
             // Ignore errors when pre-saving room settings
           }
         }
@@ -272,7 +273,7 @@ export default function PreJoinPage() {
             },
           });
           audioTrack = audioStream.getAudioTracks()[0] || null;
-        } catch (err) {
+        } catch {
           // Ignore errors when accessing microphone; user will be prompted later
         }
       }
@@ -288,7 +289,7 @@ export default function PreJoinPage() {
       // Clear localStorage after settings are applied
       try {
         localStorage.removeItem('prejoinSettings');
-      } catch (err) {
+      } catch {
         // Silently fail if localStorage is not available
       }
 

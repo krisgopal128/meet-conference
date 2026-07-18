@@ -77,7 +77,8 @@ function getParticipantRole(metadata: string | undefined, hostId: string | null,
   try {
     const parsed = JSON.parse(metadata) as { role?: string };
     return parsed.role || 'attendee';
-  } catch {
+  } catch (err) {
+    logger.warn('[getRoleFromMetadata] Failed to parse metadata:', err);
     return 'attendee';
   }
 }
@@ -231,7 +232,9 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
         void publishTyping(false).catch(() => undefined);
       }, meetingRoomConfig.chat.typingIndicatorTimeoutMs);
     }
-  }, [localParticipant]);
+    // Note: publishTyping is a stable function, so we omit it from deps to avoid churn
+    //eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localParticipant, meetingRoomConfig.chat.typingIndicatorTimeoutMs]);
 
   // Handle keyboard navigation in mention list
   const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -267,6 +270,8 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
       event.preventDefault();
       void sendMessage();
     }
+    // Note: sendMessage is a stable function from ChatStore, omitted to prevent listener churn
+    //eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showMentionList, filteredParticipants, selectedMentionIndex, selectMention]);
 
   // Scroll selected mention into view

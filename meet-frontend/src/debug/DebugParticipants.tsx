@@ -26,6 +26,7 @@ import { useLocalParticipant } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import { Mic, MicOff, Video, VideoOff, LogOut, Monitor } from 'lucide-react';
 import toast from 'react-hot-toast';
+import logger from '../utils/logger';
 
 // ─── Dummy name pool (generated up to 99) ───
 
@@ -221,7 +222,9 @@ export function DummyParticipantTile({ name, size = 'normal', state }: DummyTile
       // Clone the local camera track so each dummy gets its own stream
       stream = new MediaStream([track.clone()]);
       video.srcObject = stream;
-      void video.play().catch(() => {});
+      void video.play().catch((err) => {
+        logger.warn('[DebugParticipants] Failed to play dummy video:', err);
+      });
       return true;
     };
 

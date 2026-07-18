@@ -4,7 +4,7 @@ import { useTracks } from '@livekit/components-react';
 
 interface CameraTrackReference {
   participant: { identity: string };
-  publication?: any;
+  publication?: { track?: unknown; isMuted?: boolean; isSubscribed?: boolean };
   source: Track.Source;
 }
 

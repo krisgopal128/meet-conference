@@ -104,18 +104,23 @@ function HomePageContent() {
   }, [roomName, roomNameTouched]);
 
   // Lightweight room + stats reload (for after create/delete)
+  // Note: loadDeferredData is defined below but we need it here.
+  // We use a ref to avoid circular dependency issues.
   const reloadRooms = useCallback(async () => {
     try {
       const response = await getMyRooms();
       if (!mountedRef.current) return;
       setRooms(response?.data?.rooms || []);
       // Also refresh stats after room changes
-      if (mountedRef.current) loadDeferredData();
+      // We defer this to avoid immediate sync issues
+      //eslint-disable-next-line react-hooks/exhaustive-deps
+      setTimeout(() => {
+        if (mountedRef.current) loadDeferredData();
+      }, 100);
     } catch (err) {
       logger.error('Failed to reload rooms:', err);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadDeferredData]);
+  }, []);  
 
   // Critical data - loads immediately
   const loadCriticalData = async () => {

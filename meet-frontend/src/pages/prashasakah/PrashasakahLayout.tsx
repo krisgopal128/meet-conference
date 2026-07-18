@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Outlet, NavLink, Link, Navigate, useLocation } from 'react-router-dom';
 import { Menu, X, PanelLeftClose, PanelLeftOpen, LogOut, ArrowLeft, Bell } from 'lucide-react';
 import { useUser, useAuthActions } from '../../store/authStore';
+import logger from '../../utils/logger';
 
 interface NavItem {
   label: string;
@@ -90,7 +91,8 @@ export default function PrashasakahLayout() {
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(SIDEBAR_KEY) === 'true';
-    } catch {
+    } catch (err) {
+      logger.warn('[PrashasakahLayout] Failed to read sidebar state:', err);
       return false;
     }
   });
@@ -98,7 +100,11 @@ export default function PrashasakahLayout() {
   const toggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
       const next = !prev;
-      try { localStorage.setItem(SIDEBAR_KEY, String(next)); } catch { /* noop */ }
+      try {
+        localStorage.setItem(SIDEBAR_KEY, String(next));
+      } catch (err) {
+        logger.warn('[PrashasakahLayout] Failed to persist sidebar state:', err);
+      }
       return next;
     });
   }, []);

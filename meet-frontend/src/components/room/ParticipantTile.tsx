@@ -104,17 +104,17 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
   // ========================================
   useEffect(() => {
     if (participant.isLocal || isAudioOnlyMode(qualityMode)) return;
-    
+
     // Get camera publications directly from participant
     const cameraPublications = Array.from(participant.trackPublications.values())
       .filter(pub => pub.source === Track.Source.Camera);
-    
+
     if (cameraPublications.length === 0) {
       // No camera publication yet - this is normal for late joins
       // The TrackPublished event listener will trigger a re-render
       return;
     }
-    
+
     // Force subscription for all camera tracks
     for (const publication of cameraPublications) {
       const remotePub = publication as RemoteTrackPublication | undefined;
@@ -123,7 +123,10 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
         remotePub.setSubscribed(true);
       }
     }
-  }, [participant, participant.trackPublications.size, participant.isLocal, qualityMode]);
+    // Note: We intentionally omit participant.trackPublications.size from deps
+    // to avoid re-running this effect on every track publication change.
+     
+  }, [participant, qualityMode]);
 
   // ========================================
   // Listen for track events to force re-render
@@ -135,22 +138,24 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
       logger.debug(`[ParticipantTile] Track event for ${participant.identity}, forcing re-render`);
       forceRender(v => v + 1);
     };
-    
+
     participant.on(ParticipantEvent.TrackSubscribed, handleTrackEvent);
     participant.on(ParticipantEvent.TrackUnsubscribed, handleTrackEvent);
-    
+
     return () => {
       participant.off(ParticipantEvent.TrackSubscribed, handleTrackEvent);
       participant.off(ParticipantEvent.TrackUnsubscribed, handleTrackEvent);
     };
-  }, [participant, participant.isLocal, qualityMode]);
+    // Note: participant is stable, but we omit qualityMode to prevent re-attaching listeners
+    //eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [participant]);
 
   // ========================================
   // Listen for new tracks being published (late joins)
   // ========================================
   useEffect(() => {
     if (participant.isLocal || isAudioOnlyMode(qualityMode)) return;
-    
+
     const handleTrackPublished = (publication: RemoteTrackPublication) => {
       if (publication.source === Track.Source.Camera) {
         logger.debug(`[ParticipantTile] Camera published by ${participant.identity}, forcing subscription`);
@@ -160,13 +165,15 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
         forceRender(v => v + 1);
       }
     };
-    
+
     participant.on(ParticipantEvent.TrackPublished, handleTrackPublished);
-    
+
     return () => {
       participant.off(ParticipantEvent.TrackPublished, handleTrackPublished);
     };
-  }, [participant, participant.isLocal, qualityMode]);
+    // Note: We omit qualityMode to prevent listener churn when quality changes
+    //eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [participant, participant.isLocal]);
 
   // ========================================
   // Listen for participant metadata changes (permission updates)
@@ -369,7 +376,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
             <VideoTrack 
               key={trackSid || 'no-track'}
               ref={videoElementRef}
-              trackRef={cameraTrackRef as any}
+              trackRef={cameraTrackRef as { current: MediaStreamTrack | null | undefined }}
               className="w-full h-full"
               style={{ 
                 objectFit: videoFitMode === 'cover' ? 'contain' : videoFitMode,

@@ -547,7 +547,9 @@ function RoomContent({
       try {
         const md = localParticipant.metadata ? JSON.parse(localParticipant.metadata) : {};
         metadataInLobby = md.inLobby === true;
-      } catch { /* metadata not JSON — ignore */ }
+      } catch (err) {
+        logger.warn('[RoomPage] Failed to parse metadata:', err);
+      }
 
       logger.info('[RoomPage] Checking lobby status:', {
         initialInLobby: state.inLobby,
@@ -587,8 +589,8 @@ function RoomContent({
       try {
         const md = localParticipant.metadata ? JSON.parse(localParticipant.metadata) : {};
         metadataInLobby = md.inLobby === true;
-      } catch {
-        // Malformed metadata JSON — default to not in lobby
+      } catch (err) {
+        logger.warn('[RoomPage] Failed to parse metadata:', err);
       }
 
       logger.info('[RoomPage] Permission changed event:', {
@@ -700,7 +702,9 @@ export default function RoomPage() {
         inLobbyFromToken = metadata.inLobby === true;
         roleFromToken = typeof metadata.role === 'string' ? metadata.role : undefined;
         hostIdFromToken = typeof metadata.hostId === 'string' ? metadata.hostId : undefined;
-      } catch { /* invalid JWT — leave undefined */ }
+      } catch (err) {
+        logger.warn('[RoomPage] Failed to parse JWT token:', err);
+      }
       const role = roleFromSession || stateFromLocation?.role || roleFromToken || 'attendee';
       return {
         ...stateFromLocation,
@@ -956,7 +960,9 @@ export default function RoomPage() {
           useRoomStore.getState().setRecording(true, activeRecording.egressId);
           logger.info('[RoomPage] Recording already active on join:', activeRecording.egressId);
         }
-      }).catch(() => {});
+      }).catch((err) => {
+        logger.warn('[RoomPage] Failed to check recording status:', err);
+      });
     }
     
     if (import.meta.env.DEV) {

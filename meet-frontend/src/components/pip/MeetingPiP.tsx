@@ -22,6 +22,7 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import logger from '../../utils/logger';
 import { useParticipants, useLocalParticipant, useTracks } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import type { Participant } from 'livekit-client';
@@ -73,12 +74,12 @@ function WhiteboardPreview() {
 
         const { exportToCanvas } = await import('@excalidraw/excalidraw');
         const exported = await exportToCanvas({
-          elements: elements as any,
+          elements: elements as unknown[],
           appState: {
-            ...(api.getAppState() as any),
+            ...(api.getAppState() as Record<string, unknown>),
             exportBackground: true,
-          } as any,
-          files: (api as any).files ?? undefined,
+          } as Record<string, unknown>,
+          files: ((api as Record<string, unknown>).files ?? undefined) as Record<string, unknown> | undefined,
           getDimensions: () => ({ width: canvas.width, height: canvas.height }),
         });
 
@@ -172,7 +173,9 @@ function ScreenSharePreview({ participant }: { participant: Participant | null }
 
     // Direct srcObject on PiP element — bypasses IntersectionObserver
     el.srcObject = new MediaStream([track.mediaStreamTrack]);
-    el.play().catch(() => {});
+    el.play().catch((err) => {
+      logger.warn('[MeetingPiP] Failed to play PiP video:', err);
+    });
 
     return () => {
       try {
