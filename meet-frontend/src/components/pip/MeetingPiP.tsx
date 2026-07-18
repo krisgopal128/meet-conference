@@ -164,14 +164,22 @@ function ScreenSharePreview({ participant }: { participant: Participant | null }
     (hidden as HTMLVideoElement).autoplay = true;
     document.body.appendChild(hidden);
 
-    try { track.attach(hidden); } catch {}
+    try {
+      track.attach(hidden);
+    } catch (err) {
+      console.warn('[PiP-Tile] Failed to attach track to hidden video:', err);
+    }
 
     // Direct srcObject on PiP element — bypasses IntersectionObserver
     el.srcObject = new MediaStream([track.mediaStreamTrack]);
     el.play().catch(() => {});
 
     return () => {
-      try { track.detach(hidden); } catch {}
+      try {
+        track.detach(hidden);
+      } catch (err) {
+        console.warn('[PiP-Tile] Failed to detach track from hidden video:', err);
+      }
       el.srcObject = null;
       hidden.remove();
     };

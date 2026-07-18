@@ -114,9 +114,8 @@ function HomePageContent() {
     } catch (err) {
       logger.error('Failed to reload rooms:', err);
     }
-  // loadDeferredData is stable enough (only closes over state setters + mountedRef)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadDeferredData]);
 
   // Critical data - loads immediately
   const loadCriticalData = async () => {

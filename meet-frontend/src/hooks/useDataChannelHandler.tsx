@@ -218,6 +218,5 @@ export function useDataChannelHandler({ room, localParticipant, isModerator, onM
     };
     room.on(RoomEvent.DataReceived, handleData);
     return () => { room.off(RoomEvent.DataReceived, handleData); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, addMessage, raiseHand, lowerHand, setTypingParticipant, isModerator, votePoll, closePoll, toggleWhiteboard, setVideoFitMode, setMeetingLocked, setLobbyEnabled, setParticipantsCanShareScreen, setParticipantsCanChat, setParticipantsCanUnmute, setParticipantsCanTurnOnCamera, setRecording, incrementMentionCount, onMeetingEnded]);
 }

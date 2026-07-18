@@ -154,7 +154,7 @@ export default function PreJoinPage() {
         if (settings.mirrorCamera !== undefined) setMirrorCamera(settings.mirrorCamera);
         if (settings.videoFilter) setVideoFilter(settings.videoFilter);
       }
-    } catch (err) {
+    } catch {
       // Silently fail if localStorage is not available or corrupted
     }
   }, [setVideoFitMode, setBackgroundBlur, setBackgroundBlurLevel, setBackgroundBlurIntensity, setBackgroundMode, setBackgroundBgColor, setBackgroundImagePath, setMirrorCamera, setVideoFilter]);
@@ -247,7 +247,8 @@ export default function PreJoinPage() {
         if (requestedRole === 'moderator') {
           try {
             await updateRoomSettings(targetRoomName, { gridAspectRatio, videoFitMode });
-          } catch {
+          } catch (err) {
+            // Ignore errors when pre-saving room settings
           }
         }
       }
@@ -271,7 +272,8 @@ export default function PreJoinPage() {
             },
           });
           audioTrack = audioStream.getAudioTracks()[0] || null;
-        } catch {
+        } catch (err) {
+          // Ignore errors when accessing microphone; user will be prompted later
         }
       }
 
