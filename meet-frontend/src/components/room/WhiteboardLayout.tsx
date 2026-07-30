@@ -12,7 +12,7 @@ import React, { useState, useCallback, useEffect, useRef, useMemo, Suspense, } f
 import { useParticipants, useLocalParticipant } from '@livekit/components-react';
 import { RoomEvent } from 'livekit-client';
 import type { Room } from 'livekit-client';
-import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
+import type { ExcalidrawImperativeAPI, BinaryFileData } from '@excalidraw/excalidraw/types';
 import {
   useUIActions,
   useIsModerator,
@@ -87,11 +87,9 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
   isLockedRef.current = isLocked;
 
   const applySceneElements = useCallback((scene: unknown[]) => {
-    // Guard: don't let a spurious empty scene (e.g. Excalidraw mount) wipe existing content
-    if (scene.length === 0 && currentSceneRef.current.length > 0) {
-      return;
-    }
-
+    // NOTE: no empty-scene guard here — mount-time spurious empties are already
+    // blocked by the hasLoadedRef guard in handleChange. Guarding here would
+    // break legitimate "clear canvas" propagation and persistence.
     currentSceneRef.current = [...scene];
 
     if (roomName) {
@@ -173,7 +171,11 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
     if (cached && cached.scene.length > 0) {
       setIsLocked(cached.locked);
       applySceneElements(cached.scene);
-      excalidrawAPIRef.current.updateScene({ elements: cached.scene as any[], files: cached.files as any } as any);
+      // updateScene ignores files — merge them via addFiles or images break
+      if (cached.files && Object.keys(cached.files).length > 0) {
+        excalidrawAPIRef.current.addFiles(Object.values(cached.files) as BinaryFileData[]);
+      }
+      excalidrawAPIRef.current.updateScene({ elements: cached.scene as any[] } as any);
       excalidrawAPIRef.current.scrollToContent(cached.scene as any[], {
         fitToContent: true,
         animate: false,
@@ -187,7 +189,10 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
         setIsLocked(state.locked);
         if (excalidrawAPIRef.current && Array.isArray(state.scene) && state.scene.length > 0) {
           applySceneElements(state.scene as unknown[]);
-          excalidrawAPIRef.current.updateScene({ elements: state.scene as any[], files: state.files as any } as any);
+          if (state.files && Object.keys(state.files).length > 0) {
+            excalidrawAPIRef.current.addFiles(Object.values(state.files) as BinaryFileData[]);
+          }
+          excalidrawAPIRef.current.updateScene({ elements: state.scene as any[] } as any);
           excalidrawAPIRef.current.scrollToContent(state.scene as any[], {
             fitToContent: true,
             animate: true,

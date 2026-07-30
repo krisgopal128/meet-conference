@@ -10,6 +10,9 @@ import type { Room } from 'livekit-client';
 import { useLocalParticipant, useMaybeRoomContext } from '@livekit/components-react';
 import { roomsApi } from '../services/api';
 import { withOperationTimeout } from '../utils/asyncTimeout';
+import logger from '../utils/logger';
+import { useConnectionActions } from '../store/roomStore';
+import toast from 'react-hot-toast';
 
 // Module-level registry for whiteboard force-save callbacks
 // Registered by WhiteboardLayout/WhiteboardPanel via useWhiteboardAutoSave
@@ -21,12 +24,11 @@ export function registerWhiteboardSave(fn: () => Promise<void>): () => void {
 }
 
 async function saveAllWhiteboards() {
-  const saves = Array.from(whiteboardSaveFns).map(fn => fn().catch(() => {}));
+  const saves = Array.from(whiteboardSaveFns).map(fn => fn().catch((err) => {
+    logger.warn('[useMeetingActions] Failed to save whiteboard:', err);
+  }));
   await Promise.allSettled(saves);
 }
-import { useConnectionActions } from '../store/roomStore';
-import toast from 'react-hot-toast';
-import logger from '../utils/logger';
 
 /** Runtime property on Room not in TS declarations */
 type RoomWithConnection = Room & { connectedAt?: Date | string };

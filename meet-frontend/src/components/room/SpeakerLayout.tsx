@@ -1,24 +1,27 @@
 /**
  * SpeakerLayout Component
- * 
+ *
  * Displays one featured participant (speaker) prominently with other
  * participants in a horizontal filmstrip at the bottom.
- * 
+ *
  * Key principles:
  * 1. Featured participant is centered with aspect ratio constraint
  * 2. For landscape, set width: 100% and let height calculate from aspect ratio
  * 3. For portrait, set height: 100% and let width calculate from aspect ratio
- * 4. Filmstrip shows remaining participants in fixed-height strip
+ * 4. Filmstrip shows up to FILMSTRIP_MAX_TILES tiles, most recent speakers
+ *    first (Teams-style "featured" strip); overflow collapses into a "+N" tile
  */
 
 import { useParticipants, useLocalParticipant } from '@livekit/components-react';
 import { Participant } from 'livekit-client';
 import { SafeParticipantTile as ParticipantTile } from './ParticipantTile';
-import { usePinnedIdentity, useGridAspectRatio } from '../../store/roomStore';
+import { usePinnedIdentity, useGridAspectRatio, useUIActions } from '../../store/roomStore';
 import { useMemo } from 'react';
 import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { ASPECT_RATIO_MULTIPLIERS, ASPECT_RATIO_CSS } from '../../utils/aspectRatio';
+
+const FILMSTRIP_MAX_TILES = 10;
 
 interface SpeakerLayoutProps {
   activeSpeakers: Participant[];
@@ -30,6 +33,7 @@ export function SpeakerLayout({ activeSpeakers }: SpeakerLayoutProps) {
   const pinnedIdentity = usePinnedIdentity();
   const aspectRatio = useGridAspectRatio();
   const isMobile = useIsMobile();
+  const { toggleParticipants } = useUIActions();
 
   const filmstripHeight = isMobile ? '18dvh' : '140px';
 
@@ -63,7 +67,20 @@ export function SpeakerLayout({ activeSpeakers }: SpeakerLayoutProps) {
     return activeSpeaker || admittedParticipants[0];
   }, [pinnedIdentity, activeSpeakers, admittedParticipants]);
 
-  const rest = admittedParticipants.filter(p => p !== featured);
+  // Filmstrip order: most recent speakers first (LiveKit orders activeSpeakers
+  // by recency), everyone else keeps their join order behind them.
+  const rest = useMemo(() => {
+    const others = admittedParticipants.filter(p => p !== featured);
+    const speakerRank = new Map(activeSpeakers.map((s, i) => [s.identity, i]));
+    return [...others].sort((a, b) => {
+      const rankA = speakerRank.get(a.identity) ?? Number.MAX_SAFE_INTEGER;
+      const rankB = speakerRank.get(b.identity) ?? Number.MAX_SAFE_INTEGER;
+      return rankA - rankB;
+    });
+  }, [admittedParticipants, featured, activeSpeakers]);
+
+  const visibleRest = rest.slice(0, FILMSTRIP_MAX_TILES);
+  const overflowCount = rest.length - visibleRest.length;
 
   const isLandscape = aspectRatio === '16:9' || aspectRatio === '4:3';
 
@@ -108,7 +125,7 @@ export function SpeakerLayout({ activeSpeakers }: SpeakerLayoutProps) {
             scrollbarColor: 'rgba(255,255,255,0.3) transparent',
           }}
         >
-          {rest.map((p) => (
+          {visibleRest.map((p) => (
             <div
               key={p.identity}
               className="flex-shrink-0 h-full rounded-2xl bg-surface-900"
@@ -117,6 +134,18 @@ export function SpeakerLayout({ activeSpeakers }: SpeakerLayoutProps) {
               <ParticipantTile participant={p} className="w-full h-full rounded-2xl" isSpeakerTile={false} participantCount={admittedParticipants.length} />
             </div>
           ))}
+          {overflowCount > 0 && (
+            <button
+              type="button"
+              onClick={toggleParticipants}
+              className="flex-shrink-0 h-full rounded-2xl bg-surface-800 hover:bg-surface-700 transition-colors flex flex-col items-center justify-center text-surface-200"
+              style={{ width: filmstripTileWidth }}
+              aria-label={`${overflowCount} more participants, open people panel`}
+            >
+              <span className="text-lg font-semibold">+{overflowCount}</span>
+              <span className="text-[10px] uppercase tracking-wide text-surface-400">more</span>
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -85,7 +85,10 @@ const ParticipantListItem = memo(function ParticipantListItem({
 
     rafId = requestAnimationFrame(updateLevel);
     return () => cancelAnimationFrame(rafId);
-  }, [participant.identity, participant.audioLevel, participant.isMicrophoneEnabled]);
+    // participant.audioLevel intentionally omitted — the loop reads it live;
+    // including it would tear down and recreate the rAF loop on every change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [participant.identity, participant.isMicrophoneEnabled]);
 
   const hasAudio = participant.isMicrophoneEnabled;
   const isBusy = pendingActions.has(participant.identity);

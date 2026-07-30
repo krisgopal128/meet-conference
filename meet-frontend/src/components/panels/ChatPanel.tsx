@@ -77,7 +77,8 @@ function getParticipantRole(metadata: string | undefined, hostId: string | null,
   try {
     const parsed = JSON.parse(metadata) as { role?: string };
     return parsed.role || 'attendee';
-  } catch {
+  } catch (err) {
+    logger.warn('[getRoleFromMetadata] Failed to parse metadata:', err);
     return 'attendee';
   }
 }
@@ -220,7 +221,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
     if (!localParticipant) return;
 
     const isTyping = nextValue.trim().length > 0;
-    await publishTyping(isTyping);
+    await publishTyping(isTyping).catch(() => undefined);
 
     if (typingTimeoutRef.current) {
       window.clearTimeout(typingTimeoutRef.current);
@@ -231,7 +232,9 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
         void publishTyping(false).catch(() => undefined);
       }, meetingRoomConfig.chat.typingIndicatorTimeoutMs);
     }
-  }, [localParticipant]);
+    // Note: publishTyping is a stable function, so we omit it from deps to avoid churn
+    //eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localParticipant, meetingRoomConfig.chat.typingIndicatorTimeoutMs]);
 
   // Handle keyboard navigation in mention list
   const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -267,6 +270,8 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
       event.preventDefault();
       void sendMessage();
     }
+    // Note: sendMessage is a stable function from ChatStore, omitted to prevent listener churn
+    //eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showMentionList, filteredParticipants, selectedMentionIndex, selectMention]);
 
   // Scroll selected mention into view
@@ -298,7 +303,7 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
         mergeMessages(history);
       } catch (error) {
         logger.error('Failed to load room chat history:', error);
-      toast.error('Failed to load chat history');
+        toast.error('Failed to load chat history');
       } finally {
         setHistoryLoaded(true);
       }
@@ -395,84 +400,90 @@ export function ChatPanel({ roomName }: ChatPanelProps) {
 
     sendingRef.current = true;
 
-    const trimmed = inputValueRef.current.trim();
-    const isPrivate = meetingRoomConfig.chat.privateModeratorChatEnabled && sendPrivateToModerators && !isModerator;
-    let persistedId = `${Date.now()}`;
-    let sentAt = new Date().toISOString();
-    let wasPersisted = false;
-
-    // Parse mentions from the message
-    const mentionedNames = parseMentions(trimmed);
-    const mentionedIdentities = mentionedNames.map((name) => {
-      const participant = mentionableParticipants.find(
-        (p) => p.name.toLowerCase() === name.toLowerCase()
-      );
-      return participant?.identity;
-    }).filter(Boolean) as string[];
-
-    if (meetingRoomConfig.chat.persistPublicRoomChat && !isPrivate && roomName && isAuthenticated()) {
-      try {
-        const response = await roomsApi.sendChatMessage(roomName, trimmed);
-        if (response.data.message) {
-          persistedId = response.data.message.id;
-          sentAt = response.data.message.created_at || response.data.message.createdAt || sentAt;
-          wasPersisted = true;
-        }
-      } catch (error) {
-        logger.error('Failed to persist room chat message:', error);
-        toast.error('Failed to persist room chat message');
-      }
-    }
-
-    const payload = {
-      id: persistedId,
-      type: isPrivate ? 'private_chat' as const : 'chat' as const,
-      message: trimmed,
-      senderIdentity: localParticipant.identity,
-      senderName: localParticipant.name || localParticipant.identity,
-      sentAt,
-      isPrivate,
-      recipientRole: isPrivate ? ('moderator' as const) : undefined,
-      mentions: mentionedIdentities.length > 0 ? mentionedIdentities : undefined,
-    };
-
     try {
-      const publishOptions: { reliable: boolean; destinationIdentities?: string[] } = { reliable: true };
-      if (isPrivate) {
-        const moderatorIdentities = participants
-          .filter((p) => {
-            if (p.identity === localParticipant.identity) return false;
-            const participantRole = getParticipantRole(p.metadata, hostId, p.identity);
-            return participantRole === 'host' || participantRole === 'cohost' || participantRole === 'moderator';
-          })
-          .map((p) => p.identity)
-          .filter((id): id is string => Boolean(id));
-        publishOptions.destinationIdentities = moderatorIdentities;
+      const trimmed = inputValueRef.current.trim();
+      const isPrivate = meetingRoomConfig.chat.privateModeratorChatEnabled && sendPrivateToModerators && !isModerator;
+      let persistedId = `${Date.now()}`;
+      let sentAt = new Date().toISOString();
+      let wasPersisted = false;
+
+      // Parse mentions from the message
+      const mentionedNames = parseMentions(trimmed);
+      const mentionedIdentities = mentionedNames.map((name) => {
+        const participant = mentionableParticipants.find(
+          (p) => p.name.toLowerCase() === name.toLowerCase()
+        );
+        return participant?.identity;
+      }).filter(Boolean) as string[];
+
+      if (meetingRoomConfig.chat.persistPublicRoomChat && !isPrivate && roomName && isAuthenticated()) {
+        try {
+          const response = await roomsApi.sendChatMessage(roomName, trimmed);
+          if (response.data.message) {
+            persistedId = response.data.message.id;
+            sentAt = response.data.message.created_at || response.data.message.createdAt || sentAt;
+            wasPersisted = true;
+          }
+        } catch (error) {
+          logger.error('Failed to persist room chat message:', error);
+          toast.error('Failed to persist room chat message');
+        }
       }
-      await withOperationTimeout(
-        localParticipant.publishData(
-          new TextEncoder().encode(JSON.stringify(payload)),
-          publishOptions
-        ),
-        'PUBLISH_DATA',
-        'Send chat message'
-      );
-    } catch (err) {
-      logger.error('Failed to send chat message:', err);
-      toast.error(wasPersisted ? 'Message saved but not delivered to all participants' : 'Failed to send message');
-    }
 
-    addMessage({
-      ...payload,
-      sentAt: new Date(sentAt),
-    });
+      const payload = {
+        id: persistedId,
+        type: isPrivate ? 'private_chat' as const : 'chat' as const,
+        message: trimmed,
+        senderIdentity: localParticipant.identity,
+        senderName: localParticipant.name || localParticipant.identity,
+        sentAt,
+        isPrivate,
+        recipientRole: isPrivate ? ('moderator' as const) : undefined,
+        mentions: mentionedIdentities.length > 0 ? mentionedIdentities : undefined,
+      };
 
-    setInput('');
-    if (typingTimeoutRef.current) {
-      window.clearTimeout(typingTimeoutRef.current);
+      try {
+        const publishOptions: { reliable: boolean; destinationIdentities?: string[] } = { reliable: true };
+        if (isPrivate) {
+          const moderatorIdentities = participants
+            .filter((p) => {
+              if (p.identity === localParticipant.identity) return false;
+              const participantRole = getParticipantRole(p.metadata, hostId, p.identity);
+              return participantRole === 'host' || participantRole === 'cohost' || participantRole === 'moderator';
+            })
+            .map((p) => p.identity)
+            .filter((id): id is string => Boolean(id));
+          publishOptions.destinationIdentities = moderatorIdentities;
+        }
+        await withOperationTimeout(
+          localParticipant.publishData(
+            new TextEncoder().encode(JSON.stringify(payload)),
+            publishOptions
+          ),
+          'PUBLISH_DATA',
+          'Send chat message'
+        );
+      } catch (err) {
+        logger.error('Failed to send chat message:', err);
+        toast.error(wasPersisted ? 'Message saved but not delivered to all participants' : 'Failed to send message');
+      }
+
+      addMessage({
+        ...payload,
+        sentAt: new Date(sentAt),
+      });
+
+      setInput('');
+      if (typingTimeoutRef.current) {
+        window.clearTimeout(typingTimeoutRef.current);
+      }
+      // Non-fatal: a timed-out typing publish must not reject sendMessage
+      await publishTyping(false).catch(() => undefined);
+    } finally {
+      // Always release the send lock — a rejection above must never leave
+      // the chat input permanently disabled
+      sendingRef.current = false;
     }
-    await publishTyping(false);
-    sendingRef.current = false;
   }
 
   // Poll functions

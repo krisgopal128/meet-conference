@@ -104,19 +104,23 @@ function HomePageContent() {
   }, [roomName, roomNameTouched]);
 
   // Lightweight room + stats reload (for after create/delete)
+  // Note: loadDeferredData is defined below but we need it here.
+  // We use a ref to avoid circular dependency issues.
   const reloadRooms = useCallback(async () => {
     try {
       const response = await getMyRooms();
       if (!mountedRef.current) return;
       setRooms(response?.data?.rooms || []);
       // Also refresh stats after room changes
-      if (mountedRef.current) loadDeferredData();
+      // We defer this to avoid immediate sync issues
+      //eslint-disable-next-line react-hooks/exhaustive-deps
+      setTimeout(() => {
+        if (mountedRef.current) loadDeferredData();
+      }, 100);
     } catch (err) {
       logger.error('Failed to reload rooms:', err);
     }
-  // loadDeferredData is stable enough (only closes over state setters + mountedRef)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []);  
 
   // Critical data - loads immediately
   const loadCriticalData = async () => {
@@ -190,15 +194,6 @@ function HomePageContent() {
       }
     }
   };
-
-  // Reload all data (rooms + stats) — used after create/delete and on focus
-  const reloadAll = useCallback(async () => {
-    if (!mountedRef.current) return;
-    await loadCriticalData();
-    if (mountedRef.current) await loadDeferredData();
-  }, []);
-
-  void reloadAll;
 
   // Start instant meeting
   const handleStartMeeting = useCallback(async () => {
@@ -595,7 +590,8 @@ function HomePageContent() {
                     }}
                     onBlur={() => setRoomNameTouched(true)}
                     placeholder="team-standup"
-                    className={roomNameError}
+                    className={cn(roomNameError && 'input-error')}
+                    aria-invalid={!!roomNameError}
                     aria-describedby={roomNameError ? 'room-name-error' : undefined}
                     autoFocus
                   />

@@ -34,6 +34,7 @@ import toast from 'react-hot-toast';
 import { meetingRoomConfig, type QualityModeName, type ScreenShareModeName } from '../../config/meetingRoomConfig';
 import { meetingsApi, updateRoomSettings } from '../../services/api';
 import { withOperationTimeout } from '../../utils/asyncTimeout';
+import { getSpeakerVolume, setSpeakerVolume } from '../../utils/speakerVolume';
 import logger from '../../utils/logger';
 
 export function SettingsPanel() {
@@ -71,25 +72,24 @@ export function SettingsPanel() {
   // Action hooks
   const { toggleSettings, openSettingsView, toggleMirrorLocalVideo, toggleBackgroundBlur, setBackgroundBlurLevel, setBackgroundBlurIntensity, setBackgroundMode, setBackgroundBgColor, setBackgroundImagePath, setQualityMode, setScreenShareMode, setGridAspectRatio, setVideoFitMode, setFaceFramingEnabled, setDiagnosticsIntervalSec, clearDiagnosticsLog } = useUIActions();
   
-  const persistedSpeakerVolumeRef = useRef(100);
-  const [speakerVolume, setSpeakerVolume] = useState(() => persistedSpeakerVolumeRef.current);
-  const speakerVolumeRef = useRef(persistedSpeakerVolumeRef.current);
+  const [speakerVolume, setSpeakerVolumeState] = useState(() => getSpeakerVolume());
+  const speakerVolumeRef = useRef(speakerVolume);
 
   const applyVolumeToAllRemoteParticipants = useCallback((volume: number) => {
     const normalizedVolume = volume / 100;
     room.remoteParticipants.forEach((participant) => {
       participant.audioTrackPublications.forEach((pub) => {
         if (pub.track) {
-          (pub.track as any).setVolume?.(normalizedVolume);
+          (pub.track as { setVolume?: (v: number) => void })?.setVolume?.(normalizedVolume);
         }
       });
     });
   }, [room]);
 
   const handleSpeakerVolumeChange = (value: number) => {
-    setSpeakerVolume(value);
+    setSpeakerVolumeState(value);
     speakerVolumeRef.current = value;
-    persistedSpeakerVolumeRef.current = value;
+    setSpeakerVolume(value); // persist — also read by RoomPage's media observer
     applyVolumeToAllRemoteParticipants(value);
   };
 

@@ -13,6 +13,7 @@ import { meetingRoomConfig } from '../../config/meetingRoomConfig';
 import ParticipantListItem, { getInitials } from './ParticipantListItem';
 import { useParticipantActions } from '../../hooks/useParticipantActions';
 import { useLobbyPolling } from '../../hooks/useLobbyPolling';
+import logger from '../../utils/logger';
 import { useDebugParticipants, DummyParticipantListItem } from '../../debug/DebugParticipants';
 
 // Sort options for participants
@@ -39,8 +40,8 @@ function getPersistedSortPreference(): SortOption {
     if (stored && sortOptions.some(opt => opt.value === stored)) {
       return stored as SortOption;
     }
-  } catch {
-    // Ignore localStorage errors
+  } catch (err) {
+    logger.warn('[ParticipantsPanel] Failed to read sort preference:', err);
   }
   return 'name'; // Default sort
 }
@@ -49,8 +50,8 @@ function getPersistedSortPreference(): SortOption {
 function persistSortPreference(sort: SortOption): void {
   try {
     localStorage.setItem(SORT_PREFERENCE_KEY, sort);
-  } catch {
-    // Ignore localStorage errors
+  } catch (err) {
+    logger.warn('[ParticipantsPanel] Failed to persist sort preference:', err);
   }
 }
 
@@ -73,6 +74,7 @@ export function ParticipantsPanel() {
   const [lobbyParticipants, setLobbyParticipants] = useState<{ identity: string; name: string; joinedAt: number }[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>(() => getPersistedSortPreference());
+  const listScrollRef = useRef<HTMLDivElement>(null);
 
   // Wire up extracted participant actions hook
   const {
@@ -337,7 +339,7 @@ export function ParticipantsPanel() {
       )}
       
       {/* Active participants list */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div ref={listScrollRef} className="flex-1 overflow-y-auto p-2">
         <div className="flex items-center gap-2 px-3 py-2 text-surface-500 text-xs">
           <Users size={12} />
           <span>In Meeting</span>
@@ -353,6 +355,7 @@ export function ParticipantsPanel() {
             isModerator={isModerator}
             raisedHands={raisedHands}
             pendingParticipantActions={pendingParticipantActions}
+            scrollElementRef={listScrollRef}
             onMute={handleMute}
             onDisableCamera={handleDisableCamera}
             onDisableScreenShare={handleDisableScreenShare}
@@ -384,6 +387,7 @@ interface ActiveParticipantsListProps {
   isModerator: boolean;
   raisedHands: string[];
   pendingParticipantActions: Set<string>;
+  scrollElementRef: React.RefObject<HTMLDivElement | null>;
   onMute: (identity: string) => void;
   onDisableCamera: (identity: string) => void;
   onDisableScreenShare: (identity: string) => void;
@@ -396,22 +400,24 @@ function ActiveParticipantsList({
   isModerator,
   raisedHands,
   pendingParticipantActions,
+  scrollElementRef,
   onMute,
   onDisableCamera,
   onDisableScreenShare,
   onKick,
 }: ActiveParticipantsListProps) {
-  const parentRef = useRef<HTMLDivElement>(null);
-
+  // The scroll container is the PARENT's overflow-y-auto div — the virtualizer
+  // must observe it (not the sizer div) or items past the first viewport
+  // never render when scrolling.
   const virtualizer = useVirtualizer({
     count: sortedParticipants.length,
-    getScrollElement: () => parentRef.current,
+    getScrollElement: () => scrollElementRef.current,
     estimateSize: () => 48,
     overscan: 5,
   });
 
   return (
-    <div ref={parentRef} style={{ height: virtualizer.getTotalSize(), width: '100%', position: 'relative' }}>
+    <div style={{ height: virtualizer.getTotalSize(), width: '100%', position: 'relative' }}>
       {virtualizer.getVirtualItems().map((virtualItem) => {
         const p = sortedParticipants[virtualItem.index];
         const isRemote = p.identity !== localParticipantIdentity;

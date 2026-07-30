@@ -489,7 +489,7 @@ info "API Key: ${LK_API_KEY}"
 JWT_SECRET="$(openssl rand -hex 32)"
 
 # ---------------------------------------------------------------------------
-# Step 7e: Write backend .env
+# Step 7d: Write backend .env
 # ---------------------------------------------------------------------------
 step "Step 7d: Writing environment files"
 

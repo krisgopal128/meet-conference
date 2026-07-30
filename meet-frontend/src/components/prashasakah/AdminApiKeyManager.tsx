@@ -55,6 +55,8 @@ export default function AdminApiKeyManager() {
     if (isAdmin) {
       fetchKeys();
     }
+    // Note: fetchKeys is called in effect, but we omit it from deps to avoid triggering fetch on every render
+    //eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, filterActive, filterRole, appliedSearchQuery]);
 
   const fetchKeys = async () => {

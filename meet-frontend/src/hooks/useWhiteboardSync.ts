@@ -4,8 +4,7 @@ import {
   type LocalParticipant,
   RoomEvent,
 } from 'livekit-client';
-import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
-import { whiteboardApi } from '../services/whiteboardApi';
+import type { ExcalidrawImperativeAPI, BinaryFileData } from '@excalidraw/excalidraw/types';
 import { publishMessage, ChunkReassembler } from '../utils/livekitData';
 import logger from '../utils/logger';
 
@@ -53,6 +52,34 @@ export type WhiteboardMessage =
 
 /** Map of participant identity → their viewport rectangle */
 export type ParticipantViewports = Record<string, { x: number; y: number; width: number; height: number }>;
+
+/**
+ * Returns true when the current viewport already shows all of the given
+ * elements' bounding box (so no auto-fit is needed).
+ */
+function viewportContainsElements(api: ExcalidrawImperativeAPI, elements: unknown[]): boolean {
+  try {
+    const { scrollX, scrollY, zoom, width, height } = api.getAppState();
+    const zoomValue = typeof zoom === 'object' ? zoom.value : zoom;
+    const viewLeft = -scrollX / zoomValue;
+    const viewTop = -scrollY / zoomValue;
+    const viewRight = viewLeft + width / zoomValue;
+    const viewBottom = viewTop + height / zoomValue;
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const el of elements as Array<{ x: number; y: number; width?: number; height?: number }>) {
+      if (el.x < minX) minX = el.x;
+      if (el.y < minY) minY = el.y;
+      if (el.x + (el.width || 0) > maxX) maxX = el.x + (el.width || 0);
+      if (el.y + (el.height || 0) > maxY) maxY = el.y + (el.height || 0);
+    }
+    if (!Number.isFinite(minX)) return true;
+
+    return minX >= viewLeft && minY >= viewTop && maxX <= viewRight && maxY <= viewBottom;
+  } catch {
+    return true; // Can't determine viewport — leave it alone
+  }
+}
 
 /**
  * Hook for real-time whiteboard sync via LiveKit data channels.
@@ -184,25 +211,6 @@ export function useWhiteboardSync(
     [room, localParticipant],
   );
 
-  // Load persisted scene on mount
-  const loadPersistedScene = useCallback(
-    async (roomName: string) => {
-      try {
-        const state = await whiteboardApi.getState(roomName);
-        if (state && excalidrawAPIRef.current && Array.isArray(state.scene) && state.scene.length > 0) {
-          excalidrawAPIRef.current.updateScene({ elements: state.scene as any[], files: state.files as any } as any);
-          onSceneElements?.(state.scene as unknown[]);
-          onSceneUpdate?.();
-        }
-        return state;
-      } catch (err) {
-        logger.warn('[Whiteboard] Failed to load persisted scene', { error: err });
-        return null;
-      }
-    },
-    [excalidrawAPIRef, onSceneElements, onSceneUpdate],
-  );
-
   // Subscribe to incoming remote drawing updates + lock + viewport messages
   useEffect(() => {
     if (!room) return;
@@ -223,23 +231,25 @@ export function useWhiteboardSync(
             logger.debug('[WhiteboardSync] Skipping update — API not ready');
             return;
           }
-          if (wbMsg.elements.length === 0) {
-            logger.debug('[WhiteboardSync] Skipping empty remote update (likely spurious mount event)');
-            return;
-          }
           logger.debug('[WhiteboardSync] Applying remote drawing update', {
             from: participant.identity,
             elements: wbMsg.elements.length,
             commit: wbMsg.commit,
             hasFiles: !!wbMsg.files,
           });
-          api.updateScene({ elements: wbMsg.elements as any[], files: wbMsg.files as any } as any);
+          // updateScene() IGNORES the files field in this Excalidraw version —
+          // images must be merged via addFiles() or they never render remotely
+          if (wbMsg.files && Object.keys(wbMsg.files).length > 0) {
+            api.addFiles(Object.values(wbMsg.files) as BinaryFileData[]);
+          }
+          api.updateScene({ elements: wbMsg.elements as any[] } as any);
           onSceneElementsRef.current?.(wbMsg.elements as unknown[]);
           onSceneUpdateRef.current?.();
 
-          // Google Meet-style: auto-fit viewport to show all content
-          // Ensures all participants see the same drawings regardless of screen size
-          if (wbMsg.elements.length > 0) {
+          // Auto-fit only when the new content falls outside the current
+          // viewport — fitting on EVERY update would yank the view away from
+          // participants who manually panned/zoomed
+          if (wbMsg.elements.length > 0 && !viewportContainsElements(api, wbMsg.elements)) {
             api.scrollToContent(wbMsg.elements as any[], {
               fitToContent: true,
               animate: false,
@@ -272,5 +282,5 @@ export function useWhiteboardSync(
     };
   }, []);
 
-  return { broadcastChange, broadcastLock, broadcastActivate, broadcastViewport, loadPersistedScene };
+  return { broadcastChange, broadcastLock, broadcastActivate, broadcastViewport };
 }

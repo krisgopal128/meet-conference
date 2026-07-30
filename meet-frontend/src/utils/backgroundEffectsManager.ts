@@ -20,7 +20,6 @@ import {
   SelfieSegmentationTransformer,
   type SelfieSegmentationOptions,
 } from './selfieSegmentationTransformer';
-import type { BackgroundMode } from './backgroundBlurEngine';
 import logger from './logger';
 
 interface VideoTrack {
@@ -48,10 +47,20 @@ export function preInitBlurWorker(): void {
         logger.info('[BgEffects] Pre-init worker ready for conference blur');
         for (const resolve of preInitReadyResolvers) resolve();
         preInitReadyResolvers = [];
+      } else if (e.data?.type === 'error') {
+        // The worker posts 'error' (not onerror) when WASM/model init fails.
+        // Without this branch, waitForBlurWorkerReady() would hang forever and
+        // RoomPage would never publish the camera track.
+        logger.warn('[BgEffects] Pre-init worker init failed:', e.data.error);
+        preInitWorker?.terminate();
+        preInitWorker = null;
+        for (const resolve of preInitReadyResolvers) resolve();
+        preInitReadyResolvers = [];
       }
     };
     preInitWorker.onerror = () => {
       logger.warn('[BgEffects] Pre-init worker failed — will create on demand');
+      preInitWorker?.terminate();
       preInitWorker = null;
       for (const resolve of preInitReadyResolvers) resolve();
       preInitReadyResolvers = [];
@@ -69,10 +78,18 @@ export function preInitBlurWorker(): void {
  * model loaded), or immediately if pre-init was never called or already failed.
  * Used by RoomPage to gate camera publishing until blur is ready.
  */
-export function waitForBlurWorkerReady(): Promise<void> {
+export function waitForBlurWorkerReady(timeoutMs = 20000): Promise<void> {
   if (preInitWorkerReady || !preInitWorker) return Promise.resolve();
   return new Promise((resolve) => {
-    preInitReadyResolvers.push(resolve);
+    // Safety net: never block camera publishing indefinitely
+    const timer = setTimeout(() => {
+      logger.warn('[BgEffects] Timed out waiting for pre-init worker — publishing without it');
+      resolve();
+    }, timeoutMs);
+    preInitReadyResolvers.push(() => {
+      clearTimeout(timer);
+      resolve();
+    });
   });
 }
 
@@ -93,7 +110,8 @@ interface ManagerState {
   isEnabled: boolean;
   isApplying: boolean;
   lockPromise: Promise<void> | null;
-  lastToggleTime: number;
+  /** Option updates received while mid-toggle or before attach — applied after enable */
+  pendingOptions: Partial<SelfieSegmentationOptions> | null;
 }
 
 const state: ManagerState = {
@@ -103,11 +121,9 @@ const state: ManagerState = {
   isEnabled: false,
   isApplying: false,
   lockPromise: null,
-  lastToggleTime: 0,
+  pendingOptions: null,
 };
 
-// Debounce for continuous updates (slider changes, etc.), NOT for toggle
-const UPDATE_DEBOUNCE_MS = 300;
 // Lock timeout for preventing concurrent operations
 const LOCK_TIMEOUT_MS = 3000;
 // Timeout for individual async operations like setProcessor
@@ -124,17 +140,21 @@ async function acquireLock(): Promise<() => void> {
 
   let releaseLock = () => {};
   let safetyTimeout: ReturnType<typeof setTimeout> | null = null;
-  state.lockPromise = new Promise<void>((resolve) => {
+  const lockPromise = new Promise<void>((resolve) => {
     releaseLock = () => {
       if (safetyTimeout) {
         clearTimeout(safetyTimeout);
         safetyTimeout = null;
       }
-      state.lockPromise = null;
+      // Only release our own lock — after a safety timeout another operation
+      // may already hold a newer lock
+      if (state.lockPromise === lockPromise) {
+        state.lockPromise = null;
+      }
       resolve();
     };
     safetyTimeout = setTimeout(() => {
-      if (state.lockPromise) {
+      if (state.lockPromise === lockPromise) {
         logger.warn('[BgEffects] Lock timeout (3s), forcing release');
         state.isApplying = false;
         state.lockPromise = null;
@@ -143,17 +163,9 @@ async function acquireLock(): Promise<() => void> {
       }
     }, LOCK_TIMEOUT_MS);
   });
+  state.lockPromise = lockPromise;
 
   return releaseLock;
-}
-
-// Debounce for continuous updates (slider, color picker), NOT toggle
-function canContinueUpdating(): boolean {
-  const now = Date.now();
-  if (now - state.lastToggleTime < UPDATE_DEBOUNCE_MS) {
-    return false;
-  }
-  return true;
 }
 
 // Wrap promise with timeout
@@ -176,7 +188,7 @@ export async function enableBackgroundEffect(
 ): Promise<boolean> {
   const releaseLock = await acquireLock();
   state.isApplying = true;
-  state.lastToggleTime = Date.now();
+  let createdTransformer: SelfieSegmentationTransformer | null = null;
 
   try {
     logger.info('[BgEffects] Enabling background effect...');
@@ -187,10 +199,12 @@ export async function enableBackgroundEffect(
       await withTimeout(
         state.transformer.update({
           enabled: true,
+          ...state.pendingOptions,
           ...options,
         }),
         OPERATION_TIMEOUT_MS
       );
+      state.pendingOptions = null;
       state.isEnabled = true;
       return true;
     }
@@ -223,6 +237,7 @@ export async function enableBackgroundEffect(
       bgImagePath: null,
       ...options,
     });
+    createdTransformer = transformer;
     // Reuse pre-initialized worker if available (saves ~6s of WASM+model load)
     const preWorker = consumePreInitWorker();
     if (preWorker) {
@@ -237,11 +252,31 @@ export async function enableBackgroundEffect(
     state.currentTrack = track;
     state.isEnabled = true;
 
+    // Flush option updates that arrived while the processor was being attached
+    if (state.pendingOptions) {
+      const pending = state.pendingOptions;
+      state.pendingOptions = null;
+      try {
+        await withTimeout(transformer.update(pending), OPERATION_TIMEOUT_MS);
+      } catch (err) {
+        logger.warn('[BgEffects] Failed to apply pending options:', err);
+      }
+    }
+
     logger.info('[BgEffects] Background effect enabled');
     return true;
   } catch (err) {
     logger.error('[BgEffects] Failed to enable:', err);
     state.isEnabled = false;
+    // Destroy the transformer we just created — otherwise its worker and
+    // canvases leak when setProcessor fails
+    if (createdTransformer && state.transformer !== createdTransformer) {
+      try {
+        await createdTransformer.destroy();
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
     return false;
   } finally {
     state.isApplying = false;
@@ -267,7 +302,6 @@ export async function disableBackgroundEffect(track: VideoTrack): Promise<boolea
 
   const releaseLock = await acquireLock();
   state.isApplying = true;
-  state.lastToggleTime = Date.now();
 
   try {
     // 1. Stop the processor FIRST — restores raw camera track
@@ -307,62 +341,23 @@ export async function disableBackgroundEffect(track: VideoTrack): Promise<boolea
 
 /**
  * Update background effect settings at runtime (mode, blur radius, etc).
- * This DOES apply debounce to prevent excessive updates from sliders/pickers
+ * Callers are expected to debounce (RoomPage debounces at 200ms); updates
+ * received while the processor is mid-toggle or not yet attached are queued
+ * and applied when enable completes, so no slider change is ever dropped.
  */
 export async function updateBackgroundEffect(
   options: Partial<SelfieSegmentationOptions>,
 ): Promise<void> {
-  if (!state.transformer) return;
-  
-  // Apply debounce for continuous updates (slider changes)
-  if (!canContinueUpdating()) {
-    logger.debug('[BgEffects] Skipping update due to debounce');
+  if (!state.transformer || state.isApplying) {
+    state.pendingOptions = { ...state.pendingOptions, ...options };
     return;
   }
-  
-  state.lastToggleTime = Date.now();
 
   try {
     await withTimeout(state.transformer.update(options), OPERATION_TIMEOUT_MS);
   } catch (err) {
     logger.warn('[BgEffects] Failed to update options:', err);
   }
-}
-
-/**
- * Toggle background effect on/off.
- */
-export function toggleBackgroundEffect(
-  track: VideoTrack,
-  enabled: boolean,
-  options?: Partial<SelfieSegmentationOptions>,
-): Promise<boolean> {
-  if (enabled) {
-    return enableBackgroundEffect(track, options);
-  }
-  return disableBackgroundEffect(track);
-}
-
-/**
- * Set the background mode (blur, image, color, none).
- */
-export async function setBackgroundMode(
-  mode: BackgroundMode,
-  extraOptions?: { blurRadius?: number; bgColor?: string; bgImagePath?: string },
-): Promise<void> {
-  await updateBackgroundEffect({
-    mode,
-    enabled: mode !== 'none',
-    ...extraOptions,
-  });
-}
-
-export function isBackgroundEffectEnabled(): boolean {
-  return state.isEnabled;
-}
-
-export function isBackgroundEffectApplying(): boolean {
-  return state.isApplying;
 }
 
 /**
@@ -389,18 +384,5 @@ export async function cleanupBackgroundEffect(track?: VideoTrack): Promise<void>
   state.currentTrack = null;
   state.isEnabled = false;
   state.isApplying = false;
-}
-
-// ─── Performance helpers ─────────
-
-const AUTO_DISABLE_THRESHOLD = 9;
-
-export function shouldAutoDisableBackgroundEffect(participantCount: number): boolean {
-  return participantCount >= AUTO_DISABLE_THRESHOLD;
-}
-
-export function getAdaptiveBlurRadius(participantCount: number): number {
-  if (participantCount <= 4) return 14;
-  if (participantCount <= 8) return 10;
-  return 7;
+  state.pendingOptions = null;
 }

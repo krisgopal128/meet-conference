@@ -59,7 +59,7 @@ fi
 
 # Create backup (excluding large/generated directories)
 log "Creating backup: $BACKUP_FILE"
-tar -czf "$BACKUP_FILE" \
+if ! tar -czf "$BACKUP_FILE" \
     --exclude='node_modules' \
     --exclude='dist' \
     --exclude='build' \
@@ -70,7 +70,10 @@ tar -czf "$BACKUP_FILE" \
     --exclude='.backup' \
     --exclude='.tmp' \
     -C "$(dirname "$PROJECT_DIR")" \
-    "$(basename "$PROJECT_DIR")" 2>/dev/null
+    "$(basename "$PROJECT_DIR")" 2>> "$LOG_FILE"; then
+    log_warn "Backup creation failed. Check log for details: $LOG_FILE"
+    exit 1
+fi
 
 # Get backup size
 BACKUP_SIZE=$(du -h "$BACKUP_FILE" | cut -f1)

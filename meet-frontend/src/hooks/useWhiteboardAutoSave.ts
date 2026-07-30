@@ -34,7 +34,9 @@ function saveWithAuth(url: string, scene: unknown[]): void {
     headers,
     body: JSON.stringify({ scene }),
     keepalive: true,
-  }).catch(() => {});
+  }).catch((err) => {
+    logger.warn('[useWhiteboardAutoSave] Failed to auto-save whiteboard:', err);
+  });
 }
 
 /**
