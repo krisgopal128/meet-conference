@@ -86,6 +86,22 @@ CREATE INDEX IF NOT EXISTS idx_meeting_participants_meeting_id ON meeting_partic
 CREATE INDEX IF NOT EXISTS idx_meeting_participants_identity ON meeting_participants(identity);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_meeting_participants_meeting_identity ON meeting_participants(meeting_id, identity) WHERE left_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_meeting_participants_meeting_user ON meeting_participants(meeting_id, user_id) WHERE left_at IS NULL;
+
+-- ============================================
+-- CHAT MESSAGES TABLE (from migration 001)
+-- Defined here so subsequent schema sections can reference it.
+-- ============================================
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    meeting_id UUID NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    content TEXT NOT NULL CHECK (char_length(content) <= 5000),
+    message_type VARCHAR(20) DEFAULT 'text' CHECK (message_type IN ('text', 'system', 'file', 'emoji')),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_messages_meeting_id ON chat_messages(meeting_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created_at);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_meeting_created ON chat_messages(meeting_id, created_at);
 
 -- ============================================
@@ -137,13 +153,17 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Apply update triggers
+-- Apply update triggers. DROP IF EXISTS keeps this section idempotent so
+-- re-running schema.sql against an already-provisioned database succeeds.
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_rooms_updated_at ON rooms;
 CREATE TRIGGER update_rooms_updated_at BEFORE UPDATE ON rooms
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_scheduled_meetings_updated_at ON scheduled_meetings;
 CREATE TRIGGER update_scheduled_meetings_updated_at BEFORE UPDATE ON scheduled_meetings
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -155,19 +175,9 @@ CREATE TRIGGER update_scheduled_meetings_updated_at BEFORE UPDATE ON scheduled_m
 
 
 -- ============================================
--- CHAT MESSAGES TABLE (from migration 001)
+-- (chat_messages table is defined earlier in this file, with its migrations
+-- inlined in the correct order. See above.)
 -- ============================================
-CREATE TABLE IF NOT EXISTS chat_messages (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    meeting_id UUID NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-    content TEXT NOT NULL CHECK (char_length(content) <= 5000),
-    message_type VARCHAR(20) DEFAULT 'text' CHECK (message_type IN ('text', 'system', 'file', 'emoji')),
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_chat_messages_meeting_id ON chat_messages(meeting_id);
-CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created_at);
 
 -- ============================================
 -- ADMIN TABLES (from migration 002)
@@ -283,16 +293,43 @@ CREATE INDEX IF NOT EXISTS idx_meeting_participants_user_id ON meeting_participa
 
 -- ============================================
 -- CHECK CONSTRAINTS FOR ENUM-LIKE COLUMNS
+-- PostgreSQL has no `ADD CONSTRAINT IF NOT EXISTS`, so we guard each one
+-- with a pg_constraint lookup. Idempotent on re-run.
 -- ============================================
-ALTER TABLE users ADD CONSTRAINT IF NOT EXISTS chk_users_role CHECK (role IN ('admin', 'moderator', 'participant', 'guest'));
-ALTER TABLE rooms ADD CONSTRAINT IF NOT EXISTS chk_rooms_status CHECK (status IN ('waiting', 'active', 'ended'));
-ALTER TABLE meetings ADD CONSTRAINT IF NOT EXISTS chk_meetings_status CHECK (status IN ('ongoing', 'ended'));
-ALTER TABLE meeting_participants ADD CONSTRAINT IF NOT EXISTS chk_mp_role CHECK (role IN ('host', 'moderator', 'attendee'));
-ALTER TABLE scheduled_meetings ADD CONSTRAINT IF NOT EXISTS chk_sm_status CHECK (status IN ('scheduled', 'started', 'completed', 'cancelled'));
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_users_role') THEN
+    ALTER TABLE users ADD CONSTRAINT chk_users_role CHECK (role IN ('admin', 'moderator', 'participant', 'guest'));
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_rooms_status') THEN
+    ALTER TABLE rooms ADD CONSTRAINT chk_rooms_status CHECK (status IN ('waiting', 'active', 'ended'));
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_meetings_status') THEN
+    ALTER TABLE meetings ADD CONSTRAINT chk_meetings_status CHECK (status IN ('ongoing', 'ended'));
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_mp_role') THEN
+    ALTER TABLE meeting_participants ADD CONSTRAINT chk_mp_role CHECK (role IN ('host', 'moderator', 'attendee'));
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_sm_status') THEN
+    ALTER TABLE scheduled_meetings ADD CONSTRAINT chk_sm_status CHECK (status IN ('scheduled', 'started', 'completed', 'cancelled'));
+  END IF;
+END $$;
 
 -- ============================================
 -- ON DELETE BEHAVIOR FOR AUDIT/BAN FKs
 -- ============================================
+-- Make sure banned_by column exists. The CREATE TABLE above uses IF NOT
+-- EXISTS, so a database that pre-dates the column won't get it from that
+-- statement. Add it on the fly here so the FK below can succeed.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_by UUID REFERENCES users(id);
+
 ALTER TABLE admin_audit_logs DROP CONSTRAINT IF EXISTS admin_audit_logs_admin_id_fkey;
 ALTER TABLE admin_audit_logs ADD CONSTRAINT admin_audit_logs_admin_id_fkey
   FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE SET NULL;

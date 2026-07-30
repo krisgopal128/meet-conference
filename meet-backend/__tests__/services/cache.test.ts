@@ -105,7 +105,9 @@ describe('Cache Service', () => {
       const fetchFn = vi.fn().mockResolvedValue(undefined);
       const result = await getCached('test:key', TTL_MEDIUM, fetchFn);
 
-      expect(result).toBeUndefined();
+      // The function narrows both null and undefined fetch results to null
+      // so callers can rely on `T | null` (not `T | null | undefined`).
+      expect(result).toBeNull();
       expect(cacheSet).toHaveBeenCalledWith('test:key', '__NULL__', 5);
     });
   });

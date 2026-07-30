@@ -5,6 +5,11 @@ import {
   getParticipantCount,
   getParticipants,
   cacheDel,
+  setHostLeaveMarker,
+  isHostLeaveMarkerActive,
+  clearHostLeaveMarker,
+  publishHostLeaveCancel,
+  subscribeHostLeaveCancels,
 } from './redis.js';
 import { sendDataMessage } from './livekit.js';
 import { invalidatePattern } from './cache.js';
@@ -37,8 +42,16 @@ const egressEndedSchema = z.object({
 // HOST LEAVE TIMEOUT MANAGEMENT
 // ============================================
 
-// Track host leave timeouts - key is roomName, value is NodeJS.Timeout
-const hostLeaveTimeouts = new Map<string, NodeJS.Timeout>();
+// Track host leave timeouts. The Node timer is per-instance (timers can't
+// run across processes), but the Redis marker (see redis.ts) is the single
+// source of truth for whether the host is still gone. We also keep the
+// per-room pub/sub unsubscribe so we can clean up the subscriber on
+// shutdown or when a new timer replaces an old one.
+interface HostLeaveEntry {
+  timer: NodeJS.Timeout;
+  unsubscribe: (() => Promise<void>) | null;
+}
+const hostLeaveTimeouts = new Map<string, HostLeaveEntry>();
 const HOST_REJOIN_GRACE_PERIOD_MS = 240000; // 240 seconds (4 minutes)
 const MAX_TIMEOUTS = 500;
 
@@ -49,9 +62,10 @@ const cleanupInterval = setInterval(() => {
     const excess = hostLeaveTimeouts.size - MAX_TIMEOUTS;
     const keys = Array.from(hostLeaveTimeouts.keys()).slice(0, excess);
     for (const key of keys) {
-      const timeout = hostLeaveTimeouts.get(key);
-      if (timeout) {
-        clearTimeout(timeout);
+      const entry = hostLeaveTimeouts.get(key);
+      if (entry) {
+        clearTimeout(entry.timer);
+        entry.unsubscribe?.().catch(() => {});
       }
       hostLeaveTimeouts.delete(key);
     }
@@ -62,7 +76,10 @@ const cleanupInterval = setInterval(() => {
 // Cleanup function for graceful shutdown
 export function clearAllHostLeaveTimeouts(): void {
   clearInterval(cleanupInterval);
-  hostLeaveTimeouts.forEach((timeout) => clearTimeout(timeout));
+  for (const entry of hostLeaveTimeouts.values()) {
+    clearTimeout(entry.timer);
+    entry.unsubscribe?.().catch(() => {});
+  }
   hostLeaveTimeouts.clear();
 }
 
@@ -99,15 +116,13 @@ export function scheduleHostLeaveCheck(
 // ============================================
 
 export async function handleRoomStarted(roomName: string): Promise<void> {
-  // Create meeting record for tracking (only if no ongoing meeting exists for this room)
+  // Create meeting record idempotently. The partial unique index
+  // `idx_meetings_one_active_per_room` (see schema.sql) guarantees only one
+  // ongoing meeting per room, so ON CONFLICT DO NOTHING is race-safe.
   await query(
     `INSERT INTO meetings (room_id)
      SELECT id FROM rooms WHERE name = $1
-     AND NOT EXISTS (
-       SELECT 1 FROM meetings m
-       WHERE m.room_id = (SELECT id FROM rooms WHERE name = $1)
-       AND m.status = 'ongoing'
-     )`,
+     ON CONFLICT DO NOTHING`,
     [roomName]
   );
 
@@ -118,9 +133,10 @@ export async function handleRoomStarted(roomName: string): Promise<void> {
 
 export async function handleRoomFinished(roomName: string): Promise<void> {
   // Clear any pending host leave timeout
-  const existingTimeout = hostLeaveTimeouts.get(roomName);
-  if (existingTimeout) {
-    clearTimeout(existingTimeout);
+  const existing = hostLeaveTimeouts.get(roomName);
+  if (existing) {
+    clearTimeout(existing.timer);
+    existing.unsubscribe?.().catch(() => {});
     hostLeaveTimeouts.delete(roomName);
   }
 
@@ -164,27 +180,34 @@ export async function handleParticipantJoined(roomName: string, identity: string
     [roomName]
   );
 
-  // FALLBACK: Create meeting record if it doesn't exist
-  const [existingMeeting] = await query<{ id: string }>(
-    `SELECT m.id FROM meetings m
-     JOIN rooms r ON m.room_id = r.id
-     WHERE r.name = $1 AND m.ended_at IS NULL`,
-    [roomName]
-  );
-
-  if (!existingMeeting && room) {
+  // FALLBACK: Create meeting record if it doesn't exist.
+  // The partial unique index `idx_meetings_one_active_per_room` makes this
+  // ON CONFLICT DO NOTHING race-safe across concurrent webhook deliveries.
+  if (room) {
     await query(
-      `INSERT INTO meetings (room_id) VALUES ($1)`,
+      `INSERT INTO meetings (room_id) VALUES ($1)
+       ON CONFLICT DO NOTHING`,
       [room.id]
     );
   }
 
   if (room && room.host_id === identity) {
-    // Host has joined - cancel any pending timeout
-    const existingTimeout = hostLeaveTimeouts.get(roomName);
-    if (existingTimeout) {
-      clearTimeout(existingTimeout);
+    // Host has joined - cancel any pending timeout on this instance
+    const existing = hostLeaveTimeouts.get(roomName);
+    if (existing) {
+      clearTimeout(existing.timer);
+      existing.unsubscribe?.().catch(() => {});
       hostLeaveTimeouts.delete(roomName);
+    }
+
+    // Clear the Redis marker (single source of truth) and notify any other
+    // instance that may own a local timer for this room. The owner will
+    // re-check the marker when its timer fires and abort.
+    try {
+      await clearHostLeaveMarker(roomName);
+      await publishHostLeaveCancel(roomName);
+    } catch (err) {
+      logger.warn(`[Webhook] Failed to clear/publish host_leave cancel for ${roomName} (continuing):`, err);
     }
 
     // Set room status to active
@@ -256,21 +279,70 @@ export async function handleParticipantLeft(roomName: string, identity: string, 
   );
 
   if (room && room.host_id === identity) {
-    // Clear any existing timeout first
-    const existingTimeout = hostLeaveTimeouts.get(roomName);
-    if (existingTimeout) {
-      clearTimeout(existingTimeout);
+    // Clear any existing entry first (timer + subscriber)
+    const existing = hostLeaveTimeouts.get(roomName);
+    if (existing) {
+      clearTimeout(existing.timer);
+      existing.unsubscribe?.().catch(() => {});
+    }
+
+    // Set Redis marker — single source of truth across instances.
+    // The marker expires after the grace period even if this instance crashes.
+    // The local timer still fires the end-meeting logic; the marker lets
+    // (a) other instances know to cancel the action, and
+    // (b) this instance know on re-check that the timer was the right one.
+    try {
+      await setHostLeaveMarker(
+        roomName,
+        identity,
+        Math.ceil(HOST_REJOIN_GRACE_PERIOD_MS / 1000),
+      );
+    } catch (err) {
+      logger.warn(`[Webhook] Failed to set host_leave marker for ${roomName} (continuing):`, err);
+    }
+
+    // Subscribe to the cancel channel so this instance can react when a peer
+    // instance (the one processing the host's participant_joined) tells us to
+    // abort. Subscribe BEFORE scheduling the timer to avoid a race.
+    let unsubscribe: (() => Promise<void>) | null = null;
+    try {
+      unsubscribe = await subscribeHostLeaveCancels(roomName, () => {
+        const entry = hostLeaveTimeouts.get(roomName);
+        if (entry) {
+          clearTimeout(entry.timer);
+          entry.unsubscribe?.().catch(() => {});
+          hostLeaveTimeouts.delete(roomName);
+          logger.info(`[Webhook] Peer cancelled host-leave timer for ${roomName}`);
+        }
+      });
+    } catch (err) {
+      logger.warn(`[Webhook] Failed to subscribe to host_leave cancel for ${roomName} (continuing):`, err);
     }
 
     // Schedule timeout using extracted service function
-    const timeout = scheduleHostLeaveCheck(
+    const timer = scheduleHostLeaveCheck(
       roomName,
       identity,
       HOST_REJOIN_GRACE_PERIOD_MS,
       async () => {
-        // Only proceed if this timeout is still the current one
-        if (hostLeaveTimeouts.get(roomName) !== timeout) return;
+        // Only proceed if this entry is still the current one
+        const entry = hostLeaveTimeouts.get(roomName);
+        if (!entry || entry.timer !== timer) return;
         hostLeaveTimeouts.delete(roomName);
+        entry.unsubscribe?.().catch(() => {});
+
+        // Re-check the Redis marker. If another instance cleared it (host
+        // rejoined on a different instance), the host is back — abort.
+        let stillGone = true;
+        try {
+          stillGone = await isHostLeaveMarkerActive(roomName);
+        } catch (err) {
+          logger.warn(`[Webhook] Marker check failed for ${roomName}, proceeding with end-meeting:`, err);
+        }
+        if (!stillGone) {
+          logger.info(`[Webhook] Host returned to ${roomName} on another instance; cancelling timeout.`);
+          return;
+        }
 
         // Send meeting_ended message to all participants
         try {
@@ -306,12 +378,16 @@ export async function handleParticipantLeft(roomName: string, identity: string, 
     if (hostLeaveTimeouts.size >= MAX_TIMEOUTS) {
       const oldestKey = hostLeaveTimeouts.keys().next().value;
       if (oldestKey) {
-        clearTimeout(hostLeaveTimeouts.get(oldestKey)!);
+        const oldest = hostLeaveTimeouts.get(oldestKey);
+        if (oldest) {
+          clearTimeout(oldest.timer);
+          oldest.unsubscribe?.().catch(() => {});
+        }
         hostLeaveTimeouts.delete(oldestKey);
       }
     }
 
-    hostLeaveTimeouts.set(roomName, timeout);
+    hostLeaveTimeouts.set(roomName, { timer, unsubscribe });
   }
 
   // Update participant count using O(1) SCARD

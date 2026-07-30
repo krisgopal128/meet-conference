@@ -44,18 +44,22 @@ const NULL_TTL = 5;
  * Null results are cached with a short TTL (5s) using a sentinel value
  * to prevent repeated DB hits for non-existent resources (DoS mitigation).
  */
+// NOTE: Return type is `T | null` so TypeScript can enforce null-handling at
+// every call site. We use a `null` sentinel to cache "not-found" results with
+// a short TTL — see NULL_SENTINEL/NULL_TTL below. Do not lie with `null as T`:
+// the cache can return null even for non-nullable T, so callers must check.
 export async function getCached<T>(
   key: string,
   ttlSeconds: number,
   fetchFn: () => Promise<T>,
-): Promise<T> {
+): Promise<T | null> {
   // Try cache read
   try {
     const cached = await cacheGet<string>(key);
     if (cached !== null) {
       if (cached === NULL_SENTINEL) {
         logger.debug(`[Cache] HIT (null sentinel) ${key}`);
-        return null as T;
+        return null;
       }
       logger.debug(`[Cache] HIT  ${key}`);
       return cached as T;
@@ -79,7 +83,8 @@ export async function getCached<T>(
     });
   }
 
-  return data;
+  // Narrow `data` (T | null | undefined) to the declared return T | null
+  return data ?? null;
 }
 
 // ============================================

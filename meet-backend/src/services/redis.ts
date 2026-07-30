@@ -27,6 +27,9 @@ const COMPRESSION_THRESHOLD = 1024;
 let mainClient: RedisClientType | null = null;
 let isConnected = false;
 
+// Dedicated subscriber client (Redis requires a separate connection for SUBSCRIBE)
+let subscriberClient: RedisClientType | null = null;
+
 /**
  * Create a new Redis client with optimized settings
  */
@@ -444,6 +447,96 @@ export async function closeRedis(): Promise<void> {
     await mainClient.quit();
     isConnected = false;
   }
+  // Close subscriber client if open
+  if (subscriberClient && subscriberClient.isOpen) {
+    try {
+      await subscriberClient.quit();
+    } catch (err) {
+      logger.warn('[REDIS] Failed to quit subscriber client cleanly:', err);
+    }
+    subscriberClient = null;
+  }
+}
+
+// ============================================
+// HOST LEAVE GRACE PERIOD
+// ============================================
+// Used by webhookService to coordinate host-leave timeouts across multiple
+// backend instances. Each instance still owns its own Node.js setTimeout
+// (timers are inherently per-process), but the Redis key is the single
+// source of truth for whether the host is "still considered gone":
+//   - On host leave: set key with TTL = grace period (4 min).
+//   - On host rejoin: any instance DELs the key and publishes a cancel event
+//     so the instance that owns the local timer can clear it.
+//   - On timer fire: the owner re-checks the key. If absent, the host came
+//     back via another instance — abort the end-meeting logic.
+
+const HOST_LEAVE_CHANNEL_PREFIX = 'host_leave_cancel:';
+
+function hostLeaveKey(roomName: string): string {
+  return `host_leave:${roomName}`;
+}
+
+function hostLeaveChannel(roomName: string): string {
+  return `${HOST_LEAVE_CHANNEL_PREFIX}${roomName}`;
+}
+
+export async function setHostLeaveMarker(
+  roomName: string,
+  hostIdentity: string,
+  ttlSeconds: number,
+): Promise<void> {
+  await ensureConnected();
+  if (!mainClient) throw new Error('Redis not initialized');
+  await mainClient.setEx(hostLeaveKey(roomName), ttlSeconds, hostIdentity);
+}
+
+export async function isHostLeaveMarkerActive(roomName: string): Promise<boolean> {
+  await ensureConnected();
+  if (!mainClient) throw new Error('Redis not initialized');
+  return (await mainClient.exists(hostLeaveKey(roomName))) === 1;
+}
+
+export async function clearHostLeaveMarker(roomName: string): Promise<number> {
+  await ensureConnected();
+  if (!mainClient) throw new Error('Redis not initialized');
+  return mainClient.del(hostLeaveKey(roomName));
+}
+
+export async function publishHostLeaveCancel(roomName: string): Promise<void> {
+  await ensureConnected();
+  if (!mainClient) throw new Error('Redis not initialized');
+  await mainClient.publish(hostLeaveChannel(roomName), '1');
+}
+
+/**
+ * Subscribe to host_leave_cancel messages for the given room. Calls the
+ * handler each time another instance publishes a cancel for the room.
+ * Returns an unsubscribe function. Uses a dedicated subscriber client so the
+ * main client isn't blocked by the SUBSCRIBE command.
+ *
+ * Callers should re-check the Redis marker (via isHostLeaveMarkerActive) when
+ * the handler fires, in case the cancel was already handled by the time the
+ * local timer re-fires.
+ */
+export async function subscribeHostLeaveCancels(
+  roomName: string,
+  handler: () => void,
+): Promise<() => Promise<void>> {
+  if (!subscriberClient) {
+    subscriberClient = createOptimizedClient();
+    subscriberClient.on('error', (err) => logger.error('Redis subscriber error:', err));
+    await subscriberClient.connect();
+  }
+  const channel = hostLeaveChannel(roomName);
+  await subscriberClient.subscribe(channel, () => handler());
+  return async () => {
+    try {
+      await subscriberClient?.unsubscribe(channel);
+    } catch (err) {
+      logger.warn(`[REDIS] Failed to unsubscribe from ${channel}:`, err);
+    }
+  };
 }
 
 // ============================================

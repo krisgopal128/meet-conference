@@ -136,13 +136,17 @@ webhookRouter.post('/', async (req: Request, res: Response) => {
         break;
     }
   } catch (dbError) {
-    logger.error('[Webhook] Handler error:', {
+    // Webhook delivery is fire-and-forget: returning 5xx to LiveKit causes
+    // it to retry, which can re-run non-idempotent side effects (meeting
+    // inserts, participant counts, etc.) and create duplicate state.
+    // We log the failure and acknowledge receipt (200) instead.
+    logger.error('[Webhook] Handler error (acknowledged to prevent retry):', {
       error: dbError instanceof Error ? dbError.message : String(dbError),
       eventType: event.event,
       room: event.room?.name,
       participant: event.participant?.identity,
     });
-    res.status(500).json({ error: 'Webhook handler failed' } as WebhookErrorResponse);
+    res.status(200).json({ received: true, handlerError: true } as WebhookSuccessResponse & { handlerError: boolean });
     return;
   }
 
