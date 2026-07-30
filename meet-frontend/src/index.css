@@ -603,9 +603,8 @@ input[type="text"].pr-10 {
   @apply bg-surface-100;
 }
 
- ::-webkit-scrollbar-thumb {
-   @apply bg-surface-300 rounded-full;
- }
+::-webkit-scrollbar-thumb {
+  @apply bg-surface-300 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {

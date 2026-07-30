@@ -1,10 +1,10 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
-import { Track } from 'livekit-client';
+import { Track, type TrackPublication } from 'livekit-client';
 import { useTracks } from '@livekit/components-react';
 
 interface CameraTrackReference {
   participant: { identity: string };
-  publication?: { track?: unknown; isMuted?: boolean; isSubscribed?: boolean };
+  publication?: TrackPublication;
   source: Track.Source;
 }
 

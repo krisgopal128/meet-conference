@@ -79,10 +79,6 @@ vi.mock('../../hooks/useLightweightVideoFilter', () => ({
   useLightweightPreviewFilter: vi.fn(),
 }));
 
-vi.mock('../../hooks/usePreviewBackgroundBlur', () => ({
-  usePreviewBackgroundBlur: vi.fn(),
-}));
-
 vi.mock('../../hooks/useBackgroundBlurPreview', () => ({
   useBackgroundBlurPreview: vi.fn(),
 }));

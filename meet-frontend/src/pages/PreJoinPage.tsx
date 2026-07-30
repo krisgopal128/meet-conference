@@ -396,7 +396,11 @@ export default function PreJoinPage() {
           <span className="text-lg font-semibold text-surface-800 dark:text-white">Meet</span>
         </Link>
         <div className="text-sm text-surface-500 dark:text-surface-400 truncate max-w-[50%]">
-          {isCreateMode ? 'Create Quick Meeting' : room?.title || 'Join Meeting'}
+          {isCreateMode
+            ? 'Create Quick Meeting'
+            : room?.title
+              ? `${room.title} · ${roomName}`
+              : roomName || 'Join Meeting'}
         </div>
       </header>
 
@@ -816,25 +820,6 @@ export default function PreJoinPage() {
                                 <option value="motion">Motion / Video</option>
                               </select>
                             </div>
-                          )}
-                          {isCreateMode && (
-                            <label className="flex items-center justify-between rounded-lg border border-surface-200 dark:border-surface-700 px-3 py-2.5 cursor-pointer">
-                              <div>
-                                <p className="text-sm font-medium text-surface-700 dark:text-surface-200 flex items-center gap-2">
-                                  <Users size={14} />
-                                  Waiting Room
-                                </p>
-                                <p className="text-xs text-surface-500 dark:text-surface-400">
-                                  Participants wait until you admit them
-                                </p>
-                              </div>
-                              <input
-                                type="checkbox"
-                                checked={waitingRoomEnabled}
-                                onChange={(e) => setWaitingRoomEnabled(e.target.checked)}
-                                className="h-4 w-4 rounded border-surface-300 text-brand-500 focus:ring-brand-500"
-                              />
-                            </label>
                           )}
                         </div>
                       )}

@@ -302,7 +302,7 @@ export class BackgroundBlurEngine {
         this.blurCtx.filter = 'none';
         this.blurCtx.restore();
 
-        // (3) Stack 8x for fully opaque background (anti-shadow)
+        // (3) Stack Nx for fully opaque background (anti-shadow)
         c.save();
         c.clearRect(0, 0, w, h);
         for (let i = 0; i < STACK_COUNT; i++) {

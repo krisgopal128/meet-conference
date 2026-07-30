@@ -166,7 +166,11 @@ authRouter.post('/register', authLimiter, async (req, res: Response) => {
     const name = rawData.name ? sanitizeName(rawData.name) : null;
     
     // Validate password strength
-    validatePassword(password);
+    try {
+      validatePassword(password);
+    } catch (err) {
+      return res.status(400).json({ error: (err as Error).message });
+    }
 
     // Check if user exists
     const existing = await queryOne<{ id: string }>(
@@ -262,18 +266,18 @@ authRouter.post('/login', authLimiter, async (req, res: Response) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Check if user is banned
-    if (user.is_banned) {
-      return res.status(403).json({ error: 'This account has been suspended. Please contact an administrator.' });
-    }
-
-
     // Verify password
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
       // Record failed attempt
       await recordFailedAttempt(email).catch(() => {});
       return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Check ban status only AFTER password verification — returning 403 before
+    // verifying credentials would let anyone probe which emails have accounts
+    if (user.is_banned) {
+      return res.status(403).json({ error: 'This account has been suspended. Please contact an administrator.' });
     }
 
     // Clear failed attempts on successful login

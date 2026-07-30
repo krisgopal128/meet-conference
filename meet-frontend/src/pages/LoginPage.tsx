@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { authApi } from '../services/api';
 import { useAuthActions } from '../store/authStore';
 import { cn } from '../utils/cn';
@@ -8,6 +8,7 @@ import { Video, Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Check, Clock, 
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { login } = useAuthActions();
   const [email, setEmail] = useState('');
@@ -57,7 +58,11 @@ export default function LoginPage() {
       const res = await authApi.login(email, password, rememberMe);
       if (!mountedRef.current) return;
       login(res.data.user, res.data.token);
-      navigate('/');
+      // Return to the page the user was redirected from (ProtectedRoute passes
+      // it via location state). Guard against open redirects and loops.
+      const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
+      const target = from && from.startsWith('/') && from !== '/login' ? from : '/';
+      navigate(target, { replace: true });
     } catch (err: unknown) {
       if (!mountedRef.current) return;
       const axiosErr = err as { response?: { data?: { error?: string } } };

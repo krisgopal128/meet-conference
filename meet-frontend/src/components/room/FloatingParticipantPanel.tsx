@@ -47,7 +47,10 @@ const MiniTile = memo(function MiniTile({ participant, isLocal }: MiniTileProps)
   const cameraTrack = useMemo(() => {
     const tracks = Array.from(participant.trackPublications.values());
     return tracks.find(pub => pub.source === Track.Source.Camera);
-  }, [participant]);
+    // trackPublications.size is required: LiveKit mutates the participant in
+    // place, so `participant` alone is stable across track additions
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [participant, participant.trackPublications.size]);
 
   const hasVideo = participant.isCameraEnabled && cameraTrack?.track;
   const isMicMuted = !participant.isMicrophoneEnabled;

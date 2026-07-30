@@ -35,7 +35,3 @@ coverage/
 # Misc
 *.tgz
 .tmp/
-# Test files
-src/__tests__/
-*.test.ts
-*.test.tsx

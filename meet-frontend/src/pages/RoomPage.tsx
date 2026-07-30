@@ -27,6 +27,7 @@ import {
 import { Video, WifiOff } from 'lucide-react';
 import '@livekit/components-styles';
 import logger from '../utils/logger';
+import { getSpeakerVolume, setSpeakerVolume } from '../utils/speakerVolume';
 import { consumePendingVideoTrack, consumePendingAudioTrack, stopPendingTracks } from '../media/sharedTracks';
 
 // Module-scoped constant — avoids new object per render
@@ -179,7 +180,7 @@ function RoomContent({
   const room = useRoomContext();
   const navigate = useNavigate();
   const connectionState = useConnectionState();
-  const { setToken, setHostId, setRole, setDisplayName, setPrejoinDevices, setVideoFitMode, setBackgroundBlurEnabled, setBackgroundBlurLevel, setBackgroundMode, setBackgroundBlurIntensity, setBackgroundBgColor, setBackgroundImagePath } = useConnectionActions();
+  const { setToken, setHostId, setRole, setDisplayName, setPrejoinDevices } = useConnectionActions();
   
   // Get current grid aspect ratio from store for camera options
   const currentGridAspectRatio = useGridAspectRatio();
@@ -302,17 +303,11 @@ function RoomContent({
 
   useEffect(() => {
     if (import.meta.env.DEV) {
-      logger.info('[RoomPage] State received:', { 
-        role: state.role, 
-        hostId: state.hostId, 
+      logger.info('[RoomPage] State received:', {
+        role: state.role,
+        hostId: state.hostId,
         identity: localParticipant.identity,
-        videoEnabled: state.videoEnabled,
-        audioEnabled: state.audioEnabled,
         displayName: state.displayName,
-        videoFitMode: state.videoFitMode,
-        backgroundBlur: state.backgroundBlur,
-        backgroundBlurLevel: state.backgroundBlurLevel,
-        backgroundMode: state.backgroundMode,
       });
     }
     if (localParticipant.identity) {
@@ -330,29 +325,9 @@ function RoomContent({
     if (state.selectedCamera || state.selectedMic) {
       setPrejoinDevices(state.selectedCamera || null, state.selectedMic || null);
     }
-    // Apply PreJoin settings to store
-    if (state.videoFitMode) {
-      setVideoFitMode(state.videoFitMode);
-    }
-    if (state.backgroundBlur !== undefined) {
-      setBackgroundBlurEnabled(state.backgroundBlur);
-    }
-    if (state.backgroundBlurLevel !== undefined) {
-      setBackgroundBlurLevel(state.backgroundBlurLevel);
-    }
-    if (state.backgroundMode) {
-      setBackgroundMode(state.backgroundMode);
-    }
-    if (state.backgroundBlurIntensity !== undefined) {
-      setBackgroundBlurIntensity(state.backgroundBlurIntensity);
-    }
-    if (state.backgroundBgColor) {
-      setBackgroundBgColor(state.backgroundBgColor);
-    }
-    if (state.backgroundImagePath !== undefined) {
-      setBackgroundImagePath(state.backgroundImagePath);
-    }
-  }, [localParticipant.identity, state.token, state.hostId, state.role, state.displayName, state.selectedCamera, state.selectedMic, state.videoFitMode, state.backgroundBlur, state.backgroundBlurLevel, state.backgroundMode, state.backgroundBlurIntensity, state.backgroundBgColor, state.backgroundImagePath, setToken, setHostId, setRole, setDisplayName, setPrejoinDevices, setVideoFitMode, setBackgroundBlurEnabled, setBackgroundBlurLevel, setBackgroundMode, setBackgroundBlurIntensity, setBackgroundBgColor, setBackgroundImagePath]);
+    // videoFitMode and background settings are synced to the store by RoomPage
+    // (same state object) — no need to duplicate them here.
+  }, [localParticipant.identity, state.token, state.hostId, state.role, state.displayName, state.selectedCamera, state.selectedMic, setToken, setHostId, setRole, setDisplayName, setPrejoinDevices]);
 
   // Switch audio output (speaker) to prejoin selection
   useEffect(() => {
@@ -431,10 +406,15 @@ function RoomContent({
   }, [room, state.selectedMic]);
 
   useEffect(() => {
-    const volume = Math.max(0, Math.min(1, (state.speakerLevel ?? 100) / 100));
+    // Prejoin's speaker level becomes the initial persisted volume
+    if (typeof state.speakerLevel === 'number') {
+      setSpeakerVolume(state.speakerLevel);
+    }
 
-    const applyVolume = () => {
-      document.querySelectorAll<HTMLMediaElement>('audio, video').forEach((element) => {
+    const applyVolume = (root: ParentNode = document) => {
+      // Read live so late joins use the CURRENT slider value, not prejoin's
+      const volume = getSpeakerVolume() / 100;
+      root.querySelectorAll<HTMLMediaElement>('audio, video').forEach((element) => {
         if (!element.muted) {
           element.volume = volume;
         }
@@ -442,6 +422,25 @@ function RoomContent({
     };
 
     applyVolume();
+
+    // Remote participant audio elements are mounted dynamically as people
+    // join — without this observer the prejoin speaker volume never reaches
+    // late-joining participants' audio elements.
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        mutation.addedNodes.forEach((node) => {
+          if (!(node instanceof HTMLElement)) return;
+          if (node instanceof HTMLMediaElement) {
+            if (!node.muted) node.volume = getSpeakerVolume() / 100;
+          } else {
+            applyVolume(node);
+          }
+        });
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => observer.disconnect();
   }, [state.speakerLevel]);
 
   // Track whether camera was on before audioOnly kicked in
@@ -766,9 +765,11 @@ export default function RoomPage() {
   useEffect(() => {
     if (typeof state?.backgroundBlurLevel === 'number') {
       setBackgroundBlurLevel(state.backgroundBlurLevel);
-      setBackgroundBlurIntensity(state.backgroundBlurLevel);
     }
-  }, [state?.backgroundBlurLevel, setBackgroundBlurLevel, setBackgroundBlurIntensity]);
+    if (typeof state?.backgroundBlurIntensity === 'number') {
+      setBackgroundBlurIntensity(state.backgroundBlurIntensity);
+    }
+  }, [state?.backgroundBlurLevel, state?.backgroundBlurIntensity, setBackgroundBlurLevel, setBackgroundBlurIntensity]);
 
   // Sync background mode, color, and image path from PreJoinPage
   useEffect(() => {
@@ -837,8 +838,6 @@ export default function RoomPage() {
   // Compute derived values needed for LiveKit options - always compute to satisfy ESLint
   const effectiveQualityMode = state?.qualityMode || qualityMode || getQualityModeConfig().name;
   const effectiveScreenShareMode = state?.screenShareMode || screenShareMode || meetingRoomConfig.media.screenShare.defaultMode;
-  const screenShareOptions = getScreenShareOptions(effectiveQualityMode, effectiveScreenShareMode);
-  const qualitySettings = getQualityModeConfig(effectiveQualityMode);
   const audioOnlyMode = isAudioOnlyMode(effectiveQualityMode);
 
   // Consume pre-created tracks from PreJoin page (avoids second getUserMedia/permission prompt)
@@ -858,7 +857,7 @@ export default function RoomPage() {
 
   // Dynamic resolution based on call size (will be updated by hooks inside room)
   // For initial connection, use default settings
-  const maxBitrate = qualitySettings.name === 'highQuality'
+  const maxBitrate = effectiveQualityMode === 'highQuality'
     ? meetingRoomConfig.media.simulcastLayers.high.maxBitrate
     : meetingRoomConfig.media.publishDefaults.videoEncoding.maxBitrate;
 
@@ -884,57 +883,63 @@ export default function RoomPage() {
   const livekitUrl = isLocalhost
     ? import.meta.env.VITE_LIVEKIT_URL
     : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/livekit`;
-  const livekitOptions = useMemo(() => ({
-    adaptiveStream: getAdaptiveStreamOptions(),
-    dynacast: meetingRoomConfig.room.dynacast,
-    stopLocalTrackOnUnpublish: true,
-    disconnectOnPageLeave: true,
-    ...(livekitUrl.includes('127.0.0.1') && {
-      rtcConfig: {
-        iceServers: [],
+  const livekitOptions = useMemo(() => {
+    // Computed inside the memo so the memoization actually holds (fresh objects
+    // as hook deps previously invalidated the cache on every render).
+    const qualitySettings = getQualityModeConfig(effectiveQualityMode);
+    const screenShareOptions = getScreenShareOptions(effectiveQualityMode, effectiveScreenShareMode);
+    return {
+      adaptiveStream: getAdaptiveStreamOptions(),
+      dynacast: meetingRoomConfig.room.dynacast,
+      stopLocalTrackOnUnpublish: true,
+      disconnectOnPageLeave: true,
+      ...(livekitUrl.includes('127.0.0.1') && {
+        rtcConfig: {
+          iceServers: [],
+        },
+      }),
+      audioCaptureDefaults: buildAudioCaptureOptions(
+        undefined,
+        state?.noiseSuppression ?? meetingRoomConfig.prejoin.noiseSuppression,
+        state?.echoCancellation ?? meetingRoomConfig.prejoin.echoCancellation,
+        state?.micLevel,
+      ),
+      videoCaptureDefaults: buildCameraCaptureOptions(undefined, effectiveQualityMode, currentGridAspectRatio, state?.cameraHardwareCaps),
+      publishDefaults: {
+        simulcast: meetingRoomConfig.media.publishDefaults.simulcast,
+        videoCodec: meetingRoomConfig.media.publishDefaults.videoCodec,
+        backupCodec: meetingRoomConfig.media.publishDefaults.backupCodec,
+        backupCodecPolicy: resolveBackupCodecPolicy(),
+        audioPreset: resolveAudioPreset(effectiveQualityMode),
+        dtx: meetingRoomConfig.media.publishDefaults.dtx,
+        red: meetingRoomConfig.media.publishDefaults.red,
+        forceStereo: meetingRoomConfig.media.publishDefaults.forceStereo,
+        scalabilityMode: meetingRoomConfig.media.publishDefaults.scalabilityMode as
+          'L1T1' | 'L1T2' | 'L1T3' | 'L2T1' | 'L2T1h' | 'L2T1_KEY' | 'L2T2' | 'L2T2h' | 'L2T2_KEY' | 'L2T3' | 'L2T3h' | 'L2T3_KEY' | 'L3T1' | 'L3T1h' | 'L3T1_KEY' | 'L3T2' | 'L3T2h' | 'L3T2_KEY' | 'L3T3' | 'L3T3h' | 'L3T3_KEY',
+        degradationPreference: meetingRoomConfig.media.publishDefaults.degradationPreference,
+        videoEncoding: {
+          maxBitrate: maxBitrate,
+          maxFramerate: qualitySettings.settings.cameraMaxFrameRate ?? meetingRoomConfig.media.publishDefaults.videoEncoding.maxFramerate,
+        },
+        screenShareEncoding: {
+          maxBitrate: screenShareOptions.encoding.maxBitrate,
+          maxFramerate: screenShareOptions.encoding.maxFramerate,
+        },
+        videoSimulcastLayers: getVideoSimulcastLayers(effectiveQualityMode),
+        screenShareSimulcastLayers: [
+          new VideoPreset(
+            screenShareOptions.resolution.width,
+            screenShareOptions.resolution.height,
+            screenShareOptions.encoding.maxBitrate,
+            screenShareOptions.encoding.maxFramerate,
+          ),
+        ],
       },
-    }),
-    audioCaptureDefaults: buildAudioCaptureOptions(
-      undefined,
-      state?.noiseSuppression ?? meetingRoomConfig.prejoin.noiseSuppression,
-      state?.echoCancellation ?? meetingRoomConfig.prejoin.echoCancellation,
-      state?.micLevel,
-    ),
-    videoCaptureDefaults: buildCameraCaptureOptions(undefined, effectiveQualityMode, currentGridAspectRatio, state?.cameraHardwareCaps),
-    publishDefaults: {
-      simulcast: meetingRoomConfig.media.publishDefaults.simulcast,
-      videoCodec: meetingRoomConfig.media.publishDefaults.videoCodec,
-      backupCodec: meetingRoomConfig.media.publishDefaults.backupCodec,
-      backupCodecPolicy: resolveBackupCodecPolicy(),
-      audioPreset: resolveAudioPreset(effectiveQualityMode),
-      dtx: meetingRoomConfig.media.publishDefaults.dtx,
-      red: meetingRoomConfig.media.publishDefaults.red,
-      forceStereo: meetingRoomConfig.media.publishDefaults.forceStereo,
-      scalabilityMode: meetingRoomConfig.media.publishDefaults.scalabilityMode as
-        'L1T1' | 'L1T2' | 'L1T3' | 'L2T1' | 'L2T1h' | 'L2T1_KEY' | 'L2T2' | 'L2T2h' | 'L2T2_KEY' | 'L2T3' | 'L2T3h' | 'L2T3_KEY' | 'L3T1' | 'L3T1h' | 'L3T1_KEY' | 'L3T2' | 'L3T2h' | 'L3T2_KEY' | 'L3T3' | 'L3T3h' | 'L3T3_KEY',
-      degradationPreference: meetingRoomConfig.media.publishDefaults.degradationPreference,
-      videoEncoding: {
-        maxBitrate: maxBitrate,
-        maxFramerate: qualitySettings.settings.cameraMaxFrameRate ?? meetingRoomConfig.media.publishDefaults.videoEncoding.maxFramerate,
-      },
-      screenShareEncoding: {
-        maxBitrate: screenShareOptions.encoding.maxBitrate,
-        maxFramerate: screenShareOptions.encoding.maxFramerate,
-      },
-      videoSimulcastLayers: getVideoSimulcastLayers(effectiveQualityMode),
-      screenShareSimulcastLayers: [
-        new VideoPreset(
-          screenShareOptions.resolution.width,
-          screenShareOptions.resolution.height,
-          screenShareOptions.encoding.maxBitrate,
-          screenShareOptions.encoding.maxFramerate,
-        ),
-      ],
-    },
-  }), [
-    effectiveQualityMode, currentGridAspectRatio, state?.micLevel, state?.cameraHardwareCaps,
-    state?.videoEnabled, state?.audioEnabled, state?.selectedCamera, state?.selectedMic,
-    maxBitrate, qualitySettings, screenShareOptions, livekitUrl,
+    };
+  }, [
+    effectiveQualityMode, effectiveScreenShareMode, currentGridAspectRatio,
+    state?.micLevel, state?.noiseSuppression, state?.echoCancellation, state?.cameraHardwareCaps,
+    maxBitrate, livekitUrl,
   ]);
 
   const handleConnected = useCallback(() => {

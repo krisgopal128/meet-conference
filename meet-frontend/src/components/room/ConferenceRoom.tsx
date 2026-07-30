@@ -166,9 +166,7 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
   // Track active speakers - optimized for fast response
   useEffect(() => {
     const handleActiveSpeakers = (speakers: Participant[]) => {
-      const nextSpeakers = speakers;
-
-      if (nextSpeakers.length > 0) {
+      if (speakers.length > 0) {
         // Clear demotion timer if someone starts speaking
         if (activeSpeakerDemoteTimerRef.current) {
           window.clearTimeout(activeSpeakerDemoteTimerRef.current);
@@ -183,7 +181,7 @@ function ConferenceRoomInner(_props: ConferenceRoomProps) {
         
         // Quick promotion for responsive switching
         activeSpeakerPromoteTimerRef.current = window.setTimeout(() => {
-          setActiveSpeakers(nextSpeakers);
+          setActiveSpeakers(speakers);
           activeSpeakerPromoteTimerRef.current = null;
         }, meetingRoomConfig.activeSpeaker.promotionDelayMs);
         return;

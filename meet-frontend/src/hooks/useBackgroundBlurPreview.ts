@@ -7,7 +7,7 @@
  * This avoids downloading the 9MB WASM on page load.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { BackgroundBlurEngine, type BackgroundBlurOptions } from '../utils/backgroundBlurEngine';
 import logger from '../utils/logger';
 
@@ -23,8 +23,7 @@ export function useBackgroundBlurPreview(
   mirror: boolean = false,
   fitMode: 'cover' | 'contain' = 'cover',
   coverScale: number = 1,
-): { loading: boolean } {
-  const [loading, setLoading] = useState(false);
+): void {
   const engineRef = useRef<BackgroundBlurEngine | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const workerReadyRef = useRef(false);
@@ -48,16 +47,9 @@ export function useBackgroundBlurPreview(
   // Avoids downloading the 9MB WASM on page load for users who don't use blur.
   const blurEnabled = options.enabled;
   useEffect(() => {
-    if (!blurEnabled) {
-      setLoading(false);
-      return;
-    }
-    if (workerRef.current) {
-      setLoading(false);
-      return;
-    }
+    if (!blurEnabled) return;
+    if (workerRef.current) return;
 
-    setLoading(true);
     logger.info('[useBackgroundBlurPreview] Initializing segmentation worker...');
     const worker = new Worker(
       new URL('../utils/segmentationWorker.ts', import.meta.url),
@@ -69,7 +61,6 @@ export function useBackgroundBlurPreview(
       if (msg.type === 'ready') {
         workerReadyRef.current = true;
         retryCountRef.current = 0;
-        setLoading(false);
         logger.info('[useBackgroundBlurPreview] Worker ready — segmentation active');
       } else if (msg.type === 'mask') {
         lastMaskRef.current = {
@@ -242,8 +233,4 @@ export function useBackgroundBlurPreview(
       lastMaskRef.current = null;
     };
   }, []);
-
-  return { loading };
 }
-
-export type BackgroundBlurPreviewResult = { loading: boolean };

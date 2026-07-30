@@ -8,6 +8,7 @@ import {
   ParticipantName,
   useIsSpeaking,
   useConnectionQualityIndicator,
+  type TrackReference,
 } from '@livekit/components-react';
 import {
   useHasRaisedHand,
@@ -376,7 +377,7 @@ function ParticipantTileInner({ participant, className = '', isSpeakerTile = tru
             <VideoTrack 
               key={trackSid || 'no-track'}
               ref={videoElementRef}
-              trackRef={cameraTrackRef as { current: MediaStreamTrack | null | undefined }}
+              trackRef={cameraTrackRef as unknown as TrackReference}
               className="w-full h-full"
               style={{ 
                 objectFit: videoFitMode === 'cover' ? 'contain' : videoFitMode,

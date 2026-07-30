@@ -51,15 +51,26 @@ export function useCappedCoverScale(
 
     compute();
 
-    const ro = new ResizeObserver(compute);
-    ro.observe(container);
+    // ResizeObserver is unavailable in jsdom and some legacy browsers —
+    // fall back to a window resize listener so the hook never crashes.
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(compute);
+      ro.observe(container);
+    } else {
+      window.addEventListener('resize', compute);
+    }
 
     const handleVideoEvent = () => compute();
     video.addEventListener('loadedmetadata', handleVideoEvent);
     video.addEventListener('resize', handleVideoEvent);
 
     return () => {
-      ro.disconnect();
+      if (ro) {
+        ro.disconnect();
+      } else {
+        window.removeEventListener('resize', compute);
+      }
       video.removeEventListener('loadedmetadata', handleVideoEvent);
       video.removeEventListener('resize', handleVideoEvent);
     };

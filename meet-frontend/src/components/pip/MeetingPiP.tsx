@@ -39,14 +39,44 @@ import { Mic, MicOff, Video, VideoOff, PhoneOff, Pencil, LayoutGrid, Monitor, Mo
 const WB_POLL_MS = 500;
 
 function WhiteboardPreview() {
+  const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const renderingRef = useRef(false);
   const apiRef = useRef(getWhiteboardAPI());
   const [version, setVersion] = useState(0);
 
+  // Keep the canvas buffer matched to the container's real pixel size —
+  // a fixed-size buffer stretched by CSS distorts the preview
+  useEffect(() => {
+    const container = containerRef.current;
+    const canvas = canvasRef.current;
+    if (!container || !canvas) return;
+
+    const syncSize = () => {
+      const w = Math.max(1, Math.round(container.clientWidth));
+      const h = Math.max(1, Math.round(container.clientHeight));
+      if (canvas.width !== w) canvas.width = w;
+      if (canvas.height !== h) canvas.height = h;
+    };
+    syncSize();
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', syncSize);
+      return () => window.removeEventListener('resize', syncSize);
+    }
+    const ro = new ResizeObserver(() => {
+      syncSize();
+      setVersion((v) => v + 1); // re-render preview at the new size
+    });
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, []);
+
   // Poll the Excalidraw API for scene changes and re-render the preview
   useEffect(() => {
-    let lastSceneLength = -1;
+    // Element count alone misses edits (moving/resizing a shape) — include
+    // the sum of element versions so any mutation re-renders the preview
+    let lastSignature = '';
 
     const render = async () => {
       const api = apiRef.current || getWhiteboardAPI();
@@ -57,9 +87,13 @@ function WhiteboardPreview() {
       const elements = api.getSceneElements();
       if (!elements) return;
 
-      // Skip if scene hasn't changed
-      if (elements.length === lastSceneLength) return;
-      lastSceneLength = elements.length;
+      let versionSum = 0;
+      for (const el of elements as ReadonlyArray<{ version?: number }>) {
+        versionSum += el.version ?? 0;
+      }
+      const signature = `${elements.length}:${versionSum}`;
+      if (signature === lastSignature) return;
+      lastSignature = signature;
 
       renderingRef.current = true;
       try {
@@ -73,20 +107,21 @@ function WhiteboardPreview() {
         }
 
         const { exportToCanvas } = await import('@excalidraw/excalidraw');
+        // No getDimensions override — export the FULL scene bounding box.
+        // (Overriding dimensions crops the scene instead of fitting it.)
         const exported = await exportToCanvas({
           elements: elements as unknown[],
           appState: {
             ...(api.getAppState() as Record<string, unknown>),
             exportBackground: true,
           } as Record<string, unknown>,
-          files: ((api as Record<string, unknown>).files ?? undefined) as Record<string, unknown> | undefined,
-          getDimensions: () => ({ width: canvas.width, height: canvas.height }),
+          files: ((api as unknown as Record<string, unknown>).files ?? undefined) as Record<string, unknown> | undefined,
         });
 
         ctx.fillStyle = '#0f172a';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Fit exported canvas into preview with padding
+        // Fit the whole scene into the preview with padding (contain)
         const pad = 8;
         const availW = Math.max(1, canvas.width - pad * 2);
         const availH = Math.max(1, canvas.height - pad * 2);
@@ -125,11 +160,9 @@ function WhiteboardPreview() {
   }, []);
 
   return (
-    <div className="flex-1 relative overflow-hidden min-h-0 bg-surface-900">
+    <div ref={containerRef} className="flex-1 relative overflow-hidden min-h-0 bg-surface-900">
       <canvas
         ref={canvasRef}
-        width={800}
-        height={600}
         className="absolute inset-0 w-full h-full"
       />
       <div className="absolute top-2 left-2 px-2 py-1 rounded bg-black/50 text-white text-[10px] flex items-center gap-1.5">

@@ -195,15 +195,6 @@ function HomePageContent() {
     }
   };
 
-  // Reload all data (rooms + stats) — used after create/delete and on focus
-  const reloadAll = useCallback(async () => {
-    if (!mountedRef.current) return;
-    await loadCriticalData();
-    if (mountedRef.current) await loadDeferredData();
-  }, []);
-
-  void reloadAll;
-
   // Start instant meeting
   const handleStartMeeting = useCallback(async () => {
     try {
@@ -599,7 +590,8 @@ function HomePageContent() {
                     }}
                     onBlur={() => setRoomNameTouched(true)}
                     placeholder="team-standup"
-                    className={roomNameError}
+                    className={cn(roomNameError && 'input-error')}
+                    aria-invalid={!!roomNameError}
                     aria-describedby={roomNameError ? 'room-name-error' : undefined}
                     autoFocus
                   />
