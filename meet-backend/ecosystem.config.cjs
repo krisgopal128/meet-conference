@@ -2,7 +2,9 @@ module.exports = {
   apps: [
     {
       name: 'meet-backend',
-      cwd: '/opt/meet-backend',
+      // NOTE: production runs via systemd (meet-backend.service) from this repo.
+      // This PM2 config is a fallback only — cwd points at the real checkout.
+      cwd: '/home/jspace/meet-conference/meet-backend',
       script: 'dist/index.js',
       instances: 1,
       autorestart: true,

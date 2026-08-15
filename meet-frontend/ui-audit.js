@@ -1,6 +1,10 @@
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const fs = require('fs');
 const { chromium } = require('/home/jspace/meet-conference/meet-frontend/node_modules/playwright-core');
 
 const BASE_URL = 'https://meet.livekit.phuket-tourist.com';
+const SCREENSHOT_DIR = '/home/jspace/.nanobot/workspace/audit-screenshots';
 
 // Viewports to test
 const viewports = [
@@ -45,11 +49,11 @@ const adminPages = [
 const allPages = [...mainPages, ...adminPages];
 
 // Audit checks
-function runAccessibilityChecks(page) {
+async function runAccessibilityChecks(page) {
   const issues = [];
   
   // Check for horizontal overflow
-  const bodyWidth = page.evaluate(() => document.body.scrollWidth);
+  const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
   const viewportWidth = page.viewportSize().width;
   if (bodyWidth > viewportWidth) {
     issues.push({
@@ -60,7 +64,7 @@ function runAccessibilityChecks(page) {
   }
   
   // Check for missing labels on form inputs
-  const inputsWithoutLabels = page.evaluate(() => {
+  const inputsWithoutLabels = await page.evaluate(() => {
     const inputs = document.querySelectorAll('input, select, textarea');
     const issues = [];
     inputs.forEach(input => {
@@ -86,7 +90,7 @@ function runAccessibilityChecks(page) {
   }
   
   // Check for heading hierarchy gaps
-  const headingIssues = page.evaluate(() => {
+  const headingIssues = await page.evaluate(() => {
     const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
     const issues = [];
     let previousLevel = 0;
@@ -116,7 +120,7 @@ function runAccessibilityChecks(page) {
   }
   
   // Check for undersized click targets (< 44px)
-  const smallClickTargets = page.evaluate(() => {
+  const smallClickTargets = await page.evaluate(() => {
     const interactive = document.querySelectorAll('a, button, [role="button"], input[type="submit"], input[type="button"]');
     const issues = [];
     interactive.forEach(el => {
@@ -143,7 +147,7 @@ function runAccessibilityChecks(page) {
   }
   
   // Check for broken images
-  const brokenImages = page.evaluate(() => {
+  const brokenImages = await page.evaluate(() => {
     const images = document.querySelectorAll('img');
     const issues = [];
     images.forEach(img => {
@@ -163,7 +167,7 @@ function runAccessibilityChecks(page) {
   }
   
   // Check for viewport meta tag
-  const hasViewportMeta = page.evaluate(() => {
+  const hasViewportMeta = await page.evaluate(() => {
     const viewport = document.querySelector('meta[name="viewport"]');
     return !!viewport;
   });
@@ -233,7 +237,7 @@ async function auditPage(browser, pageInfo, viewport) {
     result.consoleErrors = [...consoleErrors].slice(0, 10); // Limit console errors
     
     // Run accessibility checks
-    result.accessibilityIssues = runAccessibilityChecks(page);
+    result.accessibilityIssues = await runAccessibilityChecks(page);
     if (result.accessibilityIssues.some(i => i.severity === 'high')) {
       result.accessible = false;
     }
@@ -241,7 +245,8 @@ async function auditPage(browser, pageInfo, viewport) {
     // Take screenshot
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const screenshotFilename = `audit-${pageInfo.name}-${viewport.name}-${timestamp}.png`;
-    result.screenshot = screenshotFilename;
+    await page.screenshot({ path: `${SCREENSHOT_DIR}/${screenshotFilename}` });
+    result.screenshot = `${SCREENSHOT_DIR}/${screenshotFilename}`;
     
   } catch (err) {
     result.error = err.message;
@@ -332,7 +337,6 @@ async function runAudit() {
   // Save results to JSON
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const reportFilename = `/home/jspace/.nanobot/workspace/meet-conference-ui-audit-results-${timestamp}.json`;
-  const fs = require('fs');
   fs.writeFileSync(reportFilename, JSON.stringify(results, null, 2));
   console.log(`\n📊 Detailed results saved to: ${reportFilename}`);
   

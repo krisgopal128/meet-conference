@@ -1,5 +1,4 @@
-/* Import fonts - Uncodixfy compliant: DM Sans instead of Inter */
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+/* Fonts are loaded via <link> in index.html (preconnected, non-blocking) */
 
 @tailwind base;
 @tailwind components;
@@ -773,15 +772,15 @@ body.scroll-locked {
   animation: micVoicePulse 0.7s ease-in-out infinite;
 }
 
-/* Fade-in animation for lazy-loaded content */
+/* Fade-in animation for lazy-loaded content (fade only - Uncodixfy: no slide).
+   Must stay opacity-only: this late definition overrides Tailwind's config
+   keyframes of the same name used by @apply animate-fade-in components. */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
