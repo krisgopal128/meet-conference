@@ -82,4 +82,13 @@ log "Backup created: $BACKUP_FILE ($BACKUP_SIZE)"
 # Update last backup info
 date '+%Y-%m-%d %H:%M:%S' > "$LAST_INFO"
 
+# Retention: keep only the newest 3 backups
+OLD_BACKUPS=$(ls -1t "$BACKUP_DIR"/meet-conference-*.tar.gz 2>/dev/null | tail -n +4)
+if [ -n "$OLD_BACKUPS" ]; then
+    echo "$OLD_BACKUPS" | while read -r old; do
+        rm -f "$old"
+        log "Removed old backup: $old"
+    done
+fi
+
 log "Backup process completed."
