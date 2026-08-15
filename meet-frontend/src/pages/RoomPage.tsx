@@ -841,8 +841,17 @@ export default function RoomPage() {
   const audioOnlyMode = isAudioOnlyMode(effectiveQualityMode);
 
   // Consume pre-created tracks from PreJoin page (avoids second getUserMedia/permission prompt)
-  const pendingVideoTrack = useMemo(() => consumePendingVideoTrack(), []);
-  const pendingAudioTrack = useMemo(() => consumePendingAudioTrack(), []);
+  const pendingTracksRef = useRef<{ video: MediaStreamTrack | null; audio: MediaStreamTrack | null } | null>(null);
+  // Consume once even under StrictMode double-render (side-effectful useMemo would
+  // return null on the second invocation and drop the transferred tracks)
+  if (pendingTracksRef.current === null) {
+    pendingTracksRef.current = {
+      video: consumePendingVideoTrack(),
+      audio: consumePendingAudioTrack(),
+    };
+  }
+  const pendingVideoTrack = pendingTracksRef.current.video;
+  const pendingAudioTrack = pendingTracksRef.current.audio;
   const hasPendingVideo = pendingVideoTrack?.readyState === 'live';
   const hasPendingAudio = pendingAudioTrack?.readyState === 'live';
 

@@ -84,6 +84,8 @@ export function usePreJoinMedia({ roomName: _roomName, isCreateMode: _isCreateMo
   const isMountedRef = useRef(true);
   const hasRequestedPermissionsRef = useRef(false);
   const togglingRef = useRef(false);
+  // Last camera that successfully started; used to roll back the dropdown on failure
+  const lastGoodCameraRef = useRef<string>('');
   const tracksTransferredRef = useRef(false);
 
   const [videoEnabled, setVideoEnabled] = useState(meetingRoomConfig.prejoin.videoEnabledByDefault);
@@ -406,6 +408,7 @@ export function usePreJoinMedia({ roomName: _roomName, isCreateMode: _isCreateMo
         // Success: stop old stream and attach new one
         stopPreview();
         previewStreamRef.current = stream;
+        lastGoodCameraRef.current = selectedCamera;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
@@ -417,7 +420,7 @@ export function usePreJoinMedia({ roomName: _roomName, isCreateMode: _isCreateMo
       if (cancelled || !isMountedRef.current) return;
       toast.error('Failed to switch camera');
       // Restore previous camera selection and preview stream
-      setSelectedCamera(previousCamera);
+      setSelectedCamera(lastGoodCameraRef.current || previousCamera);
       if (previousStream && videoRef.current) {
         previewStreamRef.current = previousStream;
         videoRef.current.srcObject = previousStream;

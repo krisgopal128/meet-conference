@@ -367,13 +367,30 @@ export default function PreJoinPage() {
     fitMode: videoFitMode,
   });
 
+  // Decode the background image once per path — a new Image() on every render
+  // hands the blur engine an undecoded image and makes the background flash black
+  const bgImageRef = useRef<{ path: string | null; img: HTMLImageElement | null }>({ path: null, img: null });
+  if (backgroundImagePath !== bgImageRef.current.path) {
+    bgImageRef.current = {
+      path: backgroundImagePath,
+      img: backgroundImagePath
+        ? (() => {
+            const img = new Image();
+            img.src = backgroundImagePath;
+            return img;
+          })()
+        : null,
+    };
+  }
+  const bgImage = bgImageRef.current.img;
+
   useBackgroundBlurPreview(videoElement, {
     enabled: backgroundBlur && videoEnabled && backgroundMode !== 'none',
     mode: backgroundMode,
     blurRadius: backgroundBlurLevel,
     feather: 3,
     bgColor: backgroundBgColor,
-    bgImage: backgroundImagePath ? (() => { const img = new Image(); img.src = backgroundImagePath; return img; })() : null,
+    bgImage,
   }, mirrorCamera, videoFitMode === 'contain' ? 'contain' : 'cover', coverScale);
 
   useEffect(() => {
