@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect, type RefObject } from 'react';
+import { useCallback, useRef, useEffect, type MutableRefObject, type RefObject } from 'react';
 import {
   type Room,
   type LocalParticipant,
@@ -89,6 +89,8 @@ export function useWhiteboardSync(
   room: Room | null,
   localParticipant: LocalParticipant | null,
   excalidrawAPIRef: RefObject<ExcalidrawImperativeAPI | null>,
+  /** Set to the last remotely-applied elements array; handleChange skips re-broadcasting while the scene still matches it */
+  remoteAppliedRef: MutableRefObject<readonly unknown[] | null>,
   onSceneUpdate?: () => void,
   onSceneElements?: (elements: unknown[]) => void,
 ) {
@@ -242,6 +244,10 @@ export function useWhiteboardSync(
           if (wbMsg.files && Object.keys(wbMsg.files).length > 0) {
             api.addFiles(Object.values(wbMsg.files) as BinaryFileData[]);
           }
+          // Record the applied elements so WhiteboardLayout's handleChange can
+          // recognize the onChange echo from this updateScene() and skip
+          // re-broadcasting it (which would ping-pong between editors forever)
+          remoteAppliedRef.current = wbMsg.elements;
           api.updateScene({ elements: wbMsg.elements as any[] } as any);
           onSceneElementsRef.current?.(wbMsg.elements as unknown[]);
           onSceneUpdateRef.current?.();

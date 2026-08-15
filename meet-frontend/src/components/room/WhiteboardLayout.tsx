@@ -71,6 +71,10 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
   // Refs — avoid state changes that trigger Excalidraw re-renders
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null);
   const currentSceneRef = useRef<unknown[]>([]);
+  // Last elements array applied from a remote participant — while onChange
+  // reports exactly this array, the change is an echo of a remote update,
+  // not a local edit, and must not be re-broadcast (echo loop fix)
+  const remoteAppliedRef = useRef<readonly unknown[] | null>(null);
   const sceneBoundsRef = useRef<{ minX: number; minY: number; width: number; height: number } | null>(null);
   const lastViewportSignatureRef = useRef<string | null>(null);
 
@@ -139,6 +143,7 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
     room,
     localParticipant ?? null,
     excalidrawAPIRef,
+    remoteAppliedRef,
     bumpSceneVersion,
     applySceneElements,
   );
@@ -388,6 +393,20 @@ export function WhiteboardLayout({ room, roomName }: WhiteboardLayoutProps) {
     (elements: readonly any[]) => {
       // Skip spurious onChange fires before initial scene load (Excalidraw mount)
       if (!hasLoadedRef.current) return;
+      // Echo suppression: if the reported scene is still exactly the elements
+      // array we last applied from a remote participant, this onChange is the
+      // echo of that updateScene() (fires 1-2x: scene + scrollToContent) — the
+      // receiver already applied bookkeeping, so don't re-broadcast/re-dirty.
+      // Any local edit replaces element objects (new refs), breaking the match.
+      const remote = remoteAppliedRef.current;
+      if (
+        remote &&
+        elements.length === remote.length &&
+        elements.every((el, i) => el === remote[i])
+      ) {
+        return;
+      }
+      remoteAppliedRef.current = null;
       applySceneElements(elements as unknown[]);
       bumpSceneVersion();
       if (canEditRef.current) {
