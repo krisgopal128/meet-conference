@@ -209,11 +209,11 @@ describe('Meetings Router', () => {
   describe('GET /meetings/:id', () => {
     it('should return meeting with participants', async () => {
       mockQueryOne.mockResolvedValueOnce({
-        id: 'meeting-123',
+        id: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d',
         room_id: 'room-123',
       });
       mockQueryOne.mockResolvedValueOnce({
-        id: 'meeting-123',
+        id: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d',
         room_id: 'room-123',
         room_name: 'test-room',
         room_title: 'Test Room',
@@ -231,7 +231,7 @@ describe('Meetings Router', () => {
         },
       ]);
 
-      const response = await request(app).get('/meetings/meeting-123');
+      const response = await request(app).get('/meetings/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d');
 
       expect(response.status).toBe(200);
       expect(response.body.meeting).toBeDefined();
@@ -241,7 +241,7 @@ describe('Meetings Router', () => {
     it('should return 404 for non-existent meeting', async () => {
       mockQueryOne.mockResolvedValueOnce(null);
 
-      const response = await request(app).get('/meetings/nonexistent');
+      const response = await request(app).get('/meetings/0d1e2f3a-4b5c-467d-88e9-f0a1b2c3d4e5');
 
       expect(response.status).toBe(404);
     });
@@ -250,14 +250,14 @@ describe('Meetings Router', () => {
   describe('DELETE /meetings/scheduled/:id', () => {
     it('should cancel meeting if user is host', async () => {
       mockQueryOne.mockResolvedValueOnce({
-        id: 'scheduled-123',
+        id: 'f6e5d4c3-b2a1-49f8-8e7d-6c5b4a3f2e1d',
         host_id: 'user-123',
         room_name: 'test-room',
       });
       mockQuery.mockResolvedValueOnce([]);
       mockQuery.mockResolvedValueOnce([]);
 
-      const response = await request(app).delete('/meetings/scheduled/scheduled-123');
+      const response = await request(app).delete('/meetings/scheduled/f6e5d4c3-b2a1-49f8-8e7d-6c5b4a3f2e1d');
 
       expect(response.status).toBe(200);
       expect(response.body.message).toBe('Meeting cancelled');
@@ -265,12 +265,12 @@ describe('Meetings Router', () => {
 
     it('should reject if user is not host', async () => {
       mockQueryOne.mockResolvedValueOnce({
-        id: 'scheduled-123',
+        id: 'f6e5d4c3-b2a1-49f8-8e7d-6c5b4a3f2e1d',
         host_id: 'other-user',
         room_name: 'test-room',
       });
 
-      const response = await request(app).delete('/meetings/scheduled/scheduled-123');
+      const response = await request(app).delete('/meetings/scheduled/f6e5d4c3-b2a1-49f8-8e7d-6c5b4a3f2e1d');
 
       expect(response.status).toBe(403);
     });
@@ -279,7 +279,7 @@ describe('Meetings Router', () => {
   describe('GET /meetings/:id/chat', () => {
     it('should return chat messages for meeting participant', async () => {
       mockQueryOne.mockResolvedValueOnce({
-        id: 'meeting-123',
+        id: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d',
         room_id: 'room-123',
       });
       mockQuery.mockResolvedValueOnce([
@@ -294,7 +294,7 @@ describe('Meetings Router', () => {
         },
       ]);
 
-      const response = await request(app).get('/meetings/meeting-123/chat');
+      const response = await request(app).get('/meetings/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/chat');
 
       expect(response.status).toBe(200);
       expect(response.body.messages).toHaveLength(1);
@@ -303,7 +303,7 @@ describe('Meetings Router', () => {
     it('should return 404 if user has no access', async () => {
       mockQueryOne.mockResolvedValueOnce(null);
 
-      const response = await request(app).get('/meetings/meeting-123/chat');
+      const response = await request(app).get('/meetings/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/chat');
 
       expect(response.status).toBe(404);
     });
@@ -311,7 +311,7 @@ describe('Meetings Router', () => {
 
   describe('POST /meetings/:id/chat', () => {
     it('should send a chat message', async () => {
-      mockQueryOne.mockResolvedValueOnce({ id: 'meeting-123' });
+      mockQueryOne.mockResolvedValueOnce({ id: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d' });
       mockQuery.mockResolvedValueOnce([{
         id: 'msg-1',
         content: 'Hello everyone!',
@@ -320,7 +320,7 @@ describe('Meetings Router', () => {
       }]);
 
       const response = await request(app)
-        .post('/meetings/meeting-123/chat')
+        .post('/meetings/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/chat')
         .send({ content: 'Hello everyone!' });
 
       expect(response.status).toBe(201);
@@ -329,7 +329,7 @@ describe('Meetings Router', () => {
 
     it('should reject empty message', async () => {
       const response = await request(app)
-        .post('/meetings/meeting-123/chat')
+        .post('/meetings/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/chat')
         .send({ content: '' });
 
       expect(response.status).toBe(400);
@@ -337,7 +337,7 @@ describe('Meetings Router', () => {
 
     it('should reject message over 5000 characters', async () => {
       const response = await request(app)
-        .post('/meetings/meeting-123/chat')
+        .post('/meetings/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/chat')
         .send({ content: 'x'.repeat(5001) });
 
       expect(response.status).toBe(400);

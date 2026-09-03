@@ -4,6 +4,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    // dist/ holds compiled output incl. copied tests — running both doubles the suite
+    exclude: ['node_modules/', 'dist/'],
     testTimeout: 30000,
     hookTimeout: 30000,
     coverage: {

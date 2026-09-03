@@ -174,7 +174,7 @@ router.get('/meetings/:id', requireModerator(), async (req: AuthRequest, res: Re
       meeting: unknown;
       participants: unknown[];
     } | null>(
-      `cache:meetings:detail:${id}`,
+      `cache:meetings:detail:admin:${id}`,
       TTL_MEDIUM,
       async () => {
         const meeting = await queryOne<MeetingRow>(`

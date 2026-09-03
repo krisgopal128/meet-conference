@@ -6,8 +6,9 @@ import {
   EgressClient,
   WebhookReceiver,
   TrackType,
+  TrackSource,
 } from 'livekit-server-sdk';
-import { ParticipantInfo, TrackSource } from '@livekit/protocol';
+import type { ParticipantInfo } from 'livekit-server-sdk';
 import { config } from '../config.js';
 import logger from '../utils/logger.js';
 

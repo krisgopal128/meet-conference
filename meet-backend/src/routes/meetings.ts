@@ -10,6 +10,7 @@ import { verifyMeetingAccess } from '../services/meetingService.js';
 import * as roomService from '../services/roomService.js';
 import { scheduleMeetingSchema, diagnosticsPayloadSchema, diagnosticsSnapshotSchema } from '../schemas/meetings.js';
 import { sanitizeChatMessage } from '../utils/validation.js';
+import validator from 'validator';
 import { getCached, invalidatePattern, TTL_MEDIUM, TTL_SHORT } from '../services/cache.js';
 import logger from '../utils/logger.js';
 
@@ -410,8 +411,7 @@ meetingsRouter.get('/:id', authenticate, async (req: AuthRequest, res: Response)
     const { id } = req.params;
 
     // Guard: reject non-UUID IDs early (prevents /stats, /scheduled, etc. from hitting DB)
-    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!UUID_REGEX.test(id)) {
+    if (!validator.isUUID(id)) {
       return res.status(404).json({ error: 'Meeting not found' });
     }
 
@@ -422,7 +422,7 @@ meetingsRouter.get('/:id', authenticate, async (req: AuthRequest, res: Response)
     }
 
     const result = await getCached<{ meeting: unknown; participants: unknown[] } | null>(
-      `cache:meetings:detail:${id}`,
+      `cache:meetings:detail:user:${id}`,
       TTL_SHORT,
       async () => {
         const meeting = await queryOne(
@@ -628,8 +628,7 @@ meetingsRouter.get('/:id/chat', authenticate, async (req: AuthRequest, res: Resp
     const { limit = 100, before } = req.query;
 
     // Guard: reject non-UUID IDs early (prevents DB uuid parse errors / log spam)
-    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!UUID_REGEX.test(id)) {
+    if (!validator.isUUID(id)) {
       return res.status(404).json({ error: 'Meeting not found' });
     }
 
@@ -691,8 +690,7 @@ meetingsRouter.post('/:id/chat', authenticate, async (req: AuthRequest, res: Res
     }
 
     // Guard: reject non-UUID IDs early (prevents DB uuid parse errors / log spam)
-    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!UUID_REGEX.test(id)) {
+    if (!validator.isUUID(id)) {
       return res.status(404).json({ error: 'Meeting not found' });
     }
 
