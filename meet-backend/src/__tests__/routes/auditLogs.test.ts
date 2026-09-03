@@ -47,7 +47,8 @@ describe('Audit Logs Router', () => {
           ip_address: '127.0.0.1',
           created_at: '2026-06-12T00:00:00.000Z',
         },
-      ]);
+      ])
+      .mockResolvedValueOnce([{ action_type: 'user_ban', count: '1' }]);
 
     const response = await request(app).get('/prashasakah/audit-logs?action=user_ban');
 
