@@ -110,3 +110,7 @@ page-audit*.py
 audit-inject.js
 page-audit-results.json
 fix-lobby.js
+
+# Debug scratch scripts & local agent workspace
+meet-frontend/*.cjs
+.hermes/
