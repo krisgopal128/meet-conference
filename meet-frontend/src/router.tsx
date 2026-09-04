@@ -20,7 +20,6 @@ const HistoryPage = lazy(() => import('./pages/HistoryPage'));
 const RecordingsPage = lazy(() => import('./pages/RecordingsPage'));
 const MeetingDetailPage = lazy(() => import('./pages/MeetingDetailPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
-const PiPTestPage = lazy(() => import('./pages/PiPTestPage'));
 const ThankYouPage = lazy(() => import('./pages/ThankYouPage'));
 const ApiKeysPage = lazy(() => import('./pages/ApiKeysPage'));
 
@@ -88,11 +87,7 @@ const routes: RouteObject[] = [
     path: '/thank-you',
     element: withSuspense(ThankYouPage),
   },
-  {
-    path: '/pip-test',
-    element: withSuspense(PiPTestPage),
-  },
-  
+
   // Pages with Layout (sidebar)
   {
     element: <Layout />,
