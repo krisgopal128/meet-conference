@@ -16,18 +16,22 @@
  * Mobile:
  *   1: full | 2: vertical stack (1 col) | 3+: 2 columns, scroll past 3 rows
  *
- * Video fitting (cover/contain, portrait handling) is owned by ParticipantTile.
+ * Multi-participant tiles keep the configured aspect ratio (largest size
+ * that fits the container), so camera feeds are not cropped as the count
+ * changes. Video fitting (cover/contain) inside a tile is owned by
+ * ParticipantTile.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { useParticipants, useLocalParticipant } from '@livekit/components-react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { SafeParticipantTile as ParticipantTile } from './ParticipantTile';
 import { useGridAspectRatio, type GridAspectRatio } from '../../store/roomStore';
 import { useAdmittedParticipants } from '../../hooks/useAdmittedParticipants';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { useContainerSize } from '../../hooks/useContainerSize';
 import { useDebugParticipants, DummyParticipantTile, type DummyParticipant } from '../../debug/DebugParticipants';
-import { ASPECT_RATIO_CSS } from '../../utils/aspectRatio';
+import { ASPECT_RATIO_CSS, ASPECT_RATIO_MULTIPLIERS } from '../../utils/aspectRatio';
 import { type Participant } from 'livekit-client';
 
 const MAX_TILES_PER_PAGE = 25;
@@ -75,6 +79,29 @@ export function getBalancedRows(count: number, cols: number): number[] {
   return Array.from({ length: rowCount }, (_, i) => base + (i < extra ? 1 : 0));
 }
 
+/**
+ * Largest tile size that keeps the configured aspect ratio while fitting
+ * `cols` x `rows` tiles (plus gaps) inside the container. Width drives,
+ * height = width / multiplier. Returns 0x0 when unmeasured/degenerate so
+ * callers can fall back to fluid sizing.
+ */
+export function getAspectLockedTileSize(
+  containerW: number,
+  containerH: number,
+  cols: number,
+  rows: number,
+  gap: number,
+  ratioMultiplier: number,
+): { width: number; height: number } {
+  if (containerW <= 0 || containerH <= 0 || cols <= 0 || rows <= 0 || ratioMultiplier <= 0) {
+    return { width: 0, height: 0 };
+  }
+  const byWidth = (containerW - (cols - 1) * gap) / cols;
+  const byHeight = ((containerH - (rows - 1) * gap) / rows) * ratioMultiplier;
+  const width = Math.max(0, Math.floor(Math.min(byWidth, byHeight)));
+  return { width, height: Math.floor(width / ratioMultiplier) };
+}
+
 export function GridLayout() {
   const participants = useParticipants();
   const { localParticipant } = useLocalParticipant();
@@ -90,9 +117,11 @@ export function GridLayout() {
   const clampedPage = Math.min(page, pageCount - 1);
 
   const aspectCss = ASPECT_RATIO_CSS[aspectRatio];
+  const ratioMultiplier = ASPECT_RATIO_MULTIPLIERS[aspectRatio];
   const isLandscape = aspectRatio === '16:9' || aspectRatio === '4:3';
   const gap = isMobile ? 2 : DESKTOP_GAP_PX;
   const pad = isMobile ? 'p-0.5' : 'p-1';
+  const { ref: gridContainerRef, size: gridSize } = useContainerSize();
 
   // Combined render list (real participants, then debug dummies), sliced per page
   const pageItems = useMemo<GridItem[]>(() => {
@@ -164,16 +193,27 @@ export function GridLayout() {
   if (isMobile) {
     const mobileCols = count === 2 ? 1 : 2;
     const mobileRows = Math.ceil(count / mobileCols);
-    const fitsOnScreen = mobileRows <= 3;
+    const cellW = gridSize.width > 0 ? (gridSize.width - (mobileCols - 1) * gap) / mobileCols : 0;
+    const cellH = cellW > 0 ? cellW / ratioMultiplier : 0;
+    const measured = cellH > 0 && gridSize.height > 0;
+    const fitsOnScreen = measured
+      ? mobileRows * cellH + (mobileRows - 1) * gap <= gridSize.height
+      : mobileRows <= 3;
     return (
       <div
+        ref={gridContainerRef}
         className={`w-full h-full ${pad} ${fitsOnScreen ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden'}`}
         style={{
           display: 'grid',
           gridTemplateColumns: `repeat(${mobileCols}, minmax(0, 1fr))`,
-          ...(fitsOnScreen
-            ? { gridTemplateRows: `repeat(${mobileRows}, minmax(0, 1fr))` }
-            : { gridAutoRows: '200px' }),
+          ...(measured
+            ? {
+                gridAutoRows: `${Math.floor(cellH)}px`,
+                alignContent: fitsOnScreen ? 'center' : 'start',
+              }
+            : fitsOnScreen
+              ? { gridTemplateRows: `repeat(${mobileRows}, minmax(0, 1fr))` }
+              : { gridAutoRows: '200px' }),
           gap: `${gap}px`,
           scrollbarWidth: 'thin',
           scrollbarColor: 'rgba(255,255,255,0.3) transparent',
@@ -186,6 +226,14 @@ export function GridLayout() {
   }
 
   // ── Desktop: balanced flex rows, paginated at 25 tiles ──
+  // Tiles keep the configured aspect ratio: size is the largest that fits
+  // both the column width and the row height, rows centered in the stage.
+  const rowCount = balancedRows.length;
+  const tileSize = getAspectLockedTileSize(gridSize.width, gridSize.height, cols, rowCount, gap, ratioMultiplier);
+  const tileStyle: CSSProperties = tileSize.width > 0
+    ? { width: `${tileSize.width}px`, height: `${tileSize.height}px` }
+    : { width: '100%', height: '100%' };
+
   const pagination = pageCount > 1 && (
     <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 rounded-full bg-black/60 px-3 py-1.5 backdrop-blur-sm">
       <button
@@ -215,21 +263,21 @@ export function GridLayout() {
   let rowStart = 0;
   return (
     <div className={`relative w-full h-full ${pad} overflow-hidden`}>
-      <div className="w-full h-full flex flex-col" style={{ gap: `${gap}px` }}>
+      <div ref={gridContainerRef} className="w-full h-full flex flex-col justify-center" style={{ gap: `${gap}px` }}>
         {balancedRows.map((rowSize, rowIndex) => {
           const rowItems = pageItems.slice(rowStart, rowStart + rowSize);
           rowStart += rowSize;
           return (
             <div
               key={rowIndex}
-              className="flex min-h-0 justify-center"
-              style={{ flex: '1 1 0%', gap: `${gap}px` }}
+              className="flex justify-center"
+              style={{ gap: `${gap}px` }}
             >
               {rowItems.map((item) => (
                 <div
                   key={item.kind === 'participant' ? item.participant.identity : item.dummy.identity}
-                  className="min-w-0 h-full"
-                  style={{ width: `calc((100% - ${(cols - 1) * gap}px) / ${cols})` }}
+                  className="shrink-0"
+                  style={tileStyle}
                 >
                   {renderTile(item)}
                 </div>
