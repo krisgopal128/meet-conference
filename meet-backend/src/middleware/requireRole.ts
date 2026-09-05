@@ -77,13 +77,6 @@ export function hasRole(user: { role?: string } | undefined, ...roles: UserRole[
 }
 
 /**
- * Check if user is admin.
- */
-export function isAdmin(user: { role?: string } | undefined): boolean {
-  return hasRole(user, 'admin');
-}
-
-/**
  * Check if user is admin or moderator.
  */
 export function isModerator(user: { role?: string } | undefined): boolean {

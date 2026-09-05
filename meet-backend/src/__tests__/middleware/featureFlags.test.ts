@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import type { Response } from 'express';
 
 // Inline copy of assertFeature's logic for isolated unit testing.
 // The real implementation is in middleware/checkFeatureFlag.ts and reads

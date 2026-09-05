@@ -479,8 +479,6 @@ const MemoizedParticipantTile = memo(ParticipantTileInner, arePropsEqual);
 
 // Named export for backwards compatibility - uses memoized version
 export const ParticipantTile = MemoizedParticipantTile;
-export const ParticipantTileMemo = MemoizedParticipantTile;
-
 // Error boundary for individual participant tiles
 interface TileErrorBoundaryProps {
   children: ReactNode;

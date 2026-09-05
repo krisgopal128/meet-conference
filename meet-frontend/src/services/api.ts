@@ -20,8 +20,6 @@ import type {
   MeetingResponse,
   CancelMeetingResponse,
   GuestTokenResponse,
-  HealthResponse,
-  PingResponse,
   RecordingResponse,
 } from '../types/api';
 import type { TokenResponse, Meeting, MeetingParticipant } from '../types';
@@ -201,15 +199,6 @@ export const authApi = {
 
 // ============================================
 // Token API
-// ============================================
-export const tokenApi = {
-  getToken: (roomName: string, role: string = 'attendee', identity?: string, name?: string): Promise<AxiosResponse<TokenResponse>> =>
-    api.post<TokenResponse>('/token', { roomName, role, identity, name }),
-
-  getGuestToken: (roomName: string, name: string, role: 'attendee' | 'viewer' = 'attendee', password?: string): Promise<AxiosResponse<GuestTokenResponse>> =>
-    api.post<GuestTokenResponse>('/token/guest', { roomName, name, role, password }),
-};
-
 // Simple export for direct use
 export const getToken = (roomName: string, role?: string): Promise<AxiosResponse<TokenResponse>> =>
   api.post<TokenResponse>('/token', { roomName, role });
@@ -449,14 +438,6 @@ export const meetingsApi = {
 
 // ============================================
 // Health Check
-// ============================================
-export const healthApi = {
-  check: (): Promise<AxiosResponse<HealthResponse>> =>
-    api.get<HealthResponse>('/health'),
-  ping: (): Promise<AxiosResponse<PingResponse>> =>
-    api.get<PingResponse>('/ping'),
-};
-
 // ============================================
 // Auth State Helper
 // ============================================

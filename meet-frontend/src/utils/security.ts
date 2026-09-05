@@ -63,13 +63,6 @@ export function sanitizeUrl(url: string | undefined | null): string | null {
 }
 
 /**
- * Check if a URL is safe for use in an anchor tag.
- */
-export function isSafeUrl(url: string | undefined | null): boolean {
-  return sanitizeUrl(url) !== null;
-}
-
-/**
  * Decode JWT token payload without verification.
  * Returns null if the token is invalid or malformed.
  */
@@ -157,21 +150,4 @@ export function isValidRoomName(name: string): boolean {
   if (!name || name.length > 100) return false;
   // Allow alphanumeric, hyphens, underscores, and dots (for generated names like "quick-forest-1234")
   return /^[a-zA-Z0-9._-]+$/.test(name);
-}
-
-/**
- * Validate an email address format.
- */
-export function isValidEmail(email: string): boolean {
-  if (!email || email.length > 254) return false;
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-/**
- * Generate a random CSRF token for client-side request signing.
- */
-export function generateCsrfToken(): string {
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }

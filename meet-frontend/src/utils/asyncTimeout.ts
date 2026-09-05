@@ -69,21 +69,3 @@ export function withOperationTimeout<T>(
   const timeoutMs = OPERATION_TIMEOUTS[operationType];
   return withTimeout(promise, timeoutMs, operationName);
 }
-
-/**
- * Wrapper for handling timeouts gracefully with logging and optional fallback.
- * Useful when you want to log the error but not necessarily fail the entire operation.
- */
-export async function withTimeoutAndFallback<T>(
-  promise: Promise<T>,
-  operationType: OperationType,
-  operationName: string,
-  fallback?: T,
-): Promise<T | undefined> {
-  try {
-    return await withOperationTimeout(promise, operationType, operationName);
-  } catch (err) {
-    logger.error(`[AsyncTimeout] ${operationName} failed:`, err);
-    return fallback;
-  }
-}

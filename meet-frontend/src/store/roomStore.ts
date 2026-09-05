@@ -632,8 +632,6 @@ export const useRoomStore = create<RoomStore>()(
 
 // Connection selectors
 export const useRoomName = () => useRoomStore((state) => state.roomName);
-export const useUserIdentity = () => useRoomStore((state) => state.identity);
-export const useUserRole = () => useRoomStore((state) => state.role);
 export const useHostId = () => useRoomStore((state) => state.hostId);
 export const useDisplayName = () => useRoomStore((state) => state.displayName);
 
@@ -678,7 +676,6 @@ export const useBackgroundBlurEnabled = () => useRoomStore((state) => state.back
 export const useBackgroundBlurLevel = () => useRoomStore((state) => state.backgroundBlurLevel);
 export const useBackgroundMode = () => useRoomStore((state) => state.backgroundMode);
 export const useBackgroundBlurIntensity = () => useRoomStore((state) => state.backgroundBlurIntensity);
-export const useBackgroundFeather = () => useRoomStore((state) => state.backgroundFeather);
 export const useBackgroundBgColor = () => useRoomStore((state) => state.backgroundBgColor);
 export const useBackgroundImagePath = () => useRoomStore((state) => state.backgroundImagePath);
 export const useDiagnosticsLog = () => useRoomStore((state) => state.diagnosticsLog);

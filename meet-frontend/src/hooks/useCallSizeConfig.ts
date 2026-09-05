@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRoomContext } from '@livekit/components-react';
 import { RoomEvent } from 'livekit-client';
-import { meetingRoomConfig } from '../config/meetingRoomConfig';
 
 export interface CallSizeConfig {
   participantCount: number;
@@ -94,28 +93,4 @@ export function useCallSizeConfig(): CallSizeConfig {
   }, [participantCount]);
 
   return config;
-}
-
-export function getSimulcastLayersForCount(layers: number) {
-  const allLayers = meetingRoomConfig.media.simulcastLayers;
-  
-  switch (layers) {
-    case 2:
-      // Low and High only
-      return {
-        low: allLayers.low,
-        high: allLayers.high,
-      };
-    case 3:
-      // Low, Medium, High
-      return {
-        low: allLayers.low,
-        medium: allLayers.medium,
-        high: allLayers.high,
-      };
-    case 4:
-    default:
-      // All layers including Ultra
-      return allLayers;
-  }
 }

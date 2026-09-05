@@ -46,8 +46,6 @@ export const MODERATOR_FEATURES = [
   'lock_meeting',
   'lobby_control',
 ] as const;
-export type ModeratorFeature = (typeof MODERATOR_FEATURES)[number];
-
 const updateUserSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   role: z.enum(['admin', 'moderator', 'participant', 'guest']).optional(),

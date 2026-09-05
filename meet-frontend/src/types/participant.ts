@@ -10,16 +10,6 @@ export type { Participant, RemoteParticipant, LocalParticipant };
 // Union type for any participant
 export type AnyParticipant = RemoteParticipant | LocalParticipant;
 
-// Type guard to check if participant is remote
-export function isRemoteParticipant(participant: AnyParticipant): participant is RemoteParticipant {
-  return 'identity' in participant && !('local' in participant && participant.local);
-}
-
-// Type guard to check if participant is local
-export function isLocalParticipant(participant: AnyParticipant): participant is LocalParticipant {
-  return 'identity' in participant && 'local' in participant && participant.local === true;
-}
-
 // Participant role in meeting
 export type ParticipantRole = 'host' | 'cohost' | 'presenter' | 'attendee' | 'viewer';
 

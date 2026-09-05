@@ -99,10 +99,6 @@ export interface AdminUserDetail extends AdminUser {
   totalDurationMinutes: number;
 }
 
-export interface AdminUserDetailResponse {
-  user: AdminUserDetail;
-}
-
 export interface AdminRoom {
   id: string;
   name: string;

@@ -56,25 +56,3 @@ export async function auditAdminAction(
   }
 }
 
-/**
- * Record an admin action when you already have the context (no request object).
- */
-export async function auditAdminActionCtx(
-  ctx: AuditContext,
-  action: string,
-  target: AuditTargetType,
-  targetId: string | null,
-  details: Record<string, unknown> = {},
-): Promise<void> {
-  try {
-    await query(
-      `INSERT INTO admin_audit_logs (admin_id, action_type, target_type, target_id, details, ip_address, user_agent)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [ctx.adminId || null, action, target, targetId, JSON.stringify(details), ctx.ip || null, ctx.userAgent || null],
-    );
-  } catch (err) {
-    logger.error('[Audit] Failed to record admin action:', err);
-  }
-}
-
-export { extractContext as extractAuditContext };

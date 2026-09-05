@@ -49,7 +49,7 @@ app.use(helmet({
 }));
 
 // Additional security headers
-app.use((req, res, next) => {
+app.use((_req, res, next) => {
   res.setHeader('Permissions-Policy', 'geolocation=()');  // microphone=(), camera=() intentionally omitted — video conferencing requires them
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.removeHeader('X-Powered-By');

@@ -27,4 +27,3 @@
 
 export type DbUserRole = 'admin' | 'moderator' | 'participant';
 export type LiveKitRole = 'host' | 'cohost' | 'presenter' | 'attendee' | 'viewer';
-export type ExternalRole = 'moderator' | 'attendee' | 'observer' | 'presenter' | 'teacher' | 'student';

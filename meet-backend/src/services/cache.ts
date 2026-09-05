@@ -114,13 +114,6 @@ export async function invalidatePattern(pattern: string): Promise<void> {
   }
 }
 
-/**
- * Invalidate all response cache entries.
- */
-export async function invalidateAllCache(): Promise<void> {
-  await invalidatePattern('cache:*');
-}
-
 // ============================================
 // Key Builder
 // ============================================

@@ -28,15 +28,6 @@ export function canUseFeature(user: Pick<User, 'role' | 'featureFlags'> | null |
 }
 
 /**
- * Whether any feature lock is active for this user (drives UI: show the section).
- */
-export function hasFeatureLocks(user: Pick<User, 'role' | 'featureFlags'> | null | undefined): boolean {
-  if (!user) return false;
-  if (user.role !== 'moderator') return false;
-  return user.featureFlags != null && Object.keys(user.featureFlags).length > 0;
-}
-
-/**
  * Build the default all-allowed flags object (used when admin opens the editor
  * for a moderator that has no lock set yet).
  */

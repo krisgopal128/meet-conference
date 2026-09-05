@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ===== Hoisted mock variables =====
-const { mockPoolQuery, mockPoolConnect, mockPoolEnd, MockPool, poolConfigHolder } = vi.hoisted(() => {
+const { mockPoolQuery, mockPoolEnd, MockPool, poolConfigHolder } = vi.hoisted(() => {
   const mockPoolQuery = vi.fn();
   const mockPoolConnect = vi.fn();
   const mockPoolEnd = vi.fn();

@@ -203,7 +203,7 @@ function requireApiKeyPermission(
 /**
  * Health check endpoint (no auth required)
  */
-router.get('/health', (req: Request, res: Response) => {
+router.get('/health', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),

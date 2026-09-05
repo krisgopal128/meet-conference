@@ -3,7 +3,6 @@ import {
   getCached,
   invalidateCache,
   invalidatePattern,
-  invalidateAllCache,
   buildListKey,
   TTL_SHORT,
   TTL_MEDIUM,
@@ -147,13 +146,7 @@ describe('Cache Service', () => {
     });
   });
 
-  describe('invalidateAllCache', () => {
-    it('invalidates all cache keys', async () => {
-      await invalidateAllCache();
-
-      expect(cacheDelPattern).toHaveBeenCalledWith('cache:*');
-    });
-  });
+  ;
 
   describe('buildListKey', () => {
     it('builds simple key with no params', () => {
